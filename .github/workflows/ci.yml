@@ -42,9 +42,6 @@ jobs:
         run: ./gradlew testDebugUnitTest
 
       - name: Build Debug APK
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: ./gradlew assembleDebug --info
 
       - name: Analyze with SonarCloud
