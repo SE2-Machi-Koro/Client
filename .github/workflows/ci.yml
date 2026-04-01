@@ -46,7 +46,7 @@ jobs:
         run: ./gradlew assembleDebug --info
 
       - name: Analyze with SonarCloud
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v7.1.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
