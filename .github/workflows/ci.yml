@@ -53,7 +53,7 @@ jobs:
             -Dsonar.java.binaries=app/build/intermediates/javac/release,app/build/intermediates/javac/debug \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login="${{ secrets.SONAR_TOKEN }}" \
-            -Dsonar.gradle.skipCompile=true || true
+            -Dsonar.gradle.skipCompile=true
 
       - name: Upload Test Reports
         if: always()
