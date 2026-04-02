@@ -82,7 +82,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Decode and prepare Keystore
-        if: env.KEYSTORE_FILE != ''
+        if: secrets.KEYSTORE_FILE != ''
         env:
           KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }}
         run: |
