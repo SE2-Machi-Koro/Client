@@ -38,7 +38,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew sonar --info
+        run: |
+          # Download SonarScanner
+          mkdir -p .sonar
+          wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip -O .sonar/sonar-scanner.zip
+          unzip -q .sonar/sonar-scanner.zip -d .sonar/
+          chmod +x .sonar/sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner
+          
+          # Run SonarScanner
+          .sonar/sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner \
+            -Dsonar.projectKey=SE2-Machi-Koro_Client \
+            -Dsonar.organization=se2-machi-koro \
+            -Dsonar.sources=app/src/main \
+            -Dsonar.tests=app/src/test,app/src/androidTest \
+            -Dsonar.java.binaries=app/build/intermediates/javac/release,app/build/intermediates/javac/debug \
+            -Dsonar.host.url=https://sonarcloud.io
 
       - name: Upload Test Reports
         if: always()
