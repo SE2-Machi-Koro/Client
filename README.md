@@ -102,4 +102,4 @@ The project includes:
 
 ## 📝 License
 
-[Add your license here]
+No license has been specified yet. Add a `LICENSE` file and update this section once a license is chosen.
