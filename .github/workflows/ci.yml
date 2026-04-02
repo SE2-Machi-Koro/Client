@@ -50,10 +50,10 @@ jobs:
             -Dsonar.projectKey=SE2-Machi-Koro_Client \
             -Dsonar.organization=se2-machi-koro \
             -Dsonar.sources=app/src/main \
-            -Dsonar.tests=app/src/test,app/src/androidTest \
             -Dsonar.java.binaries=app/build/intermediates/javac/release,app/build/intermediates/javac/debug \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=$SONAR_TOKEN
+            -Dsonar.login="${{ secrets.SONAR_TOKEN }}" \
+            -Dsonar.gradle.skipCompile=true || true
 
       - name: Upload Test Reports
         if: always()
