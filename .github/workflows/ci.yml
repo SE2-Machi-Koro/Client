@@ -52,7 +52,8 @@ jobs:
             -Dsonar.sources=app/src/main \
             -Dsonar.tests=app/src/test,app/src/androidTest \
             -Dsonar.java.binaries=app/build/intermediates/javac/release,app/build/intermediates/javac/debug \
-            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=$SONAR_TOKEN
 
       - name: Upload Test Reports
         if: always()
