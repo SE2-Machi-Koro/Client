@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    id("org.sonarqube") version "7.2.3.7755"
+    jacoco
 }
 
 android {
@@ -29,6 +31,9 @@ android {
                 "proguard-rules.pro"
             )
         }
+        getByName("debug") {
+            enableUnitTestCoverage = true
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -36,6 +41,17 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+}
+
+sonar {
+    properties {
+        property("sonar.projectKey", "SE2-Machi-Koro_Client")
+        property("sonar.organization", "se2-machi-koro")
+        property("sonar.host.url", "https://sonarcloud.io")
+        property("sonar.sources", "src/main/java,src/main/kotlin")
+        property("sonar.tests", "src/test/java,src/test/kotlin")
+        property("sonar.coverage.jacoco.xmlReportPaths", "${project.layout.buildDirectory.get()}/reports/jacoco/jacocoTestReport/jacocoTestReport.xml")
     }
 }
 
@@ -55,4 +71,62 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testDebugUnitTest")
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+
+    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug")
+    val mainSrc = "${project.projectDir}/src/main/java"
+    val kotlinSrc = "${project.projectDir}/src/main/kotlin"
+
+    sourceDirectories.setFrom(files(mainSrc, kotlinSrc))
+    classDirectories.setFrom(files(debugTree))
+    executionData.setFrom(
+        fileTree(project.layout.buildDirectory.get()).include(
+            "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+            "jacoco/testDebugUnitTest.exec"
+        )
+    )
+}
+
+tasks.sonar {
+    dependsOn("jacocoTestReport")
+}
+
+tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    dependsOn("testDebugUnitTest")
+
+    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug")
+    val mainSrc = "${project.projectDir}/src/main/java"
+    val kotlinSrc = "${project.projectDir}/src/main/kotlin"
+
+    sourceDirectories.setFrom(files(mainSrc, kotlinSrc))
+    classDirectories.setFrom(files(debugTree))
+    executionData.setFrom(
+        fileTree(project.layout.buildDirectory.get()).include(
+            "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+            "jacoco/testDebugUnitTest.exec"
+        )
+    )
+
+    violationRules {
+        rule {
+            element = "CLASS"
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.80".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn("jacocoTestCoverageVerification")
 }
