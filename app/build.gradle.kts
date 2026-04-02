@@ -30,15 +30,22 @@ android {
                 "proguard-rules.pro"
             )
 
-            // Configurazione signing solo se le variabili d'ambiente sono disponibili
+            // Configurazione signing solo se le variabili d'ambiente sono valorizzate correttamente
             val keystoreFile = System.getenv("KEYSTORE_FILE")
             val keystorePassword = System.getenv("KEYSTORE_PASSWORD")
             val keyAlias = System.getenv("KEY_ALIAS")
             val keyPassword = System.getenv("KEY_PASSWORD")
+            val keystorePath = keystoreFile?.takeIf { it.isNotBlank() }?.let { file(it) }
 
-            if (keystoreFile != null && keystorePassword != null && keyAlias != null && keyPassword != null) {
+            if (!keystoreFile.isNullOrBlank() &&
+                !keystorePassword.isNullOrBlank() &&
+                !keyAlias.isNullOrBlank() &&
+                !keyPassword.isNullOrBlank() &&
+                keystorePath != null &&
+                keystorePath.exists()
+            ) {
                 signingConfig = android.signingConfigs.create("releaseSign") {
-                    storeFile = file(keystoreFile)
+                    storeFile = keystorePath
                     storePassword = keystorePassword
                     this.keyAlias = keyAlias
                     this.keyPassword = keyPassword
