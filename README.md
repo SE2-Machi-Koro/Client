@@ -32,7 +32,7 @@ Mobile client application for Machi Koro game built with Android and Jetpack Com
 
 The project uses GitHub Actions for CI/CD:
 
-- **build-and-test**: Runs on all branches and PRs
+- **build-and-test**: Runs on pushes to `main` and `develop`, and on PRs
   - Builds the application
   - Runs unit tests
   - Performs lint analysis
