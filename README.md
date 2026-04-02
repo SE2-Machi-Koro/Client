@@ -4,9 +4,9 @@ Mobile client application for Machi Koro game built with Android and Jetpack Com
 
 ## 📚 Documentation
 
-- [CI/CD Fix Summary](./CI_FIX_SUMMARY.md) - Descrizione delle correzioni al pipeline CI
-- [Keystore Setup Guide](./KEYSTORE_SETUP.md) - Come generare e configurare il keystore per il release APK
-- [Environment Variables](./.env.example) - Variabili d'ambiente necessarie
+- [CI/CD Fix Summary](./CI_FIX_SUMMARY.md) - Summary of fixes to the CI pipeline
+- [Keystore Setup Guide](./KEYSTORE_SETUP.md) - How to generate and configure the keystore for the release APK
+- [Environment Variables](./.env.example) - Required environment variables
 
 ## 🚀 Quick Start
 
