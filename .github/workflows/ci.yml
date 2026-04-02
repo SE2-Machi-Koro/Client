@@ -52,11 +52,11 @@ jobs:
       - name: Build Debug APK        # ← erst bauen
         run: ./gradlew assembleDebug
 
-      - name: Analyze with SonarCloud  # ← dann analysieren
-        uses: SonarSource/sonarqube-scan-action@v7.1.0
+      - name: Build and analyze
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./gradlew build sonar --info
 
       - name: Upload Test Reports
         if: always()
