@@ -60,19 +60,18 @@ See [KEYSTORE_SETUP.md](./KEYSTORE_SETUP.md) for detailed instructions.
 ## 🏗️ Project Structure
 
 ```
-Client/
-├── app/                    # Android application module
-│   ├── src/
-│   │   ├── main/          # Source code and resources
-│   │   ├── test/          # Unit tests
-│   │   └── androidTest/   # Instrumentation tests
-│   └── build.gradle.kts   # App-level Gradle configuration
-├── .github/
-│   └── workflows/
-│       └── ci.yml         # GitHub Actions CI/CD workflow
-├── gradle/
-│   └── libs.versions.toml # Dependency versions
-└── build.gradle.kts       # Project-level Gradle configuration
+app/                       # Android application module
+├── src/
+│   ├── main/              # Source code and resources
+│   ├── test/              # Unit tests
+│   └── androidTest/       # Instrumentation tests
+└── build.gradle.kts       # App-level Gradle configuration
+.github/
+└── workflows/
+    └── ci.yml             # GitHub Actions CI/CD workflow
+gradle/
+└── libs.versions.toml     # Dependency versions
+build.gradle.kts           # Project-level Gradle configuration
 ```
 
 ## 🛠️ Tech Stack
