@@ -8,9 +8,15 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+.idea/deploymentTargetSelector.xml
+.idea/codeStyles/
+.idea/inspectionProfiles/
+.idea/markdown.xml
 .DS_Store
 /build
 /captures
+.gradle-local/
 .externalNativeBuild
 .cxx
 local.properties
+package-lock.json

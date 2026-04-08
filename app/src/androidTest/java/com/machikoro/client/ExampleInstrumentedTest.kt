@@ -1,12 +1,12 @@
 package com.machikoro.client
 
-import androidx.test.platform.app.InstrumentationRegistry
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
-
 import org.junit.Test
+import org.junit.Rule
 import org.junit.runner.RunWith
-
-import org.junit.Assert.*
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -15,10 +15,13 @@ import org.junit.Assert.*
  */
 @RunWith(AndroidJUnit4::class)
 class ExampleInstrumentedTest {
+    @get:Rule
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
+
     @Test
-    fun useAppContext() {
-        // Context of the app under test.
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.machikoro.client", appContext.packageName)
+    fun minimalStartScreenIsShown() {
+        composeTestRule.onNodeWithText("Machi Koro Client").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Connection status: waiting for WebSocket integration").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Lobby/start: placeholder").assertIsDisplayed()
     }
 }
