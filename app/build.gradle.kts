@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    id("org.sonarqube") version "6.0.1.5171"
+    id("org.sonarqube") version "5.0.0.4638"
 }
 
 sonar {
@@ -9,7 +9,6 @@ sonar {
         property("sonar.projectKey", "SE2-Machi-Koro_Client")
         property("sonar.organization", "se2-machi-koro")
         property("sonar.host.url", "https://sonarcloud.io")
-        property("sonar.scanner.skipJreProvisioning", "true")
     }
 }
 
