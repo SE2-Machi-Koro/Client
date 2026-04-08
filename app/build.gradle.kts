@@ -14,11 +14,7 @@ sonar {
 
 android {
     namespace = "com.machikoro.client"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.machikoro.client"
