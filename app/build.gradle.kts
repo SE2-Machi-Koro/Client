@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    id("org.sonarqube") version "7.2.3.7755"
     jacoco
 }
 
@@ -46,9 +45,6 @@ android {
 
 sonar {
     properties {
-        property("sonar.projectKey", "SE2-Machi-Koro_Client")
-        property("sonar.organization", "se2-machi-koro")
-        property("sonar.host.url", "https://sonarcloud.io")
         property("sonar.sources", "src/main/java,src/main/kotlin")
         property("sonar.tests", "src/test/java,src/test/kotlin")
         property("sonar.coverage.jacoco.xmlReportPaths", "${project.layout.buildDirectory.get()}/reports/jacoco/jacocoTestReport/jacocoTestReport.xml")
@@ -93,10 +89,6 @@ tasks.register<JacocoReport>("jacocoTestReport") {
             "jacoco/testDebugUnitTest.exec"
         )
     )
-}
-
-tasks.sonar {
-    dependsOn("jacocoTestReport")
 }
 
 tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
