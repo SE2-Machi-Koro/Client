@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    id("org.sonarqube") version "4.4.1.3373"
+    id("org.sonarqube") version "5.1.0.4882"
 }
 
 sonar {
