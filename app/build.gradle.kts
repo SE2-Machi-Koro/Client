@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    id("org.sonarqube") version "7.2.3.7755"
+    id("org.sonarqube") version "4.4.1.3373"
 }
 
 sonar {
@@ -14,16 +14,12 @@ sonar {
 
 android {
     namespace = "com.machikoro.client"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.machikoro.client"
         minSdk = 29
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
