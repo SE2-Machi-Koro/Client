@@ -9,6 +9,7 @@ sonar {
         property("sonar.projectKey", "SE2-Machi-Koro_Client")
         property("sonar.organization", "se2-machi-koro")
         property("sonar.host.url", "https://sonarcloud.io")
+        property("sonar.scanner.skipJreProvisioning", "true")
     }
 }
 
