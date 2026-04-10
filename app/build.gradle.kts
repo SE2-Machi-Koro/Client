@@ -4,6 +4,9 @@ plugins {
     jacoco
 }
 
+val backendBaseUrl = providers.gradleProperty("backendBaseUrl").orElse("http://10.0.2.2:8080")
+val websocketUrl = providers.gradleProperty("websocketUrl").orElse("ws://10.0.2.2:8080/ws")
+
 android {
     namespace = "com.machikoro.client"
     compileSdk {
@@ -18,6 +21,8 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+        buildConfigField("String", "BACKEND_BASE_URL", "\"${backendBaseUrl.get()}\"")
+        buildConfigField("String", "WEBSOCKET_URL", "\"${websocketUrl.get()}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -40,6 +45,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
