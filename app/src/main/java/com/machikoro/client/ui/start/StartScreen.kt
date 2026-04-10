@@ -10,10 +10,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.machikoro.client.model.state.ConnectionStatus
+import com.machikoro.client.model.state.LobbyStatus
+import com.machikoro.client.model.state.StartScreenState
+import com.machikoro.client.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
 
 @Composable
-fun StartScreen(modifier: Modifier = Modifier) {
+fun StartScreen(
+    state: StartScreenState,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -21,24 +28,34 @@ fun StartScreen(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            text = "Machi Koro Client",
+            text = state.title,
             style = MaterialTheme.typography.headlineMedium
         )
         Text(
-            text = "Connection status: waiting for WebSocket integration",
+            text = "Connection status: ${state.connectionStatus.toDisplayText()}",
             style = MaterialTheme.typography.bodyLarge
         )
         Text(
-            text = "Lobby/start: placeholder",
+            text = "Lobby/start: ${state.lobbyStatus.toDisplayText()}",
             style = MaterialTheme.typography.bodyLarge
         )
     }
+}
+
+private fun LobbyStatus.toDisplayText(): String = when (this) {
+    LobbyStatus.PLACEHOLDER -> "placeholder"
+    LobbyStatus.WAITING_FOR_PLAYERS -> "waiting for players"
+    LobbyStatus.READY -> "ready"
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun StartScreenPreview() {
     ClientTheme {
-        StartScreen()
+        StartScreen(
+            state = StartScreenState.placeholder().copy(
+                connectionStatus = ConnectionStatus.CONNECTED
+            )
+        )
     }
 }
