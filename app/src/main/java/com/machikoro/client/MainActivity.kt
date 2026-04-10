@@ -8,10 +8,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
+import com.machikoro.client.config.AppConfig
+import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
 
 class MainActivity : ComponentActivity() {
+    private val webSocketClient by lazy {
+        OkHttpWebSocketClient(websocketUrl = AppConfig.websocketUrl)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -22,5 +28,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        webSocketClient.connect()
+    }
+
+    override fun onStop() {
+        webSocketClient.disconnect()
+        super.onStop()
     }
 }
