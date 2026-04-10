@@ -1,6 +1,6 @@
 # Machi Koro Android Client
 
-Android client foundation prepared for upcoming WebSocket integration.
+Android client connected to the Machi Koro backend through native WebSocket transport and STOMP.
 
 ## Getting Started
 
@@ -12,25 +12,38 @@ Open this project in Android Studio.
 
 Run the `app` configuration on an Android emulator or device.
 
-The current app launches into a minimal placeholder start screen.
+The app opens the start screen and attempts to connect to the backend WebSocket endpoint automatically.
+
+### Local Development Defaults
+
+The client is configured for Android emulator development by default:
+
+- Backend base URL: `http://10.0.2.2:8080`
+- WebSocket URL: `ws://10.0.2.2:8080/ws`
+
+Both values are configurable through Gradle properties:
+
+```bash
+./gradlew assembleDebug -PbackendBaseUrl=http://10.0.2.2:8080 -PwebsocketUrl=ws://10.0.2.2:8080/ws
+```
 
 ---
 
-## Current Foundation
+## Current Status
 
 ### Implemented
 
-- Minimal start screen
-- Placeholder connection status UI
-- Placeholder lobby/start UI
-- Basic package structure prepared for upcoming WebSocket work
+- Configurable backend and WebSocket URLs via `BuildConfig`
+- Native WebSocket transport using OkHttp
+- STOMP connect flow over the native WebSocket endpoint
+- Live connection status rendered on the start screen
+- Graceful disconnect/error handling without app crash
 
 ### Not Implemented Yet
 
-- Backend/WebSocket URL configuration
-- Actual WebSocket client connection
-- Live connection status updates
-- Disconnect handling
+- Dedicated Android chat UI
+- Sending chat messages from the Android UI
+- Lobby/game flow beyond placeholder UI
 
 ---
 
@@ -40,9 +53,10 @@ The current app launches into a minimal placeholder start screen.
 
 ```text
 app/src/main/java/com/machikoro/client/
-├── model/state/              # Placeholder UI and connection state models
-├── network/websocket/        # WebSocket client contract for upcoming integration
-├── ui/start/                 # Minimal start screen
+├── config/                   # App-level backend/WebSocket configuration
+├── model/state/              # UI and connection state models
+├── network/websocket/        # Native WebSocket + STOMP client setup
+├── ui/start/                 # Start screen and state holder
 ├── ui/theme/                 # Compose theme setup
 └── MainActivity.kt           # Application entry point
 ```
@@ -51,16 +65,17 @@ app/src/main/java/com/machikoro/client/
 
 ## Testing
 
-- Unit test for placeholder start screen state
-- Instrumentation/UI test for start screen rendering
+- Unit tests for config and protocol contract
+- Mocked unit tests for WebSocket connect/disconnect lifecycle
+- Mocked unit tests for STOMP handshake flow
+- Unit tests for start screen connection-state mapping
+- Compose UI test for rendered connection status
 
 ---
 
 ## Next Steps
 
-WebSocket connection work continues in the next issue, including:
+Current follow-up work can focus on:
 
-- backend/WebSocket URL configuration
-- actual client connectivity
-- visible live connection status
-- disconnect handling
+- adding send-message support from the Android client
+- replacing placeholder lobby/start UI with real game/lobby state
