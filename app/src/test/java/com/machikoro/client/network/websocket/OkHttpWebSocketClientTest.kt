@@ -14,18 +14,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OkHttpWebSocketClientTest {
-    @Test
-    fun connectMovesStatusToConnecting() {
-        val factory = FakeWebSocketFactory()
-        val client = OkHttpWebSocketClient(
-            websocketUrl = "ws://10.0.2.2:8080/ws",
-            webSocketFactory = factory
-        )
+        @Test
+        fun connectMovesStatusToConnecting() {
+            val factory = FakeWebSocketFactory()
+            val client = OkHttpWebSocketClient(
+                websocketUrl = "ws://10.0.2.2:8080/ws",
+                webSocketFactory = factory
+            )
 
-        client.connect()
+            client.connect()
 
-        assertEquals(ConnectionStatus.CONNECTING, client.connectionStatus.value)
-    }
+            assertEquals(ConnectionStatus.CONNECTING, client.connectionStatus.value)
+        }
 
     @Test
     fun successfulOpenMovesStatusToConnected() {

@@ -1,27 +1,33 @@
 package com.machikoro.client
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.machikoro.client.model.state.ConnectionStatus
+import com.machikoro.client.model.state.StartScreenState
+import com.machikoro.client.ui.start.StartScreen
+import com.machikoro.client.ui.theme.ClientTheme
 import org.junit.Test
 import org.junit.Rule
-import org.junit.runner.RunWith
 
-/**
- * Instrumented test, which will execute on an Android device.
- *
- * See [testing documentation](http://d.android.com/tools/testing).
- */
-@RunWith(AndroidJUnit4::class)
 class ExampleInstrumentedTest {
     @get:Rule
-    val composeTestRule = createAndroidComposeRule<MainActivity>()
+    val composeTestRule = createComposeRule()
 
     @Test
-    fun minimalStartScreenIsShown() {
+    fun startScreenRendersProvidedConnectionStatus() {
+        composeTestRule.setContent {
+            ClientTheme {
+                StartScreen(
+                    state = StartScreenState.placeholder().copy(
+                        connectionStatus = ConnectionStatus.CONNECTED
+                    )
+                )
+            }
+        }
+
         composeTestRule.onNodeWithText("Machi Koro Client").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Connection status: waiting for WebSocket integration").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Connection status: connected").assertIsDisplayed()
         composeTestRule.onNodeWithText("Lobby/start: placeholder").assertIsDisplayed()
     }
 }
