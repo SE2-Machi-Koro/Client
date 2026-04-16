@@ -28,9 +28,14 @@ fun StartScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            text = state.title,
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary // test
+            text = "MACHI KORO",
+            style = MaterialTheme.typography.headlineLarge, // test
+            color = MaterialTheme.colorScheme.secondary // test
+        )
+        Text( // test
+            text = "MACHI KORO", // test
+            style = MaterialTheme.typography.titleLarge, // test
+            color = MaterialTheme.colorScheme.secondary // test
         )
         Text(
             text = "Connection status: ${state.connectionStatus.toDisplayText()}",
@@ -38,8 +43,8 @@ fun StartScreen(
         )
         Text(
             text = "Lobby/start: ${state.lobbyStatus.toDisplayText()}",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.secondary // test
+            style = MaterialTheme.typography.bodyMedium, // test
+            color = MaterialTheme.colorScheme.primary // test
         )
     }
 }
