@@ -29,7 +29,8 @@ fun StartScreen(
     ) {
         Text(
             text = state.title,
-            style = MaterialTheme.typography.headlineMedium
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary // test
         )
         Text(
             text = "Connection status: ${state.connectionStatus.toDisplayText()}",
@@ -37,7 +38,8 @@ fun StartScreen(
         )
         Text(
             text = "Lobby/start: ${state.lobbyStatus.toDisplayText()}",
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.secondary // test
         )
     }
 }
