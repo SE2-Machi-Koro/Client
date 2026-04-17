@@ -37,13 +37,13 @@ fun StartScreen(
         Image(
             painter = painterResource(id = R.drawable.background_left),
             contentDescription = null,
-            modifier = Modifier.align(Alignment.BottomStart).offset(x = 0.dp, y = 30.dp) // optional
+            modifier = Modifier.align(Alignment.BottomStart).offset(x = -20.dp, y = 30.dp) // optional
         )
 
         Image(
             painter = painterResource(id = R.drawable.background_right),
             contentDescription = null,
-            modifier = Modifier.align(Alignment.BottomEnd).offset(x = 0.dp, y = 30.dp) // optional
+            modifier = Modifier.align(Alignment.BottomEnd).offset(x = 15.dp, y = 30.dp) // optional
         )
 
         // Titel mittig oben
@@ -55,7 +55,7 @@ fun StartScreen(
                 .align(Alignment.TopCenter)
                 .padding(top = 55.dp)
         )
-        
+
         // Restliche UI
         Column(
             modifier = Modifier
