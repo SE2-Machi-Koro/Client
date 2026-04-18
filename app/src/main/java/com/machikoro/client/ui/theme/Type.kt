@@ -8,27 +8,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.machikoro.client.R
 
-// Set of Material typography styles to start with
+// -----------------------------
+// Font definitions
+// -----------------------------
 
-// Title Font (z.B. "MACHI KORO" - simple font)
+// Clean title font (more readable, alternative - Bebas)
 val TitleFontClean = FontFamily(
     Font(R.font.bebas_neue)
 )
 
-// Title Font (original)
+// Original title font (used in Figma - Plaster)
 val TitleFont = FontFamily(
     Font(R.font.plaster)
 )
 
-// Body Font (Cabin)
+// Default body font (Cabin)
 val BodyFont = FontFamily(
     Font(R.font.cabin)
 )
 
+// -----------------------------
+// Typography styles
+// -----------------------------
 
 val Typography = Typography(
 
-    // GROßER LOGIN TITEL (64sp)
+    // Large main title (e.g. Login title - 64sp)
     headlineLarge = TextStyle(
         fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
@@ -36,6 +41,7 @@ val Typography = Typography(
         letterSpacing = 2.sp
     ),
 
+    // Alternative large title (clean version)
     titleLarge = TextStyle(
         fontFamily = TitleFontClean,
         fontWeight = FontWeight.Normal,
@@ -44,28 +50,28 @@ val Typography = Typography(
     ),
 
 
-    // Überschrift (z.B. "WILLKOMMEN")
+    // Section title (e.g. "WELCOME")
     headlineMedium = TextStyle(
         fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
         fontSize = 32.sp
     ),
 
-    // normaler Text (16sp)
+    // Default text (16sp)
     bodyLarge = TextStyle(
         fontFamily = BodyFont,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp
     ),
 
-    // kleiner Text (14sp)
+    // Smaller text (14sp)
     bodyMedium = TextStyle(
         fontFamily = BodyFont,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp
     ),
 
-    // Button Text (20sp)
+    // Button text (20sp)
     labelLarge = TextStyle(
         fontFamily = BodyFont,
         fontWeight = FontWeight.Medium,

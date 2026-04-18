@@ -30,20 +30,21 @@ fun StartScreen(
         modifier = modifier
             .fillMaxSize()
     ) {
-        // Background image
+        // Background image on the bottom left
         Image(
             painter = painterResource(id = R.drawable.background_left),
             contentDescription = null,
             modifier = Modifier.align(Alignment.BottomStart).offset(x = -20.dp, y = 30.dp) // optional
         )
 
+        // Background image on the bottom right
         Image(
             painter = painterResource(id = R.drawable.background_right),
             contentDescription = null,
             modifier = Modifier.align(Alignment.BottomEnd).offset(x = 15.dp, y = 30.dp) // optional
         )
 
-        // Titel mittig oben
+        // Title centered at the top
         Text(
             text = "MACHI KORO",
             style = MaterialTheme.typography.headlineLarge,
@@ -53,7 +54,7 @@ fun StartScreen(
                 .padding(top = 55.dp)
         )
 
-        // Restliche UI
+        // Remaining UI content
         Column(
             modifier = Modifier
                 .fillMaxSize()
