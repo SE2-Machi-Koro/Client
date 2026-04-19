@@ -6,7 +6,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,8 +21,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -31,14 +29,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -71,7 +67,7 @@ fun WinScreen() {
 
         //Content
         Column(
-            modifier = Modifier.fillMaxSize().padding(8.dp),
+            modifier = Modifier.fillMaxSize().padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -85,12 +81,7 @@ fun WinScreen() {
             val list = listOf<String>("Name 1", "Long name", "1", "HsDHDHsssaaassaasasasassaDH") // for testing
 
 
-            var index by remember { mutableIntStateOf(0) }
-
-
-
-
-            //Player cards
+            //Player profiles
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
@@ -128,14 +119,20 @@ fun WinScreen() {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                 Button(
-                    onClick = { TODO() }
+                    onClick = { TODO() },
+                    modifier = Modifier.wrapContentSize()
                 ) {
-                        Text(text = "Finish",)
+                        Text(text = "Finish game",
+                            style = MaterialTheme.typography.labelLarge
+                        )
                 }
                 Button(
-                    onClick = { TODO() }
+                    onClick = { TODO() },
+                    modifier = Modifier.wrapContentSize()
+
                 ) {
-                    Text("Back to lobby")
+                    Text(text = "Back to current lobby",
+                        style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
@@ -149,11 +146,13 @@ fun PlayerProfileCard(name: String, place: Int) {
         CardRedBackground,
         CardGreenBackground,
         CardBlueBackground)
+
     val textColors = listOf(
         CardPurpleText,
         CardRedText,
         CardGreenText,
         CardBlueText)
+
             Box(
                 modifier = Modifier
                     .width(170.dp)
@@ -192,17 +191,15 @@ fun PlayerProfileCard(name: String, place: Int) {
                         contentDescription = null,
                         alpha = 0.7f,
                         modifier = Modifier
-                            .fillMaxWidth()
                             .size(80.dp)
                             .align(Alignment.Center),
                     )
                     Text(
                         text = name,
                         style = MaterialTheme.typography.headlineSmall,
-                        color = textColors.get(place - 1),
+                        color = textColors[place - 1],
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        fontStyle = FontStyle.Italic,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
