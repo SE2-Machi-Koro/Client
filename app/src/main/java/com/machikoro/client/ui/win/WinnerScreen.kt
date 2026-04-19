@@ -1,8 +1,15 @@
 package com.machikoro.client.ui.win
 
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,6 +29,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -35,6 +48,7 @@ import com.machikoro.client.R
 import com.machikoro.client.ui.theme.*
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.PrimaryBlueDark
+import kotlinx.coroutines.delay
 
 @Composable
 fun WinScreen() {
@@ -71,15 +85,37 @@ fun WinScreen() {
             val list = listOf<String>("Name 1", "Long name", "1", "HsDHDHsssaaassaasasasassaDH") // for testing
 
 
+            var index by remember { mutableIntStateOf(0) }
+
+
+
+
             //Player cards
-            LazyRow(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             )
             {
-                items(list) {
-                    PlayerProfileCard(it, list.indexOf(it) + 1)
+                list.forEachIndexed { i, player ->
+
+                    var visible by remember { mutableStateOf(false) }
+
+                    LaunchedEffect(Unit) {
+                        delay(i * 850L)
+                        visible = true
+                    }
+
+                    AnimatedVisibility(
+                        visible = visible,
+                        enter = fadeIn() +
+                                scaleIn(initialScale = 0.5f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy
+                                    ))
+                    ) {
+                        PlayerProfileCard(player, i + 1)
+                    }
                 }
             }
 
@@ -122,6 +158,11 @@ fun PlayerProfileCard(name: String, place: Int) {
                 modifier = Modifier
                     .width(170.dp)
                     .height(200.dp)
+                    .border(
+                        width = 1.dp,
+                        color = textColors.get(place -1),
+                        shape = RoundedCornerShape(28.dp)
+                    )
                     .background(
                         color = backgroundColors.get(place -1),
                         shape = RoundedCornerShape(28.dp)
