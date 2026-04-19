@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.machikoro.client.R
 import com.machikoro.client.ui.theme.*
 import com.machikoro.client.ui.theme.ClientTheme
@@ -50,7 +51,6 @@ import kotlinx.coroutines.delay
 fun WinScreen() {
     Box(modifier = Modifier.fillMaxSize())
     {
-
         //Background
         Image(
             painter = painterResource(id = R.drawable.background_left),
@@ -85,7 +85,7 @@ fun WinScreen() {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             )
             {
                 list.forEachIndexed { i, player ->
@@ -145,72 +145,76 @@ fun PlayerProfileCard(name: String, place: Int) {
         CardPurpleBackground,
         CardRedBackground,
         CardGreenBackground,
-        CardBlueBackground)
+        CardBlueBackground
+    )
 
     val textColors = listOf(
         CardPurpleText,
         CardRedText,
         CardGreenText,
-        CardBlueText)
+        CardBlueText
+    )
 
-            Box(
+    Box(
+        modifier = Modifier
+            .width(170.dp)
+            .height(200.dp)
+        ,
+    ) {
+        // Crown
+        if (place == 1) {
+            Image(
+                painter = painterResource(id = R.drawable.lobby_host_icon),
+                contentDescription = null,
+                alpha = 0.7f,
                 modifier = Modifier
-                    .width(170.dp)
-                    .height(200.dp)
-                    .border(
-                        width = 1.dp,
-                        color = textColors.get(place -1),
-                        shape = RoundedCornerShape(28.dp)
-                    )
-                    .background(
-                        color = backgroundColors.get(place -1),
-                        shape = RoundedCornerShape(28.dp)
-                    )
-                    .padding(all = 8.dp)
-            ) {
-                    if (place == 1) {
-                        Image(
-                            painter = painterResource(id = R.drawable.lobby_host_icon),
-                            contentDescription = null,
-                            alpha = 0.7f,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .offset(0.dp, (-40).dp)
-                        )
-                    }
-                    Text(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter),
-                        text = "$place",
-                        color = textColors.get(place - 1),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontSize = 36.sp,
-                    )
-                    Image(
-                        painter = painterResource(id = R.drawable.login_user_icon),
-                        contentDescription = null,
-                        alpha = 0.7f,
-                        modifier = Modifier
-                            .size(80.dp)
-                            .align(Alignment.Center),
-                    )
-                    Text(
-                        text = name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = textColors[place - 1],
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 12.dp)
-                    )
-                }
+                    .size(40.dp)
+                    .align(Alignment.TopCenter)
+                    .offset(y = (-40).dp) // move above card
+                    .zIndex(1f)
+            )
+        }
 
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .border(
+                    width = 1.dp,
+                    color = textColors[place - 1],
+                    shape = RoundedCornerShape(28.dp)
+                )
+                .background(
+                    color = backgroundColors[place - 1],
+                    shape = RoundedCornerShape(28.dp)
+                )
+                .padding(8.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "$place",
+                color = textColors[place - 1],
+                style = MaterialTheme.typography.headlineMedium,
+                fontSize = 36.sp
+            )
 
+            Text(
+                text = name,
+                color = textColors[place - 1],
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Image(
+                painter = painterResource(id = R.drawable.login_user_icon),
+                contentDescription = null,
+                modifier = Modifier.size(80.dp)
+            )
+        }
+    }
 }
-
 
 @Preview(showBackground = true)
 @Composable
