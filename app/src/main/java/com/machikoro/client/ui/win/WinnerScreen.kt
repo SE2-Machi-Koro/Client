@@ -34,6 +34,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,7 +69,7 @@ fun WinScreen() {
 
         //Content
         Column(
-            modifier = Modifier.fillMaxSize().padding(14.dp),
+            modifier = Modifier.fillMaxSize().padding(all = 12.dp),
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -100,7 +102,7 @@ fun WinScreen() {
                     AnimatedVisibility(
                         visible = visible,
                         enter = fadeIn() +
-                                scaleIn(initialScale = 0.5f,
+                                scaleIn(initialScale = 0.2f,
                                     animationSpec = spring(
                                         dampingRatio = Spring.DampingRatioMediumBouncy
                                     ))
@@ -157,8 +159,9 @@ fun PlayerProfileCard(name: String, place: Int) {
 
     Box(
         modifier = Modifier
-            .width(170.dp)
+            .width(150.dp)
             .height(200.dp)
+            .padding(top = 14.dp)
         ,
     ) {
         // Crown
@@ -170,7 +173,7 @@ fun PlayerProfileCard(name: String, place: Int) {
                 modifier = Modifier
                     .size(40.dp)
                     .align(Alignment.TopCenter)
-                    .offset(y = (-40).dp) // move above card
+                    .offset(y = (-40).dp) // above card
                     .zIndex(1f)
             )
         }
