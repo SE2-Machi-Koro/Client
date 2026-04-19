@@ -24,8 +24,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -95,13 +95,22 @@ fun WinScreen() {
 
 @Composable
 fun PlayerProfileCard(name: String, place: Int) {
-
+    val backgroundColors = listOf(
+        CardPurpleBackground,
+        CardRedBackground,
+        CardGreenBackground,
+        CardBlueBackground)
+    val textColors = listOf(
+        CardPurpleText,
+        CardRedText,
+        CardGreenText,
+        CardBlueText)
             Box(
                 modifier = Modifier
                     .width(170.dp)
                     .height(200.dp)
                     .background(
-                        color = CardPurpleBackground,
+                        color = backgroundColors.get(place -1),
                         shape = RoundedCornerShape(28.dp)
                     )
                     .padding(all = 8.dp)
@@ -120,9 +129,9 @@ fun PlayerProfileCard(name: String, place: Int) {
                         modifier = Modifier
                             .align(Alignment.TopCenter),
                         text = "$place",
+                        color = textColors.get(place - 1),
                         style = MaterialTheme.typography.headlineMedium,
                         fontSize = 36.sp,
-                        fontWeight = FontWeight.Bold,
                     )
                     Image(
                         painter = painterResource(id = R.drawable.login_user_icon),
@@ -136,9 +145,10 @@ fun PlayerProfileCard(name: String, place: Int) {
                     Text(
                         text = name,
                         style = MaterialTheme.typography.headlineSmall,
-                        color = CardPurpleText,
+                        color = textColors.get(place - 1),
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
+                        fontStyle = FontStyle.Italic,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
