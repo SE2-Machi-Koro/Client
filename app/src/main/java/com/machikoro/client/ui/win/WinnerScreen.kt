@@ -40,6 +40,8 @@ import com.machikoro.client.ui.theme.PrimaryBlueDark
 fun WinScreen() {
     Box(modifier = Modifier.fillMaxSize())
     {
+
+        //Background
         Image(
             painter = painterResource(id = R.drawable.background_left),
             contentDescription = null,
@@ -52,11 +54,15 @@ fun WinScreen() {
             modifier = Modifier.align(Alignment.BottomEnd).offset(x = 15.dp, y = 30.dp),
             alpha = 0.3f
         )
+
+        //Content
         Column(
             modifier = Modifier.fillMaxSize().padding(8.dp),
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
+            //Headline
             Text(
                 text = "WINNER SCREEN",
                 style = MaterialTheme.typography.headlineLarge,
@@ -64,6 +70,8 @@ fun WinScreen() {
                 )
             val list = listOf<String>("Name 1", "Long name", "1", "HsDHDHsssaaassaasasasassaDH") // for testing
 
+
+            //Player cards
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
@@ -75,13 +83,18 @@ fun WinScreen() {
                 }
             }
 
+
+
+
+
+            //Buttons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                 Button(
                     onClick = { TODO() }
                 ) {
-                    Text("Finish")
+                        Text(text = "Finish",)
                 }
                 Button(
                     onClick = { TODO() }
