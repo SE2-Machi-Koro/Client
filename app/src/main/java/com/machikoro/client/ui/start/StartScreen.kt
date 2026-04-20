@@ -38,7 +38,6 @@ fun StartScreen(
 
     if (showPdfViewer.value) {
         PdfViewerScreen(
-            context = context,
             onClose = { showPdfViewer.value = false }
         )
     } else {
