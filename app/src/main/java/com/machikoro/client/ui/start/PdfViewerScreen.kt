@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,7 +46,10 @@ fun PdfViewerScreen(
     val totalPages = remember { mutableIntStateOf(0) }
     val currentBitmap = remember { mutableStateOf<Bitmap?>(null) }
     val scrollState = rememberScrollState()
+    val pdfRendererRef = remember { mutableStateOf<PdfRenderer?>(null) }
+    val fileDescriptorRef = remember { mutableStateOf<ParcelFileDescriptor?>(null) }
 
+    // Initialize PDF and keep renderer open
     LaunchedEffect(Unit) {
         try {
             // Copy PDF from assets to cache
@@ -58,22 +62,34 @@ fun PdfViewerScreen(
                 }
             }
 
-            // Open PDF with PdfRenderer
+            // Open PDF with PdfRenderer and keep it open
             val fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
             val pdfRenderer = PdfRenderer(fileDescriptor)
+
+            fileDescriptorRef.value = fileDescriptor
+            pdfRendererRef.value = pdfRenderer
             totalPages.value = pdfRenderer.pageCount
 
             // Render first page
-            if (pdfRenderer.pageCount > 0) {
-                val page = pdfRenderer.openPage(0)
-                val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
-                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                currentBitmap.value = bitmap
-                page.close()
-            }
-            pdfRenderer.close()
+            renderPage(pdfRenderer, 0, currentBitmap)
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    // Update bitmap when page changes
+    LaunchedEffect(currentPage.value) {
+        pdfRendererRef.value?.let { renderer ->
+            renderPage(renderer, currentPage.value, currentBitmap)
+        }
+    }
+
+    // Cleanup
+    DisposableEffect(Unit) {
+        onDispose {
+            currentBitmap.value?.recycle()
+            pdfRendererRef.value?.close()
+            fileDescriptorRef.value?.close()
         }
     }
 
@@ -160,6 +176,24 @@ fun PdfViewerScreen(
                 }
             }
         }
+    }
+}
+
+private fun renderPage(
+    pdfRenderer: PdfRenderer,
+    pageIndex: Int,
+    currentBitmap: androidx.compose.runtime.MutableState<Bitmap?>
+) {
+    try {
+        if (pageIndex < pdfRenderer.pageCount) {
+            val page = pdfRenderer.openPage(pageIndex)
+            val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
+            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+            currentBitmap.value = bitmap
+            page.close()
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
     }
 }
 
