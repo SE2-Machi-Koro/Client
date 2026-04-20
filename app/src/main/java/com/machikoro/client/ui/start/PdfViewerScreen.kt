@@ -11,11 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,7 +26,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
 import java.io.File
@@ -45,7 +40,6 @@ fun PdfViewerScreen(
     val currentPage = remember { mutableIntStateOf(0) }
     val totalPages = remember { mutableIntStateOf(0) }
     val currentBitmap = remember { mutableStateOf<Bitmap?>(null) }
-    val scrollState = rememberScrollState()
     val pdfRendererRef = remember { mutableStateOf<PdfRenderer?>(null) }
     val fileDescriptorRef = remember { mutableStateOf<ParcelFileDescriptor?>(null) }
 
@@ -101,7 +95,6 @@ fun PdfViewerScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(scrollState)
         ) {
             // PDF content
             currentBitmap.value?.let { bitmap ->
@@ -110,13 +103,14 @@ fun PdfViewerScreen(
                     contentDescription = "PDF Page ${currentPage.value + 1}",
                     modifier = Modifier
                         .fillMaxWidth()
+                        .weight(1f)
                         .background(Color.White),
                     contentScale = ContentScale.FillWidth
                 )
             }
         }
 
-        // Top controls
+        // Top controls - Always visible and clickable
         Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -125,13 +119,14 @@ fun PdfViewerScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Close button
-            IconButton(onClick = onClose) {
-                Icon(
-                    painter = painterResource(id = android.R.drawable.ic_menu_close_clear_cancel),
-                    contentDescription = "Close PDF",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+            // Close button with explicit click handling
+            Button(
+                onClick = {
+                    onClose()
+                },
+                modifier = Modifier.padding(end = 8.dp)
+            ) {
+                Text("Close")
             }
 
             // Page indicator
