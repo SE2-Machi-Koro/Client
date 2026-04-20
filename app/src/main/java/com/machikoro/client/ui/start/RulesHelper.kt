@@ -30,6 +30,9 @@ fun openRulesPdf(context: Context) {
             setDataAndType(uri, "application/pdf")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            // Enable fit to width for better horizontal viewing
+            putExtra("fit_to_page", true)
+            putExtra("page_numbers", true)
         }
 
         context.startActivity(intent)
