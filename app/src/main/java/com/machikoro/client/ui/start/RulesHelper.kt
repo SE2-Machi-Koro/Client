@@ -33,9 +33,24 @@ fun openRulesPdf(context: Context) {
             // Enable fit to width for better horizontal viewing
             putExtra("fit_to_page", true)
             putExtra("page_numbers", true)
+            putExtra("fit_to_width", true)
+            putExtra("fit_to_height", false)
+            // Google PDF Viewer
+            putExtra("com.google.android.gms.cast.EXTRA_CAST_ENABLED", false)
+            // Adobe Reader
+            putExtra("PREF_FIT_CONTENT", "FIT_TO_WIDTH")
         }
 
-        context.startActivity(intent)
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            // If specific PDF viewer fails, try generic approach
+            val fallbackIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/pdf")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(fallbackIntent)
+        }
     } catch (e: Exception) {
         Toast.makeText(context, "No PDF viewer app found", Toast.LENGTH_SHORT).show()
     }
