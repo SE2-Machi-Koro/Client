@@ -1,20 +1,38 @@
 package com.machikoro.client.ui.start
 
-import android.webkit.WebView
+import android.graphics.Bitmap
+import android.graphics.pdf.PdfRenderer
+import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.Image
+import java.io.File
 
 @Composable
 fun PdfViewerScreen(
@@ -22,44 +40,125 @@ fun PdfViewerScreen(
     modifier: Modifier = Modifier,
     onClose: () -> Unit
 ) {
+    val context = LocalContext.current
+    val currentPage = remember { mutableIntStateOf(0) }
+    val totalPages = remember { mutableIntStateOf(0) }
+    val currentBitmap = remember { mutableStateOf<Bitmap?>(null) }
+    val scrollState = rememberScrollState()
+
+    LaunchedEffect(Unit) {
+        try {
+            // Copy PDF from assets to cache
+            val file = File(context.cacheDir, fileName)
+            if (!file.exists()) {
+                context.assets.open(fileName).use { input ->
+                    file.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            }
+
+            // Open PDF with PdfRenderer
+            val fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            val pdfRenderer = PdfRenderer(fileDescriptor)
+            totalPages.value = pdfRenderer.pageCount
+
+            // Render first page
+            if (pdfRenderer.pageCount > 0) {
+                val page = pdfRenderer.openPage(0)
+                val bitmap = Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
+                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                currentBitmap.value = bitmap
+                page.close()
+            }
+            pdfRenderer.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.White)
     ) {
-        // PDF Viewer using WebView
-        AndroidView(
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    @Suppress("SetJavaScriptEnabled")
-                    settings.apply {
-                        javaScriptEnabled = true
-                        @Suppress("DeprecatedCall")
-                        mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                        allowFileAccess = true
-                    }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+        ) {
+            // PDF content
+            currentBitmap.value?.let { bitmap ->
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "PDF Page ${currentPage.value + 1}",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White),
+                    contentScale = ContentScale.FillWidth
+                )
+            }
+        }
 
-                    // Load PDF directly from assets using file:///android_asset/
-                    // This supports horizontal stretching via WebView's built-in PDF viewer
-                    loadUrl("file:///android_asset/$fileName")
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // Close button
-        IconButton(
-            onClick = onClose,
+        // Top controls
+        Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(top = 16.dp, start = 16.dp)
-                .background(Color.White.copy(alpha = 0.8f), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                painter = painterResource(id = android.R.drawable.ic_menu_close_clear_cancel),
-                contentDescription = "Close PDF",
-                tint = MaterialTheme.colorScheme.primary
+            // Close button
+            IconButton(onClick = onClose) {
+                Icon(
+                    painter = painterResource(id = android.R.drawable.ic_menu_close_clear_cancel),
+                    contentDescription = "Close PDF",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // Page indicator
+            Text(
+                text = "Page ${currentPage.value + 1} of ${totalPages.value}",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
+        }
+
+        // Bottom navigation
+        if (totalPages.value > 1) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .background(Color.White.copy(alpha = 0.9f)),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = {
+                        if (currentPage.value > 0) {
+                            currentPage.value--
+                        }
+                    },
+                    enabled = currentPage.value > 0
+                ) {
+                    Text("Previous")
+                }
+                Button(
+                    onClick = {
+                        if (currentPage.value < totalPages.value - 1) {
+                            currentPage.value++
+                        }
+                    },
+                    enabled = currentPage.value < totalPages.value - 1,
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    Text("Next")
+                }
+            }
         }
     }
 }
