@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
 import java.io.File
@@ -37,6 +38,7 @@ fun PdfViewerScreen(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
     val currentPage = remember { mutableIntStateOf(0) }
     val totalPages = remember { mutableIntStateOf(0) }
     val currentBitmap = remember { mutableStateOf<Bitmap?>(null) }
@@ -78,8 +80,15 @@ fun PdfViewerScreen(
         }
     }
 
-    // Cleanup
-    DisposableEffect(Unit) {
+    // Re-render when orientation changes
+    LaunchedEffect(configuration.orientation) {
+        pdfRendererRef.value?.let { renderer ->
+            renderPage(renderer, currentPage.value, currentBitmap)
+        }
+    }
+
+    // Cleanup on composable dispose
+    DisposableEffect(onClose) {
         onDispose {
             currentBitmap.value?.recycle()
             pdfRendererRef.value?.close()
@@ -121,9 +130,7 @@ fun PdfViewerScreen(
         ) {
             // Close button with explicit click handling
             Button(
-                onClick = {
-                    onClose()
-                },
+                onClick = onClose,
                 modifier = Modifier.padding(end = 8.dp)
             ) {
                 Text("Close")
