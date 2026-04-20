@@ -1,6 +1,6 @@
 package com.machikoro.client.ui.start
 
-import android.content.Context
+import android.webkit.WebView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,26 +15,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.machikoro.client.R
-import com.github.barteksc.pdfviewer.PDFView
 import java.io.File
 
 @Composable
 fun PdfViewerScreen(
-    context: Context,
     fileName: String = "rules.pdf",
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClose: () -> Unit
 ) {
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.White)
     ) {
-        // PDF Viewer
+        // PDF Viewer using WebView
         AndroidView(
             factory = { ctx ->
-                PDFView(ctx, null).apply {
+                WebView(ctx).apply {
                     val file = File(ctx.cacheDir, fileName)
 
                     // Copy from assets if not exists
@@ -46,20 +43,15 @@ fun PdfViewerScreen(
                         }
                     }
 
-                    fromFile(file)
-                        .enableSwipe(true)
-                        .swipeHorizontal(true)
-                        .enableDoubletap(true)
-                        .defaultPage(0)
-                        .enableAnnotationRendering(false)
-                        .enableAntialiasing(true)
-                        .spacing(0)
-                        .autoSpacing(false)
-                        .pageFitPolicy(com.github.barteksc.pdfviewer.scroll.DefaultScrollHandle.FITTED_TO_WIDTH)
-                        .fitEachPage(false)
-                        .pageSnap(true)
-                        .pageFling(true)
-                        .load()
+                    @Suppress("SetJavaScriptEnabled")
+                    settings.apply {
+                        javaScriptEnabled = true
+                        @Suppress("DeprecatedCall")
+                        mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    }
+
+                    // Load PDF using Google Docs Viewer for better horizontal scaling
+                    loadUrl("https://docs.google.com/gview?embedded=true&url=file://${file.absolutePath}")
                 }
             },
             modifier = Modifier.fillMaxSize()
@@ -71,6 +63,7 @@ fun PdfViewerScreen(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(top = 16.dp, start = 16.dp)
+                .background(Color.White.copy(alpha = 0.8f), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
         ) {
             Icon(
                 painter = painterResource(id = android.R.drawable.ic_menu_close_clear_cancel),
