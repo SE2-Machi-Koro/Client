@@ -1,4 +1,4 @@
-package com.machikoro.client.model.state
+package com.machikoro.client.domain.model.state
 
 data class StartScreenState(
     val title: String,

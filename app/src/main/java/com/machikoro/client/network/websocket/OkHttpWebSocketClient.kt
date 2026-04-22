@@ -1,7 +1,7 @@
 package com.machikoro.client.network.websocket
 
 import android.util.Log
-import com.machikoro.client.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.ConnectionStatus
 import java.net.URI
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

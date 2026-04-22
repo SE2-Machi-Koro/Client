@@ -3,8 +3,8 @@ package com.machikoro.client
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import com.machikoro.client.model.state.ConnectionStatus
-import com.machikoro.client.model.state.StartScreenState
+import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
 import org.junit.Test
