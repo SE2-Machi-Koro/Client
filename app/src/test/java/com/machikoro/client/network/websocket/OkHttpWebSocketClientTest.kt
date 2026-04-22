@@ -1,5 +1,6 @@
 package com.machikoro.client.network.websocket
 
+import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import java.io.IOException
 import okhttp3.Protocol
@@ -157,6 +158,234 @@ class OkHttpWebSocketClientTest {
 
         assertEquals(ConnectionStatus.ERROR, client.connectionStatus.value)
     }
+
+    @Test
+    fun gamePhaseStartsAsNone() {
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = FakeWebSocketFactory()
+        )
+
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+    }
+
+    @Test
+    fun gameActionMessageUpdatesGamePhase() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = factory
+        )
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_ACTION","sender":"server","payload":{"turnPhase":"ROLL_DICE"}}""")
+        )
+
+        assertEquals(GamePhase.ROLL_DICE, client.gamePhase.value)
+    }
+
+    @Test
+    fun gameActionMessagesAdvanceThroughAllPhases() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = factory
+        )
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+
+        listOf(
+            GamePhase.ROLL_DICE,
+            GamePhase.RESOLVE_EFFECTS,
+            GamePhase.BUY_OR_BUILD,
+            GamePhase.END_TURN
+        ).forEach { phase ->
+            factory.simulateText(
+                gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"${phase.name}"}}""")
+            )
+            assertEquals(phase, client.gamePhase.value)
+        }
+    }
+
+    @Test
+    fun nonGameActionMessageDoesNotChangeGamePhase() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = factory
+        )
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame("""{"type":"CHAT","sender":"someone","content":"hello"}""")
+        )
+
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+    }
+
+    @Test
+    fun malformedJsonMessageDoesNotCrashAndLeavesGamePhaseUnchanged() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = factory
+        )
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameActionFrame("not even json"))
+
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+    }
+
+    @Test
+    fun gameActionWithoutPayloadLeavesGamePhaseUnchanged() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = factory
+        )
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_ACTION","sender":"server"}""")
+        )
+
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+    }
+
+    @Test
+    fun gameActionWithUnknownTurnPhaseLeavesGamePhaseUnchanged() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = factory
+        )
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"NOT_A_PHASE"}}""")
+        )
+
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+    }
+
+    @Test
+    fun gameActionWithMissingTurnPhaseLeavesGamePhaseUnchanged() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = factory
+        )
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_ACTION","payload":{"other":"value"}}""")
+        )
+
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+    }
+
+    @Test
+    fun disconnectResetsGamePhaseToNone() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = factory
+        )
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"BUY_OR_BUILD"}}""")
+        )
+        assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
+
+        client.disconnect()
+
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+    }
+
+    @Test
+    fun closingResetsGamePhaseToNone() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = factory
+        )
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"RESOLVE_EFFECTS"}}""")
+        )
+        assertEquals(GamePhase.RESOLVE_EFFECTS, client.gamePhase.value)
+
+        factory.simulateClosing()
+
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+    }
+
+    @Test
+    fun closedResetsGamePhaseToNone() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = factory
+        )
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"END_TURN"}}""")
+        )
+        assertEquals(GamePhase.END_TURN, client.gamePhase.value)
+
+        factory.simulateClosed()
+
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+    }
+
+    @Test
+    fun failureResetsGamePhaseToNone() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = factory
+        )
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE"}}""")
+        )
+        assertEquals(GamePhase.ROLL_DICE, client.gamePhase.value)
+
+        factory.simulateFailure(IOException("boom"))
+
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+    }
+
+    private fun gameActionFrame(body: String): String =
+        "MESSAGE\ndestination:/topic/public\ncontent-type:application/json\n\n$body\u0000"
 
     private class FakeWebSocketFactory : WebSocketFactory {
         lateinit var listener: WebSocketListener
