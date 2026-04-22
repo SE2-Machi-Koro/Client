@@ -14,10 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.machikoro.client.model.state.ConnectionStatus
-import com.machikoro.client.model.state.LobbyStatus
-import com.machikoro.client.model.state.StartScreenState
-import com.machikoro.client.model.state.toDisplayText
+import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.LobbyStatus
+import com.machikoro.client.domain.model.state.StartScreenState
+import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.R
 
