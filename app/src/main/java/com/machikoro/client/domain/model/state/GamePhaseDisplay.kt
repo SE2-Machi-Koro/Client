@@ -1,12 +1,6 @@
-package com.machikoro.client.model.state
+package com.machikoro.client.domain.model.state
 
-enum class GamePhase {
-    NONE,
-    ROLL_DICE,
-    RESOLVE_EFFECTS,
-    BUY_OR_BUILD,
-    END_TURN
-}
+import com.machikoro.client.domain.enums.GamePhase
 
 fun GamePhase.toDisplayText(): String = when (this) {
     GamePhase.NONE -> ""

@@ -1,6 +1,6 @@
 package com.machikoro.client.ui.start
 
-import com.machikoro.client.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow

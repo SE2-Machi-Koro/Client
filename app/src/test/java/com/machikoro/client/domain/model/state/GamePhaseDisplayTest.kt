@@ -1,9 +1,10 @@
-package com.machikoro.client.model.state
+package com.machikoro.client.domain.model.state
 
+import com.machikoro.client.domain.enums.GamePhase
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class GamePhaseTest {
+class GamePhaseDisplayTest {
     @Test
     fun displayTextMatchesExpectedLabels() {
         assertEquals("", GamePhase.NONE.toDisplayText())
@@ -11,14 +12,5 @@ class GamePhaseTest {
         assertEquals("Resolve Effects", GamePhase.RESOLVE_EFFECTS.toDisplayText())
         assertEquals("Buy or Build", GamePhase.BUY_OR_BUILD.toDisplayText())
         assertEquals("End Turn", GamePhase.END_TURN.toDisplayText())
-    }
-
-    @Test
-    fun enumContainsAllServerTurnPhaseValuesPlusNone() {
-        val names = GamePhase.entries.map { it.name }.toSet()
-        assertEquals(
-            setOf("NONE", "ROLL_DICE", "RESOLVE_EFFECTS", "BUY_OR_BUILD", "END_TURN"),
-            names
-        )
     }
 }
