@@ -2,7 +2,7 @@ package com.machikoro.client.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.machikoro.client.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.network.websocket.DiceRollResult
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.SharingStarted
