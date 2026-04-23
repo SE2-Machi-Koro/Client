@@ -1,7 +1,8 @@
 package com.machikoro.client.network.websocket
 
 import android.util.Log
-import com.machikoro.client.model.state.ConnectionStatus
+import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.model.state.ConnectionStatus
 import java.net.URI
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -10,6 +11,8 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import org.json.JSONException
+import org.json.JSONObject
 
 class OkHttpWebSocketClient(
     private val websocketUrl: String,
@@ -18,7 +21,11 @@ class OkHttpWebSocketClient(
     override val connectionStatus: StateFlow<ConnectionStatus>
         get() = mutableConnectionStatus.asStateFlow()
 
+    override val gamePhase: StateFlow<GamePhase>
+        get() = mutableGamePhase.asStateFlow()
+
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
+    private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val frameBuffer = StringBuilder()
 
     @Volatile
@@ -58,6 +65,7 @@ class OkHttpWebSocketClient(
         currentSocket?.close(NORMAL_CLOSURE_STATUS, "Client disconnect")
         Log.d(TAG, "Disconnect requested by client")
         mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
+        mutableGamePhase.value = GamePhase.NONE
     }
 
     private val listener = object : WebSocketListener() {
@@ -87,12 +95,14 @@ class OkHttpWebSocketClient(
             webSocket.close(code, reason)
             clearSocket()
             mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
+            mutableGamePhase.value = GamePhase.NONE
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             Log.d(TAG, "WebSocket closed: $code / $reason")
             clearSocket()
             mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
+            mutableGamePhase.value = GamePhase.NONE
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -104,6 +114,7 @@ class OkHttpWebSocketClient(
             )
             clearSocket()
             mutableConnectionStatus.value = ConnectionStatus.ERROR
+            mutableGamePhase.value = GamePhase.NONE
         }
     }
 
@@ -116,13 +127,30 @@ class OkHttpWebSocketClient(
                 sendJoinMessage()
             }
 
-            "MESSAGE" -> Log.d(TAG, "STOMP message received: ${frame.body}")
+            "MESSAGE" -> {
+                Log.d(TAG, "STOMP message received: ${frame.body}")
+                parseGameActionPhase(frame.body)?.let { mutableGamePhase.value = it }
+            }
 
             "ERROR" -> {
                 Log.e(TAG, "STOMP error frame received: ${frame.body}")
                 mutableConnectionStatus.value = ConnectionStatus.ERROR
             }
         }
+    }
+
+    private fun parseGameActionPhase(body: String): GamePhase? {
+        if (body.isBlank()) return null
+        val json = try {
+            JSONObject(body)
+        } catch (e: JSONException) {
+            Log.w(TAG, "Failed to parse MESSAGE frame as JSON: ${e.message}")
+            return null
+        }
+        if (json.optString("type") != GAME_ACTION_TYPE) return null
+        val payload = json.optJSONObject("payload") ?: return null
+        val phaseName = payload.optString("turnPhase").takeIf { it.isNotEmpty() } ?: return null
+        return runCatching { GamePhase.valueOf(phaseName) }.getOrNull()
     }
 
     private fun subscribeToPublicTopic() {
@@ -174,5 +202,6 @@ class OkHttpWebSocketClient(
     companion object {
         private const val NORMAL_CLOSURE_STATUS = 1000
         private const val TAG = "OkHttpWebSocketClient"
+        private const val GAME_ACTION_TYPE = "GAME_ACTION"
     }
 }

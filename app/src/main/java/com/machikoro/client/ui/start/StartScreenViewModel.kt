@@ -3,7 +3,7 @@ package com.machikoro.client.ui.start
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.machikoro.client.model.state.StartScreenState
+import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
