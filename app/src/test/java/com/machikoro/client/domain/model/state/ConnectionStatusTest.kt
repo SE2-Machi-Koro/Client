@@ -1,4 +1,4 @@
-package com.machikoro.client.model.state
+package com.machikoro.client.domain.model.state
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
