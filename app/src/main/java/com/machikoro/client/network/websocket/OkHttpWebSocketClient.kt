@@ -2,7 +2,6 @@ package com.machikoro.client.network.websocket
 
 import android.util.Log
 import com.machikoro.client.model.state.ConnectionStatus
-import java.net.URI
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,15 +9,22 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import org.json.JSONObject
+import java.net.URI
 
 class OkHttpWebSocketClient(
     private val websocketUrl: String,
     private val webSocketFactory: WebSocketFactory = OkHttpWebSocketFactory()
 ) : WebSocketClient {
+
     override val connectionStatus: StateFlow<ConnectionStatus>
         get() = mutableConnectionStatus.asStateFlow()
 
+    override val diceResult: StateFlow<DiceRollResult?>
+        get() = mutableDiceResult.asStateFlow()
+
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
+    private val mutableDiceResult = MutableStateFlow<DiceRollResult?>(null)
     private val frameBuffer = StringBuilder()
 
     @Volatile
@@ -26,14 +32,10 @@ class OkHttpWebSocketClient(
 
     override fun connect() {
         synchronized(this) {
-            if (webSocket != null) {
-                return
-            }
+            if (webSocket != null) return
 
             val request = try {
-                Request.Builder()
-                    .url(websocketUrl)
-                    .build()
+                Request.Builder().url(websocketUrl).build()
             } catch (_: IllegalArgumentException) {
                 Log.e(TAG, "Invalid WebSocket URL: $websocketUrl")
                 mutableConnectionStatus.value = ConnectionStatus.ERROR
@@ -53,11 +55,29 @@ class OkHttpWebSocketClient(
             webSocket = null
             socket
         }
-
         currentSocket?.send(StompFrame(command = "DISCONNECT").serialize())
         currentSocket?.close(NORMAL_CLOSURE_STATUS, "Client disconnect")
         Log.d(TAG, "Disconnect requested by client")
         mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
+    }
+
+    override fun rollDice(playerId: String, diceCount: Int) {
+        val body = JSONObject().apply {
+            put("playerId", playerId)
+            put("diceCount", diceCount)
+        }.toString()
+
+        webSocket?.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.rollDiceDestination,
+                    "content-type" to "application/json"
+                ),
+                body = body
+            ).serialize()
+        )
+        Log.d(TAG, "rollDice sent: $body")
     }
 
     private val listener = object : WebSocketListener() {
@@ -97,11 +117,7 @@ class OkHttpWebSocketClient(
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             val responseDetails = response?.let { "HTTP ${it.code} ${it.message}" } ?: "No HTTP response"
-            Log.e(
-                TAG,
-                "WebSocket failure for $websocketUrl. $responseDetails. Reason: ${t.message}",
-                t
-            )
+            Log.e(TAG, "WebSocket failure for $websocketUrl. $responseDetails. Reason: ${t.message}", t)
             clearSocket()
             mutableConnectionStatus.value = ConnectionStatus.ERROR
         }
@@ -113,15 +129,35 @@ class OkHttpWebSocketClient(
                 Log.d(TAG, "STOMP connected")
                 mutableConnectionStatus.value = ConnectionStatus.CONNECTED
                 subscribeToPublicTopic()
+                subscribeToGameTopic()   // neu
                 sendJoinMessage()
             }
-
-            "MESSAGE" -> Log.d(TAG, "STOMP message received: ${frame.body}")
-
+            "MESSAGE" -> {
+                Log.d(TAG, "STOMP message received: ${frame.body}")
+                val destination = frame.headers["destination"]
+                when (destination) {
+                    WebSocketContract.gameTopic -> handleGameMessage(frame.body)
+                    else -> Log.d(TAG, "Unhandled topic: $destination")
+                }
+            }
             "ERROR" -> {
                 Log.e(TAG, "STOMP error frame received: ${frame.body}")
                 mutableConnectionStatus.value = ConnectionStatus.ERROR
             }
+        }
+    }
+
+    private fun handleGameMessage(body: String?) {
+        if (body.isNullOrBlank()) return
+        try {
+            val json = JSONObject(body)
+            val diceArray = json.getJSONArray("dice")
+            val dice = (0 until diceArray.length()).map { diceArray.getInt(it) }
+            val total = json.getInt("total")
+            mutableDiceResult.value = DiceRollResult(dice = dice, total = total)
+            Log.d(TAG, "Dice result: $dice = $total")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse game message: $body", e)
         }
     }
 
@@ -132,6 +168,18 @@ class OkHttpWebSocketClient(
                 headers = mapOf(
                     "id" to "public-topic",
                     "destination" to WebSocketContract.publicTopic
+                )
+            ).serialize()
+        )
+    }
+
+    private fun subscribeToGameTopic() {
+        webSocket?.send(
+            StompFrame(
+                command = "SUBSCRIBE",
+                headers = mapOf(
+                    "id" to "game-topic",
+                    "destination" to WebSocketContract.gameTopic
                 )
             ).serialize()
         )
@@ -151,9 +199,7 @@ class OkHttpWebSocketClient(
     }
 
     private fun clearSocket() {
-        synchronized(this) {
-            webSocket = null
-        }
+        synchronized(this) { webSocket = null }
     }
 
     private fun websocketHostHeader(): String {
