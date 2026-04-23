@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     StartScreen(
                         state = state,
+                        onRollDice = { startScreenViewModel.rollDice(playerId = "1", diceCount = 1) },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }

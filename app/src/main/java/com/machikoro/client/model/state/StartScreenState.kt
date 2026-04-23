@@ -3,7 +3,8 @@ package com.machikoro.client.model.state
 data class StartScreenState(
     val title: String,
     val connectionStatus: ConnectionStatus,
-    val lobbyStatus: LobbyStatus
+    val lobbyStatus: LobbyStatus,
+    val lastDiceRoll: Int? = null
 ) {
     companion object {
         fun placeholder() = StartScreenState(

@@ -27,6 +27,19 @@ class StartScreenViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            webSocketClient.diceResult.collect { diceResult ->
+                diceResult?.let {
+                    mutableState.update { current ->
+                        current.copy(lastDiceRoll = it.total)
+                    }
+                }
+            }
+        }
+    }
+
+    fun rollDice(playerId: String, diceCount: Int = 1) {
+        webSocketClient.rollDice(playerId, diceCount)
     }
 
     class Factory(
