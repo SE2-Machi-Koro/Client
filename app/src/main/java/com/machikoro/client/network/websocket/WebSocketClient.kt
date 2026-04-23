@@ -9,4 +9,7 @@ interface WebSocketClient {
     fun connect()
 
     fun disconnect()
+
+    fun sendRollDice(gameId: Int, playerId: Int, rollTwoDice: Boolean = false)
 }
+
