@@ -1,6 +1,7 @@
 package com.machikoro.client.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.network.websocket.DiceRollResult
@@ -37,5 +38,17 @@ class GameViewModel(
     override fun onCleared() {
         super.onCleared()
         wsClient.disconnect()
+    }
+
+    class Factory(
+        private val webSocketClient: WebSocketClient
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            require(modelClass.isAssignableFrom(GameViewModel::class.java)) {
+                "Unknown ViewModel class: ${modelClass.name}"
+            }
+            return GameViewModel(webSocketClient) as T
+        }
     }
 }

@@ -5,6 +5,7 @@ data class StartScreenState(
     val connectionStatus: ConnectionStatus,
     val lobbyStatus: LobbyStatus,
     val lastDiceRoll: Int? = null
+    val gamePhase: GamePhase = GamePhase.NONE
 ) {
     companion object {
         fun placeholder() = StartScreenState(
