@@ -3,6 +3,7 @@ package com.machikoro.client.ui.start
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +41,12 @@ class StartScreenViewModel(
 
     fun rollDice(playerId: String, diceCount: Int = 1) {
         webSocketClient.rollDice(playerId, diceCount)
+    }
+
+    fun startGame() {
+        mutableState.update { current ->
+            current.copy(gamePhase = GamePhase.ROLL_DICE)
+        }
     }
 
     class Factory(
