@@ -2,14 +2,18 @@ package com.machikoro.client.domain.model.state
 
 import com.machikoro.client.domain.enums.GamePhase
 
-data class GameScreenState(
-    val gamePhase: GamePhase,
-    val connectionStatus: ConnectionStatus
+data class StartScreenState(
+    val title: String,
+    val connectionStatus: ConnectionStatus,
+    val lobbyStatus: LobbyStatus,
+    val lastDiceRoll: Int? = null,
+    val gamePhase: GamePhase = GamePhase.NONE
 ) {
     companion object {
-        fun initial() = GameScreenState(
-            gamePhase = GamePhase.NONE,
-            connectionStatus = ConnectionStatus.IDLE
+        fun placeholder() = StartScreenState(
+            title = "Machi Koro Client",
+            connectionStatus = ConnectionStatus.IDLE,
+            lobbyStatus = LobbyStatus.PLACEHOLDER
         )
     }
 }
