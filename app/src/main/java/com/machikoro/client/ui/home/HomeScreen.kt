@@ -105,21 +105,21 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             HomeCard(
-                iconRes = R.drawable.main_lobby_join_icon,
+                iconRes = R.drawable.home_lobby_join_icon,
                 text = "Lobby beitreten",
                 isPrimary = false,
                 onClick = onJoinLobbyClick
             )
 
             HomeCard(
-                iconRes = R.drawable.main_lobby_create_icon,
+                iconRes = R.drawable.home_lobby_create_icon,
                 text = "Lobby erstellen",
                 isPrimary = true,
                 onClick = onCreateLobbyClick
             )
 
             HomeCard(
-                iconRes = R.drawable.main_lobby_public_icon,
+                iconRes = R.drawable.home_lobby_public_icon,
                 text = "Öffentliche Lobbys",
                 isPrimary = false,
                 onClick = onPublicLobbiesClick
@@ -226,7 +226,7 @@ private fun ProfileCard(
 
             // Edit icon. Later this can open a name edit dialog.
             Image(
-                painter = painterResource(id = R.drawable.main_edit_icon),
+                painter = painterResource(id = R.drawable.home_edit_icon),
                 contentDescription = null,
                 modifier = Modifier.size(24.dp)
             )
@@ -259,21 +259,21 @@ private fun BottomMenuBar(
         ) {
             // Opens the rules screen / PDF viewer.
             BottomMenuItem(
-                iconRes = R.drawable.main_rules_icon,
+                iconRes = R.drawable.home_rules_icon,
                 text = "Regeln",
                 onClick = onRulesClick
             )
 
             // Opens the ranking / leaderboard screen.
             BottomMenuItem(
-                iconRes = R.drawable.main_rang_icon,
+                iconRes = R.drawable.home_rang_icon,
                 text = "Rangliste",
                 onClick = onRankingClick
             )
 
             // Opens the settings screen.
             BottomMenuItem(
-                iconRes = R.drawable.main_settings_icon,
+                iconRes = R.drawable.home_settings_icon,
                 text = "Einstellungen",
                 onClick = onSettingsClick
             )
