@@ -116,4 +116,19 @@ We use **Jacoco** for coverage reporting. The build will fail if line coverage f
 - Reports are available at: `app/build/reports/jacoco/jacocoTestReport/html/index.html`
 
 ---
+
+## ⚡️ Note for Developers
+
+> **Important:** To run the full Machi Koro system locally, you must have the backend server running. If you haven't already, clone and start the backend project:
+>
+> ```bash
+> git clone https://github.com/valentinaschiavon/SE2-Backend.git
+> cd SE2-Backend
+> docker compose up --build
+> ```
+>
+> The client will not function without the backend API and WebSocket services available. For more details, see the [SE2-Backend repository](https://github.com/valentinaschiavon/SE2-Backend).
+
+---
+
 *Developed as part of the SE2 Project.*
