@@ -34,7 +34,8 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     StartScreen(
                         state = state,
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
+                        onStartGame = { startScreenViewModel.onStartGame() }
                     )
                 }
             }
