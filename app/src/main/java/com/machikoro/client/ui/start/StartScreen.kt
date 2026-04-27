@@ -32,7 +32,8 @@ import com.machikoro.client.ui.theme.ClientTheme
 @Composable
 fun StartScreen(
     state: StartScreenState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onStartGame: () -> Unit
 ) {
     val showPdfViewer = remember { mutableStateOf(false) }
 
@@ -47,7 +48,7 @@ fun StartScreen(
             BackgroundImages()
             TitleHeader()
             RulesButton(onClick = { showPdfViewer.value = true })
-            LobbyControls(state = state)
+            LobbyControls(state = state, onStartGame = onStartGame)
         }
     }
 }
@@ -95,7 +96,7 @@ private fun RulesButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun LobbyControls(state: StartScreenState) {
+private fun LobbyControls(state: StartScreenState, onStartGame: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -117,15 +118,15 @@ private fun LobbyControls(state: StartScreenState) {
             color = MaterialTheme.colorScheme.primary
         )
         if (state.isHost) {
-            HostStartGameButton(enabled = state.playerList.size >= 2)
+            HostStartGameButton(enabled = state.playerList.size >= 2, onStartGame = onStartGame)
         }
     }
 }
 
 @Composable
-private fun HostStartGameButton(enabled: Boolean) {
+private fun HostStartGameButton(enabled: Boolean, onStartGame: () -> Unit) {
     Button(
-        onClick = { /* TODO: Implement start game logic here (e.g., call ViewModel or callback) */ },
+        onClick = onStartGame,
         enabled = enabled,
         modifier = Modifier.padding(top = 16.dp),
         colors = ButtonDefaults.buttonColors(
@@ -157,7 +158,8 @@ private fun StartScreenPreview() {
         StartScreen(
             state = StartScreenState.placeholder().copy(
                 connectionStatus = ConnectionStatus.CONNECTED
-            )
+            ),
+            onStartGame = {}
         )
     }
 }
