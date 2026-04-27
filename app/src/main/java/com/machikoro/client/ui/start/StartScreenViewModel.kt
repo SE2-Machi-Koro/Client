@@ -38,6 +38,10 @@ class StartScreenViewModel(
         }
     }
 
+    fun onStartGame() {
+        // TODO: Implement game start logic (e.g., send start message via webSocketClient)
+    }
+
     class Factory(
         private val webSocketClient: WebSocketClient,
         private val sessionStateHolder: SessionStateHolder,
