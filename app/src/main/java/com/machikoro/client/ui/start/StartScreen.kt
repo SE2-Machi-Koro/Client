@@ -53,15 +53,19 @@ fun StartScreen(
 
 @Composable
 private fun BackgroundImages() {
+    val backgroundLeftOffsetX = (-20).dp
+    val backgroundLeftOffsetY = 30.dp
+    val backgroundRightOffsetX = 15.dp
+    val backgroundRightOffsetY = 30.dp
     Image(
         painter = painterResource(id = R.drawable.background_left),
         contentDescription = null,
-        modifier = Modifier.layoutId("backgroundLeft").offset(x = -20.dp, y = 30.dp)
+        modifier = Modifier.layoutId("backgroundLeft").offset(x = backgroundLeftOffsetX, y = backgroundLeftOffsetY)
     )
     Image(
         painter = painterResource(id = R.drawable.background_right),
         contentDescription = null,
-        modifier = Modifier.layoutId("backgroundRight").offset(x = 15.dp, y = 30.dp)
+        modifier = Modifier.layoutId("backgroundRight").offset(x = backgroundRightOffsetX, y = backgroundRightOffsetY)
     )
 }
 
