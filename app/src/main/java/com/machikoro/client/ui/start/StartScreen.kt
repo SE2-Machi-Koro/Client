@@ -1,4 +1,5 @@
 package com.machikoro.client.ui.start
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +13,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -20,67 +22,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.layoutId
+import com.machikoro.client.R
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.LobbyStatus
 import com.machikoro.client.domain.model.state.StartScreenState
-import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.R
-
-@Composable
-private fun PlayerCountDisplay(playerCount: Int, maxPlayers: Int) {
-    Text(
-        text = "$playerCount/$maxPlayers ready",
-        style = MaterialTheme.typography.bodyLarge
-    )
-}
-
-@Composable
-private fun StartGameButton(isEnabled: Boolean, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        enabled = isEnabled,
-        modifier = Modifier.padding(top = 16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (isEnabled) MaterialTheme.colorScheme.primary else Color.Gray
-        )
-    ) {
-        Text(
-            text = "Start Game",
-            color = if (isEnabled) Color.White else Color.LightGray,
-            style = MaterialTheme.typography.labelLarge
-        )
-    }
-}
-
-@Composable
-private fun LobbyInfoColumn(state: StartScreenState) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        PlayerCountDisplay(state.playerList.size, state.maxPlayers)
-        Text(
-            text = "Connection status: ${state.connectionStatus.toDisplayText()}",
-            style = MaterialTheme.typography.bodyLarge
-        )
-        Text(
-            text = "Lobby/start: ${state.lobbyStatus.toDisplayText()}",
-            style = MaterialTheme.typography.bodyMedium, // test
-            color = MaterialTheme.colorScheme.primary // test
-        )
-        // Host-only Start Game button
-        if (state.isHost) {
-            val enabled = state.playerList.size >= 2
-            StartGameButton(
-                isEnabled = enabled,
-                onClick = { /* Implement start game logic here or trigger ViewModel event */ }
-            )
-        }
-    }
-}
 
 @Composable
 fun StartScreen(
@@ -95,49 +42,101 @@ fun StartScreen(
         )
     } else {
         Box(
-            modifier = modifier
-                .fillMaxSize()
+            modifier = modifier.fillMaxSize()
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.background_left),
-                contentDescription = null,
-                modifier = Modifier.align(Alignment.BottomStart).offset(x = -20.dp, y = 30.dp) // optional
-            )
-
-            Image(
-                painter = painterResource(id = R.drawable.background_right),
-                contentDescription = null,
-                modifier = Modifier.align(Alignment.BottomEnd).offset(x = 15.dp, y = 30.dp) // optional
-            )
-
-            Text(
-                text = "MACHI KORO",
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 55.dp)
-            )
-
-            Button(
-                onClick = { showPdfViewer.value = true },
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 16.dp, end = 16.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF64B5F6)
-                )
-            ) {
-                Text(
-                    text = "Rules",
-                    color = Color.Black,
-                    style = MaterialTheme.typography.labelLarge
-                )
-            }
-
-            LobbyInfoColumn(state)
+            BackgroundImages()
+            TitleHeader()
+            RulesButton(onClick = { showPdfViewer.value = true })
+            LobbyControls(state = state)
         }
+    }
+}
+
+@Composable
+private fun BackgroundImages() {
+    Image(
+        painter = painterResource(id = R.drawable.background_left),
+        contentDescription = null,
+        modifier = Modifier.layoutId("backgroundLeft").offset(x = -20.dp, y = 30.dp)
+    )
+    Image(
+        painter = painterResource(id = R.drawable.background_right),
+        contentDescription = null,
+        modifier = Modifier.layoutId("backgroundRight").offset(x = 15.dp, y = 30.dp)
+    )
+}
+
+@Composable
+private fun TitleHeader() {
+    Text(
+        text = "MACHI KORO",
+        style = MaterialTheme.typography.headlineLarge,
+        color = MaterialTheme.colorScheme.secondary,
+        modifier = Modifier.layoutId("titleHeader").padding(top = 55.dp)
+    )
+}
+
+@Composable
+private fun RulesButton(onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.layoutId("rulesButton").padding(top = 16.dp, end = 16.dp),
+        shape = RoundedCornerShape(8.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xFF64B5F6)
+        )
+    ) {
+        Text(
+            text = "Rules",
+            color = Color.Black,
+            style = MaterialTheme.typography.labelLarge
+        )
+    }
+}
+
+@Composable
+private fun LobbyControls(state: StartScreenState) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Player count display
+        Text(
+            text = "${state.playerList.size}/${state.maxPlayers} ready",
+            style = MaterialTheme.typography.bodyLarge
+        )
+        Text(
+            text = "Connection status: ${state.connectionStatus.toDisplayText()}",
+            style = MaterialTheme.typography.bodyLarge
+        )
+        Text(
+            text = "Lobby/start: ${state.lobbyStatus.toDisplayText()}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        if (state.isHost) {
+            HostStartGameButton(enabled = state.playerList.size >= 2)
+        }
+    }
+}
+
+@Composable
+private fun HostStartGameButton(enabled: Boolean) {
+    Button(
+        onClick = { /* TODO: Implement start game logic here (e.g., call ViewModel or callback) */ },
+        enabled = enabled,
+        modifier = Modifier.padding(top = 16.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (enabled) MaterialTheme.colorScheme.primary else Color.Gray
+        )
+    ) {
+        Text(
+            text = "Start Game",
+            color = if (enabled) Color.White else Color.LightGray,
+            style = MaterialTheme.typography.labelLarge
+        )
     }
 }
 
