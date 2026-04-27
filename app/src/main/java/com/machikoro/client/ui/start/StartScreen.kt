@@ -108,7 +108,7 @@ private fun LobbyControls(state: StartScreenState) {
             style = MaterialTheme.typography.bodyLarge
         )
         Text(
-            text = "Connection status: ${state.connectionStatus.toDisplayText()}",
+            text = "Connection status: ${state.connectionStatus}",
             style = MaterialTheme.typography.bodyLarge
         )
         Text(
