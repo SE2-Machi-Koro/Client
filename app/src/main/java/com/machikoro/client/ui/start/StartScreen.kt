@@ -17,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -29,11 +28,65 @@ import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.R
 
 @Composable
+private fun PlayerCountDisplay(playerCount: Int, maxPlayers: Int) {
+    Text(
+        text = "$playerCount/$maxPlayers ready",
+        style = MaterialTheme.typography.bodyLarge
+    )
+}
+
+@Composable
+private fun StartGameButton(isEnabled: Boolean, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        enabled = isEnabled,
+        modifier = Modifier.padding(top = 16.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isEnabled) MaterialTheme.colorScheme.primary else Color.Gray
+        )
+    ) {
+        Text(
+            text = "Start Game",
+            color = if (isEnabled) Color.White else Color.LightGray,
+            style = MaterialTheme.typography.labelLarge
+        )
+    }
+}
+
+@Composable
+private fun LobbyInfoColumn(state: StartScreenState) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        PlayerCountDisplay(state.playerList.size, state.maxPlayers)
+        Text(
+            text = "Connection status: ${state.connectionStatus.toDisplayText()}",
+            style = MaterialTheme.typography.bodyLarge
+        )
+        Text(
+            text = "Lobby/start: ${state.lobbyStatus.toDisplayText()}",
+            style = MaterialTheme.typography.bodyMedium, // test
+            color = MaterialTheme.colorScheme.primary // test
+        )
+        // Host-only Start Game button
+        if (state.isHost) {
+            val enabled = state.playerList.size >= 2
+            StartGameButton(
+                isEnabled = enabled,
+                onClick = { /* Implement start game logic here or trigger ViewModel event */ }
+            )
+        }
+    }
+}
+
+@Composable
 fun StartScreen(
     state: StartScreenState,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
     val showPdfViewer = remember { mutableStateOf(false) }
 
     if (showPdfViewer.value) {
@@ -45,21 +98,18 @@ fun StartScreen(
             modifier = modifier
                 .fillMaxSize()
         ) {
-            // ...existing code...
             Image(
                 painter = painterResource(id = R.drawable.background_left),
                 contentDescription = null,
                 modifier = Modifier.align(Alignment.BottomStart).offset(x = -20.dp, y = 30.dp) // optional
             )
 
-            // ...existing code...
             Image(
                 painter = painterResource(id = R.drawable.background_right),
                 contentDescription = null,
                 modifier = Modifier.align(Alignment.BottomEnd).offset(x = 15.dp, y = 30.dp) // optional
             )
 
-            // ...existing code...
             Text(
                 text = "MACHI KORO",
                 style = MaterialTheme.typography.headlineLarge,
@@ -69,7 +119,6 @@ fun StartScreen(
                     .padding(top = 55.dp)
             )
 
-            // ...existing code...
             Button(
                 onClick = { showPdfViewer.value = true },
                 modifier = Modifier
@@ -87,27 +136,11 @@ fun StartScreen(
                 )
             }
 
-            // ...existing code...
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-
-                Text(
-                    text = "Connection status: ${state.connectionStatus.toDisplayText()}",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Text(
-                    text = "Lobby/start: ${state.lobbyStatus.toDisplayText()}",
-                    style = MaterialTheme.typography.bodyMedium, // test
-                    color = MaterialTheme.colorScheme.primary // test
-                )
-            }
+            LobbyInfoColumn(state)
         }
     }
 }
+
 private fun LobbyStatus.toDisplayText(): String = when (this) {
     LobbyStatus.PLACEHOLDER -> "placeholder"
     LobbyStatus.WAITING_FOR_PLAYERS -> "waiting for players"
