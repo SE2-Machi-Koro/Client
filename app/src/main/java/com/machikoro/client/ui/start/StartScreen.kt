@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -45,7 +46,15 @@ fun StartScreen(
         ) {
             BackgroundImages()
             TitleHeader()
-            RulesButton(onClick = { showPdfViewer.value = true })
+            // Pulsante Rules in alto a destra
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 16.dp, end = 16.dp),
+                contentAlignment = Alignment.TopEnd
+            ) {
+                RulesButton(onClick = { showPdfViewer.value = true })
+            }
             LobbyControls(state = state, onStartGame = onStartGame)
         }
     }
@@ -83,7 +92,7 @@ private fun TitleHeader() {
 private fun RulesButton(onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        modifier = Modifier.layoutId("rulesButton").padding(top = 16.dp, end = 16.dp),
+        // Rimuovo il padding superfluo, ora gestito dal Box genitore
         shape = RoundedCornerShape(8.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = Color(0xFF64B5F6)
