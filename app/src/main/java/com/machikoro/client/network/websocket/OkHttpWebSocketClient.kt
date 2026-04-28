@@ -173,19 +173,26 @@ class OkHttpWebSocketClient(
 
     private fun handleDiceResult(body: String?) {
         if (body.isNullOrBlank()) return
-        try {
-            val json = JSONObject(body)
-            if (json.optString("type") != ROLL_DICE_TYPE) return
-            val payload = json.optJSONObject("payload") ?: return
-            val total = payload.getInt("total")
-            mutableDiceResult.value = DiceRollResult(
-                dice = listOf(total),
-                total = total
-            )
-            Log.d(TAG, "Dice result: $total")
-        } catch (e: Exception) {
+        val json = try {
+            JSONObject(body)
+        } catch (e: JSONException) {  // spezifischer als Exception
             Log.e(TAG, "Failed to parse dice result: $body", e)
+            return
         }
+        if (json.optString("type") != ROLL_DICE_TYPE) return
+        val payload = json.optJSONObject("payload") ?: return
+        val total = payload.optInt("total", 0)
+
+        // Jeden Würfel einzeln parsen statt listOf(total)
+        val diceArray = payload.optJSONArray("dice")
+        val dice = if (diceArray != null) {
+            (0 until diceArray.length()).map { diceArray.getInt(it) }
+        } else {
+            listOf(total) // Fallback falls Server kein dice-Array schickt
+        }
+
+        mutableDiceResult.value = DiceRollResult(dice = dice, total = total)
+        Log.d(TAG, "Dice result: dice=$dice total=$total")
     }
 
     private fun subscribeToPublicTopic() {
