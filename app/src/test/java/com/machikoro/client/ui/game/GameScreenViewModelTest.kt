@@ -2,6 +2,7 @@ package com.machikoro.client.ui.game
 
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.network.websocket.DiceRollResult
 import com.machikoro.client.network.websocket.WebSocketClient
 import com.machikoro.client.ui.start.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -98,12 +99,15 @@ class GameScreenViewModelTest {
         override val gamePhase: StateFlow<GamePhase>
             get() = mutableGamePhase
 
+        override val diceResult: StateFlow<DiceRollResult?>
+            get() = MutableStateFlow(null)
+
         private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
         private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
 
         override fun connect() = Unit
-
         override fun disconnect() = Unit
+        override fun rollDice(playerId: String, diceCount: Int) = Unit
 
         fun emitConnectionStatus(status: ConnectionStatus) {
             mutableConnectionStatus.value = status

@@ -1,9 +1,11 @@
 package com.machikoro.client.ui.start
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,16 +23,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.machikoro.client.R
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.LobbyStatus
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.R
 
 @Composable
 fun StartScreen(
     state: StartScreenState,
+    onStartGame: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -42,24 +45,18 @@ fun StartScreen(
         )
     } else {
         Box(
-            modifier = modifier
-                .fillMaxSize()
+            modifier = modifier.fillMaxSize()
         ) {
-            // ...existing code...
             Image(
                 painter = painterResource(id = R.drawable.background_left),
                 contentDescription = null,
-                modifier = Modifier.align(Alignment.BottomStart).offset(x = -20.dp, y = 30.dp) // optional
+                modifier = Modifier.align(Alignment.BottomStart).offset(x = -20.dp, y = 30.dp)
             )
-
-            // ...existing code...
             Image(
                 painter = painterResource(id = R.drawable.background_right),
                 contentDescription = null,
-                modifier = Modifier.align(Alignment.BottomEnd).offset(x = 15.dp, y = 30.dp) // optional
+                modifier = Modifier.align(Alignment.BottomEnd).offset(x = 15.dp, y = 30.dp)
             )
-
-            // ...existing code...
             Text(
                 text = "MACHI KORO",
                 style = MaterialTheme.typography.headlineLarge,
@@ -68,8 +65,6 @@ fun StartScreen(
                     .align(Alignment.TopCenter)
                     .padding(top = 55.dp)
             )
-
-            // ...existing code...
             Button(
                 onClick = { showPdfViewer.value = true },
                 modifier = Modifier
@@ -86,46 +81,49 @@ fun StartScreen(
                     style = MaterialTheme.typography.labelLarge
                 )
             }
-
-            // ...existing code...
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-
                 Text(
                     text = "Connection status: ${state.connectionStatus.toDisplayText()}",
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
                     text = "Lobby/start: ${state.lobbyStatus.toDisplayText()}",
-                    style = MaterialTheme.typography.bodyMedium, // test
-                    color = MaterialTheme.colorScheme.primary // test
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
                 )
+                if (state.connectionStatus == ConnectionStatus.CONNECTED) {
+                    Button(
+                        onClick = onStartGame,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("🎲 Spiel starten")
+                    }
+                }
             }
         }
     }
 }
+
 private fun LobbyStatus.toDisplayText(): String = when (this) {
     LobbyStatus.PLACEHOLDER -> "placeholder"
     LobbyStatus.WAITING_FOR_PLAYERS -> "waiting for players"
     LobbyStatus.READY -> "ready"
 }
 
-@Preview(
-    showBackground = true,
-    widthDp = 917,
-    heightDp = 412
-)
+@Preview(showBackground = true, widthDp = 917, heightDp = 412)
 @Composable
 private fun StartScreenPreview() {
     ClientTheme {
         StartScreen(
             state = StartScreenState.placeholder().copy(
                 connectionStatus = ConnectionStatus.CONNECTED
-            )
+            ),
+            onStartGame = {}
         )
     }
 }

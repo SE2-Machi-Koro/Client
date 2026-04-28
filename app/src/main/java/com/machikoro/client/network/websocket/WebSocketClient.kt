@@ -6,10 +6,13 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface WebSocketClient {
     val connectionStatus: StateFlow<ConnectionStatus>
+    val diceResult: StateFlow<DiceRollResult?>
 
     val gamePhase: StateFlow<GamePhase>
 
     fun connect()
 
     fun disconnect()
+
+    fun rollDice(playerId: String, diceCount: Int)
 }
