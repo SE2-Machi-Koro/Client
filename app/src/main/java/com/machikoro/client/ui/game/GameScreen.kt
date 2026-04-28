@@ -1,4 +1,4 @@
-package com.machikoro.client.ui
+package com.machikoro.client.ui.game
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*

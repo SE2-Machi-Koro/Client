@@ -1,4 +1,4 @@
-package com.machikoro.client.viewmodel
+package com.machikoro.client.ui.game
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -37,7 +37,6 @@ class GameViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        wsClient.disconnect()
     }
 
     class Factory(

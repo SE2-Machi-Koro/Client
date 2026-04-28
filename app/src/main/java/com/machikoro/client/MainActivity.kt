@@ -14,11 +14,11 @@ import androidx.compose.ui.Modifier
 import com.machikoro.client.config.AppConfig
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
-import com.machikoro.client.ui.GameScreen
+import com.machikoro.client.ui.game.GameScreen
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.start.StartScreenViewModel
 import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.viewmodel.GameViewModel
+import com.machikoro.client.ui.game.GameViewModel
 
 class MainActivity : ComponentActivity() {
     private val webSocketClient by lazy {
