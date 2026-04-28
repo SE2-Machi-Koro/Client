@@ -54,6 +54,13 @@ val Typography = Typography(
     headlineMedium = TextStyle(
         fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
+        fontSize = 40.sp
+    ),
+
+    // Section title small(e.g. "Lass uns spielen!")
+    headlineSmall = TextStyle(
+        fontFamily = TitleFont,
+        fontWeight = FontWeight.Normal,
         fontSize = 32.sp
     ),
 
