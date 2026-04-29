@@ -1,0 +1,46 @@
+package com.machikoro.client.ui
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.model.state.StartScreenState
+import com.machikoro.client.ui.game.GameScreen
+import com.machikoro.client.ui.start.StartScreen
+import com.machikoro.client.ui.theme.ClientTheme
+
+@Composable
+fun AppRoot(
+    gameScreenState: GameScreenState,
+    startScreenState: StartScreenState,
+    modifier: Modifier = Modifier
+) {
+    if (gameScreenState.gamePhase != GamePhase.NONE) {
+        GameScreen(state = gameScreenState, modifier = modifier)
+    } else {
+        StartScreen(state = startScreenState, modifier = modifier)
+    }
+}
+
+@Preview(showBackground = true, widthDp = 917, heightDp = 412)
+@Composable
+private fun AppRootStartScreenPreview() {
+    ClientTheme {
+        AppRoot(
+            gameScreenState = GameScreenState.initial(),
+            startScreenState = StartScreenState.placeholder()
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 917, heightDp = 412)
+@Composable
+private fun AppRootGameScreenPreview() {
+    ClientTheme {
+        AppRoot(
+            gameScreenState = GameScreenState.initial().copy(gamePhase = GamePhase.ROLL_DICE),
+            startScreenState = StartScreenState.placeholder()
+        )
+    }
+}
