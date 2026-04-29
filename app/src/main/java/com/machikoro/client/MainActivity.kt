@@ -13,7 +13,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.machikoro.client.config.AppConfig
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
-import com.machikoro.client.ui.start.StartScreen
+import com.machikoro.client.ui.AppRoot
+import com.machikoro.client.ui.game.GameScreenViewModel
 import com.machikoro.client.ui.start.StartScreenViewModel
 import com.machikoro.client.ui.theme.ClientTheme
 
@@ -24,16 +25,21 @@ class MainActivity : ComponentActivity() {
     private val startScreenViewModel by viewModels<StartScreenViewModel> {
         StartScreenViewModel.Factory(webSocketClient)
     }
+    private val gameScreenViewModel by viewModels<GameScreenViewModel> {
+        GameScreenViewModel.Factory(webSocketClient)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val state by startScreenViewModel.state.collectAsState()
+            val startScreenState by startScreenViewModel.state.collectAsState()
+            val gameScreenState by gameScreenViewModel.state.collectAsState()
             ClientTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    StartScreen(
-                        state = state,
+                    AppRoot(
+                        gameScreenState = gameScreenState,
+                        startScreenState = startScreenState,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
