@@ -3,6 +3,7 @@ package com.machikoro.client.network.websocket
 import android.util.Log
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.PlayerCoinState
 import java.net.URI
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,8 +25,12 @@ class OkHttpWebSocketClient(
     override val gamePhase: StateFlow<GamePhase>
         get() = mutableGamePhase.asStateFlow()
 
+    override val players: StateFlow<List<PlayerCoinState>>
+        get() = mutablePlayers.asStateFlow()
+
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
+    private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val frameBuffer = StringBuilder()
 
     @Volatile
@@ -65,7 +70,7 @@ class OkHttpWebSocketClient(
         currentSocket?.close(NORMAL_CLOSURE_STATUS, "Client disconnect")
         Log.d(TAG, "Disconnect requested by client")
         mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
-        mutableGamePhase.value = GamePhase.NONE
+        resetGameState()
     }
 
     private val listener = object : WebSocketListener() {
@@ -95,14 +100,14 @@ class OkHttpWebSocketClient(
             webSocket.close(code, reason)
             clearSocket()
             mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
-            mutableGamePhase.value = GamePhase.NONE
+            resetGameState()
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             Log.d(TAG, "WebSocket closed: $code / $reason")
             clearSocket()
             mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
-            mutableGamePhase.value = GamePhase.NONE
+            resetGameState()
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -114,7 +119,7 @@ class OkHttpWebSocketClient(
             )
             clearSocket()
             mutableConnectionStatus.value = ConnectionStatus.ERROR
-            mutableGamePhase.value = GamePhase.NONE
+            resetGameState()
         }
     }
 
@@ -182,6 +187,12 @@ class OkHttpWebSocketClient(
         synchronized(this) {
             webSocket = null
         }
+    }
+
+    private fun resetGameState() {
+        mutableGamePhase.value = GamePhase.NONE
+        // Keep #37 coin display clean after game end/disconnect until #45 reset flow owns this state.
+        mutablePlayers.value = emptyList()
     }
 
     private fun websocketHostHeader(): String {
