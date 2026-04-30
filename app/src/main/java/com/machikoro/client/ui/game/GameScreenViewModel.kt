@@ -34,6 +34,13 @@ class GameScreenViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            webSocketClient.players.collect { players ->
+                mutableState.update { current ->
+                    current.copy(players = players)
+                }
+            }
+        }
     }
 
     class Factory(
