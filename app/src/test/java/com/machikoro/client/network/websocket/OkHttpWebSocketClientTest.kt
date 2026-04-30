@@ -2,6 +2,7 @@ package com.machikoro.client.network.websocket
 
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.PlayerCoinState
 import java.io.IOException
 import okhttp3.Protocol
 import okhttp3.Request
@@ -170,6 +171,16 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun playersStartEmpty() {
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = FakeWebSocketFactory()
+        )
+
+        assertEquals(emptyList<PlayerCoinState>(), client.players.value)
+    }
+
+    @Test
     fun gameActionMessageUpdatesGamePhase() {
         val factory = FakeWebSocketFactory()
         val client = OkHttpWebSocketClient(
@@ -228,6 +239,24 @@ class OkHttpWebSocketClientTest {
         )
 
         assertEquals(GamePhase.NONE, client.gamePhase.value)
+    }
+
+    @Test
+    fun messageWithoutCoinPayloadLeavesPlayersUnchanged() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://10.0.2.2:8080/ws",
+            webSocketFactory = factory
+        )
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE"}}""")
+        )
+
+        assertEquals(emptyList<PlayerCoinState>(), client.players.value)
     }
 
     @Test
