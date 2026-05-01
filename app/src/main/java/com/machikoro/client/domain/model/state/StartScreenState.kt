@@ -6,16 +6,18 @@ data class StartScreenState(
     val lobbyStatus: LobbyStatus,
     val playerList: List<String> = emptyList(),
     val maxPlayers: Int = 4,
-    val isHost: Boolean = false
+    val isHost: Boolean = false,
+    val loggedInAs: String? = null,
 ) {
     companion object {
         fun placeholder() = StartScreenState(
             title = "Machi Koro Client",
             connectionStatus = ConnectionStatus.IDLE,
             lobbyStatus = LobbyStatus.PLACEHOLDER,
-            playerList = listOf(),
+            playerList = emptyList(),
             maxPlayers = 4,
-            isHost = false
+            isHost = false,
+            loggedInAs = null,
         )
     }
 }

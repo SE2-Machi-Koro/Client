@@ -12,10 +12,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.machikoro.client.config.AppConfig
+import com.machikoro.client.domain.session.SessionManager
 import com.machikoro.client.network.auth.AuthApiFactory
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.AppRoot
 import com.machikoro.client.ui.game.GameScreenViewModel
+import com.machikoro.client.ui.start.LoginDialogViewModel
+import com.machikoro.client.ui.start.LogoutViewModel
 import com.machikoro.client.ui.start.RegisterDialogViewModel
 import com.machikoro.client.ui.start.StartScreenViewModel
 import com.machikoro.client.ui.theme.ClientTheme
@@ -28,13 +31,19 @@ class MainActivity : ComponentActivity() {
         AuthApiFactory.create(AppConfig.backendBaseUrl)
     }
     private val startScreenViewModel by viewModels<StartScreenViewModel> {
-        StartScreenViewModel.Factory(webSocketClient)
+        StartScreenViewModel.Factory(webSocketClient, SessionManager)
     }
     private val gameScreenViewModel by viewModels<GameScreenViewModel> {
         GameScreenViewModel.Factory(webSocketClient)
     }
     private val registerDialogViewModel by viewModels<RegisterDialogViewModel> {
         RegisterDialogViewModel.Factory(authApi)
+    }
+    private val loginDialogViewModel by viewModels<LoginDialogViewModel> {
+        LoginDialogViewModel.Factory(authApi, SessionManager)
+    }
+    private val logoutViewModel by viewModels<LogoutViewModel> {
+        LogoutViewModel.Factory(authApi, SessionManager)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,16 +53,25 @@ class MainActivity : ComponentActivity() {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val registerDialogState by registerDialogViewModel.state.collectAsState()
+            val loginDialogState by loginDialogViewModel.state.collectAsState()
+            val logoutState by logoutViewModel.state.collectAsState()
             ClientTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     AppRoot(
                         gameScreenState = gameScreenState,
                         startScreenState = startScreenState,
                         registerDialogState = registerDialogState,
+                        loginDialogState = loginDialogState,
+                        logoutState = logoutState,
                         onRegisterUsernameChange = registerDialogViewModel::usernameChanged,
                         onRegisterPasswordChange = registerDialogViewModel::passwordChanged,
                         onRegisterSubmit = registerDialogViewModel::submit,
                         onRegisterDialogReset = registerDialogViewModel::reset,
+                        onLoginUsernameChange = loginDialogViewModel::usernameChanged,
+                        onLoginPasswordChange = loginDialogViewModel::passwordChanged,
+                        onLoginSubmit = loginDialogViewModel::submit,
+                        onLoginDialogReset = loginDialogViewModel::reset,
+                        onLogoutSubmit = logoutViewModel::submit,
                         onStartGame = startScreenViewModel::onStartGame,
                         modifier = Modifier.padding(innerPadding)
                     )
