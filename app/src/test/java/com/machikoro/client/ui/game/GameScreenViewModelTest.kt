@@ -159,6 +159,8 @@ class GameScreenViewModelTest {
 
         override fun disconnect() = Unit
 
+        override fun sendGameStart() = Unit
+
         fun emitConnectionStatus(status: ConnectionStatus) {
             mutableConnectionStatus.value = status
         }
