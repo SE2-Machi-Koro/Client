@@ -70,22 +70,13 @@ fun StartScreen(
         ) {
             BackgroundImages()
             TitleHeader()
-            Button(
+            SecondaryActionButton(
+                text = "Rules",
                 onClick = { showPdfViewer.value = true },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = 16.dp, end = 16.dp),
-                shape = SecondaryActionShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = SecondaryActionColor
-                )
-            ) {
-                Text(
-                    text = "Rules",
-                    color = SecondaryActionTextColor,
-                    style = MaterialTheme.typography.labelLarge
-                )
-            }
+            )
             LobbyControls(
                 state = state,
                 logoutState = logoutState,
@@ -213,10 +204,12 @@ private fun SecondaryActionButton(
     text: String,
     onClick: () -> Unit,
     enabled: Boolean = true,
+    modifier: Modifier = Modifier,
 ) {
     Button(
         onClick = onClick,
         enabled = enabled,
+        modifier = modifier,
         shape = SecondaryActionShape,
         colors = ButtonDefaults.buttonColors(
             containerColor = SecondaryActionColor
