@@ -19,7 +19,7 @@ val TitleFontClean = FontFamily(
 
 // Original title font (used in Figma - Plaster)
 val TitleFont = FontFamily(
-    Font(R.font.plaster)
+    Font(R.font.lithosbold)
 )
 
 // Default body font (Cabin)
