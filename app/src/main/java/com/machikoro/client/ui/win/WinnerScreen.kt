@@ -1,15 +1,11 @@
 package com.machikoro.client.ui.win
 
-
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,8 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -79,33 +73,31 @@ fun WinScreen() {
                 text = "WINNER SCREEN",
                 style = MaterialTheme.typography.headlineLarge,
                 color = PrimaryBlueDark
-                )
+            )
             val list = listOf<String>("Name 1", "Long name", "1", "HsDHDHsssaaassaasasasassaDH") // for testing
 
 
             //Player profiles
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
+                    .weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             )
             {
                 list.forEachIndexed { i, player ->
-
                     var visible by remember { mutableStateOf(false) }
 
                     LaunchedEffect(Unit) {
-                        delay(i * 850L)
+                        delay(300 + i * 500L)
                         visible = true
                     }
 
                     AnimatedVisibility(
                         visible = visible,
-                        enter = fadeIn() +
-                                scaleIn(initialScale = 0.2f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy
-                                    ))
+                        enter = fadeIn() + scaleIn(
+                            initialScale = 0.9f
+                        )
                     ) {
                         PlayerProfileCard(player, i + 1)
                     }
@@ -119,14 +111,14 @@ fun WinScreen() {
             //Buttons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
+            ) {
                 Button(
                     onClick = { TODO() },
                     modifier = Modifier.wrapContentSize()
                 ) {
-                        Text(text = "Finish game",
-                            style = MaterialTheme.typography.labelLarge
-                        )
+                    Text(text = "Finish game",
+                        style = MaterialTheme.typography.labelLarge
+                    )
                 }
                 Button(
                     onClick = { TODO() },
@@ -182,7 +174,7 @@ fun PlayerProfileCard(name: String, place: Int) {
             modifier = Modifier
                 .fillMaxSize()
                 .border(
-                    width = 1.dp,
+                    width = 1.5f.dp,
                     color = textColors[place - 1],
                     shape = RoundedCornerShape(28.dp)
                 )
