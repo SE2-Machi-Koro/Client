@@ -11,5 +11,6 @@ class GameScreenStateTest {
 
         assertEquals(GamePhase.NONE, state.gamePhase)
         assertEquals(ConnectionStatus.IDLE, state.connectionStatus)
+        assertEquals(emptyList<PlayerCoinState>(), state.players)
     }
 }
