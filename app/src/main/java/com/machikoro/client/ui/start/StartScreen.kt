@@ -34,6 +34,10 @@ import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
 
+private val SecondaryActionShape = RoundedCornerShape(8.dp)
+private val SecondaryActionColor = Color(0xFF64B5F6)
+private val SecondaryActionTextColor = Color.Black
+
 @Composable
 fun StartScreen(
     state: StartScreenState,
@@ -71,14 +75,14 @@ fun StartScreen(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = 16.dp, end = 16.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = SecondaryActionShape,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF64B5F6)
+                    containerColor = SecondaryActionColor
                 )
             ) {
                 Text(
                     text = "Rules",
-                    color = Color.Black,
+                    color = SecondaryActionTextColor,
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -178,56 +182,51 @@ private fun LobbyControls(
             color = MaterialTheme.colorScheme.primary
         )
         if (state.loggedInAs == null) {
-            Button(
+            SecondaryActionButton(
+                text = "Register",
                 onClick = onShowRegisterDialog,
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF64B5F6)
-                )
-            ) {
-                Text(
-                    text = "Register",
-                    color = Color.Black,
-                    style = MaterialTheme.typography.labelLarge
-                )
-            }
-            Button(
+            )
+            SecondaryActionButton(
+                text = "Login",
                 onClick = onShowLoginDialog,
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF64B5F6)
-                )
-            ) {
-                Text(
-                    text = "Login",
-                    color = Color.Black,
-                    style = MaterialTheme.typography.labelLarge
-                )
-            }
+            )
         } else {
             Text(
                 text = "Logged in as ${state.loggedInAs}",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.primary
             )
-            Button(
+            SecondaryActionButton(
+                text = if (logoutState.submitting) "Logging out…" else "Logout",
                 onClick = onLogoutSubmit,
                 enabled = !logoutState.submitting,
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF64B5F6)
-                )
-            ) {
-                Text(
-                    text = if (logoutState.submitting) "Logging out…" else "Logout",
-                    color = Color.Black,
-                    style = MaterialTheme.typography.labelLarge
-                )
-            }
+            )
         }
         if (state.isHost) {
             HostStartGameButton(enabled = state.playerList.size >= 2, onStartGame = onStartGame)
         }
+    }
+}
+
+@Composable
+private fun SecondaryActionButton(
+    text: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        shape = SecondaryActionShape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = SecondaryActionColor
+        )
+    ) {
+        Text(
+            text = text,
+            color = SecondaryActionTextColor,
+            style = MaterialTheme.typography.labelLarge
+        )
     }
 }
 
