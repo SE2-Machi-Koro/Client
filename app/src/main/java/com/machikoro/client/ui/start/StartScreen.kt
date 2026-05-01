@@ -3,6 +3,7 @@ package com.machikoro.client.ui.start
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -13,28 +14,37 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.layout.layoutId
 import com.machikoro.client.R
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.LobbyStatus
+import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
+import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
 
 @Composable
 fun StartScreen(
     state: StartScreenState,
-    modifier: Modifier = Modifier,
-    onStartGame: () -> Unit
+    registerDialogState: RegisterDialogState,
+    onRegisterUsernameChange: (String) -> Unit,
+    onRegisterPasswordChange: (String) -> Unit,
+    onRegisterSubmit: () -> Unit,
+    onRegisterDialogReset: () -> Unit,
+    onStartGame: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     val showPdfViewer = remember { mutableStateOf(false) }
+    var showRegisterDialog by remember { mutableStateOf(false) }
 
     if (showPdfViewer.value) {
         PdfViewerScreen(
@@ -46,81 +56,91 @@ fun StartScreen(
         ) {
             BackgroundImages()
             TitleHeader()
-            // Pulsante Rules in alto a destra
-            Box(
+            Button(
+                onClick = { showPdfViewer.value = true },
                 modifier = Modifier
-                    .fillMaxSize()
+                    .align(Alignment.TopEnd)
                     .padding(top = 16.dp, end = 16.dp),
-                contentAlignment = Alignment.TopEnd
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF64B5F6)
+                )
             ) {
-                RulesButton(onClick = { showPdfViewer.value = true })
+                Text(
+                    text = "Rules",
+                    color = Color.Black,
+                    style = MaterialTheme.typography.labelLarge
+                )
             }
-            LobbyControls(state = state, onStartGame = onStartGame)
+            LobbyControls(
+                state = state,
+                onStartGame = onStartGame,
+                onShowRegisterDialog = { showRegisterDialog = true }
+            )
+            if (showRegisterDialog) {
+                RegisterDialog(
+                    state = registerDialogState,
+                    onUsernameChange = onRegisterUsernameChange,
+                    onPasswordChange = onRegisterPasswordChange,
+                    onSubmit = onRegisterSubmit,
+                    onDismiss = {
+                        showRegisterDialog = false
+                        onRegisterDialogReset()
+                    },
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun BackgroundImages() {
-    val backgroundLeftOffsetX = (-20).dp
-    val backgroundLeftOffsetY = 30.dp
-    val backgroundRightOffsetX = 15.dp
-    val backgroundRightOffsetY = 30.dp
+private fun BoxScope.BackgroundImages() {
     Image(
         painter = painterResource(id = R.drawable.background_left),
         contentDescription = null,
-        modifier = Modifier.layoutId("backgroundLeft").offset(x = backgroundLeftOffsetX, y = backgroundLeftOffsetY)
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .offset(x = (-20).dp, y = 30.dp)
     )
     Image(
         painter = painterResource(id = R.drawable.background_right),
         contentDescription = null,
-        modifier = Modifier.layoutId("backgroundRight").offset(x = backgroundRightOffsetX, y = backgroundRightOffsetY)
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .offset(x = 15.dp, y = 30.dp)
     )
 }
 
 @Composable
-private fun TitleHeader() {
+private fun BoxScope.TitleHeader() {
     Text(
         text = "MACHI KORO",
         style = MaterialTheme.typography.headlineLarge,
         color = MaterialTheme.colorScheme.secondary,
-        modifier = Modifier.layoutId("titleHeader").padding(top = 55.dp)
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .padding(top = 55.dp)
     )
 }
 
 @Composable
-private fun RulesButton(onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        // Rimuovo il padding superfluo, ora gestito dal Box genitore
-        shape = RoundedCornerShape(8.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF64B5F6)
-        )
-    ) {
-        Text(
-            text = "Rules",
-            color = Color.Black,
-            style = MaterialTheme.typography.labelLarge
-        )
-    }
-}
-
-@Composable
-private fun LobbyControls(state: StartScreenState, onStartGame: () -> Unit) {
+private fun LobbyControls(
+    state: StartScreenState,
+    onStartGame: () -> Unit,
+    onShowRegisterDialog: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Player count display
         Text(
             text = "${state.playerList.size}/${state.maxPlayers} ready",
             style = MaterialTheme.typography.bodyLarge
         )
         Text(
-            text = "Connection status: ${state.connectionStatus}",
+            text = "Connection status: ${state.connectionStatus.toDisplayText()}",
             style = MaterialTheme.typography.bodyLarge
         )
         Text(
@@ -128,6 +148,19 @@ private fun LobbyControls(state: StartScreenState, onStartGame: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.primary
         )
+        Button(
+            onClick = onShowRegisterDialog,
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF64B5F6)
+            )
+        ) {
+            Text(
+                text = "Register",
+                color = Color.Black,
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
         if (state.isHost) {
             HostStartGameButton(enabled = state.playerList.size >= 2, onStartGame = onStartGame)
         }
@@ -170,7 +203,11 @@ private fun StartScreenPreview() {
             state = StartScreenState.placeholder().copy(
                 connectionStatus = ConnectionStatus.CONNECTED
             ),
-            onStartGame = {}
+            registerDialogState = RegisterDialogState(),
+            onRegisterUsernameChange = {},
+            onRegisterPasswordChange = {},
+            onRegisterSubmit = {},
+            onRegisterDialogReset = {},
         )
     }
 }
