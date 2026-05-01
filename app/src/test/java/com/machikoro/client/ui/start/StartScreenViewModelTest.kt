@@ -1,11 +1,10 @@
 package com.machikoro.client.ui.start
 
-import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.session.Session
 import com.machikoro.client.domain.session.SessionStateHolder
-import com.machikoro.client.network.websocket.WebSocketClient
+import com.machikoro.client.network.websocket.FakeWebSocketClient
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,15 +38,15 @@ class StartScreenViewModelTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = StartScreenViewModel(fakeClient, FakeSessionStateHolder())
 
-        fakeClient.emit(ConnectionStatus.CONNECTING)
+        fakeClient.emitConnectionStatus(ConnectionStatus.CONNECTING)
         advanceUntilIdle()
         assertEquals(ConnectionStatus.CONNECTING, viewModel.state.value.connectionStatus)
 
-        fakeClient.emit(ConnectionStatus.CONNECTED)
+        fakeClient.emitConnectionStatus(ConnectionStatus.CONNECTED)
         advanceUntilIdle()
         assertEquals(ConnectionStatus.CONNECTED, viewModel.state.value.connectionStatus)
 
-        fakeClient.emit(ConnectionStatus.ERROR)
+        fakeClient.emitConnectionStatus(ConnectionStatus.ERROR)
         advanceUntilIdle()
         assertEquals(ConnectionStatus.ERROR, viewModel.state.value.connectionStatus)
     }
@@ -99,39 +98,6 @@ class StartScreenViewModelTest {
         viewModel.onStartGame()
 
         assertTrue(fakeClient.gameStartSent)
-    }
-
-    private class FakeWebSocketClient : WebSocketClient {
-        override val connectionStatus: StateFlow<ConnectionStatus>
-            get() = mutableConnectionStatus
-
-        override val gamePhase: StateFlow<GamePhase>
-            get() = mutableGamePhase
-
-        override val players: StateFlow<List<PlayerCoinState>>
-            get() = mutablePlayers
-
-        private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
-        private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
-        private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
-
-        var gameStartSent = false
-
-        override fun connect() = Unit
-
-        override fun disconnect() = Unit
-
-        override fun sendGameStart() {
-            gameStartSent = true
-        }
-
-        fun emit(status: ConnectionStatus) {
-            mutableConnectionStatus.value = status
-        }
-
-        fun emitPlayers(players: List<PlayerCoinState>) {
-            mutablePlayers.value = players
-        }
     }
 
     private class FakeSessionStateHolder : SessionStateHolder {
