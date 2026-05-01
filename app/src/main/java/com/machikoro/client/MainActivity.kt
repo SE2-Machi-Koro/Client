@@ -25,7 +25,10 @@ import com.machikoro.client.ui.theme.ClientTheme
 
 class MainActivity : ComponentActivity() {
     private val webSocketClient by lazy {
-        OkHttpWebSocketClient(websocketUrl = AppConfig.websocketUrl)
+        OkHttpWebSocketClient(
+            websocketUrl = AppConfig.websocketUrl,
+            sessionStateHolder = SessionManager,
+        )
     }
     private val authApi by lazy {
         AuthApiFactory.create(AppConfig.backendBaseUrl)

@@ -4,6 +4,7 @@ import android.util.Log
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
+import com.machikoro.client.domain.session.SessionStateHolder
 import java.net.URI
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +18,8 @@ import org.json.JSONObject
 
 class OkHttpWebSocketClient(
     private val websocketUrl: String,
-    private val webSocketFactory: WebSocketFactory = OkHttpWebSocketFactory()
+    private val sessionStateHolder: SessionStateHolder,
+    private val webSocketFactory: WebSocketFactory = OkHttpWebSocketFactory(),
 ) : WebSocketClient {
     override val connectionStatus: StateFlow<ConnectionStatus>
         get() = mutableConnectionStatus.asStateFlow()
@@ -39,6 +41,15 @@ class OkHttpWebSocketClient(
     override fun connect() {
         synchronized(this) {
             if (webSocket != null) {
+                return
+            }
+            // Strict-reject server (#159): no session means we have nothing to
+            // present at STOMP CONNECT. Don't open a socket only to be kicked.
+            // Status stays at whatever it was — IDLE on first launch, DISCONNECTED
+            // after a logout — so the user doesn't see a misleading "connection
+            // error" when they simply aren't logged in yet.
+            if (sessionStateHolder.session.value == null) {
+                Log.d(TAG, "Skipping WS connect — no session token")
                 return
             }
 
@@ -65,9 +76,15 @@ class OkHttpWebSocketClient(
             webSocket = null
             socket
         }
+        // True no-op when there was nothing to disconnect. Without this, every
+        // session-driven LaunchedEffect emission of `null` (including the initial
+        // one on cold start) would flip the status from IDLE to DISCONNECTED,
+        // which the start screen renders as "Connection status: disconnected"
+        // before the user has tried to connect.
+        if (currentSocket == null) return
 
-        currentSocket?.send(StompFrame(command = "DISCONNECT").serialize())
-        currentSocket?.close(NORMAL_CLOSURE_STATUS, "Client disconnect")
+        currentSocket.send(StompFrame(command = "DISCONNECT").serialize())
+        currentSocket.close(NORMAL_CLOSURE_STATUS, "Client disconnect")
         Log.d(TAG, "Disconnect requested by client")
         mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
         resetGameState()
@@ -76,13 +93,24 @@ class OkHttpWebSocketClient(
     private val listener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             Log.d(TAG, "WebSocket opened: ${response.code} ${response.message}")
+            // Read the token at handshake time, not at connect-time. Closes the
+            // race where the user logged out between connect() and the WS being
+            // ready — without this we'd send a CONNECT frame with a stale token
+            // that the server would reject anyway.
+            val token = sessionStateHolder.session.value?.sessionToken
+            if (token == null) {
+                Log.w(TAG, "WS opened but session vanished — closing without sending CONNECT")
+                webSocket.close(NORMAL_CLOSURE_STATUS, "No session at CONNECT time")
+                return
+            }
             webSocket.send(
                 StompFrame(
                     command = "CONNECT",
                     headers = mapOf(
                         "accept-version" to WebSocketContract.stompVersion,
                         "host" to websocketHostHeader(),
-                        "heart-beat" to "0,0"
+                        "heart-beat" to "0,0",
+                        AUTH_HEADER to "$BEARER_PREFIX$token",
                     )
                 ).serialize()
             )
@@ -214,5 +242,9 @@ class OkHttpWebSocketClient(
         private const val NORMAL_CLOSURE_STATUS = 1000
         private const val TAG = "OkHttpWebSocketClient"
         private const val GAME_ACTION_TYPE = "GAME_ACTION"
+        // Match Server #159's StompAuthChannelInterceptor expectation:
+        // accessor.getFirstNativeHeader("Authorization") + BEARER_PREFIX = "Bearer ".
+        private const val AUTH_HEADER = "Authorization"
+        private const val BEARER_PREFIX = "Bearer "
     }
 }
