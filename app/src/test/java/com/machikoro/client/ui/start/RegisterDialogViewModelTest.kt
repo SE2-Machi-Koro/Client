@@ -1,6 +1,9 @@
 package com.machikoro.client.ui.start
 
 import com.machikoro.client.network.auth.AuthApi
+import com.machikoro.client.network.auth.LoginRequest
+import com.machikoro.client.network.auth.LoginResponse
+import com.machikoro.client.network.auth.LogoutRequest
 import com.machikoro.client.network.auth.RegisterRequest
 import com.machikoro.client.network.auth.RegisterResponse
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -17,6 +20,7 @@ import org.junit.Test
 import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
+
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RegisterDialogViewModelTest {
@@ -125,5 +129,9 @@ class RegisterDialogViewModelTest {
         },
     ) : AuthApi {
         override suspend fun register(body: RegisterRequest): RegisterResponse = response(body)
+        override suspend fun login(body: LoginRequest): LoginResponse =
+            LoginResponse(sessionToken = "stub-token", username = body.username)
+        override suspend fun logout(body: LogoutRequest): Response<Unit> =
+            Response.success(Unit)
     }
 }
