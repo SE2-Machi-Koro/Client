@@ -8,6 +8,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.model.state.LoginDialogState
+import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.domain.model.state.toDisplayText
@@ -29,10 +31,17 @@ class AppRootTest {
                     gameScreenState = GameScreenState.initial(),
                     startScreenState = StartScreenState.placeholder(),
                     registerDialogState = RegisterDialogState(),
+                    loginDialogState = LoginDialogState(),
+                    logoutState = LogoutState(),
                     onRegisterUsernameChange = {},
                     onRegisterPasswordChange = {},
                     onRegisterSubmit = {},
                     onRegisterDialogReset = {},
+                    onLoginUsernameChange = {},
+                    onLoginPasswordChange = {},
+                    onLoginSubmit = {},
+                    onLoginDialogReset = {},
+                    onLogoutSubmit = {},
                 )
             }
         }
@@ -49,10 +58,17 @@ class AppRootTest {
                     gameScreenState = GameScreenState.initial().copy(gamePhase = GamePhase.ROLL_DICE),
                     startScreenState = StartScreenState.placeholder(),
                     registerDialogState = RegisterDialogState(),
+                    loginDialogState = LoginDialogState(),
+                    logoutState = LogoutState(),
                     onRegisterUsernameChange = {},
                     onRegisterPasswordChange = {},
                     onRegisterSubmit = {},
                     onRegisterDialogReset = {},
+                    onLoginUsernameChange = {},
+                    onLoginPasswordChange = {},
+                    onLoginSubmit = {},
+                    onLoginDialogReset = {},
+                    onLogoutSubmit = {},
                 )
             }
         }
@@ -70,10 +86,17 @@ class AppRootTest {
                     gameScreenState = GameScreenState.initial().copy(gamePhase = phase),
                     startScreenState = StartScreenState.placeholder(),
                     registerDialogState = RegisterDialogState(),
+                    loginDialogState = LoginDialogState(),
+                    logoutState = LogoutState(),
                     onRegisterUsernameChange = {},
                     onRegisterPasswordChange = {},
                     onRegisterSubmit = {},
                     onRegisterDialogReset = {},
+                    onLoginUsernameChange = {},
+                    onLoginPasswordChange = {},
+                    onLoginSubmit = {},
+                    onLoginDialogReset = {},
+                    onLogoutSubmit = {},
                 )
             }
         }
