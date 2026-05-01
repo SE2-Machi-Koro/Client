@@ -25,6 +25,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.LobbyStatus
+import com.machikoro.client.domain.model.state.LoginDialogState
+import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.domain.model.state.toDisplayText
@@ -35,15 +37,23 @@ import com.machikoro.client.R
 fun StartScreen(
     state: StartScreenState,
     registerDialogState: RegisterDialogState,
+    loginDialogState: LoginDialogState,
+    logoutState: LogoutState,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
     onRegisterSubmit: () -> Unit,
     onRegisterDialogReset: () -> Unit,
+    onLoginUsernameChange: (String) -> Unit,
+    onLoginPasswordChange: (String) -> Unit,
+    onLoginSubmit: () -> Unit,
+    onLoginDialogReset: () -> Unit,
+    onLogoutSubmit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val showPdfViewer = remember { mutableStateOf(false) }
     var showRegisterDialog by remember { mutableStateOf(false) }
+    var showLoginDialog by remember { mutableStateOf(false) }
 
     if (showPdfViewer.value) {
         PdfViewerScreen(
@@ -113,18 +123,54 @@ fun StartScreen(
                     style = MaterialTheme.typography.bodyMedium, // test
                     color = MaterialTheme.colorScheme.primary // test
                 )
-                Button(
-                    onClick = { showRegisterDialog = true },
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF64B5F6)
-                    )
-                ) {
+
+                if (state.loggedInAs == null) {
+                    Button(
+                        onClick = { showRegisterDialog = true },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF64B5F6)
+                        )
+                    ) {
+                        Text(
+                            text = "Register",
+                            color = Color.Black,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                    Button(
+                        onClick = { showLoginDialog = true },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF64B5F6)
+                        )
+                    ) {
+                        Text(
+                            text = "Login",
+                            color = Color.Black,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                } else {
                     Text(
-                        text = "Register",
-                        color = Color.Black,
-                        style = MaterialTheme.typography.labelLarge
+                        text = "Logged in as ${state.loggedInAs}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary
                     )
+                    Button(
+                        onClick = onLogoutSubmit,
+                        enabled = !logoutState.submitting,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF64B5F6)
+                        )
+                    ) {
+                        Text(
+                            text = if (logoutState.submitting) "Logging out…" else "Logout",
+                            color = Color.Black,
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
                 }
             }
 
@@ -137,6 +183,19 @@ fun StartScreen(
                     onDismiss = {
                         showRegisterDialog = false
                         onRegisterDialogReset()
+                    },
+                )
+            }
+
+            if (showLoginDialog) {
+                LoginDialog(
+                    state = loginDialogState,
+                    onUsernameChange = onLoginUsernameChange,
+                    onPasswordChange = onLoginPasswordChange,
+                    onSubmit = onLoginSubmit,
+                    onDismiss = {
+                        showLoginDialog = false
+                        onLoginDialogReset()
                     },
                 )
             }
@@ -162,10 +221,46 @@ private fun StartScreenPreview() {
                 connectionStatus = ConnectionStatus.CONNECTED
             ),
             registerDialogState = RegisterDialogState(),
+            loginDialogState = LoginDialogState(),
+            logoutState = LogoutState(),
             onRegisterUsernameChange = {},
             onRegisterPasswordChange = {},
             onRegisterSubmit = {},
             onRegisterDialogReset = {},
+            onLoginUsernameChange = {},
+            onLoginPasswordChange = {},
+            onLoginSubmit = {},
+            onLoginDialogReset = {},
+            onLogoutSubmit = {},
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    widthDp = 917,
+    heightDp = 412
+)
+@Composable
+private fun StartScreenAuthenticatedPreview() {
+    ClientTheme {
+        StartScreen(
+            state = StartScreenState.placeholder().copy(
+                connectionStatus = ConnectionStatus.CONNECTED,
+                loggedInAs = "alice",
+            ),
+            registerDialogState = RegisterDialogState(),
+            loginDialogState = LoginDialogState(),
+            logoutState = LogoutState(),
+            onRegisterUsernameChange = {},
+            onRegisterPasswordChange = {},
+            onRegisterSubmit = {},
+            onRegisterDialogReset = {},
+            onLoginUsernameChange = {},
+            onLoginPasswordChange = {},
+            onLoginSubmit = {},
+            onLoginDialogReset = {},
+            onLogoutSubmit = {},
         )
     }
 }
