@@ -36,10 +36,17 @@ class StartScreenViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            webSocketClient.players.collect { players ->
+                mutableState.update { current ->
+                    current.copy(playerList = players.map { it.displayName })
+                }
+            }
+        }
     }
 
     fun onStartGame() {
-        // TODO: Implement game start logic (e.g., send start message via webSocketClient)
+        webSocketClient.sendGameStart()
     }
 
     class Factory(
