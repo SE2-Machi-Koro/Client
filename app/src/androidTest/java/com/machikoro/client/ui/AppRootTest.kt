@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
@@ -26,7 +27,12 @@ class AppRootTest {
             ClientTheme {
                 AppRoot(
                     gameScreenState = GameScreenState.initial(),
-                    startScreenState = StartScreenState.placeholder()
+                    startScreenState = StartScreenState.placeholder(),
+                    registerDialogState = RegisterDialogState(),
+                    onRegisterUsernameChange = {},
+                    onRegisterPasswordChange = {},
+                    onRegisterSubmit = {},
+                    onRegisterDialogReset = {},
                 )
             }
         }
@@ -41,7 +47,12 @@ class AppRootTest {
             ClientTheme {
                 AppRoot(
                     gameScreenState = GameScreenState.initial().copy(gamePhase = GamePhase.ROLL_DICE),
-                    startScreenState = StartScreenState.placeholder()
+                    startScreenState = StartScreenState.placeholder(),
+                    registerDialogState = RegisterDialogState(),
+                    onRegisterUsernameChange = {},
+                    onRegisterPasswordChange = {},
+                    onRegisterSubmit = {},
+                    onRegisterDialogReset = {},
                 )
             }
         }
@@ -57,7 +68,12 @@ class AppRootTest {
             ClientTheme {
                 AppRoot(
                     gameScreenState = GameScreenState.initial().copy(gamePhase = phase),
-                    startScreenState = StartScreenState.placeholder()
+                    startScreenState = StartScreenState.placeholder(),
+                    registerDialogState = RegisterDialogState(),
+                    onRegisterUsernameChange = {},
+                    onRegisterPasswordChange = {},
+                    onRegisterSubmit = {},
+                    onRegisterDialogReset = {},
                 )
             }
         }
