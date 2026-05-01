@@ -2,6 +2,7 @@ package com.machikoro.client.ui.start
 
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,8 +53,12 @@ class StartScreenViewModelTest {
         override val gamePhase: StateFlow<GamePhase>
             get() = mutableGamePhase
 
+        override val players: StateFlow<List<PlayerCoinState>>
+            get() = mutablePlayers
+
         private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
         private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
+        private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
 
         override fun connect() = Unit
 
