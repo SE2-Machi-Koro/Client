@@ -10,5 +10,6 @@ object WebSocketContract {
     const val errorQueue: String = "/queue/errors"
     const val addUserDestination: String = "/app/chat.addUser"
     const val chatSendDestination: String = "/app/chat.send"
+    const val gameStartDestination: String = "/app/game.start"
     const val defaultSender: String = "android-client"
 }

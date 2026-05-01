@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -64,6 +65,41 @@ class StartScreenViewModelTest {
         assertNull(viewModel.state.value.loggedInAs)
     }
 
+    @Test
+    fun playersFlowUpdatesPlayerList() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = StartScreenViewModel(fakeClient, FakeSessionStateHolder())
+
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(id = "1", displayName = "alice", coins = 3),
+                PlayerCoinState(id = "2", displayName = "bob", coins = 5),
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(listOf("alice", "bob"), viewModel.state.value.playerList)
+    }
+
+    @Test
+    fun playerListIsEmptyInitially() = runTest {
+        val viewModel = StartScreenViewModel(FakeWebSocketClient(), FakeSessionStateHolder())
+
+        advanceUntilIdle()
+
+        assertEquals(emptyList<String>(), viewModel.state.value.playerList)
+    }
+
+    @Test
+    fun onStartGameDelegatesToWebSocketClient() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = StartScreenViewModel(fakeClient, FakeSessionStateHolder())
+
+        viewModel.onStartGame()
+
+        assertTrue(fakeClient.gameStartSent)
+    }
+
     private class FakeWebSocketClient : WebSocketClient {
         override val connectionStatus: StateFlow<ConnectionStatus>
             get() = mutableConnectionStatus
@@ -74,12 +110,22 @@ class StartScreenViewModelTest {
         private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
         private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
 
+        var gameStartSent = false
+
         override fun connect() = Unit
 
         override fun disconnect() = Unit
 
+        override fun sendGameStart() {
+            gameStartSent = true
+        }
+
         fun emit(status: ConnectionStatus) {
             mutableConnectionStatus.value = status
+        }
+
+        fun emitPlayers(players: List<PlayerCoinState>) {
+            mutablePlayers.value = players
         }
     }
 
