@@ -12,8 +12,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,6 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.LobbyStatus
+import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
@@ -31,10 +34,16 @@ import com.machikoro.client.R
 @Composable
 fun StartScreen(
     state: StartScreenState,
+    registerDialogState: RegisterDialogState,
+    onRegisterUsernameChange: (String) -> Unit,
+    onRegisterPasswordChange: (String) -> Unit,
+    onRegisterSubmit: () -> Unit,
+    onRegisterDialogReset: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val showPdfViewer = remember { mutableStateOf(false) }
+    var showRegisterDialog by remember { mutableStateOf(false) }
 
     if (showPdfViewer.value) {
         PdfViewerScreen(
@@ -104,6 +113,32 @@ fun StartScreen(
                     style = MaterialTheme.typography.bodyMedium, // test
                     color = MaterialTheme.colorScheme.primary // test
                 )
+                Button(
+                    onClick = { showRegisterDialog = true },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF64B5F6)
+                    )
+                ) {
+                    Text(
+                        text = "Register",
+                        color = Color.Black,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+
+            if (showRegisterDialog) {
+                RegisterDialog(
+                    state = registerDialogState,
+                    onUsernameChange = onRegisterUsernameChange,
+                    onPasswordChange = onRegisterPasswordChange,
+                    onSubmit = onRegisterSubmit,
+                    onDismiss = {
+                        showRegisterDialog = false
+                        onRegisterDialogReset()
+                    },
+                )
             }
         }
     }
@@ -125,7 +160,12 @@ private fun StartScreenPreview() {
         StartScreen(
             state = StartScreenState.placeholder().copy(
                 connectionStatus = ConnectionStatus.CONNECTED
-            )
+            ),
+            registerDialogState = RegisterDialogState(),
+            onRegisterUsernameChange = {},
+            onRegisterPasswordChange = {},
+            onRegisterSubmit = {},
+            onRegisterDialogReset = {},
         )
     }
 }
