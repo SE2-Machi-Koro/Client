@@ -3,11 +3,9 @@ package com.machikoro.client.ui.game
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
-import com.machikoro.client.network.websocket.WebSocketClient
+import com.machikoro.client.network.websocket.FakeWebSocketClient
 import com.machikoro.client.ui.start.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -141,36 +139,4 @@ class GameScreenViewModelTest {
         assertEquals(updatedPlayers, viewModel.state.value.players)
     }
 
-    private class FakeWebSocketClient : WebSocketClient {
-        override val connectionStatus: StateFlow<ConnectionStatus>
-            get() = mutableConnectionStatus
-
-        override val gamePhase: StateFlow<GamePhase>
-            get() = mutableGamePhase
-
-        override val players: StateFlow<List<PlayerCoinState>>
-            get() = mutablePlayers
-
-        private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
-        private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
-        private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
-
-        override fun connect() = Unit
-
-        override fun disconnect() = Unit
-
-        override fun sendGameStart() = Unit
-
-        fun emitConnectionStatus(status: ConnectionStatus) {
-            mutableConnectionStatus.value = status
-        }
-
-        fun emitGamePhase(phase: GamePhase) {
-            mutableGamePhase.value = phase
-        }
-
-        fun emitPlayers(players: List<PlayerCoinState>) {
-            mutablePlayers.value = players
-        }
-    }
 }
