@@ -1,13 +1,17 @@
 package com.machikoro.client.ui.start
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.ui.theme.ClientTheme
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -69,5 +73,123 @@ class StartScreenAuthStateTest {
         composeTestRule.onNodeWithText("Logout").assertIsDisplayed()
         composeTestRule.onNodeWithText("Register").assertDoesNotExist()
         composeTestRule.onNodeWithText("Login").assertDoesNotExist()
+    }
+
+    @Test
+    fun hostButtonIsShownAndEnabledWithTwoOrMorePlayers() {
+        composeTestRule.setContent {
+            ClientTheme {
+                StartScreen(
+                    state = StartScreenState.placeholder().copy(
+                        isHost = true,
+                        playerList = listOf("alice", "bob"),
+                    ),
+                    registerDialogState = RegisterDialogState(),
+                    loginDialogState = LoginDialogState(),
+                    logoutState = LogoutState(),
+                    onRegisterUsernameChange = {},
+                    onRegisterPasswordChange = {},
+                    onRegisterSubmit = {},
+                    onRegisterDialogReset = {},
+                    onLoginUsernameChange = {},
+                    onLoginPasswordChange = {},
+                    onLoginSubmit = {},
+                    onLoginDialogReset = {},
+                    onLogoutSubmit = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Start Game").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Start Game").assertIsEnabled()
+    }
+
+    @Test
+    fun hostButtonIsShownButDisabledWithOnlyOnePlayer() {
+        composeTestRule.setContent {
+            ClientTheme {
+                StartScreen(
+                    state = StartScreenState.placeholder().copy(
+                        isHost = true,
+                        playerList = listOf("alice"),
+                    ),
+                    registerDialogState = RegisterDialogState(),
+                    loginDialogState = LoginDialogState(),
+                    logoutState = LogoutState(),
+                    onRegisterUsernameChange = {},
+                    onRegisterPasswordChange = {},
+                    onRegisterSubmit = {},
+                    onRegisterDialogReset = {},
+                    onLoginUsernameChange = {},
+                    onLoginPasswordChange = {},
+                    onLoginSubmit = {},
+                    onLoginDialogReset = {},
+                    onLogoutSubmit = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Start Game").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Start Game").assertIsNotEnabled()
+    }
+
+    @Test
+    fun hostButtonIsHiddenWhenNotHost() {
+        composeTestRule.setContent {
+            ClientTheme {
+                StartScreen(
+                    state = StartScreenState.placeholder().copy(
+                        isHost = false,
+                        playerList = listOf("alice", "bob"),
+                    ),
+                    registerDialogState = RegisterDialogState(),
+                    loginDialogState = LoginDialogState(),
+                    logoutState = LogoutState(),
+                    onRegisterUsernameChange = {},
+                    onRegisterPasswordChange = {},
+                    onRegisterSubmit = {},
+                    onRegisterDialogReset = {},
+                    onLoginUsernameChange = {},
+                    onLoginPasswordChange = {},
+                    onLoginSubmit = {},
+                    onLoginDialogReset = {},
+                    onLogoutSubmit = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Start Game").assertDoesNotExist()
+    }
+
+    @Test
+    fun clickingEnabledHostButtonInvokesOnStartGame() {
+        var startGameCalled = false
+        composeTestRule.setContent {
+            ClientTheme {
+                StartScreen(
+                    state = StartScreenState.placeholder().copy(
+                        isHost = true,
+                        playerList = listOf("alice", "bob"),
+                    ),
+                    registerDialogState = RegisterDialogState(),
+                    loginDialogState = LoginDialogState(),
+                    logoutState = LogoutState(),
+                    onRegisterUsernameChange = {},
+                    onRegisterPasswordChange = {},
+                    onRegisterSubmit = {},
+                    onRegisterDialogReset = {},
+                    onLoginUsernameChange = {},
+                    onLoginPasswordChange = {},
+                    onLoginSubmit = {},
+                    onLoginDialogReset = {},
+                    onLogoutSubmit = {},
+                    onStartGame = { startGameCalled = true },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Start Game").performClick()
+
+        assertTrue(startGameCalled)
     }
 }

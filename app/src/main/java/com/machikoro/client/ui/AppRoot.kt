@@ -29,6 +29,7 @@ fun AppRoot(
     onLoginSubmit: () -> Unit,
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
+    onStartGame: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (gameScreenState.gamePhase != GamePhase.NONE) {
@@ -48,6 +49,7 @@ fun AppRoot(
             onLoginSubmit = onLoginSubmit,
             onLoginDialogReset = onLoginDialogReset,
             onLogoutSubmit = onLogoutSubmit,
+            onStartGame = onStartGame,
             modifier = modifier
         )
     }
