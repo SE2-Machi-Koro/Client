@@ -1,12 +1,190 @@
 package com.machikoro.client.ui.win
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.machikoro.client.R
+import com.machikoro.client.ui.theme.*
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.PrimaryBlueDark
+import kotlinx.coroutines.delay
 
 @Composable
 fun WinScreenOneWinner() {
+    Box(modifier = Modifier.fillMaxSize())
+    {
+        //Background
+        Image(
+            painter = painterResource(id = R.drawable.background_left),
+            contentDescription = null,
+            modifier = Modifier.align(Alignment.BottomStart).offset(x = (-20).dp, y = 30.dp),
+            alpha = 0.3f
+        )
+        Image(
+            painter = painterResource(id = R.drawable.background_right),
+            contentDescription = null,
+            modifier = Modifier.align(Alignment.BottomEnd).offset(x = 15.dp, y = 30.dp),
+            alpha = 0.3f
+        )
 
+        //Content
+        Column(
+            modifier = Modifier.fillMaxSize().padding(all = 12.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            //Headline
+            Text(
+                text = "WINNER SCREEN",
+                style = MaterialTheme.typography.headlineLarge,
+                color = PrimaryBlueDark
+            )
+            val list = listOf<String>("Name 1", "Long name", "1", "HsDHDHsssaaassaasasasassaDH") // for testing
+
+
+            //Player profiles
+            Row(
+                modifier = Modifier.fillMaxWidth()
+                    .weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            )
+            {
+                list.forEachIndexed { i, player ->
+                    var visible by remember { mutableStateOf(false) }
+
+                    LaunchedEffect(Unit) {
+                        delay(300 + i * 500L)
+                        visible = true
+                    }
+
+                    AnimatedVisibility(
+                        visible = visible,
+                        enter = fadeIn() + scaleIn(
+                            initialScale = 0.9f
+                        )
+                    ) {
+                        PlayerProfileCard(player, i + 1)
+                    }
+                }
+            }
+
+
+
+
+
+            //Buttons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Button(
+                    onClick = { TODO() },
+                    modifier = Modifier.wrapContentSize()
+                ) {
+                    Text(text = "Finish game",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontSize = 24.sp,
+                    )
+                }
+                Button(
+                    onClick = { TODO() },
+                    modifier = Modifier.wrapContentSize()
+
+                ) {
+                    Text(text = "Back to current lobby",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontSize = 24.sp,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SmallPlayerProfileCard(name: String, index: Int) {
+    val backgroundColors = listOf(
+        CardPurpleBackground,
+        CardRedBackground,
+        CardGreenBackground,
+        CardBlueBackground
+    )
+
+    val textColors = listOf(
+        CardPurpleText,
+        CardRedText,
+        CardGreenText,
+        CardBlueText
+    )
+
+    Box(
+        modifier = Modifier
+            .width(300.dp)
+            .height(100.dp)
+            .padding(top = 14.dp)
+        ,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .border(
+                    width = 1.5f.dp,
+                    color = textColors[index - 1],
+                    shape = RoundedCornerShape(28.dp)
+                )
+                .background(
+                    color = backgroundColors[index - 1],
+                    shape = RoundedCornerShape(28.dp)
+                )
+                .padding(8.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            Text(
+                text = name,
+                color = textColors[index - 1],
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+        }
+    }
 }
 
 @Preview(showBackground = true)
