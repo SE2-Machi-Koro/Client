@@ -117,7 +117,8 @@ fun WinScreen() {
                     modifier = Modifier.wrapContentSize()
                 ) {
                     Text(text = "Finish game",
-                        style = MaterialTheme.typography.labelLarge
+                        style = MaterialTheme.typography.labelLarge,
+                        fontSize = 24.sp,
                     )
                 }
                 Button(
@@ -126,7 +127,9 @@ fun WinScreen() {
 
                 ) {
                     Text(text = "Back to current lobby",
-                        style = MaterialTheme.typography.labelLarge)
+                        style = MaterialTheme.typography.labelLarge,
+                        fontSize = 24.sp,
+                    )
                 }
             }
         }
@@ -151,8 +154,8 @@ fun PlayerProfileCard(name: String, place: Int) {
 
     Box(
         modifier = Modifier
-            .width(150.dp)
-            .height(200.dp)
+            .width(175.dp)
+            .height(240.dp)
             .padding(top = 14.dp)
         ,
     ) {
@@ -187,16 +190,17 @@ fun PlayerProfileCard(name: String, place: Int) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
+                modifier = Modifier.padding(top = 8.dp),
                 text = "$place",
                 color = textColors[place - 1],
                 style = MaterialTheme.typography.headlineMedium,
-                fontSize = 36.sp
+                fontSize = 56.sp
             )
 
             Text(
                 text = name,
                 color = textColors[place - 1],
-                fontSize = 24.sp,
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
