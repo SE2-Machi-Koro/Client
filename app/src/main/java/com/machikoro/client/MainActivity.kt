@@ -8,6 +8,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -25,7 +26,10 @@ import com.machikoro.client.ui.theme.ClientTheme
 
 class MainActivity : ComponentActivity() {
     private val webSocketClient by lazy {
-        OkHttpWebSocketClient(websocketUrl = AppConfig.websocketUrl)
+        OkHttpWebSocketClient(
+            websocketUrl = AppConfig.websocketUrl,
+            sessionStateHolder = SessionManager,
+        )
     }
     private val authApi by lazy {
         AuthApiFactory.create(AppConfig.backendBaseUrl)
@@ -55,6 +59,21 @@ class MainActivity : ComponentActivity() {
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
+
+            // Drive WebSocket lifecycle from session changes during the foreground.
+            // onStart/onStop handle the activity-lifecycle case; this handles the
+            // user-logs-in-or-out-while-app-is-open case. connect() and disconnect()
+            // are both idempotent so it's safe to call them on every emission.
+            LaunchedEffect(Unit) {
+                SessionManager.session.collect { session ->
+                    if (session != null) {
+                        webSocketClient.connect()
+                    } else {
+                        webSocketClient.disconnect()
+                    }
+                }
+            }
+
             ClientTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     AppRoot(
