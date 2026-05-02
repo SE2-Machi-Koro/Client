@@ -341,6 +341,34 @@ class OkHttpWebSocketClientTest {
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
 
+    @Test
+    fun sendGameStartSendsStompFrameToGameStartDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        client.sendGameStart()
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND\n") && it.contains("destination:/app/game.start")
+            }
+        )
+    }
+
+    @Test
+    fun sendGameStartWithoutConnectionIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        // No connect() call — should not throw
+        client.sendGameStart()
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
     private fun gameActionFrame(body: String): String =
         "MESSAGE\ndestination:/topic/public\ncontent-type:application/json\n\n$body\u0000"
 

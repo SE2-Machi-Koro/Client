@@ -90,6 +90,25 @@ class OkHttpWebSocketClient(
         resetGameState()
     }
 
+    override fun sendGameStart() {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "sendGameStart called but no active WebSocket connection")
+            return
+        }
+        socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.gameStartDestination,
+                    "content-type" to "application/json"
+                ),
+                body = GAME_START_BODY
+            ).serialize()
+        )
+        Log.d(TAG, "Game start message sent")
+    }
+
     private val listener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             Log.d(TAG, "WebSocket opened: ${response.code} ${response.message}")
@@ -246,5 +265,7 @@ class OkHttpWebSocketClient(
         // accessor.getFirstNativeHeader("Authorization") + BEARER_PREFIX = "Bearer ".
         private const val AUTH_HEADER = "Authorization"
         private const val BEARER_PREFIX = "Bearer "
+        private const val GAME_START_BODY =
+            """{"type":"START","sender":"${WebSocketContract.defaultSender}"}"""
     }
 }

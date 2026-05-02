@@ -91,6 +91,7 @@ class MainActivity : ComponentActivity() {
                         onLoginSubmit = loginDialogViewModel::submit,
                         onLoginDialogReset = loginDialogViewModel::reset,
                         onLogoutSubmit = logoutViewModel::submit,
+                        onStartGame = startScreenViewModel::onStartGame,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }

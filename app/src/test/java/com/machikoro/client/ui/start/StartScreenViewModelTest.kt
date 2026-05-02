@@ -1,11 +1,10 @@
 package com.machikoro.client.ui.start
 
-import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.session.Session
 import com.machikoro.client.domain.session.SessionStateHolder
-import com.machikoro.client.network.websocket.WebSocketClient
+import com.machikoro.client.network.websocket.FakeWebSocketClient
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,6 +13,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -38,15 +38,15 @@ class StartScreenViewModelTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = StartScreenViewModel(fakeClient, FakeSessionStateHolder())
 
-        fakeClient.emit(ConnectionStatus.CONNECTING)
+        fakeClient.emitConnectionStatus(ConnectionStatus.CONNECTING)
         advanceUntilIdle()
         assertEquals(ConnectionStatus.CONNECTING, viewModel.state.value.connectionStatus)
 
-        fakeClient.emit(ConnectionStatus.CONNECTED)
+        fakeClient.emitConnectionStatus(ConnectionStatus.CONNECTED)
         advanceUntilIdle()
         assertEquals(ConnectionStatus.CONNECTED, viewModel.state.value.connectionStatus)
 
-        fakeClient.emit(ConnectionStatus.ERROR)
+        fakeClient.emitConnectionStatus(ConnectionStatus.ERROR)
         advanceUntilIdle()
         assertEquals(ConnectionStatus.ERROR, viewModel.state.value.connectionStatus)
     }
@@ -65,27 +65,39 @@ class StartScreenViewModelTest {
         assertNull(viewModel.state.value.loggedInAs)
     }
 
-    private class FakeWebSocketClient : WebSocketClient {
-        override val connectionStatus: StateFlow<ConnectionStatus>
-            get() = mutableConnectionStatus
+    @Test
+    fun playersFlowUpdatesPlayerList() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = StartScreenViewModel(fakeClient, FakeSessionStateHolder())
 
-        override val gamePhase: StateFlow<GamePhase>
-            get() = mutableGamePhase
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(id = "1", displayName = "alice", coins = 3),
+                PlayerCoinState(id = "2", displayName = "bob", coins = 5),
+            )
+        )
+        advanceUntilIdle()
 
-        override val players: StateFlow<List<PlayerCoinState>>
-            get() = mutablePlayers
+        assertEquals(listOf("alice", "bob"), viewModel.state.value.playerList)
+    }
 
-        private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
-        private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
-        private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
+    @Test
+    fun playerListIsEmptyInitially() = runTest {
+        val viewModel = StartScreenViewModel(FakeWebSocketClient(), FakeSessionStateHolder())
 
-        override fun connect() = Unit
+        advanceUntilIdle()
 
-        override fun disconnect() = Unit
+        assertEquals(emptyList<String>(), viewModel.state.value.playerList)
+    }
 
-        fun emit(status: ConnectionStatus) {
-            mutableConnectionStatus.value = status
-        }
+    @Test
+    fun onStartGameDelegatesToWebSocketClient() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = StartScreenViewModel(fakeClient, FakeSessionStateHolder())
+
+        viewModel.onStartGame()
+
+        assertTrue(fakeClient.gameStartSent)
     }
 
     private class FakeSessionStateHolder : SessionStateHolder {
