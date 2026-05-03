@@ -68,26 +68,18 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .background(Color.White.copy(alpha = 0.65f))
+                .background(Color.White.copy(alpha = 0.7f))
         )
 
         // === HEADER ===
         // Main title.
         Text(
-            text = "WILLKOMMEN",
+            text = "MACHI KORO",
             style = MaterialTheme.typography.headlineMedium,
-            color = TextBlueLight,
-            modifier = Modifier.padding(start = 90.dp, top = 29.dp)
-        )
-
-        // Subtitle below the title.
-        Text(
-            text = "Lass uns spielen!",
-            style = MaterialTheme.typography.headlineSmall,
             color = TextBlueDark,
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 90.dp, top = 69.dp)
+                .align(Alignment.TopCenter)
+                .padding(top = 70.dp),
         )
 
         // === PROFILE SECTION ===
@@ -95,7 +87,7 @@ fun HomeScreen(
         ProfileCard(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 29.dp, end = 90.dp)
+                .padding(top = 25.dp, end = 30.dp)
         )
 
         // === MAIN ACTION BUTTONS ===
@@ -168,14 +160,14 @@ private fun HomeCard(
     Button(
         onClick = onClick,
         modifier = Modifier
-            .width(150.dp)
+            .width(160.dp)
             .height(140.dp),
         shape = RoundedCornerShape(10.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = backgroundColor,
             contentColor = textColor
         ),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp),
         contentPadding = PaddingValues(8.dp)
     ) {
         Column(
@@ -267,10 +259,10 @@ private fun ProfileCard(
     // Small card showing user avatar, username and edit icon.
     Card(
         modifier = modifier
-            .width(171.dp)
-            .height(55.dp),
+            .width(150.dp)
+            .height(40.dp),
         shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = ButtonBlueGrey),
+        colors = CardDefaults.cardColors(containerColor = White),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Row(
@@ -279,18 +271,18 @@ private fun ProfileCard(
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+            ) {
             // User avatar icon.
             Image(
                 painter = painterResource(id = R.drawable.login_user_icon),
                 contentDescription = null,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(30.dp)
             )
 
             // Placeholder username.
             Text(
                 text = "NN",
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 color = TextBlueDark
             )
@@ -299,7 +291,7 @@ private fun ProfileCard(
             Image(
                 painter = painterResource(id = R.drawable.home_edit_icon),
                 contentDescription = null,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
     }
@@ -316,9 +308,9 @@ private fun BottomMenuBar(
     Card(
         modifier = modifier
             .width(475.dp)
-            .height(60.dp),
+            .height(50.dp),
         shape = RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp),
-        colors = CardDefaults.cardColors(containerColor = ButtonBlueGrey),
+        colors = CardDefaults.cardColors(containerColor = White),
         elevation = CardDefaults.cardElevation(defaultElevation = 14.dp)
     ) {
         Row(

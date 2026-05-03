@@ -15,7 +15,7 @@ import com.machikoro.client.R
 
 // Title Font
 val TitleFont = FontFamily(
-    Font(R.font.musashi)
+    Font(R.font.lithosbold)
 )
 
 // Original title font (used in Figma - Plaster)
@@ -39,7 +39,7 @@ val Typography = Typography(
         fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
         fontSize = 68.sp,
-        letterSpacing = 3.sp
+        letterSpacing = 1.sp
     ),
 
     // Alternative large title (clean version)
@@ -55,23 +55,23 @@ val Typography = Typography(
     headlineMedium = TextStyle(
         fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
-        fontSize = 45.sp,
-        letterSpacing = 2.sp
+        fontSize = 50.sp,
     ),
 
     // Section title small(e.g. "Lass uns spielen!")
     headlineSmall = TextStyle(
         fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
-        fontSize = 35.sp,
-        letterSpacing = 2.sp
+        fontSize = 32.sp,
+        letterSpacing = 1.sp
     ),
 
     // Default text (16sp)
     bodyLarge = TextStyle(
         fontFamily = BodyFont,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp
+        fontSize = 16.sp,
+        letterSpacing = 0.5.sp
     ),
 
     // Smaller text (14sp)
