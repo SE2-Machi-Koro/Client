@@ -30,9 +30,13 @@ class OkHttpWebSocketClient(
     override val players: StateFlow<List<PlayerCoinState>>
         get() = mutablePlayers.asStateFlow()
 
+    override val lobbyCode: StateFlow<String?> // Internal state for the latest lobby code returned by the backend
+        get() = mutableLobbyCode.asStateFlow()
+
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
+    private val mutableLobbyCode = MutableStateFlow<String?>(null) // Exposes lobby code as read-only StateFlow to UI/ViewModels
     private val frameBuffer = StringBuilder()
 
     @Volatile
