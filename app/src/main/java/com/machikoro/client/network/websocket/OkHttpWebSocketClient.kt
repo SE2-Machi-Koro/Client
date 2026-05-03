@@ -90,6 +90,26 @@ class OkHttpWebSocketClient(
         resetGameState()
     }
 
+    override fun sendCreateLobby() {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "sendCreateLobby called but no active WebSocket connection")
+            return
+        }
+
+        socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.createLobbyDestination,
+                    "content-type" to "application/json"
+                ),
+                body = """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}"}"""
+            ).serialize()
+        )
+
+        Log.d(TAG, "Lobby create message sent")
+    }
     override fun sendGameStart() {
         val socket = synchronized(this) { webSocket }
         if (socket == null) {

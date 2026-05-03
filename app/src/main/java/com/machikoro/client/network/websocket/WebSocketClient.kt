@@ -17,5 +17,6 @@ interface WebSocketClient {
 
     fun disconnect()
 
+    fun sendCreateLobby()
     fun sendGameStart()
 }
