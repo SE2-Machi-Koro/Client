@@ -76,18 +76,18 @@ fun HomeScreen(
         Text(
             text = "WILLKOMMEN",
             style = MaterialTheme.typography.headlineMedium,
-            color = TextBlueDark,
+            color = TextBlueLight,
             modifier = Modifier.padding(start = 90.dp, top = 29.dp)
         )
 
         // Subtitle below the title.
         Text(
             text = "Lass uns spielen!",
-            style = MaterialTheme.typography.headlineMedium,
-            color = TextBlueLight,
+            style = MaterialTheme.typography.headlineSmall,
+            color = TextBlueDark,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = 90.dp, top = 65.dp)
+                .padding(start = 90.dp, top = 69.dp)
         )
 
         // === PROFILE SECTION ===
@@ -186,7 +186,7 @@ private fun HomeCard(
             Image(
                 painter = painterResource(id = iconRes),
                 contentDescription = null,
-                modifier = Modifier.size(74.dp)
+                modifier = Modifier.size(70.dp)
             )
 
             // Action text. It stays in one line and becomes shortened if needed.
@@ -317,7 +317,7 @@ private fun BottomMenuBar(
         modifier = modifier
             .width(475.dp)
             .height(60.dp),
-        shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp),
+        shape = RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp),
         colors = CardDefaults.cardColors(containerColor = ButtonBlueGrey),
         elevation = CardDefaults.cardElevation(defaultElevation = 14.dp)
     ) {
@@ -370,7 +370,7 @@ private fun BottomMenuItem(
         Image(
             painter = painterResource(id = iconRes),
             contentDescription = null,
-            modifier = Modifier.size(35.dp)
+            modifier = Modifier.size(30.dp)
         )
 
         // Menu label.

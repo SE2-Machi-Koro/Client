@@ -12,13 +12,14 @@ import com.machikoro.client.R
 // Font definitions
 // -----------------------------
 
-// Clean title font (more readable, alternative - Bebas)
-val TitleFontClean = FontFamily(
-    Font(R.font.bebas_neue)
+
+// Title Font
+val TitleFont = FontFamily(
+    Font(R.font.musashi)
 )
 
 // Original title font (used in Figma - Plaster)
-val TitleFont = FontFamily(
+val TitleFontPlaster = FontFamily(
     Font(R.font.plaster)
 )
 
@@ -37,13 +38,13 @@ val Typography = Typography(
     headlineLarge = TextStyle(
         fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
-        fontSize = 64.sp,
-        letterSpacing = 2.sp
+        fontSize = 68.sp,
+        letterSpacing = 3.sp
     ),
 
     // Alternative large title (clean version)
     titleLarge = TextStyle(
-        fontFamily = TitleFontClean,
+        fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
         fontSize = 64.sp,
         letterSpacing = 2.sp
@@ -54,14 +55,16 @@ val Typography = Typography(
     headlineMedium = TextStyle(
         fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
-        fontSize = 40.sp
+        fontSize = 45.sp,
+        letterSpacing = 2.sp
     ),
 
     // Section title small(e.g. "Lass uns spielen!")
     headlineSmall = TextStyle(
         fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
-        fontSize = 32.sp
+        fontSize = 35.sp,
+        letterSpacing = 2.sp
     ),
 
     // Default text (16sp)
