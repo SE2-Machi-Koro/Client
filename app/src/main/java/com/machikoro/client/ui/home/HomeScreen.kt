@@ -105,7 +105,7 @@ fun HomeScreen(
                 .align(Alignment.Center)
                 .padding(top = 50.dp),
             horizontalArrangement = Arrangement.spacedBy(60.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             HomeCard(
                 iconRes = R.drawable.home_lobby_join_icon,
@@ -114,31 +114,30 @@ fun HomeScreen(
                 onClick = onJoinLobbyClick
             )
 
-            HomeCard(
-                iconRes = R.drawable.home_lobby_create_icon,
-                text = "Lobby erstellen",
-                isPrimary = true,
-                onClick = onCreateLobbyClick
-            )
+            // Create lobby card with generated code displayed directly below it.
+            Column(
+                modifier = Modifier.width(150.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                HomeCard(
+                    iconRes = R.drawable.home_lobby_create_icon,
+                    text = "Lobby erstellen",
+                    isPrimary = true,
+                    onClick = onCreateLobbyClick
+                )
+
+                lobbyCode?.let { code ->
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    LobbyCodeRow(code = code)
+                }
+            }
 
             HomeCard(
                 iconRes = R.drawable.home_lobby_public_icon,
                 text = "Öffentliche Lobbys",
                 isPrimary = false,
                 onClick = onPublicLobbiesClick
-            )
-        }
-
-        // Shows the generated lobby code after the backend confirms lobby creation.
-        lobbyCode?.let { code ->
-            Text(
-                text = "Lobby-Code: $code",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = TextBlueDark,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(top = 230.dp)
             )
         }
         // === BOTTOM MENU ===
@@ -200,6 +199,63 @@ private fun HomeCard(
                 overflow = TextOverflow.Ellipsis,
                 color = textColor
             )
+        }
+    }
+}
+
+@Composable
+private fun LobbyCodeRow(code: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Card(
+            modifier = Modifier
+                .width(110.dp)
+                .height(34.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF4FAFC)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 12.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = code,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0x4D004E7E),
+                    maxLines = 1
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Image(
+                    painter = painterResource(id = R.drawable.home_copy_icon),
+                    contentDescription = "Copy lobby code",
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Card(
+            modifier = Modifier.size(34.dp),
+            shape = RoundedCornerShape(6.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF4FAFC)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.home_check_icon),
+                    contentDescription = "Confirm lobby code",
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }
@@ -328,14 +384,20 @@ private fun BottomMenuItem(
     }
 }
 
-@Preview(
-    showBackground = true,
-    widthDp = 917,
-    heightDp = 412
-)
+@Preview(showBackground = true, widthDp = 917, heightDp = 412)
 @Composable
 private fun HomeScreenPreview() {
     ClientTheme {
         HomeScreen()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 917, heightDp = 412)
+@Composable
+private fun HomeScreenWithLobbyCodePreview() {
+    ClientTheme {
+        HomeScreen(
+            lobbyCode = "AJ25Z39"
+        )
     }
 }
