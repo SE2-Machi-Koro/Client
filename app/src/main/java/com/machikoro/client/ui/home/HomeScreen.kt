@@ -22,6 +22,9 @@ import com.machikoro.client.ui.theme.*
 
 @Composable
 fun HomeScreen(
+    // Latest lobby code received from the server after creating a lobby.
+    lobbyCode: String? = null,
+
     // Callbacks passed from outside, e.g. from Navigation or ViewModel.
     // This keeps the UI separated from the app logic.
     onJoinLobbyClick: () -> Unit = {},
@@ -126,6 +129,18 @@ fun HomeScreen(
             )
         }
 
+        // Shows the generated lobby code after the backend confirms lobby creation.
+        lobbyCode?.let { code ->
+            Text(
+                text = "Lobby-Code: $code",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = TextBlueDark,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(top = 230.dp)
+            )
+        }
         // === BOTTOM MENU ===
         // Clickable menu items for rules, ranking and settings.
         BottomMenuBar(

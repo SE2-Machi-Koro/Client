@@ -10,6 +10,7 @@ import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.ui.game.GameScreen
+import com.machikoro.client.ui.home.HomeScreen
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
 
@@ -20,6 +21,8 @@ fun AppRoot(
     registerDialogState: RegisterDialogState,
     loginDialogState: LoginDialogState,
     logoutState: LogoutState,
+    lobbyCode: String?,
+    loggedInAs: String?,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
     onRegisterSubmit: () -> Unit,
@@ -27,6 +30,7 @@ fun AppRoot(
     onLoginUsernameChange: (String) -> Unit,
     onLoginPasswordChange: (String) -> Unit,
     onLoginSubmit: () -> Unit,
+    onCreateLobbyClick: () -> Unit,
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
     onStartGame: () -> Unit = {},
@@ -34,6 +38,12 @@ fun AppRoot(
 ) {
     if (gameScreenState.gamePhase != GamePhase.NONE) {
         GameScreen(state = gameScreenState, modifier = modifier)
+    } else if (loggedInAs != null) {
+        HomeScreen(
+            lobbyCode = lobbyCode,
+            onCreateLobbyClick = onCreateLobbyClick,
+            modifier = modifier
+        )
     } else {
         StartScreen(
             state = startScreenState,
@@ -74,6 +84,9 @@ private fun AppRootStartScreenPreview() {
             onLoginSubmit = {},
             onLoginDialogReset = {},
             onLogoutSubmit = {},
+            lobbyCode = null,
+            loggedInAs = null,
+            onCreateLobbyClick = {},
         )
     }
 }
@@ -97,6 +110,9 @@ private fun AppRootGameScreenPreview() {
             onLoginSubmit = {},
             onLoginDialogReset = {},
             onLogoutSubmit = {},
+            lobbyCode = null,
+            loggedInAs = null,
+            onCreateLobbyClick = {},
         )
     }
 }

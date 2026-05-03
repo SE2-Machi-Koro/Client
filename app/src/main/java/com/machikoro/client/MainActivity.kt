@@ -18,6 +18,7 @@ import com.machikoro.client.network.auth.AuthApiFactory
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.AppRoot
 import com.machikoro.client.ui.game.GameScreenViewModel
+import com.machikoro.client.ui.home.HomeViewModel
 import com.machikoro.client.ui.start.LoginDialogViewModel
 import com.machikoro.client.ui.start.LogoutViewModel
 import com.machikoro.client.ui.start.RegisterDialogViewModel
@@ -40,6 +41,9 @@ class MainActivity : ComponentActivity() {
     private val gameScreenViewModel by viewModels<GameScreenViewModel> {
         GameScreenViewModel.Factory(webSocketClient)
     }
+    private val homeViewModel by viewModels<HomeViewModel> {
+        HomeViewModel.Factory(webSocketClient)
+    }
     private val registerDialogViewModel by viewModels<RegisterDialogViewModel> {
         RegisterDialogViewModel.Factory(authApi)
     }
@@ -56,6 +60,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
+            val lobbyCode by homeViewModel.lobbyCode.collectAsState()
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
@@ -92,7 +97,10 @@ class MainActivity : ComponentActivity() {
                         onLoginDialogReset = loginDialogViewModel::reset,
                         onLogoutSubmit = logoutViewModel::submit,
                         onStartGame = startScreenViewModel::onStartGame,
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
+                        lobbyCode = lobbyCode,
+                        loggedInAs = startScreenState.loggedInAs,
+                        onCreateLobbyClick = homeViewModel::createLobby,
                     )
                 }
             }
