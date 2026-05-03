@@ -13,6 +13,10 @@ interface WebSocketClient {
     // Backend coin payload is still pending; expose the UI-ready state now for #37.
     val players: StateFlow<List<PlayerCoinState>>
 
+    // Holds the latest created lobby code received from the server.
+    // Null if no lobby has been created yet.
+    val lobbyCode: StateFlow<String?>
+
     fun connect()
 
     fun disconnect()
