@@ -206,7 +206,7 @@ private fun LobbyCodeRow(code: String) {
                 .width(110.dp)
                 .height(34.dp),
             shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF4FAFC)),
+            colors = CardDefaults.cardColors(containerColor = White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Row(
@@ -235,7 +235,7 @@ private fun LobbyCodeRow(code: String) {
         Card(
             modifier = Modifier.size(34.dp),
             shape = RoundedCornerShape(6.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF4FAFC)),
+            colors = CardDefaults.cardColors(containerColor = White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Box(
