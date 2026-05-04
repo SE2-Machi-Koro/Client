@@ -10,16 +10,39 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.R
 import com.machikoro.client.ui.theme.*
+import androidx.compose.ui.text.style.TextAlign
+import com.machikoro.client.domain.model.state.StartScreenState
+
+@Composable
+fun LobbyScreen(
+    state: StartScreenState,
+    isReady: Boolean = false,
+    onReadyToggle: () -> Unit = {},
+    onStartGame: () -> Unit = {},
+    onLeaveLobby: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    LobbyScreen(
+        playerNames = state.playerList,
+        maxPlayers = state.maxPlayers,
+        currentUsername = state.loggedInAs,
+        hostUsername = state.playerList.firstOrNull(), // temporary: first player = host
+        isHost = state.isHost,
+        isReady = isReady,
+        onReadyToggle = onReadyToggle,
+        onStartGame = onStartGame,
+        onLeaveLobby = onLeaveLobby,
+        modifier = modifier
+    )
+}
 
 @Composable
 fun LobbyScreen(
@@ -31,6 +54,7 @@ fun LobbyScreen(
     isReady: Boolean = false,
     onReadyToggle: () -> Unit = {},
     onStartGame: () -> Unit = {},
+    onLeaveLobby: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val startEnabled = isHost && playerNames.size >= 2
@@ -153,6 +177,13 @@ fun LobbyScreen(
                 .align(Alignment.CenterEnd)
                 .padding(end = 140.dp, top = 40.dp)
         )
+
+        LeaveLobbyButton(
+            onClick = onLeaveLobby,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 65.dp, bottom = 38.dp)
+        )
     }
 }
 @Composable
@@ -258,7 +289,6 @@ fun ReadyToggle(
                 )
             }
         }
-
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
@@ -266,6 +296,43 @@ fun ReadyToggle(
             color = TextWhite,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun LeaveLobbyButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .width(95.dp)
+            .height(95.dp)
+            .background(
+                color = ButtonBlueGrey,
+                shape = RoundedCornerShape(14.dp)
+            )
+            .clickable { onClick() }
+            .padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.lobby_leave),
+            contentDescription = "Lobby verlassen",
+            modifier = Modifier.size(32.dp)
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "Lobby\nverlassen",
+            modifier = Modifier.fillMaxWidth(),
+            color = TextBlueDark,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
         )
     }
 }
