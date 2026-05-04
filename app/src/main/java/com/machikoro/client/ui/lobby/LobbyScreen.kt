@@ -19,11 +19,11 @@ import androidx.compose.ui.unit.dp
 import com.machikoro.client.R
 import com.machikoro.client.ui.theme.*
 import androidx.compose.ui.text.style.TextAlign
-import com.machikoro.client.domain.model.state.StartScreenState
+import com.machikoro.client.domain.model.state.LobbyScreenState
 
 @Composable
 fun LobbyScreen(
-    state: StartScreenState,
+    state: LobbyScreenState,
     isReady: Boolean = false,
     onReadyToggle: () -> Unit = {},
     onStartGame: () -> Unit = {},

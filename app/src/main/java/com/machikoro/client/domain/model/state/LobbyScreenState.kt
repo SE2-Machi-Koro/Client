@@ -1,22 +1,20 @@
 package com.machikoro.client.domain.model.state
 
-data class StartScreenState(
-    val title: String,
+data class LobbyScreenState(
     val connectionStatus: ConnectionStatus,
-    /*val lobbyStatus: LobbyStatus,
+    val lobbyStatus: LobbyStatus,
     val playerList: List<String> = emptyList(),
     val maxPlayers: Int = 4,
-    val isHost: Boolean = false,*/
+    val isHost: Boolean = false,
     val loggedInAs: String? = null,
 ) {
     companion object {
-        fun placeholder() = StartScreenState(
-            title = "Machi Koro Client",
+        fun placeholder() = LobbyScreenState(
             connectionStatus = ConnectionStatus.IDLE,
-            /*lobbyStatus = LobbyStatus.PLACEHOLDER,
+            lobbyStatus = LobbyStatus.WAITING_FOR_PLAYERS,
             playerList = emptyList(),
             maxPlayers = 4,
-            isHost = false,*/
+            isHost = false,
             loggedInAs = null,
         )
     }
