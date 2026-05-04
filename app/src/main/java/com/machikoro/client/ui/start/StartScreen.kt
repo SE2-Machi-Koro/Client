@@ -53,7 +53,7 @@ fun StartScreen(
     onLoginSubmit: () -> Unit,
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
-    onStartGame: () -> Unit = {},
+    //onStartGame: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val showPdfViewer = remember { mutableStateOf(false) }
@@ -77,6 +77,7 @@ fun StartScreen(
                     .align(Alignment.TopEnd)
                     .padding(top = 16.dp, end = 16.dp),
             )
+            /*
             LobbyControls(
                 state = state,
                 logoutState = logoutState,
@@ -85,6 +86,7 @@ fun StartScreen(
                 onShowLoginDialog = { showLoginDialog = true },
                 onLogoutSubmit = onLogoutSubmit,
             )
+             */
             if (showRegisterDialog) {
                 RegisterDialog(
                     state = registerDialogState,
@@ -143,7 +145,7 @@ private fun BoxScope.TitleHeader() {
             .padding(top = 55.dp)
     )
 }
-
+/*
 @Composable
 private fun LobbyControls(
     state: StartScreenState,
@@ -198,7 +200,7 @@ private fun LobbyControls(
         }
     }
 }
-
+*/
 @Composable
 private fun SecondaryActionButton(
     text: String,
@@ -222,7 +224,7 @@ private fun SecondaryActionButton(
         )
     }
 }
-
+/*
 @Composable
 private fun HostStartGameButton(enabled: Boolean, onStartGame: () -> Unit) {
     Button(
@@ -246,7 +248,7 @@ private fun LobbyStatus.toDisplayText(): String = when (this) {
     LobbyStatus.PLACEHOLDER -> "placeholder"
     LobbyStatus.WAITING_FOR_PLAYERS -> "waiting for players"
     LobbyStatus.READY -> "ready"
-}
+} */
 
 @Preview(
     showBackground = true,

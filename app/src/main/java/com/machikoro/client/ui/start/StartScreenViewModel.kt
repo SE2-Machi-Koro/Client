@@ -36,6 +36,8 @@ class StartScreenViewModel(
                 }
             }
         }
+        // LobbyScreenViewModel
+        /*
         viewModelScope.launch {
             webSocketClient.players.collect { players ->
                 mutableState.update { current ->
@@ -43,22 +45,24 @@ class StartScreenViewModel(
                 }
             }
         }
+        */
     }
 
+    /*
     fun onStartGame() {
         webSocketClient.sendGameStart()
-    }
+    } */
 
-    class Factory(
-        private val webSocketClient: WebSocketClient,
-        private val sessionStateHolder: SessionStateHolder,
-    ) : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            require(modelClass.isAssignableFrom(StartScreenViewModel::class.java)) {
-                "Unknown ViewModel class: ${modelClass.name}"
+        class Factory(
+            private val webSocketClient: WebSocketClient,
+            private val sessionStateHolder: SessionStateHolder,
+        ) : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                require(modelClass.isAssignableFrom(StartScreenViewModel::class.java)) {
+                    "Unknown ViewModel class: ${modelClass.name}"
+                }
+                return StartScreenViewModel(webSocketClient, sessionStateHolder) as T
             }
-            return StartScreenViewModel(webSocketClient, sessionStateHolder) as T
         }
     }
-}
