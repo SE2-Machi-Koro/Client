@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.machikoro.client.domain.model.state.LobbyStatus
-import com.machikoro.client.domain.model.state.StartScreenState
+import com.machikoro.client.domain.model.state.LobbyScreenState
 import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,11 +18,11 @@ class LobbyScreenViewModel(
     private val sessionStateHolder: SessionStateHolder,
 ) : ViewModel() {
 
-    val state: StateFlow<StartScreenState>
+    val state: StateFlow<LobbyScreenState>
         get() = mutableState.asStateFlow()
 
     private val mutableState = MutableStateFlow(
-        StartScreenState.placeholder().copy(
+        LobbyScreenState.placeholder().copy(
             lobbyStatus = LobbyStatus.WAITING_FOR_PLAYERS
         )
     )
