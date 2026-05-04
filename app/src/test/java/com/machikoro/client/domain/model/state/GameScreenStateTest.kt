@@ -1,12 +1,16 @@
 package com.machikoro.client.domain.model.state
 
 import com.machikoro.client.domain.enums.GamePhase
+import org.junit.Assert.assertEquals
+import org.junit.Test
 
-data class GameScreenState(
-    val gamePhase: GamePhase = GamePhase.NONE,
-    val connectionStatus: ConnectionStatus = ConnectionStatus.IDLE
-) {
-    companion object {
-        fun initial() = GameScreenState()
+class GameScreenStateTest {
+    @Test
+    fun initialUsesNoneGamePhaseAndIdleConnectionStatus() {
+        val state = GameScreenState.initial()
+
+        assertEquals(GamePhase.NONE, state.gamePhase)
+        assertEquals(ConnectionStatus.IDLE, state.connectionStatus)
+        assertEquals(emptyList<PlayerCoinState>(), state.players)
     }
 }

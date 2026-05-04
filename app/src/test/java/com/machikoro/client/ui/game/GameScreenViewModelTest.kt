@@ -2,12 +2,10 @@ package com.machikoro.client.ui.game
 
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
-import com.machikoro.client.network.websocket.DiceRollResult
-import com.machikoro.client.network.websocket.WebSocketClient
+import com.machikoro.client.domain.model.state.PlayerCoinState
+import com.machikoro.client.network.websocket.FakeWebSocketClient
 import com.machikoro.client.ui.start.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -27,6 +25,7 @@ class GameScreenViewModelTest {
 
         assertEquals(GamePhase.NONE, viewModel.state.value.gamePhase)
         assertEquals(ConnectionStatus.IDLE, viewModel.state.value.connectionStatus)
+        assertEquals(emptyList<PlayerCoinState>(), viewModel.state.value.players)
     }
 
     @Test
@@ -92,29 +91,52 @@ class GameScreenViewModelTest {
         assertEquals(GamePhase.BUY_OR_BUILD, viewModel.state.value.gamePhase)
     }
 
-    private class FakeWebSocketClient : WebSocketClient {
-        override val connectionStatus: StateFlow<ConnectionStatus>
-            get() = mutableConnectionStatus
+    @Test
+    fun playerCoinUpdatesAreReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+        val players = listOf(
+            PlayerCoinState(
+                id = "player-1",
+                displayName = "You",
+                coins = 3,
+                isCurrentPlayer = true
+            ),
+            PlayerCoinState(
+                id = "player-2",
+                displayName = "SoupCube",
+                coins = 5,
+                isActivePlayer = true
+            )
+        )
 
-        override val gamePhase: StateFlow<GamePhase>
-            get() = mutableGamePhase
+        fakeClient.emitPlayers(players)
+        advanceUntilIdle()
 
-        override val diceResult: StateFlow<DiceRollResult?>
-            get() = MutableStateFlow(null)
-
-        private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
-        private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
-
-        override fun connect() = Unit
-        override fun disconnect() = Unit
-        override fun rollDice(playerId: String, diceCount: Int) = Unit
-
-        fun emitConnectionStatus(status: ConnectionStatus) {
-            mutableConnectionStatus.value = status
-        }
-
-        fun emitGamePhase(phase: GamePhase) {
-            mutableGamePhase.value = phase
-        }
+        assertEquals(players, viewModel.state.value.players)
     }
+
+    @Test
+    fun playerCoinUpdatesReplacePreviousValuesForIncreasesAndDecreases() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(id = "player-1", displayName = "You", coins = 3),
+                PlayerCoinState(id = "player-2", displayName = "SoupCube", coins = 5)
+            )
+        )
+        advanceUntilIdle()
+
+        val updatedPlayers = listOf(
+            PlayerCoinState(id = "player-1", displayName = "You", coins = 8),
+            PlayerCoinState(id = "player-2", displayName = "SoupCube", coins = 2)
+        )
+        fakeClient.emitPlayers(updatedPlayers)
+        advanceUntilIdle()
+
+        assertEquals(updatedPlayers, viewModel.state.value.players)
+    }
+
 }

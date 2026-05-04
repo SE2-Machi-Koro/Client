@@ -12,5 +12,7 @@ object WebSocketContract {
     const val addUserDestination: String = "/app/chat.addUser"
     const val chatSendDestination: String = "/app/chat.send"
     const val rollDiceDestination: String = "/app/game.rollDice"
+    const val createLobbyDestination: String = "/app/lobby.create"
+    const val gameStartDestination: String = "/app/game.start"
     const val defaultSender: String = "android-client"
 }

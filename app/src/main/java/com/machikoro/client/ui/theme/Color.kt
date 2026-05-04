@@ -3,7 +3,8 @@ package com.machikoro.client.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // Design
-val PrimaryBlueDark = Color(0xFF004E7E)
+//val PrimaryBlueDark = Color(0xFF004E7E)
+val PrimaryBlueDark = Color(0xFF1E3A5F)
 val PrimaryBlueLight = Color(0xFFB5E1E5)
 val SecondaryBlueGrey = Color(0xFFC4D3DC)
 val White = Color(0xFFFFFFFF)
