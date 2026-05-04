@@ -24,7 +24,7 @@ import com.machikoro.client.ui.start.LogoutViewModel
 import com.machikoro.client.ui.start.RegisterDialogViewModel
 import com.machikoro.client.ui.start.StartScreenViewModel
 import com.machikoro.client.ui.theme.ClientTheme
-
+import com.machikoro.client.ui.lobby.LobbyScreenViewModel
 class MainActivity : ComponentActivity() {
     private val webSocketClient by lazy {
         OkHttpWebSocketClient(
@@ -44,6 +44,9 @@ class MainActivity : ComponentActivity() {
     private val homeViewModel by viewModels<HomeViewModel> {
         HomeViewModel.Factory(webSocketClient)
     }
+    private val lobbyScreenViewModel by viewModels<LobbyScreenViewModel> {
+        LobbyScreenViewModel.Factory(webSocketClient, SessionManager)
+    }
     private val registerDialogViewModel by viewModels<RegisterDialogViewModel> {
         RegisterDialogViewModel.Factory(authApi)
     }
@@ -61,6 +64,8 @@ class MainActivity : ComponentActivity() {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
+            val lobbyScreenState by lobbyScreenViewModel.state.collectAsState()
+            val isReady by lobbyScreenViewModel.isReady.collectAsState()
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
@@ -84,6 +89,8 @@ class MainActivity : ComponentActivity() {
                     AppRoot(
                         gameScreenState = gameScreenState,
                         startScreenState = startScreenState,
+                        lobbyScreenState = lobbyScreenState,
+                        isReady = isReady,
                         registerDialogState = registerDialogState,
                         loginDialogState = loginDialogState,
                         logoutState = logoutState,
@@ -96,7 +103,9 @@ class MainActivity : ComponentActivity() {
                         onLoginSubmit = loginDialogViewModel::submit,
                         onLoginDialogReset = loginDialogViewModel::reset,
                         onLogoutSubmit = logoutViewModel::submit,
-                        onStartGame = startScreenViewModel::onStartGame,
+                        onReadyToggle = lobbyScreenViewModel::onReadyToggle,
+                        onStartGame = lobbyScreenViewModel::onStartGame,
+                        onLeaveLobby = lobbyScreenViewModel::onLeaveLobby,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
                         loggedInAs = startScreenState.loggedInAs,
