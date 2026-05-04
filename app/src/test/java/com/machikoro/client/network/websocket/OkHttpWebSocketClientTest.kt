@@ -542,4 +542,89 @@ class OkHttpWebSocketClientTest {
         // Belt-and-braces — there should be no Authorization header in any frame.
         assertFalse(factory.socket.sentMessages.any { it.contains("Authorization") })
     }
+
+    @Test
+    fun lobbyCodeStartsAsNull() {
+        val client = newClient(FakeWebSocketFactory())
+
+        assertEquals(null, client.lobbyCode.value)
+    }
+
+    @Test
+    fun sendCreateLobbySendsStompFrameToCreateLobbyDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+
+        client.sendCreateLobby()
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND\n") &&
+                        it.contains("destination:/app/lobby.create") &&
+                        it.contains("\"type\":\"JOIN\"")
+            }
+        )
+    }
+
+    @Test
+    fun sendCreateLobbyWithoutConnectionIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.sendCreateLobby()
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
+    @Test
+    fun lobbyCreatedMessageUpdatesLobbyCode() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""
+            )
+        )
+
+        assertEquals("AJ25Z39", client.lobbyCode.value)
+    }
+
+    @Test
+    fun malformedLobbyCreatedMessageDoesNotCrashAndLeavesLobbyCodeNull() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+
+        factory.simulateText(gameActionFrame("not json"))
+
+        assertEquals(null, client.lobbyCode.value)
+    }
+
+    @Test
+    fun lobbyCreatedWithoutPayloadLeavesLobbyCodeNull() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+
+        factory.simulateText(
+            gameActionFrame("""{"type":"LOBBY_CREATED","sender":"SERVER"}""")
+        )
+
+        assertEquals(null, client.lobbyCode.value)
+    }
 }
