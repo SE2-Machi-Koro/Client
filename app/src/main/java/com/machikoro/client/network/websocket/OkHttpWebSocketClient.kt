@@ -120,7 +120,7 @@ class OkHttpWebSocketClient(
             return
         }
 
-        socket.send(
+        val sent = socket.send(
             StompFrame(
                 command = "SEND",
                 headers = mapOf(
@@ -131,8 +131,12 @@ class OkHttpWebSocketClient(
             ).serialize()
         )
 
-        mutableIsLobbyHost.value = true
-        Log.d(TAG, "Lobby create message sent")
+        if (sent) {
+            mutableIsLobbyHost.value = true
+            Log.d(TAG, "Lobby create message sent")
+        } else {
+            Log.w(TAG, "sendCreateLobby: failed to send create-lobby frame")
+        }
     }
 
     override fun sendGameStart() {
@@ -341,6 +345,16 @@ class OkHttpWebSocketClient(
         if (subscribedGameId == gameId) return
 
         val socket = webSocket ?: return
+
+        subscribedGameId?.let { oldId ->
+            socket.send(
+                StompFrame(
+                    command = "UNSUBSCRIBE",
+                    headers = mapOf("id" to "game-topic-$oldId")
+                ).serialize()
+            )
+        }
+
         val subscribeFrame = StompFrame(
             command = "SUBSCRIBE",
             headers = mapOf(
