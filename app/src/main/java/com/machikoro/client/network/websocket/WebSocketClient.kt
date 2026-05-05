@@ -16,6 +16,8 @@ interface WebSocketClient {
     // Holds the latest created lobby code received from the server.
     // Null if no lobby has been created yet.
     val lobbyCode: StateFlow<String?>
+    val activeGameId: StateFlow<Int?>
+    val isLobbyHost: StateFlow<Boolean>
 
     fun connect()
 
