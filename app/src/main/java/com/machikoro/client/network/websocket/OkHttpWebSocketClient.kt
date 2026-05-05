@@ -97,6 +97,7 @@ class OkHttpWebSocketClient(
         // before the user has tried to connect.
         if (currentSocket == null) {
             if (sessionStateHolder.session.value == null) {
+                resetGameState()
                 resetLobbyState()
             }
             return
