@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LogoutState
@@ -22,6 +23,8 @@ fun AppRoot(
     loginDialogState: LoginDialogState,
     logoutState: LogoutState,
     lobbyCode: String?,
+    activeGameId: Int?,
+    isLobbyHost: Boolean,
     loggedInAs: String?,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
@@ -41,7 +44,12 @@ fun AppRoot(
     } else if (loggedInAs != null) {
         HomeScreen(
             lobbyCode = lobbyCode,
+            isLobbyHost = isLobbyHost,
+            canStartGame = isLobbyHost &&
+                activeGameId != null &&
+                startScreenState.connectionStatus == ConnectionStatus.CONNECTED,
             onCreateLobbyClick = onCreateLobbyClick,
+            onStartGame = onStartGame,
             modifier = modifier
         )
     } else {
@@ -85,6 +93,8 @@ private fun AppRootStartScreenPreview() {
             onLoginDialogReset = {},
             onLogoutSubmit = {},
             lobbyCode = null,
+            activeGameId = null,
+            isLobbyHost = false,
             loggedInAs = null,
             onCreateLobbyClick = {},
         )
@@ -111,6 +121,8 @@ private fun AppRootGameScreenPreview() {
             onLoginDialogReset = {},
             onLogoutSubmit = {},
             lobbyCode = null,
+            activeGameId = null,
+            isLobbyHost = false,
             loggedInAs = null,
             onCreateLobbyClick = {},
         )

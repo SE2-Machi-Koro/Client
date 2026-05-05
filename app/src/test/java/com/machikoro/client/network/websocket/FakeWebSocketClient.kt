@@ -19,10 +19,18 @@ class FakeWebSocketClient : WebSocketClient {
     override val lobbyCode: StateFlow<String?>
         get() = mutableLobbyCode
 
+    override val activeGameId: StateFlow<Int?>
+        get() = mutableActiveGameId
+
+    override val isLobbyHost: StateFlow<Boolean>
+        get() = mutableIsLobbyHost
+
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
+    private val mutableActiveGameId = MutableStateFlow<Int?>(null)
+    private val mutableIsLobbyHost = MutableStateFlow(false)
 
     var gameStartSent = false
         private set
@@ -53,5 +61,12 @@ class FakeWebSocketClient : WebSocketClient {
     fun emitPlayers(players: List<PlayerCoinState>) {
         mutablePlayers.value = players
     }
-}
 
+    fun emitActiveGameId(gameId: Int?) {
+        mutableActiveGameId.value = gameId
+    }
+
+    fun emitIsLobbyHost(isHost: Boolean) {
+        mutableIsLobbyHost.value = isHost
+    }
+}

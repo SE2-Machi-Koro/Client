@@ -349,11 +349,18 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_CREATED","sender":"SERVER","gameId":10,"payload":{"lobbyCode":"AJ25Z39"}}"""
+            )
+        )
         client.sendGameStart()
 
         assertTrue(
             factory.socket.sentMessages.any {
-                it.startsWith("SEND\n") && it.contains("destination:/app/game.start")
+                it.startsWith("SEND\n") &&
+                    it.contains("destination:/app/game.start") &&
+                    it.contains("""{"gameId":10}""")
             }
         )
     }
@@ -367,6 +374,24 @@ class OkHttpWebSocketClientTest {
         client.sendGameStart()
 
         assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
+    @Test
+    fun sendGameStartWithoutActiveGameIdIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+
+        client.sendGameStart()
+
+        assertFalse(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND\n") && it.contains("destination:/app/game.start")
+            }
+        )
     }
 
     private fun gameActionFrame(body: String): String =
@@ -418,6 +443,7 @@ class OkHttpWebSocketClientTest {
         lateinit var request: Request
         var closed = false
         val sentMessages = mutableListOf<String>()
+        var sendResult = true
 
         override fun request(): Request = request
 
@@ -425,7 +451,7 @@ class OkHttpWebSocketClientTest {
 
         override fun send(text: String): Boolean {
             sentMessages += text
-            return true
+            return sendResult
         }
 
         override fun send(bytes: ByteString): Boolean = false
@@ -581,6 +607,35 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun sendCreateLobbySetsIsLobbyHostWhenSendSucceeds() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+
+        client.sendCreateLobby()
+
+        assertTrue(client.isLobbyHost.value)
+    }
+
+    @Test
+    fun sendCreateLobbyDoesNotSetIsLobbyHostWhenSendFails() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+
+        factory.socket.sendResult = false
+        client.sendCreateLobby()
+
+        assertFalse(client.isLobbyHost.value)
+    }
+
+    @Test
     fun lobbyCreatedMessageUpdatesLobbyCode() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -591,11 +646,52 @@ class OkHttpWebSocketClientTest {
 
         factory.simulateText(
             gameActionFrame(
-                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""
+                """{"type":"LOBBY_CREATED","sender":"SERVER","gameId":10,"payload":{"lobbyCode":"AJ25Z39"}}"""
             )
         )
 
         assertEquals("AJ25Z39", client.lobbyCode.value)
+        assertEquals(10, client.activeGameId.value)
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SUBSCRIBE\n") && it.contains("destination:/topic/game/10")
+            }
+        )
+    }
+
+    @Test
+    fun switchingGameTopicUnsubscribesFromPreviousTopicFirst() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+
+        // Subscribe to game 10
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_CREATED","sender":"SERVER","gameId":10,"payload":{"lobbyCode":"AAA"}}"""
+            )
+        )
+
+        // Switch to game 20 — should first unsubscribe from game 10
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_CREATED","sender":"SERVER","gameId":20,"payload":{"lobbyCode":"BBB"}}"""
+            )
+        )
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("UNSUBSCRIBE\n") && it.contains("id:game-topic-10")
+            }
+        )
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SUBSCRIBE\n") && it.contains("destination:/topic/game/20")
+            }
+        )
     }
 
     @Test
@@ -626,5 +722,51 @@ class OkHttpWebSocketClientTest {
         )
 
         assertEquals(null, client.lobbyCode.value)
+    }
+
+    @Test
+    fun gameStartedMessageUpdatesGamePhaseAndPlayers() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame(
+                """
+                {
+                  "type":"GAME_STARTED",
+                  "sender":"server",
+                  "gameId":10,
+                  "payload":{
+                    "game":{"id":10,"lobbyCode":"AJ25Z39","currentTurnIndex":1,"turnPhase":"ROLL_DICE"},
+                    "players":[
+                      {"id":1,"coins":3},
+                      {"id":2,"coins":5}
+                    ],
+                    "turnOrder":[1,2]
+                  }
+                }
+                """.trimIndent().replace("\n", "")
+            )
+        )
+
+        assertEquals(10, client.activeGameId.value)
+        assertEquals("AJ25Z39", client.lobbyCode.value)
+        assertEquals(GamePhase.ROLL_DICE, client.gamePhase.value)
+        assertEquals(
+            listOf(
+                PlayerCoinState(id = "1", displayName = "Player 1", coins = 3),
+                PlayerCoinState(
+                    id = "2",
+                    displayName = "Player 2",
+                    coins = 5,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true,
+                ),
+            ),
+            client.players.value
+        )
     }
 }
