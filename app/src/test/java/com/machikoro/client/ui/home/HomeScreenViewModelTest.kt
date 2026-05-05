@@ -23,6 +23,18 @@ class HomeScreenViewModelTest {
     }
 
     @Test
+    fun exposesActiveGameIdAndHostStateFromWebSocketClient() {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableActiveGameId.value = 42
+        fakeClient.mutableIsLobbyHost.value = true
+
+        assertEquals(42, viewModel.activeGameId.value)
+        assertTrue(viewModel.isLobbyHost.value)
+    }
+
+    @Test
     fun createLobbyConnectsAndSendsCreateLobbyRequest() {
         val fakeClient = FakeWebSocketClient()
         val viewModel = HomeViewModel(fakeClient)
@@ -31,6 +43,16 @@ class HomeScreenViewModelTest {
 
         assertTrue(fakeClient.connectCalled)
         assertTrue(fakeClient.sendCreateLobbyCalled)
+    }
+
+    @Test
+    fun startGameDelegatesToWebSocketClient() {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        viewModel.startGame()
+
+        assertTrue(fakeClient.sendGameStartCalled)
     }
 
     private class FakeWebSocketClient : WebSocketClient {
@@ -45,6 +67,10 @@ class HomeScreenViewModelTest {
 
         val mutableLobbyCode = MutableStateFlow<String?>(null)
         override val lobbyCode: StateFlow<String?> = mutableLobbyCode
+        val mutableActiveGameId = MutableStateFlow<Int?>(null)
+        override val activeGameId: StateFlow<Int?> = mutableActiveGameId
+        val mutableIsLobbyHost = MutableStateFlow(false)
+        override val isLobbyHost: StateFlow<Boolean> = mutableIsLobbyHost
 
         var connectCalled = false
         var disconnectCalled = false
