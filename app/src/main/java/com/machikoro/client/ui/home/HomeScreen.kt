@@ -24,11 +24,11 @@ import com.machikoro.client.ui.theme.*
 fun HomeScreen(
     // Latest lobby code received from the server after creating a lobby.
     lobbyCode: String? = null,
-
-    // Callbacks passed from outside, e.g. from Navigation or ViewModel.
-    // This keeps the UI separated from the app logic.
+    isLobbyHost: Boolean = false,
+    canStartGame: Boolean = false,
     onJoinLobbyClick: () -> Unit = {},
     onCreateLobbyClick: () -> Unit = {},
+    onStartGame: () -> Unit = {},
     onPublicLobbiesClick: () -> Unit = {},
     onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
@@ -122,6 +122,16 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     LobbyCodeRow(code = code)
+                    if (isLobbyHost) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = onStartGame,
+                            enabled = canStartGame,
+                            modifier = Modifier.width(140.dp)
+                        ) {
+                            Text(text = "Start Game")
+                        }
+                    }
                 }
             }
 
@@ -389,7 +399,9 @@ private fun HomeScreenPreview() {
 private fun HomeScreenWithLobbyCodePreview() {
     ClientTheme {
         HomeScreen(
-            lobbyCode = "AJ25Z39"
+            lobbyCode = "AJ25Z39",
+            isLobbyHost = true,
+            canStartGame = true,
         )
     }
 }
