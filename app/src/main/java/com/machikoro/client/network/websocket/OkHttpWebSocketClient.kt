@@ -339,16 +339,18 @@ class OkHttpWebSocketClient(
     private fun subscribeToGameTopic(gameId: Int) {
         if (subscribedGameId == gameId) return
 
-        webSocket?.send(
-            StompFrame(
-                command = "SUBSCRIBE",
-                headers = mapOf(
-                    "id" to "game-topic-$gameId",
-                    "destination" to "${WebSocketContract.gameTopicPrefix}/$gameId"
-                )
-            ).serialize()
-        )
-        subscribedGameId = gameId
+        val socket = webSocket ?: return
+        val subscribeFrame = StompFrame(
+            command = "SUBSCRIBE",
+            headers = mapOf(
+                "id" to "game-topic-$gameId",
+                "destination" to "${WebSocketContract.gameTopicPrefix}/$gameId"
+            )
+        ).serialize()
+
+        if (socket.send(subscribeFrame)) {
+            subscribedGameId = gameId
+        }
     }
 
     private fun sendJoinMessage() {
