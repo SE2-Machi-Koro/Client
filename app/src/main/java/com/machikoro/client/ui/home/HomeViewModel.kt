@@ -9,10 +9,16 @@ class HomeViewModel(
 ) : ViewModel() {
 
     val lobbyCode = webSocketClient.lobbyCode
+    val activeGameId = webSocketClient.activeGameId
+    val isLobbyHost = webSocketClient.isLobbyHost
 
     fun createLobby() {
         webSocketClient.connect()
         webSocketClient.sendCreateLobby()
+    }
+
+    fun startGame() {
+        webSocketClient.sendGameStart()
     }
 
     class Factory(
