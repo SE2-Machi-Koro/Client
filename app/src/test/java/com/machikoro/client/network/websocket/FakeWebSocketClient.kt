@@ -58,4 +58,3 @@ class FakeWebSocketClient : WebSocketClient {
         mutablePlayers.value = players
     }
 }
-
