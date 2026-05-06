@@ -21,7 +21,6 @@ fun AppRoot(
     gameScreenState: GameScreenState,
     startScreenState: StartScreenState,
     lobbyScreenState: LobbyScreenState,
-    isReady: Boolean,
     registerDialogState: RegisterDialogState,
     loginDialogState: LoginDialogState,
     logoutState: LogoutState,
@@ -47,7 +46,6 @@ fun AppRoot(
     } else if (lobbyCode != null) {
         LobbyScreen(
             state = lobbyScreenState,
-            isReady = isReady,
             onReadyToggle = onReadyToggle,
             onStartGame = onStartGame,
             onLeaveLobby = onLeaveLobby,
@@ -102,7 +100,6 @@ private fun AppRootStartScreenPreview() {
             loggedInAs = null,
             onCreateLobbyClick = {},
             lobbyScreenState = LobbyScreenState.placeholder(),
-            isReady = false,
             onReadyToggle = {},
             onStartGame = {},
             onLeaveLobby = {},
@@ -133,7 +130,6 @@ private fun AppRootGameScreenPreview() {
             loggedInAs = null,
             onCreateLobbyClick = {},
             lobbyScreenState = LobbyScreenState.placeholder(),
-            isReady = false,
             onReadyToggle = {},
             onStartGame = {},
             onLeaveLobby = {},

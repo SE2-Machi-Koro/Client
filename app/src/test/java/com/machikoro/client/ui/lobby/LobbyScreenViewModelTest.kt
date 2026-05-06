@@ -37,7 +37,7 @@ class LobbyScreenViewModelTest {
         assertEquals(4, viewModel.state.value.maxPlayers)
         assertFalse(viewModel.state.value.isHost)
         assertNull(viewModel.state.value.loggedInAs)
-        assertFalse(viewModel.isReady.value)
+        assertFalse(viewModel.state.value.isReady)
     }
 
     @Test
@@ -105,13 +105,13 @@ class LobbyScreenViewModelTest {
     fun onReadyToggleTogglesReadyState() = runTest {
         val viewModel = LobbyScreenViewModel(FakeWebSocketClient(), FakeSessionStateHolder())
 
-        assertFalse(viewModel.isReady.value)
+        assertFalse(viewModel.state.value.isReady)
 
         viewModel.onReadyToggle()
-        assertTrue(viewModel.isReady.value)
+        assertTrue(viewModel.state.value.isReady)
 
         viewModel.onReadyToggle()
-        assertFalse(viewModel.isReady.value)
+        assertFalse(viewModel.state.value.isReady)
     }
 
     /*@Test

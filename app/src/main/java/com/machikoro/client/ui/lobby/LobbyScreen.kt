@@ -36,7 +36,7 @@ fun LobbyScreen(
         currentUsername = state.loggedInAs,
         hostUsername = state.playerList.firstOrNull(), // temporary: first player = host
         isHost = state.isHost,
-        isReady = isReady,
+        isReady = state.isReady,
         onReadyToggle = onReadyToggle,
         onStartGame = onStartGame,
         onLeaveLobby = onLeaveLobby,

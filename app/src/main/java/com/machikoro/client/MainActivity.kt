@@ -65,7 +65,6 @@ class MainActivity : ComponentActivity() {
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
             val lobbyScreenState by lobbyScreenViewModel.state.collectAsState()
-            val isReady by lobbyScreenViewModel.isReady.collectAsState()
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
@@ -90,7 +89,6 @@ class MainActivity : ComponentActivity() {
                         gameScreenState = gameScreenState,
                         startScreenState = startScreenState,
                         lobbyScreenState = lobbyScreenState,
-                        isReady = isReady,
                         registerDialogState = registerDialogState,
                         loginDialogState = loginDialogState,
                         logoutState = logoutState,
