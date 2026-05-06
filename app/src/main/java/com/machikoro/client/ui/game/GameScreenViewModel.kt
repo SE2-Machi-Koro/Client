@@ -56,7 +56,7 @@ class GameScreenViewModel(
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            require(modelClass.isAssignableign(GameScreenViewModel::class.java)) {
+            require(modelClass.isAssignableFrom(GameScreenViewModel::class.java)) {
                 "Unknown ViewModel class: ${modelClass.name}"
             }
             return GameScreenViewModel(webSocketClient) as T
