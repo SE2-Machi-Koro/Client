@@ -1,10 +1,8 @@
 package com.machikoro.client.ui.start
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -26,12 +24,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.R
 import com.machikoro.client.domain.model.state.ConnectionStatus
-import com.machikoro.client.domain.model.state.LobbyStatus
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
-import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
 
 private val SecondaryActionShape = RoundedCornerShape(8.dp)
@@ -53,7 +49,6 @@ fun StartScreen(
     onLoginSubmit: () -> Unit,
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
-    onStartGame: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val showPdfViewer = remember { mutableStateOf(false) }
@@ -77,14 +72,7 @@ fun StartScreen(
                     .align(Alignment.TopEnd)
                     .padding(top = 16.dp, end = 16.dp),
             )
-            LobbyControls(
-                state = state,
-                logoutState = logoutState,
-                onStartGame = onStartGame,
-                onShowRegisterDialog = { showRegisterDialog = true },
-                onShowLoginDialog = { showLoginDialog = true },
-                onLogoutSubmit = onLogoutSubmit,
-            )
+
             if (showRegisterDialog) {
                 RegisterDialog(
                     state = registerDialogState,
@@ -143,62 +131,6 @@ private fun BoxScope.TitleHeader() {
             .padding(top = 55.dp)
     )
 }
-
-@Composable
-private fun LobbyControls(
-    state: StartScreenState,
-    logoutState: LogoutState,
-    onStartGame: () -> Unit,
-    onShowRegisterDialog: () -> Unit,
-    onShowLoginDialog: () -> Unit,
-    onLogoutSubmit: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "Players: ${state.playerList.size}/${state.maxPlayers}",
-            style = MaterialTheme.typography.bodyLarge
-        )
-        Text(
-            text = "Connection status: ${state.connectionStatus.toDisplayText()}",
-            style = MaterialTheme.typography.bodyLarge
-        )
-        Text(
-            text = "Lobby/start: ${state.lobbyStatus.toDisplayText()}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary
-        )
-        if (state.loggedInAs == null) {
-            SecondaryActionButton(
-                text = "Register",
-                onClick = onShowRegisterDialog,
-            )
-            SecondaryActionButton(
-                text = "Login",
-                onClick = onShowLoginDialog,
-            )
-        } else {
-            Text(
-                text = "Logged in as ${state.loggedInAs}",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-            SecondaryActionButton(
-                text = if (logoutState.submitting) "Logging out…" else "Logout",
-                onClick = onLogoutSubmit,
-                enabled = !logoutState.submitting,
-            )
-        }
-        if (state.isHost) {
-            HostStartGameButton(enabled = state.playerList.size >= 2, onStartGame = onStartGame)
-        }
-    }
-}
-
 @Composable
 private fun SecondaryActionButton(
     text: String,
@@ -221,31 +153,6 @@ private fun SecondaryActionButton(
             style = MaterialTheme.typography.labelLarge
         )
     }
-}
-
-@Composable
-private fun HostStartGameButton(enabled: Boolean, onStartGame: () -> Unit) {
-    Button(
-        onClick = onStartGame,
-        enabled = enabled,
-        modifier = Modifier.padding(top = 16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            disabledContainerColor = Color.Gray,
-            disabledContentColor = Color.LightGray,
-        )
-    ) {
-        Text(
-            text = "Start Game",
-            style = MaterialTheme.typography.labelLarge
-        )
-    }
-}
-
-private fun LobbyStatus.toDisplayText(): String = when (this) {
-    LobbyStatus.PLACEHOLDER -> "placeholder"
-    LobbyStatus.WAITING_FOR_PLAYERS -> "waiting for players"
-    LobbyStatus.READY -> "ready"
 }
 
 @Preview(

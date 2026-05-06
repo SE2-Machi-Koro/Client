@@ -77,8 +77,9 @@ val Typography = Typography(
     // Smaller text (14sp)
     bodyMedium = TextStyle(
         fontFamily = BodyFont,
-        fontWeight = FontWeight.Normal,
-        fontSize = 14.sp
+        fontWeight = FontWeight.Bold,
+        fontSize = 14.sp,
+        letterSpacing = 0.5.sp
     ),
 
     // Button text (20sp)
