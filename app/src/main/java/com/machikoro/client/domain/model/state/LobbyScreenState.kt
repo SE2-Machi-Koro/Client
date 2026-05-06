@@ -6,6 +6,7 @@ data class LobbyScreenState(
     val playerList: List<String> = emptyList(),
     val maxPlayers: Int = 4,
     val isHost: Boolean = false,
+    val isReady: Boolean = false,
     val loggedInAs: String? = null,
 ) {
     companion object {
@@ -15,6 +16,7 @@ data class LobbyScreenState(
             playerList = emptyList(),
             maxPlayers = 4,
             isHost = false,
+            isReady = false,
             loggedInAs = null,
         )
     }

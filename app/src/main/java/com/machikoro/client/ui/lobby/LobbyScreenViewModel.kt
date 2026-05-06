@@ -27,10 +27,6 @@ class LobbyScreenViewModel(
         )
     )
 
-    private val mutableIsReady = MutableStateFlow(false)
-    val isReady: StateFlow<Boolean>
-        get() = mutableIsReady.asStateFlow()
-
     init {
         observeSession()
         observePlayers()
@@ -88,9 +84,11 @@ class LobbyScreenViewModel(
     }
 
     fun onReadyToggle() {
-        mutableIsReady.update { current -> !current }
+        mutableState.update { current ->
+            current.copy(isReady = !current.isReady)
+        }
 
-        // Later:
+        // TODO: send ready status to backend when supported.
         // webSocketClient.sendReadyToggle()
     }
 
