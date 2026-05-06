@@ -66,5 +66,8 @@ class HomeScreenViewModelTest {
         override fun sendCreateLobby() {
             sendCreateLobbyCalled = true
         }
+        override fun clearLobbyCode() {
+            mutableLobbyCode.value = null
+        }
     }
 }
