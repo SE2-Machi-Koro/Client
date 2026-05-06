@@ -24,7 +24,6 @@ import com.machikoro.client.domain.model.state.LobbyScreenState
 @Composable
 fun LobbyScreen(
     state: LobbyScreenState,
-    isReady: Boolean = false,
     onReadyToggle: () -> Unit = {},
     onStartGame: () -> Unit = {},
     onLeaveLobby: () -> Unit = {},
@@ -34,7 +33,8 @@ fun LobbyScreen(
         playerNames = state.playerList,
         maxPlayers = state.maxPlayers,
         currentUsername = state.loggedInAs,
-        hostUsername = state.playerList.firstOrNull(), // temporary: first player = host
+        // TODO: Replace first-player-as-host fallback once backend exposes host information.
+        hostUsername = state.playerList.firstOrNull(),
         isHost = state.isHost,
         isReady = state.isReady,
         onReadyToggle = onReadyToggle,
@@ -146,9 +146,14 @@ fun LobbyScreen(
                         isHost = isHostPlayer
                     )
 
-                    StatusSlot(
-                        text = if (name == null) "" else if (isCurrentUser && !isReady) "nicht bereit" else "bereit"
-                    )
+                    // TODO: Replace placeholder ready state once backend exposes readiness per player.
+                    val statusText = when {
+                        name == null -> ""
+                        isCurrentUser && !isReady -> "nicht bereit"
+                        else -> "bereit"
+                    }
+
+                    StatusSlot(text = statusText)
                 }
             }
 

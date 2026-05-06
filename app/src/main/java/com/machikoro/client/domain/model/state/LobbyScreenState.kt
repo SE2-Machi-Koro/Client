@@ -4,8 +4,8 @@ data class LobbyScreenState(
     val connectionStatus: ConnectionStatus,
     val lobbyStatus: LobbyStatus,
     val playerList: List<String> = emptyList(),
-    val maxPlayers: Int = 4,
-    val isHost: Boolean = false,
+    // TODO: Replace hardcoded maxPlayers once server provides lobby configuration.
+    val maxPlayers: Int = 4,    val isHost: Boolean = false,
     val isReady: Boolean = false,
     val loggedInAs: String? = null,
 ) {
