@@ -99,8 +99,7 @@ class LobbyScreenViewModel(
     }
 
     fun onLeaveLobby() {
-        // Later:
-        // webSocketClient.sendLeaveLobby()
+        // TODO: notify backend when leave-lobby endpoint/event exists.
     }
 
     class Factory(

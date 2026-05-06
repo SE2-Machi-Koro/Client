@@ -103,8 +103,10 @@ class MainActivity : ComponentActivity() {
                         onLogoutSubmit = logoutViewModel::submit,
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
                         onStartGame = lobbyScreenViewModel::onStartGame,
-                        onLeaveLobby = lobbyScreenViewModel::onLeaveLobby,
-                        modifier = Modifier.padding(innerPadding),
+                        onLeaveLobby = {
+                            lobbyScreenViewModel.onLeaveLobby()
+                            homeViewModel.clearLobbyCode()
+                        },                        modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
                         loggedInAs = startScreenState.loggedInAs,
                         onCreateLobbyClick = homeViewModel::createLobby,
