@@ -38,7 +38,9 @@ class LobbyScreenViewModel(
             sessionStateHolder.session.collect { session ->
                 mutableState.update { current ->
                     current.copy(
-                        loggedInAs = session?.username
+                        loggedInAs = session?.username,
+                        isHost = session?.username != null &&
+                                current.playerList.firstOrNull() == session.username
                     )
                 }
             }
@@ -49,8 +51,12 @@ class LobbyScreenViewModel(
         viewModelScope.launch {
             webSocketClient.players.collect { players ->
                 mutableState.update { current ->
+                    val playerNames = players.map { it.displayName }
+
                     current.copy(
-                        playerList = players.map { it.displayName },
+                        playerList = playerNames,
+                        isHost = current.loggedInAs != null &&
+                                playerNames.firstOrNull() == current.loggedInAs,
                         lobbyStatus = if (players.size >= 2) {
                             LobbyStatus.READY
                         } else {
