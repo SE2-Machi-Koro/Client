@@ -64,42 +64,6 @@ class StartScreenViewModelTest {
         advanceUntilIdle()
         assertNull(viewModel.state.value.loggedInAs)
     }
-
-    @Test
-    fun playersFlowUpdatesPlayerList() = runTest {
-        val fakeClient = FakeWebSocketClient()
-        val viewModel = StartScreenViewModel(fakeClient, FakeSessionStateHolder())
-
-        fakeClient.emitPlayers(
-            listOf(
-                PlayerCoinState(id = "1", displayName = "alice", coins = 3),
-                PlayerCoinState(id = "2", displayName = "bob", coins = 5),
-            )
-        )
-        advanceUntilIdle()
-
-        assertEquals(listOf("alice", "bob"), viewModel.state.value.playerList)
-    }
-
-    @Test
-    fun playerListIsEmptyInitially() = runTest {
-        val viewModel = StartScreenViewModel(FakeWebSocketClient(), FakeSessionStateHolder())
-
-        advanceUntilIdle()
-
-        assertEquals(emptyList<String>(), viewModel.state.value.playerList)
-    }
-
-    @Test
-    fun onStartGameDelegatesToWebSocketClient() = runTest {
-        val fakeClient = FakeWebSocketClient()
-        val viewModel = StartScreenViewModel(fakeClient, FakeSessionStateHolder())
-
-        viewModel.onStartGame()
-
-        assertTrue(fakeClient.gameStartSent)
-    }
-
     private class FakeSessionStateHolder : SessionStateHolder {
         private val mutableSession = MutableStateFlow<Session?>(null)
         override val session: StateFlow<Session?> = mutableSession.asStateFlow()

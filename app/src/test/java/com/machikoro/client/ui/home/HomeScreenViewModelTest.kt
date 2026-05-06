@@ -6,7 +6,9 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,6 +33,20 @@ class HomeScreenViewModelTest {
 
         assertTrue(fakeClient.connectCalled)
         assertTrue(fakeClient.sendCreateLobbyCalled)
+    }
+
+    @Test
+    fun clearLobbyCodeClearsCurrentLobbyCode() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableLobbyCode.value = "ABC123"
+
+        assertEquals("ABC123", viewModel.lobbyCode.value)
+
+        viewModel.clearLobbyCode()
+
+        assertNull(viewModel.lobbyCode.value)
     }
 
     private class FakeWebSocketClient : WebSocketClient {
@@ -65,6 +81,9 @@ class HomeScreenViewModelTest {
 
         override fun sendCreateLobby() {
             sendCreateLobbyCalled = true
+        }
+        override fun clearLobbyCode() {
+            mutableLobbyCode.value = null
         }
     }
 }
