@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.model.state.LobbyScreenState
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
@@ -42,6 +43,13 @@ class AppRootTest {
                     onLoginSubmit = {},
                     onLoginDialogReset = {},
                     onLogoutSubmit = {},
+                    lobbyScreenState = LobbyScreenState.placeholder(),
+                    lobbyCode = null,
+                    loggedInAs = null,
+                    onCreateLobbyClick = {},
+                    onReadyToggle = {},
+                    onStartGame = {},
+                    onLeaveLobby = {},
                 )
             }
         }
@@ -69,6 +77,13 @@ class AppRootTest {
                     onLoginSubmit = {},
                     onLoginDialogReset = {},
                     onLogoutSubmit = {},
+                    lobbyScreenState = LobbyScreenState.placeholder(),
+                    lobbyCode = null,
+                    loggedInAs = null,
+                    onCreateLobbyClick = {},
+                    onReadyToggle = {},
+                    onStartGame = {},
+                    onLeaveLobby = {},
                 )
             }
         }
@@ -97,6 +112,13 @@ class AppRootTest {
                     onLoginSubmit = {},
                     onLoginDialogReset = {},
                     onLogoutSubmit = {},
+                    lobbyScreenState = LobbyScreenState.placeholder(),
+                    lobbyCode = null,
+                    loggedInAs = null,
+                    onCreateLobbyClick = {},
+                    onReadyToggle = {},
+                    onStartGame = {},
+                    onLeaveLobby = {},
                 )
             }
         }

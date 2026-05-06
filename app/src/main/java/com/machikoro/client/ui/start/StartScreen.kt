@@ -1,8 +1,10 @@
 package com.machikoro.client.ui.start
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -72,6 +74,23 @@ fun StartScreen(
                     .align(Alignment.TopEnd)
                     .padding(top = 16.dp, end = 16.dp),
             )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp),
+            ) {
+                SecondaryActionButton(
+                    text = "Register",
+                    onClick = { showRegisterDialog = true },
+                )
+                SecondaryActionButton(
+                    text = "Login",
+                    onClick = { showLoginDialog = true },
+                )
+            }
 
             if (showRegisterDialog) {
                 RegisterDialog(
