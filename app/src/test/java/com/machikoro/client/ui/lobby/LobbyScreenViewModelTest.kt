@@ -114,14 +114,49 @@ class LobbyScreenViewModelTest {
         assertFalse(viewModel.state.value.isReady)
     }
 
-    /*@Test
+    @Test
     fun onStartGameDelegatesToWebSocketClientWhenHostAndEnoughPlayers() = runTest {
         val fakeClient = FakeWebSocketClient()
-        val viewModel = LobbyScreenViewModel(fakeClient, FakeSessionStateHolder())
+        val sessionHolder = FakeSessionStateHolder()
+        val viewModel = LobbyScreenViewModel(fakeClient, sessionHolder)
 
-        // This test only works if you can set isHost=true in state.
-        // If isHost is not updated from backend yet, skip this test for now.
-    }*/
+        sessionHolder.signIn(token = "uuid-123", username = "alice")
+
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(id = "1", displayName = "alice", coins = 3),
+                PlayerCoinState(id = "2", displayName = "bob", coins = 5),
+            )
+        )
+
+        advanceUntilIdle()
+
+        viewModel.onStartGame()
+
+        assertTrue(fakeClient.gameStartSent)
+    }
+
+    @Test
+    fun onStartGameDoesNotSendWhenUserIsNotHost() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val sessionHolder = FakeSessionStateHolder()
+        val viewModel = LobbyScreenViewModel(fakeClient, sessionHolder)
+
+        sessionHolder.signIn(token = "uuid-123", username = "bob")
+
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(id = "1", displayName = "alice", coins = 3),
+                PlayerCoinState(id = "2", displayName = "bob", coins = 5),
+            )
+        )
+
+        advanceUntilIdle()
+
+        viewModel.onStartGame()
+
+        assertFalse(fakeClient.gameStartSent)
+    }
 
     private class FakeSessionStateHolder : SessionStateHolder {
         private val mutableSession = MutableStateFlow<Session?>(null)
