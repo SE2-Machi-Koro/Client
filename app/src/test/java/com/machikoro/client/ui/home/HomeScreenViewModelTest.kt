@@ -3,6 +3,7 @@ package com.machikoro.client.ui.home
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
+import com.machikoro.client.network.websocket.DiceRollResult
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,6 +41,9 @@ class HomeScreenViewModelTest {
         override val gamePhase: StateFlow<GamePhase> =
             MutableStateFlow(GamePhase.NONE)
 
+        override val diceResult: StateFlow<DiceRollResult?> =
+            MutableStateFlow(null)
+
         override val players: StateFlow<List<PlayerCoinState>> =
             MutableStateFlow(emptyList())
 
@@ -51,20 +55,10 @@ class HomeScreenViewModelTest {
         var sendGameStartCalled = false
         var sendCreateLobbyCalled = false
 
-        override fun connect() {
-            connectCalled = true
-        }
-
-        override fun disconnect() {
-            disconnectCalled = true
-        }
-
-        override fun sendGameStart() {
-            sendGameStartCalled = true
-        }
-
-        override fun sendCreateLobby() {
-            sendCreateLobbyCalled = true
-        }
+        override fun connect() { connectCalled = true }
+        override fun disconnect() { disconnectCalled = true }
+        override fun rollDice(playerId: String, diceCount: Int) = Unit
+        override fun sendGameStart() { sendGameStartCalled = true }
+        override fun sendCreateLobby() { sendCreateLobbyCalled = true }
     }
 }
