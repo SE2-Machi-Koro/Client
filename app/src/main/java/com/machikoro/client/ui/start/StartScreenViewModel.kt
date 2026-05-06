@@ -36,22 +36,7 @@ class StartScreenViewModel(
                 }
             }
         }
-        // LobbyScreenViewModel
-        /*
-        viewModelScope.launch {
-            webSocketClient.players.collect { players ->
-                mutableState.update { current ->
-                    current.copy(playerList = players.map { it.displayName })
-                }
-            }
-        }
-        */
     }
-
-    /*
-    fun onStartGame() {
-        webSocketClient.sendGameStart()
-    } */
 
         class Factory(
             private val webSocketClient: WebSocketClient,
