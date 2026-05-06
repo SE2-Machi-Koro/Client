@@ -83,11 +83,16 @@ class OkHttpWebSocketClient(
     }
 
     override fun rollDice(playerId: String, diceCount: Int) {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "rollDice called but no active WebSocket connection")
+            return
+        }
         val body = JSONObject().apply {
             put("playerId", playerId)
             put("diceCount", diceCount)
         }.toString()
-        webSocket?.send(
+        socket.send(
             StompFrame(
                 command = "SEND",
                 headers = mapOf(
@@ -202,9 +207,19 @@ class OkHttpWebSocketClient(
             }
             "MESSAGE" -> {
                 Log.d(TAG, "STOMP message received: ${frame.body}")
-                handleLobbyCreated(frame.body)
-                parseGameActionPhase(frame.body)?.let { mutableGamePhase.value = it }
-                handleDiceResult(frame.body)
+                val body = frame.body
+                if (body.isNullOrBlank()) return
+                val json = try {
+                    JSONObject(body)
+                } catch (e: JSONException) {
+                    Log.w(TAG, "Failed to parse MESSAGE frame as JSON: ${e.message}")
+                    return
+                }
+                when (json.optString("type")) {
+                    LOBBY_CREATED_TYPE -> handleLobbyCreated(json)
+                    GAME_ACTION_TYPE -> parseGameActionPhase(json)?.let { mutableGamePhase.value = it }
+                    ROLL_DICE_TYPE -> handleDiceResult(json)
+                }
             }
             "ERROR" -> {
                 Log.e(TAG, "STOMP error frame received: ${frame.body}")
@@ -213,15 +228,7 @@ class OkHttpWebSocketClient(
         }
     }
 
-    private fun handleLobbyCreated(body: String) {
-        if (body.isBlank()) return
-        val json = try {
-            JSONObject(body)
-        } catch (e: JSONException) {
-            Log.w(TAG, "Failed to parse lobby message as JSON: ${e.message}")
-            return
-        }
-        if (json.optString("type") != LOBBY_CREATED_TYPE) return
+    private fun handleLobbyCreated(json: JSONObject) {
         val payload = json.optJSONObject("payload") ?: return
         val code = payload.optString("lobbyCode")
         if (code.isNotBlank()) {
@@ -230,34 +237,18 @@ class OkHttpWebSocketClient(
         }
     }
 
-    private fun parseGameActionPhase(body: String): GamePhase? {
-        if (body.isBlank()) return null
-        val json = try {
-            JSONObject(body)
-        } catch (e: JSONException) {
-            Log.w(TAG, "Failed to parse MESSAGE frame as JSON: ${e.message}")
-            return null
-        }
-        if (json.optString("type") != GAME_ACTION_TYPE) return null
+    private fun parseGameActionPhase(json: JSONObject): GamePhase? {
         val payload = json.optJSONObject("payload") ?: return null
         val phaseName = payload.optString("turnPhase").takeIf { it.isNotEmpty() } ?: return null
         return runCatching { GamePhase.valueOf(phaseName) }.getOrNull()
     }
 
-    private fun handleDiceResult(body: String?) {
-        if (body.isNullOrBlank()) return
-        val json = try {
-            JSONObject(body)
-        } catch (e: JSONException) {
-            Log.e(TAG, "Failed to parse dice result: $body", e)
-            return
-        }
-        if (json.optString("type") != ROLL_DICE_TYPE) return
+    private fun handleDiceResult(json: JSONObject) {
         val payload = json.optJSONObject("payload") ?: return
         val total = payload.optInt("total", 0)
         val diceArray = payload.optJSONArray("dice")
         val dice = if (diceArray != null) {
-            (0 until diceArray.length()).map { diceArray.getInt(it) }
+            (0 until diceArray.length()).map { diceArray.optInt(it, 0) }
         } else {
             listOf(total)
         }
@@ -309,6 +300,7 @@ class OkHttpWebSocketClient(
     private fun resetGameState() {
         mutableGamePhase.value = GamePhase.NONE
         mutablePlayers.value = emptyList()
+        mutableDiceResult.value = null
     }
 
     private fun websocketHostHeader(): String {
