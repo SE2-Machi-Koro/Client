@@ -12,7 +12,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
 import com.machikoro.client.config.AppConfig
+import com.machikoro.client.domain.session.DataStoreSessionStorage
 import com.machikoro.client.domain.session.SessionManager
 import com.machikoro.client.network.auth.AuthApiFactory
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
@@ -24,6 +26,7 @@ import com.machikoro.client.ui.start.LogoutViewModel
 import com.machikoro.client.ui.start.RegisterDialogViewModel
 import com.machikoro.client.ui.start.StartScreenViewModel
 import com.machikoro.client.ui.theme.ClientTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val webSocketClient by lazy {
@@ -56,6 +59,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        SessionManager.attach(DataStoreSessionStorage(applicationContext))
+        lifecycleScope.launch { SessionManager.hydrate() }
         enableEdgeToEdge()
         setContent {
             val startScreenState by startScreenViewModel.state.collectAsState()
