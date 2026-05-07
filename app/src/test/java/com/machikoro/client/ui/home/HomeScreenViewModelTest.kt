@@ -60,5 +60,6 @@ class HomeScreenViewModelTest {
         override fun rollDice(playerId: String, diceCount: Int) = Unit
         override fun sendGameStart() { sendGameStartCalled = true }
         override fun sendCreateLobby() { sendCreateLobbyCalled = true }
+        override fun clearLobbyCode() { mutableLobbyCode.value = null }
     }
 }
