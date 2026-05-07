@@ -37,16 +37,12 @@ class HomeScreenViewModelTest {
     private class FakeWebSocketClient : WebSocketClient {
         override val connectionStatus: StateFlow<ConnectionStatus> =
             MutableStateFlow(ConnectionStatus.IDLE)
-
         override val gamePhase: StateFlow<GamePhase> =
             MutableStateFlow(GamePhase.NONE)
-
         override val diceResult: StateFlow<DiceRollResult?> =
             MutableStateFlow(null)
-
         override val players: StateFlow<List<PlayerCoinState>> =
             MutableStateFlow(emptyList())
-
         val mutableLobbyCode = MutableStateFlow<String?>(null)
         override val lobbyCode: StateFlow<String?> = mutableLobbyCode
 

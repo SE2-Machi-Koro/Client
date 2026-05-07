@@ -5,12 +5,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.model.state.LobbyScreenState
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.ui.game.GameScreen
 import com.machikoro.client.ui.home.HomeScreen
+import com.machikoro.client.ui.lobby.LobbyScreen
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
 
@@ -18,6 +20,7 @@ import com.machikoro.client.ui.theme.ClientTheme
 fun AppRoot(
     gameScreenState: GameScreenState,
     startScreenState: StartScreenState,
+    lobbyScreenState: LobbyScreenState,
     registerDialogState: RegisterDialogState,
     loginDialogState: LoginDialogState,
     logoutState: LogoutState,
@@ -33,11 +36,21 @@ fun AppRoot(
     onCreateLobbyClick: () -> Unit,
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
-    onStartGame: () -> Unit = {},
+    onReadyToggle: () -> Unit,
+    onStartGame: () -> Unit,
+    onLeaveLobby: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (gameScreenState.gamePhase != GamePhase.NONE) {
         GameScreen(state = gameScreenState, modifier = modifier)
+    } else if (lobbyCode != null) {
+        LobbyScreen(
+            state = lobbyScreenState,
+            onReadyToggle = onReadyToggle,
+            onStartGame = onStartGame,
+            onLeaveLobby = onLeaveLobby,
+            modifier = modifier
+        )
     } else if (loggedInAs != null) {
         HomeScreen(
             lobbyCode = lobbyCode,
@@ -59,7 +72,6 @@ fun AppRoot(
             onLoginSubmit = onLoginSubmit,
             onLoginDialogReset = onLoginDialogReset,
             onLogoutSubmit = onLogoutSubmit,
-            onStartGame = onStartGame,
             modifier = modifier
         )
     }
@@ -87,6 +99,10 @@ private fun AppRootStartScreenPreview() {
             lobbyCode = null,
             loggedInAs = null,
             onCreateLobbyClick = {},
+            lobbyScreenState = LobbyScreenState.placeholder(),
+            onReadyToggle = {},
+            onStartGame = {},
+            onLeaveLobby = {},
         )
     }
 }
@@ -113,6 +129,10 @@ private fun AppRootGameScreenPreview() {
             lobbyCode = null,
             loggedInAs = null,
             onCreateLobbyClick = {},
+            lobbyScreenState = LobbyScreenState.placeholder(),
+            onReadyToggle = {},
+            onStartGame = {},
+            onLeaveLobby = {},
         )
     }
 }

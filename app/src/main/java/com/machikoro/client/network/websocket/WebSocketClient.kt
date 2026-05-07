@@ -16,5 +16,8 @@ interface WebSocketClient {
     fun disconnect()
     fun rollDice(playerId: String, diceCount: Int)
     fun sendCreateLobby()
+
+    fun clearLobbyCode()
+
     fun sendGameStart()
 }
