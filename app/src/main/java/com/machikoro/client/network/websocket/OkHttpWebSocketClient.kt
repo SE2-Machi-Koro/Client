@@ -139,6 +139,10 @@ class OkHttpWebSocketClient(
         }
     }
 
+    override fun clearLobbyCode() {
+        mutableLobbyCode.value = null
+    }
+
     override fun sendGameStart() {
         val socket = synchronized(this) { webSocket }
         if (socket == null) {
