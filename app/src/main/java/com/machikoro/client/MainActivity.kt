@@ -8,9 +8,12 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.machikoro.client.config.AppConfig
@@ -75,6 +78,8 @@ class MainActivity : ComponentActivity() {
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
 
+            val snackbarHostState = remember { SnackbarHostState() }
+
             // Drive WebSocket lifecycle from session changes during the foreground.
             // onStart/onStop handle the activity-lifecycle case; this handles the
             // user-logs-in-or-out-while-app-is-open case. connect() and disconnect()
@@ -89,8 +94,25 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Server #159 contract: STOMP CONNECT with a missing/expired token
+            // produces a STOMP ERROR frame. The transport layer surfaces that
+            // as `authRejections`; clearing the local session here keeps the
+            // policy decision in the UI layer rather than baking signOut into
+            // the network client.
+            LaunchedEffect(Unit) {
+                webSocketClient.authRejections.collect {
+                    SessionManager.signOut()
+                    snackbarHostState.showSnackbar(
+                        "Sitzung abgelaufen, bitte erneut anmelden"
+                    )
+                }
+            }
+
             ClientTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                ) { innerPadding ->
                     AppRoot(
                         gameScreenState = gameScreenState,
                         startScreenState = startScreenState,

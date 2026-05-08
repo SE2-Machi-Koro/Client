@@ -6,8 +6,12 @@ import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.session.SessionStateHolder
 import java.net.URI
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.Request
 import okhttp3.Response
@@ -33,10 +37,20 @@ class OkHttpWebSocketClient(
     override val lobbyCode: StateFlow<String?> // Internal state for the latest lobby code returned by the backend
         get() = mutableLobbyCode.asStateFlow()
 
+    override val authRejections: SharedFlow<Unit>
+        get() = mutableAuthRejections.asSharedFlow()
+
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null) // Exposes lobby code as read-only StateFlow to UI/ViewModels
+    // Buffer 1 + DROP_OLDEST so tryEmit never fails on the OkHttp listener
+    // thread when nobody is collecting yet (e.g. emission during startup
+    // before MainActivity wires its collector).
+    private val mutableAuthRejections = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     private val frameBuffer = StringBuilder()
 
     @Volatile
@@ -215,7 +229,20 @@ class OkHttpWebSocketClient(
 
             "ERROR" -> {
                 Log.e(TAG, "STOMP error frame received: ${frame.body}")
-                mutableConnectionStatus.value = ConnectionStatus.ERROR
+                if (isAuthRejection(frame.body)) {
+                    // Server rejected the CONNECT for auth reasons (#159 path):
+                    // missing/malformed/unrecognised token. The connection will
+                    // be closed by the server; flip to DISCONNECTED rather than
+                    // ERROR because this is a recoverable, user-actionable
+                    // state, not a transport failure.
+                    mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
+                    resetGameState()
+                    // Invariant: extraBufferCapacity=1 + DROP_OLDEST means
+                    // tryEmit is non-suspending and never returns false.
+                    mutableAuthRejections.tryEmit(Unit)
+                } else {
+                    mutableConnectionStatus.value = ConnectionStatus.ERROR
+                }
             }
         }
     }
@@ -297,6 +324,13 @@ class OkHttpWebSocketClient(
         }
     }
 
+    // Mirrors the literal body produced by Server #159's StompAuthChannelInterceptor
+    // (GENERIC_AUTH_FAILURE = "Authentication failed"). Strict equality — if the
+    // server message ever changes, fail closed (fall through to generic ERROR
+    // status) rather than match overly loosely.
+    private fun isAuthRejection(body: String): Boolean =
+        body == AUTH_REJECTION_BODY
+
     private fun resetGameState() {
         mutableGamePhase.value = GamePhase.NONE
         // Keep #37 coin display clean after game end/disconnect until #45 reset flow owns this state.
@@ -327,6 +361,10 @@ class OkHttpWebSocketClient(
         private const val AUTH_HEADER = "Authorization"
         private const val BEARER_PREFIX = "Bearer "
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
+        // Frozen contract: matches GENERIC_AUTH_FAILURE on the server's
+        // StompAuthChannelInterceptor. If the server message changes, this
+        // client will silently fall through to the generic ERROR handling.
+        private const val AUTH_REJECTION_BODY = "Authentication failed"
         private const val GAME_START_BODY =
             """{"type":"START","sender":"${WebSocketContract.defaultSender}"}"""
     }
