@@ -270,7 +270,10 @@ class OkHttpWebSocketClient(
 
         val payload = json.optJSONObject("payload") ?: return
         val code = payload.optString("lobbyCode")
-        val gameId = json.optIntOrNull("gameId")
+        // gameId may live at the top level or inside the payload object depending on the
+        // server version being targeted. Check both so lobby creation always yields a
+        // valid activeGameId and the "Start Game" button can be enabled.
+        val gameId = json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId")
 
         if (code.isNotBlank()) {
             Log.d(TAG, "Lobby created with code: $code")
@@ -401,9 +404,18 @@ class OkHttpWebSocketClient(
 
     private fun JSONObject.toPlayerCoinState(currentPlayerId: Int?): PlayerCoinState {
         val playerId = optInt("id")
+        // Prefer the real username returned by the server (may be keyed as "username",
+        // "name", or "displayName"). Falling back to the numeric "Player N" label is
+        // only a last resort so that host-detection logic that compares session username
+        // against player display names has a real value to work with.
+        val resolvedDisplayName =
+            optString("username").takeIf { it.isNotBlank() }
+                ?: optString("name").takeIf { it.isNotBlank() }
+                ?: optString("displayName").takeIf { it.isNotBlank() }
+                ?: "Player $playerId"
         return PlayerCoinState(
             id = playerId.toString(),
-            displayName = "Player $playerId",
+            displayName = resolvedDisplayName,
             coins = optInt("coins"),
             isCurrentPlayer = playerId == currentPlayerId,
             isActivePlayer = playerId == currentPlayerId,
