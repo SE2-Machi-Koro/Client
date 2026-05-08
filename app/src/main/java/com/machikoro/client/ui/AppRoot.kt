@@ -35,8 +35,8 @@ fun AppRoot(
     onCreateLobbyClick: () -> Unit,
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
+    modifier: Modifier = Modifier,
     onStartGame: () -> Unit = {},
-    modifier: Modifier = Modifier
 ) {
     if (gameScreenState.gamePhase != GamePhase.NONE) {
         GameScreen(state = gameScreenState, modifier = modifier)
