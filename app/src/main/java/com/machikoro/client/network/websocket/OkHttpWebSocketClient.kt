@@ -142,9 +142,18 @@ class OkHttpWebSocketClient(
         }
 
         val gameId = mutableActiveGameId.value
-        if (gameId == null) {
-            Log.w(TAG, "sendGameStart called but no active gameId is available")
-            return
+        val lobbyCode = mutableLobbyCode.value
+
+        // gameId is populated from the LOBBY_CREATED payload when the server returns it.
+        // Fall back to a lobby-code-only start request so the host is never permanently
+        // blocked if the server doesn't echo the gameId during lobby creation.
+        val body = when {
+            gameId != null -> """{"gameId":$gameId}"""
+            lobbyCode != null -> """{"lobbyCode":"$lobbyCode"}"""
+            else -> {
+                Log.w(TAG, "sendGameStart called but neither gameId nor lobbyCode is available")
+                return
+            }
         }
 
         socket.send(
@@ -154,10 +163,10 @@ class OkHttpWebSocketClient(
                     "destination" to WebSocketContract.gameStartDestination,
                     "content-type" to "application/json"
                 ),
-                body = """{"gameId":$gameId}"""
+                body = body
             ).serialize()
         )
-        Log.d(TAG, "Game start message sent")
+        Log.d(TAG, "Game start message sent (gameId=$gameId, lobbyCode=$lobbyCode)")
     }
 
     private val listener = object : WebSocketListener() {

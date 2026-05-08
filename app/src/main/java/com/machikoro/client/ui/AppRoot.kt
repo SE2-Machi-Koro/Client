@@ -23,7 +23,6 @@ fun AppRoot(
     loginDialogState: LoginDialogState,
     logoutState: LogoutState,
     lobbyCode: String?,
-    activeGameId: Int?,
     isLobbyHost: Boolean,
     loggedInAs: String?,
     onRegisterUsernameChange: (String) -> Unit,
@@ -45,8 +44,10 @@ fun AppRoot(
         HomeScreen(
             lobbyCode = lobbyCode,
             isLobbyHost = isLobbyHost,
+            // activeGameId may not be available until the server echoes it back in
+            // LOBBY_CREATED (payload.gameId). Do not block the host button on it —
+            // sendGameStart() guards the actual WebSocket send independently.
             canStartGame = isLobbyHost &&
-                activeGameId != null &&
                 startScreenState.connectionStatus == ConnectionStatus.CONNECTED,
             onCreateLobbyClick = onCreateLobbyClick,
             onStartGame = onStartGame,
@@ -93,7 +94,6 @@ private fun AppRootStartScreenPreview() {
             onLoginDialogReset = {},
             onLogoutSubmit = {},
             lobbyCode = null,
-            activeGameId = null,
             isLobbyHost = false,
             loggedInAs = null,
             onCreateLobbyClick = {},
@@ -121,7 +121,6 @@ private fun AppRootGameScreenPreview() {
             onLoginDialogReset = {},
             onLogoutSubmit = {},
             lobbyCode = null,
-            activeGameId = null,
             isLobbyHost = false,
             loggedInAs = null,
             onCreateLobbyClick = {},

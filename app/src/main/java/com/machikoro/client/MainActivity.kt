@@ -61,7 +61,6 @@ class MainActivity : ComponentActivity() {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
-            val activeGameId by homeViewModel.activeGameId.collectAsState()
             val isLobbyHost by homeViewModel.isLobbyHost.collectAsState()
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
@@ -100,7 +99,6 @@ class MainActivity : ComponentActivity() {
                         onLogoutSubmit = logoutViewModel::submit,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
-                        activeGameId = activeGameId,
                         isLobbyHost = isLobbyHost,
                         loggedInAs = startScreenState.loggedInAs,
                         onCreateLobbyClick = homeViewModel::createLobby,
