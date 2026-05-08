@@ -97,6 +97,7 @@ class OkHttpWebSocketClient(
         // before the user has tried to connect.
         if (currentSocket == null) {
             if (sessionStateHolder.session.value == null) {
+                resetGameState()
                 resetLobbyState()
             }
             return
@@ -119,7 +120,7 @@ class OkHttpWebSocketClient(
             return
         }
 
-        socket.send(
+        val sent = socket.send(
             StompFrame(
                 command = "SEND",
                 headers = mapOf(
@@ -130,8 +131,16 @@ class OkHttpWebSocketClient(
             ).serialize()
         )
 
-        mutableIsLobbyHost.value = true
-        Log.d(TAG, "Lobby create message sent")
+        if (sent) {
+            mutableIsLobbyHost.value = true
+            Log.d(TAG, "Lobby create message sent")
+        } else {
+            Log.w(TAG, "sendCreateLobby: failed to send create-lobby frame")
+        }
+    }
+
+    override fun clearLobbyCode() {
+        mutableLobbyCode.value = null
     }
 
     override fun sendGameStart() {
@@ -351,16 +360,28 @@ class OkHttpWebSocketClient(
     private fun subscribeToGameTopic(gameId: Int) {
         if (subscribedGameId == gameId) return
 
-        webSocket?.send(
-            StompFrame(
-                command = "SUBSCRIBE",
-                headers = mapOf(
-                    "id" to "game-topic-$gameId",
-                    "destination" to "${WebSocketContract.gameTopicPrefix}/$gameId"
-                )
-            ).serialize()
-        )
-        subscribedGameId = gameId
+        val socket = webSocket ?: return
+
+        subscribedGameId?.let { oldId ->
+            socket.send(
+                StompFrame(
+                    command = "UNSUBSCRIBE",
+                    headers = mapOf("id" to "game-topic-$oldId")
+                ).serialize()
+            )
+        }
+
+        val subscribeFrame = StompFrame(
+            command = "SUBSCRIBE",
+            headers = mapOf(
+                "id" to "game-topic-$gameId",
+                "destination" to "${WebSocketContract.gameTopicPrefix}/$gameId"
+            )
+        ).serialize()
+
+        if (socket.send(subscribeFrame)) {
+            subscribedGameId = gameId
+        }
     }
 
     private fun sendJoinMessage() {

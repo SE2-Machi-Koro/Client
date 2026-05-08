@@ -21,6 +21,10 @@ class HomeViewModel(
         webSocketClient.sendGameStart()
     }
 
+    fun clearLobbyCode() {
+        webSocketClient.clearLobbyCode()
+    }
+
     class Factory(
         private val webSocketClient: WebSocketClient,
     ) : ViewModelProvider.Factory {

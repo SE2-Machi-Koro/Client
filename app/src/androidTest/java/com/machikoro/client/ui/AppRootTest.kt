@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.model.state.LobbyScreenState
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
@@ -42,11 +43,15 @@ class AppRootTest {
                     onLoginSubmit = {},
                     onLoginDialogReset = {},
                     onLogoutSubmit = {},
+                    lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
                     activeGameId = null,
                     isLobbyHost = false,
                     loggedInAs = null,
                     onCreateLobbyClick = {},
+                    onReadyToggle = {},
+                    onStartGame = {},
+                    onLeaveLobby = {},
                 )
             }
         }
@@ -74,11 +79,15 @@ class AppRootTest {
                     onLoginSubmit = {},
                     onLoginDialogReset = {},
                     onLogoutSubmit = {},
+                    lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
                     activeGameId = null,
                     isLobbyHost = false,
                     loggedInAs = null,
                     onCreateLobbyClick = {},
+                    onReadyToggle = {},
+                    onStartGame = {},
+                    onLeaveLobby = {},
                 )
             }
         }
@@ -107,11 +116,15 @@ class AppRootTest {
                     onLoginSubmit = {},
                     onLoginDialogReset = {},
                     onLogoutSubmit = {},
+                    lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
                     activeGameId = null,
                     isLobbyHost = false,
                     loggedInAs = null,
                     onCreateLobbyClick = {},
+                    onReadyToggle = {},
+                    onStartGame = {},
+                    onLeaveLobby = {},
                 )
             }
         }
@@ -128,7 +141,7 @@ class AppRootTest {
     }
 
     @Test
-    fun showsHomeScreenWithStartGameWhenLoggedInHostHasLobby() {
+    fun showsHomeScreenWithStartGameWhenLoggedInHostHasActiveGame() {
         composeTestRule.setContent {
             ClientTheme {
                 AppRoot(
@@ -149,12 +162,15 @@ class AppRootTest {
                     onLoginSubmit = {},
                     onLoginDialogReset = {},
                     onLogoutSubmit = {},
-                    lobbyCode = "AJ25Z39",
+                    lobbyScreenState = LobbyScreenState.placeholder(),
+                    lobbyCode = null,
                     activeGameId = 7,
                     isLobbyHost = true,
                     loggedInAs = "alice",
                     onCreateLobbyClick = {},
+                    onReadyToggle = {},
                     onStartGame = {},
+                    onLeaveLobby = {},
                 )
             }
         }
