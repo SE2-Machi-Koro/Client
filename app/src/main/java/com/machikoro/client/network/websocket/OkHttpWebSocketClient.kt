@@ -2,6 +2,7 @@ package com.machikoro.client.network.websocket
 
 import android.util.Log
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.model.shop.PurchaseType
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.session.SessionStateHolder
@@ -33,10 +34,14 @@ class OkHttpWebSocketClient(
     override val lobbyCode: StateFlow<String?> // Internal state for the latest lobby code returned by the backend
         get() = mutableLobbyCode.asStateFlow()
 
+    override val gameId: StateFlow<Int?>
+        get() = mutableGameId.asStateFlow()
+
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null) // Exposes lobby code as read-only StateFlow to UI/ViewModels
+    private val mutableGameId = MutableStateFlow<Int?>(null)
     private val frameBuffer = StringBuilder()
 
     @Volatile
@@ -133,6 +138,36 @@ class OkHttpWebSocketClient(
         Log.d(TAG, "Game start message sent")
     }
 
+    override fun sendPurchase(
+        gameId: Int,
+        purchaseType: PurchaseType,
+        cardType: String?,
+        landmarkType: String?
+    ) {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "sendPurchase called but no active WebSocket connection")
+            return
+        }
+        // Body is intentionally not wrapped in WebSocketMessage; Spring maps it to PurchaseRequest.
+        socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.purchaseDestination,
+                    "content-type" to "application/json"
+                ),
+                body = purchaseBody(
+                    gameId = gameId,
+                    purchaseType = purchaseType,
+                    cardType = cardType,
+                    landmarkType = landmarkType
+                )
+            ).serialize()
+        )
+        Log.d(TAG, "Purchase message sent for game id: $gameId")
+    }
+
     private val listener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             Log.d(TAG, "WebSocket opened: ${response.code} ${response.message}")
@@ -205,6 +240,7 @@ class OkHttpWebSocketClient(
 
             "MESSAGE" -> {
                 Log.d(TAG, "STOMP message received: ${frame.body}")
+                parseGameId(frame.body)?.let { mutableGameId.value = it }
                 handleLobbyCreated(frame.body)
                 parseGameActionPhase(frame.body)?.let { mutableGamePhase.value = it }
             }
@@ -246,6 +282,21 @@ class OkHttpWebSocketClient(
             Log.d(TAG, "Lobby created with code: $code")
             mutableLobbyCode.value = code
         }
+    }
+
+    private fun parseGameId(body: String): Int? {
+        if (body.isBlank()) return null
+        val json = try {
+            JSONObject(body)
+        } catch (_: JSONException) {
+            return null
+        }
+        // Lobby messages carry gameId at the top level; GAME_STARTED carries it under payload.game.id.
+        return json.optInt("gameId", 0).takeIf { it > 0 }
+            ?: json.optJSONObject("payload")
+                ?.optJSONObject("game")
+                ?.optInt("id", 0)
+                ?.takeIf { it > 0 }
     }
 
     private fun parseGameActionPhase(body: String): GamePhase? {
@@ -297,6 +348,7 @@ class OkHttpWebSocketClient(
         mutableGamePhase.value = GamePhase.NONE
         // Keep #37 coin display clean after game end/disconnect until #45 reset flow owns this state.
         mutablePlayers.value = emptyList()
+        mutableGameId.value = null
     }
 
     private fun websocketHostHeader(): String {
@@ -325,5 +377,19 @@ class OkHttpWebSocketClient(
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
         private const val GAME_START_BODY =
             """{"type":"START","sender":"${WebSocketContract.defaultSender}"}"""
+
+        private fun purchaseBody(
+            gameId: Int,
+            purchaseType: PurchaseType,
+            cardType: String?,
+            landmarkType: String?
+        ): String {
+            val targetField = when (purchaseType) {
+                PurchaseType.ESTABLISHMENT -> ",\"cardType\":\"$cardType\""
+                PurchaseType.LANDMARK -> ",\"landmarkType\":\"$landmarkType\""
+            }
+            // Keep field names aligned with Server PurchaseRequest.kt.
+            return """{"gameId":$gameId,"purchaseType":"${purchaseType.name}"$targetField}"""
+        }
     }
 }
