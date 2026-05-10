@@ -9,9 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -48,37 +45,17 @@ import androidx.compose.ui.zIndex
 import com.machikoro.client.R
 import com.machikoro.client.ui.theme.*
 import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.ui.theme.PrimaryBlueDark
 import kotlinx.coroutines.delay
 
 @Composable
-fun WinScreen() {
+fun WinScreen(list: List<String>) {
+    if(list.size !in 2..4) {
+        return
+    }
     Box(modifier = Modifier.fillMaxSize())
     {
-        //Backgroun
-        /*
-        Image(
-            painter = painterResource(id = R.drawable.background_left),
-            contentDescription = null,
-            modifier = Modifier.align(Alignment.BottomStart).offset(x = (-20).dp, y = 30.dp),
-            alpha = 0.3f
-        )
-        Image(
-            painter = painterResource(id = R.drawable.background_right),
-            contentDescription = null,
-            modifier = Modifier.align(Alignment.BottomEnd).offset(x = 15.dp, y = 30.dp),
-            alpha = 0.3f
-        )
+       Background()
 
-
-         */
-        Image(
-            painter = painterResource(id = R.drawable.background),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-
-        )
         //Content
         Column(
             modifier = Modifier.fillMaxSize().padding(all = 12.dp),
@@ -86,25 +63,9 @@ fun WinScreen() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            Box {
-                Text(
-                    text = "Game Over",
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        drawStyle = Stroke(width = 18f)
-                    ),
-                    color = Color(0xFFB06207)
-                )
+            Header("Game Over")
 
-                Text(
-                    text = "Game Over",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = Color(0xFFF49E0A)
-                )
-            }
-            val list = listOf<String>("Name 1", "Long name", "1", "HsDHDHsssaaassaasasasassaDH") // for testing
-
-
-            //Player profiles
+            //Player cards
             Row(
                 modifier = Modifier.fillMaxWidth()
                     .weight(1f),
@@ -131,52 +92,81 @@ fun WinScreen() {
                 }
             }
 
-
+            // Action buttons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-
-                listOf("Finish game", "Back to lobby").forEach { label ->
-
-                    Box(
-                        modifier = Modifier
-                            .wrapContentSize()
-                    ) {
-
-                        // Bottom shadow layer
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .offset(y = 4.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(Color(0xFFB97816))
-                        )
-
-                        // Main button
-                        Button(
-                            onClick = { },
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFF4B343)
-                            ),
-
-                        ) {
-                            Text(
-                                text = label,
-                                color = Color(0xFF7A4300),
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                        }
-                    }
-                }
+                ActionButton("Back to home screen", null)
+                ActionButton("Play again", null)
             }
-
-
-
-
-
         }
+    }
+}
+
+
+
+@Composable
+fun Background() {
+    Image(
+        painter = painterResource(id = R.drawable.background),
+        contentDescription = null,
+        modifier = Modifier.fillMaxSize(),
+        contentScale = ContentScale.Crop
+    )
+}
+
+@Composable
+fun ActionButton(label: String, onClick: (() -> Unit)?) {
+
+    Box(
+        modifier = Modifier
+            .wrapContentSize()
+    ) {
+
+        // Bottom shadow
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(y = 4.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(0xFFB97816))
+        )
+
+        // Main button
+        Button(
+            onClick = { onClick },
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFF4B343)
+            ),
+
+            ) {
+            Text(
+                text = label,
+                color = Color(0xFF7A4300),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+    }
+}
+
+@Composable
+fun Header(label: String) {
+    Box {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.headlineLarge.copy(
+                drawStyle = Stroke(width = 18f)
+            ),
+            color = Color(0xFFB06207)
+        )
+
+        Text(
+            text = label,
+            style = MaterialTheme.typography.headlineLarge,
+            color = Color(0xFFF49E0A)
+        )
     }
 }
 
@@ -274,6 +264,6 @@ fun PlayerProfileCard(name: String, place: Int) {
 @Composable
 fun WinScreenPreview() {
     ClientTheme {
-        WinScreen()
+        WinScreen(listOf<String>("Name 1", "1", "HsDHDHsssaaassaasasasassaDH"))
     }
 }
