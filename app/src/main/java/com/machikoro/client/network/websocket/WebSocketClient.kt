@@ -1,6 +1,7 @@
 package com.machikoro.client.network.websocket
 
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.model.shop.PurchaseType
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import kotlinx.coroutines.flow.StateFlow
@@ -17,10 +18,21 @@ interface WebSocketClient {
     // Null if no lobby has been created yet.
     val lobbyCode: StateFlow<String?>
 
+    // Latest server game id, needed for game-scoped actions such as purchase.
+    val gameId: StateFlow<Int?>
+
     fun connect()
 
     fun disconnect()
 
     fun sendCreateLobby()
     fun sendGameStart()
+
+    // Matches Server PR #216 PurchaseRequest: gameId + purchaseType + one target field.
+    fun sendPurchase(
+        gameId: Int,
+        purchaseType: PurchaseType,
+        cardType: String? = null,
+        landmarkType: String? = null
+    )
 }

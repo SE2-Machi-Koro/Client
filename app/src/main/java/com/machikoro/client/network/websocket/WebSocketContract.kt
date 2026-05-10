@@ -12,5 +12,7 @@ object WebSocketContract {
     const val chatSendDestination: String = "/app/chat.send"
     const val createLobbyDestination: String = "/app/lobby.create"
     const val gameStartDestination: String = "/app/game.start"
+    // Server PR #216 exposes PurchaseRequest at @MessageMapping("/game.purchase").
+    const val purchaseDestination: String = "/app/game.purchase"
     const val defaultSender: String = "android-client"
 }
