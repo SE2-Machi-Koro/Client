@@ -39,10 +39,15 @@ fun AppRoot(
     onReadyToggle: () -> Unit,
     onStartGame: () -> Unit,
     onLeaveLobby: () -> Unit,
+    onRollDice: () -> Unit, // NEU
     modifier: Modifier = Modifier
 ) {
     if (gameScreenState.gamePhase != GamePhase.NONE) {
-        GameScreen(state = gameScreenState, modifier = modifier)
+        GameScreen(
+            state = gameScreenState,
+            onRollDice = onRollDice, // NEU
+            modifier = modifier
+        )
     } else if (lobbyCode != null) {
         LobbyScreen(
             state = lobbyScreenState,
@@ -103,6 +108,7 @@ private fun AppRootStartScreenPreview() {
             onReadyToggle = {},
             onStartGame = {},
             onLeaveLobby = {},
+            onRollDice = {}, // NEU
         )
     }
 }
@@ -133,6 +139,7 @@ private fun AppRootGameScreenPreview() {
             onReadyToggle = {},
             onStartGame = {},
             onLeaveLobby = {},
+            onRollDice = {}, // NEU
         )
     }
 }

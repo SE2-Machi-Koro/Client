@@ -17,6 +17,10 @@ interface WebSocketClient {
     // Null if no lobby has been created yet.
     val lobbyCode: StateFlow<String?>
 
+    // Holds the latest dice result received from the server.
+    // Null if no dice have been rolled yet in the current turn.
+    val diceResult: StateFlow<List<Int>?>
+
     fun connect()
 
     fun disconnect()
@@ -26,4 +30,8 @@ interface WebSocketClient {
     fun clearLobbyCode()
 
     fun sendGameStart()
+
+    // Sends a ROLL_DICE STOMP frame. diceCount is 1 by default,
+    // 2 once the player has built the Bahnhof and chooses two dice.
+    fun rollDice(diceCount: Int = 1)
 }

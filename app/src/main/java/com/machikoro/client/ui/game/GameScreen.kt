@@ -2,6 +2,7 @@ package com.machikoro.client.ui.game
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,6 +43,7 @@ private const val BANNER_COLOR_ANIMATION_DURATION_MS = 300
 @Composable
 fun GameScreen(
     state: GameScreenState,
+    onRollDice: () -> Unit = {}, // NEU
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -60,6 +63,74 @@ fun GameScreen(
                     .padding(top = coinDisplayTopPadding(state.players))
             )
         }
+
+        // NEU: Würfel-Bereich unten
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            state.diceResult?.let { dice ->
+                DiceResultDisplay(dice = dice)
+            }
+
+            if (state.gamePhase == GamePhase.ROLL_DICE) {
+                Button(
+                    onClick = onRollDice,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Würfeln"
+                    }
+                ) {
+                    Text(
+                        text = if (state.diceResult == null) "🎲 Würfeln" else "🎲 Nochmal würfeln",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+// NEU: Würfelergebnis-Anzeige
+@Composable
+private fun DiceResultDisplay(
+    dice: List<Int>,
+    modifier: Modifier = Modifier
+) {
+    val faces = listOf("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")
+    val sum = dice.sum()
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = 4.dp,
+        modifier = modifier.semantics {
+            contentDescription = "Würfelergebnis: $sum"
+        }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            dice.forEach { value ->
+                Text(
+                    text = faces.getOrElse(value - 1) { value.toString() },
+                    style = MaterialTheme.typography.displaySmall
+                )
+            }
+            if (dice.size > 1) {
+                Text(
+                    text = "= $sum",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
     }
 }
 
@@ -68,22 +139,13 @@ private fun CoinDisplay(
     players: List<PlayerCoinState>,
     modifier: Modifier = Modifier
 ) {
-    if (players.isEmpty()) {
-        return
-    }
-
+    if (players.isEmpty()) return
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        items(
-            items = players,
-            key = { it.id }
-        ) { player ->
-            PlayerCoinBadge(
-                player = player,
-                modifier = Modifier.padding(end = 8.dp)
-            )
+        items(items = players, key = { it.id }) { player ->
+            PlayerCoinBadge(player = player, modifier = Modifier.padding(end = 8.dp))
         }
     }
 }
@@ -103,7 +165,6 @@ private fun PlayerCoinBadge(
         player.isActivePlayer -> MaterialTheme.colorScheme.onTertiary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-
     Surface(
         color = containerColor,
         contentColor = contentColor,
@@ -111,17 +172,13 @@ private fun PlayerCoinBadge(
         tonalElevation = 3.dp,
         modifier = modifier
             .widthIn(min = 118.dp, max = 180.dp)
-            .semantics {
-                contentDescription = "${player.displayName}: ${player.coins} coins"
-            }
+            .semantics { contentDescription = "${player.displayName}: ${player.coins} coins" }
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
         ) {
-            CoinIcon(
-                modifier = Modifier.padding(end = 8.dp)
-            )
+            CoinIcon(modifier = Modifier.padding(end = 8.dp))
             Column {
                 Text(
                     text = player.displayName,
@@ -158,7 +215,8 @@ private fun CoinIcon(modifier: Modifier = Modifier) {
     }
 }
 
-private fun coinDisplayTopPadding(players: List<PlayerCoinState>) = if (players.isEmpty()) 0.dp else 68.dp
+private fun coinDisplayTopPadding(players: List<PlayerCoinState>) =
+    if (players.isEmpty()) 0.dp else 68.dp
 
 @Composable
 private fun GamePhaseBanner(
@@ -170,10 +228,7 @@ private fun GamePhaseBanner(
         animationSpec = tween(durationMillis = BANNER_COLOR_ANIMATION_DURATION_MS),
         label = "GamePhaseBannerColor"
     )
-    Surface(
-        color = animatedColor,
-        modifier = modifier.fillMaxWidth()
-    ) {
+    Surface(color = animatedColor, modifier = modifier.fillMaxWidth()) {
         Text(
             text = phase.toDisplayText(),
             style = MaterialTheme.typography.headlineSmall,
@@ -195,7 +250,7 @@ private fun GamePhase.toBannerColor(): Color = when (this) {
     GamePhase.END_TURN -> MaterialTheme.colorScheme.error
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 200)
+@Preview(showBackground = true, widthDp = 412, heightDp = 400)
 @Composable
 private fun GameScreenRollDicePreview() {
     ClientTheme {
@@ -209,7 +264,22 @@ private fun GameScreenRollDicePreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 200)
+@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Composable
+private fun GameScreenWithResultPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gamePhase = GamePhase.ROLL_DICE,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = previewPlayers(),
+                diceResult = listOf(3, 4)
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 400)
 @Composable
 private fun GameScreenBuyOrBuildPreview() {
     ClientTheme {
@@ -217,13 +287,14 @@ private fun GameScreenBuyOrBuildPreview() {
             state = GameScreenState(
                 gamePhase = GamePhase.BUY_OR_BUILD,
                 connectionStatus = ConnectionStatus.CONNECTED,
-                players = previewPlayers()
+                players = previewPlayers(),
+                diceResult = listOf(5)
             )
         )
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 200)
+@Preview(showBackground = true, widthDp = 412, heightDp = 400)
 @Composable
 private fun GameScreenNonePreview() {
     ClientTheme {
@@ -239,14 +310,6 @@ private fun previewPlayers() = listOf(
         isCurrentPlayer = true,
         isActivePlayer = true
     ),
-    PlayerCoinState(
-        id = "player-2",
-        displayName = "SoupCube",
-        coins = 3
-    ),
-    PlayerCoinState(
-        id = "player-3",
-        displayName = "doniliks",
-        coins = 0
-    )
+    PlayerCoinState(id = "player-2", displayName = "SoupCube", coins = 3),
+    PlayerCoinState(id = "player-3", displayName = "doniliks", coins = 0)
 )
