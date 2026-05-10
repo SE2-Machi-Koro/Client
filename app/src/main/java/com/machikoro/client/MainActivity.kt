@@ -75,10 +75,6 @@ class MainActivity : ComponentActivity() {
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
 
-            // Drive WebSocket lifecycle from session changes during the foreground.
-            // onStart/onStop handle the activity-lifecycle case; this handles the
-            // user-logs-in-or-out-while-app-is-open case. connect() and disconnect()
-            // are both idempotent so it's safe to call them on every emission.
             LaunchedEffect(Unit) {
                 SessionManager.session.collect { session ->
                     if (session != null) {
@@ -112,7 +108,9 @@ class MainActivity : ComponentActivity() {
                         onLeaveLobby = {
                             lobbyScreenViewModel.onLeaveLobby()
                             homeViewModel.clearLobbyCode()
-                        },                        modifier = Modifier.padding(innerPadding),
+                        },
+                        onRollDice = gameScreenViewModel::rollDice, // NEU
+                        modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
                         loggedInAs = startScreenState.loggedInAs,
                         onCreateLobbyClick = homeViewModel::createLobby,

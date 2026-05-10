@@ -1,20 +1,19 @@
 package com.machikoro.client.domain.model.state
 
 import com.machikoro.client.domain.enums.GamePhase
-import com.machikoro.client.network.websocket.DiceRollResult
 
 data class GameScreenState(
-    val gamePhase: GamePhase,
     val connectionStatus: ConnectionStatus,
+    val gamePhase: GamePhase,
     val players: List<PlayerCoinState>,
-    val diceResult: DiceRollResult? = null
+    val diceResult: List<Int>? = null,
 ) {
     companion object {
         fun initial() = GameScreenState(
-            gamePhase = GamePhase.NONE,
             connectionStatus = ConnectionStatus.IDLE,
+            gamePhase = GamePhase.NONE,
             players = emptyList(),
-            diceResult = null
+            diceResult = null,
         )
     }
 }

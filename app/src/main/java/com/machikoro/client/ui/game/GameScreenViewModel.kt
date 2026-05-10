@@ -3,9 +3,9 @@ package com.machikoro.client.ui.game
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.network.websocket.WebSocketClient
-import com.machikoro.client.network.websocket.WebSocketContract
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,7 +15,6 @@ import kotlinx.coroutines.launch
 class GameScreenViewModel(
     private val webSocketClient: WebSocketClient
 ) : ViewModel() {
-
     val state: StateFlow<GameScreenState>
         get() = mutableState.asStateFlow()
 
@@ -24,31 +23,39 @@ class GameScreenViewModel(
     init {
         viewModelScope.launch {
             webSocketClient.connectionStatus.collect { connectionStatus ->
-                mutableState.update { it.copy(connectionStatus = connectionStatus) }
+                mutableState.update { current ->
+                    current.copy(connectionStatus = connectionStatus)
+                }
             }
         }
         viewModelScope.launch {
             webSocketClient.gamePhase.collect { gamePhase ->
-                mutableState.update { it.copy(gamePhase = gamePhase) }
+                mutableState.update { current ->
+                    current.copy(gamePhase = gamePhase)
+                }
             }
         }
         viewModelScope.launch {
             webSocketClient.players.collect { players ->
-                mutableState.update { it.copy(players = players) }
+                mutableState.update { current ->
+                    current.copy(players = players)
+                }
             }
         }
+        // NEU: diceResult vom Server sammeln
         viewModelScope.launch {
             webSocketClient.diceResult.collect { diceResult ->
-                mutableState.update { it.copy(diceResult = diceResult) }
+                mutableState.update { current ->
+                    current.copy(diceResult = diceResult)
+                }
             }
         }
     }
 
-    fun rollDice(diceCount: Int) {
-        webSocketClient.rollDice(
-            playerId = WebSocketContract.defaultSender,
-            diceCount = diceCount
-        )
+    // NEU: nur erlaubt während ROLL_DICE Phase
+    fun rollDice(diceCount: Int = 1) {
+        if (mutableState.value.gamePhase != GamePhase.ROLL_DICE) return
+        webSocketClient.rollDice(diceCount)
     }
 
     class Factory(

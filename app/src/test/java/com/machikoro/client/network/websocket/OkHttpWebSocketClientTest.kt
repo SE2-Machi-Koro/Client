@@ -19,6 +19,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.Assert.assertNull
 
 class OkHttpWebSocketClientTest {
     @Test
@@ -626,5 +627,78 @@ class OkHttpWebSocketClientTest {
         )
 
         assertEquals(null, client.lobbyCode.value)
+    }
+
+    @Test
+    fun rollDiceSendsStompFrameToRollDiceDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        client.rollDice(diceCount = 1)
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND\n") &&
+                        it.contains("destination:/app/game.rollDice") &&
+                        it.contains("\"diceCount\":1")
+            }
+        )
+    }
+
+    @Test
+    fun rollDiceWithTwoDiceSendsDiceCountTwo() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        client.rollDice(diceCount = 2)
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.contains("\"diceCount\":2")
+            }
+        )
+    }
+
+    @Test
+    fun rollDiceMessageFromServerUpdatesDiceResult() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ROLL_DICE","payload":{"playerId":"p1","result":[3,5],"timestamp":123}}"""
+            )
+        )
+
+        assertEquals(listOf(3, 5), client.diceResult.value)
+    }
+
+    @Test
+    fun disconnectResetsDiceResultToNull() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ROLL_DICE","payload":{"playerId":"p1","result":[6],"timestamp":1}}"""
+            )
+        )
+        assertEquals(listOf(6), client.diceResult.value)
+
+        client.disconnect()
+
+        assertNull(client.diceResult.value)
     }
 }
