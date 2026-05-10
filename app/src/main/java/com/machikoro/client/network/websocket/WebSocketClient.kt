@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface WebSocketClient {
     val connectionStatus: StateFlow<ConnectionStatus>
-    val diceResult: StateFlow<DiceRollResult?>
     val gamePhase: StateFlow<GamePhase>
     val players: StateFlow<List<PlayerCoinState>>
     val lobbyCode: StateFlow<String?>
@@ -18,11 +17,8 @@ interface WebSocketClient {
 
     fun connect()
     fun disconnect()
-    fun rollDice(playerId: String, diceCount: Int)
     fun sendCreateLobby()
-
     fun clearLobbyCode()
-
     fun sendGameStart()
 
     // Sends a ROLL_DICE STOMP frame. diceCount is 1 by default,
