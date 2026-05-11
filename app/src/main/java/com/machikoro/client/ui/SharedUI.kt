@@ -185,7 +185,6 @@ fun RegularInfoText(label: String) = (
             color = Color.White,
             fontWeight = FontWeight.Bold,
             fontSize = 24.sp,
-            maxLines = 2,
             textAlign = TextAlign.Center,
             overflow = TextOverflow.Ellipsis
         )

@@ -25,7 +25,7 @@ import com.machikoro.client.ui.theme.ClientTheme
 fun GameOverOneWinner(winnerName: String, roundsNumber: Int) {
     Box(modifier = Modifier.fillMaxSize())
     {
-      Background(R.drawable.frame)
+      Background(R.drawable.game_end)
         //Content
         Column(
             modifier = Modifier.fillMaxSize().padding(all = 12.dp),

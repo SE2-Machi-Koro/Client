@@ -36,7 +36,7 @@ fun GameEndScreen(players: List<String>) {
     }
     Box(modifier = Modifier.fillMaxSize())
     {
-       Background(R.drawable.frame)
+       Background(R.drawable.game_end)
 
         //Content
         Column(
