@@ -4,6 +4,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.LoginDialogState
+import com.machikoro.client.domain.model.state.LogoutState
+import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
@@ -21,12 +24,24 @@ class ExampleInstrumentedTest {
                 StartScreen(
                     state = StartScreenState.placeholder().copy(
                         connectionStatus = ConnectionStatus.CONNECTED
-                    )
+                    ),
+                    registerDialogState = RegisterDialogState(),
+                    loginDialogState = LoginDialogState(),
+                    logoutState = LogoutState(),
+                    onRegisterUsernameChange = {},
+                    onRegisterPasswordChange = {},
+                    onRegisterSubmit = {},
+                    onRegisterDialogReset = {},
+                    onLoginUsernameChange = {},
+                    onLoginPasswordChange = {},
+                    onLoginSubmit = {},
+                    onLoginDialogReset = {},
+                    onLogoutSubmit = {},
                 )
             }
         }
 
-        composeTestRule.onNodeWithText("Machi Koro Client").assertIsDisplayed()
+        composeTestRule.onNodeWithText("MACHI KORO").assertIsDisplayed()
         composeTestRule.onNodeWithText("Connection status: connected").assertIsDisplayed()
         composeTestRule.onNodeWithText("Lobby/start: placeholder").assertIsDisplayed()
     }

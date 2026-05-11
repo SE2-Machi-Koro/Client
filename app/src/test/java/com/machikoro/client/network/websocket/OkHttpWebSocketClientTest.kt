@@ -344,10 +344,7 @@ class OkHttpWebSocketClientTest {
     @Test
     fun sendGameStartSendsStompFrameToGameStartDestination() {
         val factory = FakeWebSocketFactory()
-        val client = OkHttpWebSocketClient(
-            websocketUrl = "ws://10.0.2.2:8080/ws",
-            webSocketFactory = factory
-        )
+        val client = newClient(factory)
 
         client.connect()
         factory.simulateOpen()
@@ -364,10 +361,7 @@ class OkHttpWebSocketClientTest {
     @Test
     fun sendGameStartWithoutConnectionIsIgnored() {
         val factory = FakeWebSocketFactory()
-        val client = OkHttpWebSocketClient(
-            websocketUrl = "ws://10.0.2.2:8080/ws",
-            webSocketFactory = factory
-        )
+        val client = newClient(factory)
 
         // No connect() call — should not throw
         client.sendGameStart()

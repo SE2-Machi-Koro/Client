@@ -94,6 +94,49 @@ class OkHttpWebSocketClient(
         resetGameState()
     }
 
+    override fun sendCreateLobby() {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "sendCreateLobby called but no active WebSocket connection")
+            return
+        }
+
+        socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.createLobbyDestination,
+                    "content-type" to "application/json"
+                ),
+                body = """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}"}"""
+            ).serialize()
+        )
+
+        Log.d(TAG, "Lobby create message sent")
+    }
+
+    override fun clearLobbyCode() {
+        mutableLobbyCode.value = null
+    }
+    override fun sendGameStart() {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "sendGameStart called but no active WebSocket connection")
+            return
+        }
+        socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.gameStartDestination,
+                    "content-type" to "application/json"
+                ),
+                body = GAME_START_BODY
+            ).serialize()
+        )
+        Log.d(TAG, "Game start message sent")
+    }
+
     private val listener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             Log.d(TAG, "WebSocket opened: ${response.code} ${response.message}")
@@ -166,6 +209,7 @@ class OkHttpWebSocketClient(
 
             "MESSAGE" -> {
                 Log.d(TAG, "STOMP message received: ${frame.body}")
+                handleLobbyCreated(frame.body)
                 parseGameActionPhase(frame.body)?.let { mutableGamePhase.value = it }
             }
 
@@ -173,6 +217,38 @@ class OkHttpWebSocketClient(
                 Log.e(TAG, "STOMP error frame received: ${frame.body}")
                 mutableConnectionStatus.value = ConnectionStatus.ERROR
             }
+        }
+    }
+
+    /**
+     * Handles lobby creation responses from the backend.
+     *
+     * Expected message:
+     * {
+     *   "type": "LOBBY_CREATED",
+     *   "payload": {
+     *     "lobbyCode": "ABC123"
+     *   }
+     * }
+     */
+    private fun handleLobbyCreated(body: String) {
+        if (body.isBlank()) return
+
+        val json = try {
+            JSONObject(body)
+        } catch (e: JSONException) {
+            Log.w(TAG, "Failed to parse lobby message as JSON: ${e.message}")
+            return
+        }
+
+        if (json.optString("type") != LOBBY_CREATED_TYPE) return
+
+        val payload = json.optJSONObject("payload") ?: return
+        val code = payload.optString("lobbyCode")
+
+        if (code.isNotBlank()) {
+            Log.d(TAG, "Lobby created with code: $code")
+            mutableLobbyCode.value = code
         }
     }
 
@@ -250,5 +326,8 @@ class OkHttpWebSocketClient(
         // accessor.getFirstNativeHeader("Authorization") + BEARER_PREFIX = "Bearer ".
         private const val AUTH_HEADER = "Authorization"
         private const val BEARER_PREFIX = "Bearer "
+        private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
+        private const val GAME_START_BODY =
+            """{"type":"START","sender":"${WebSocketContract.defaultSender}"}"""
     }
 }
