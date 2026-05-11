@@ -134,14 +134,12 @@ class OkHttpWebSocketClientTest {
     @Test
     fun gamePhaseStartsAsNone() {
         val client = newClient(FakeWebSocketFactory())
-
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
 
     @Test
     fun playersStartEmpty() {
         val client = newClient(FakeWebSocketFactory())
-
         assertEquals(emptyList<PlayerCoinState>(), client.players.value)
     }
 
@@ -169,15 +167,8 @@ class OkHttpWebSocketClientTest {
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
 
-        listOf(
-            GamePhase.ROLL_DICE,
-            GamePhase.RESOLVE_EFFECTS,
-            GamePhase.BUY_OR_BUILD,
-            GamePhase.END_TURN
-        ).forEach { phase ->
-            factory.simulateText(
-                gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"${phase.name}"}}""")
-            )
+        listOf(GamePhase.ROLL_DICE, GamePhase.RESOLVE_EFFECTS, GamePhase.BUY_OR_BUILD, GamePhase.END_TURN).forEach { phase ->
+            factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"${phase.name}"}}"""))
             assertEquals(phase, client.gamePhase.value)
         }
     }
@@ -190,9 +181,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"CHAT","sender":"someone","content":"hello"}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"someone","content":"hello"}"""))
 
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
@@ -205,9 +194,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE"}}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE"}}"""))
 
         assertEquals(emptyList<PlayerCoinState>(), client.players.value)
     }
@@ -233,9 +220,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","sender":"server"}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","sender":"server"}"""))
 
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
@@ -248,9 +233,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"NOT_A_PHASE"}}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"NOT_A_PHASE"}}"""))
 
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
@@ -263,9 +246,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"other":"value"}}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"other":"value"}}"""))
 
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
@@ -278,9 +259,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"BUY_OR_BUILD"}}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"BUY_OR_BUILD"}}"""))
         assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
 
         client.disconnect()
@@ -296,9 +275,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"RESOLVE_EFFECTS"}}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"RESOLVE_EFFECTS"}}"""))
         assertEquals(GamePhase.RESOLVE_EFFECTS, client.gamePhase.value)
 
         factory.simulateClosing()
@@ -314,9 +291,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"END_TURN"}}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"END_TURN"}}"""))
         assertEquals(GamePhase.END_TURN, client.gamePhase.value)
 
         factory.simulateClosed()
@@ -332,9 +307,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE"}}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE"}}"""))
         assertEquals(GamePhase.ROLL_DICE, client.gamePhase.value)
 
         factory.simulateFailure(IOException("boom"))
@@ -352,11 +325,7 @@ class OkHttpWebSocketClientTest {
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         client.sendGameStart()
 
-        assertTrue(
-            factory.socket.sentMessages.any {
-                it.startsWith("SEND\n") && it.contains("destination:/app/game.start")
-            }
-        )
+        assertTrue(factory.socket.sentMessages.any { it.startsWith("SEND\n") && it.contains("destination:/app/game.start") })
     }
 
     @Test
@@ -364,112 +333,10 @@ class OkHttpWebSocketClientTest {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
 
-        // No connect() call — should not throw
         client.sendGameStart()
 
         assertTrue(factory.socket.sentMessages.isEmpty())
     }
-
-    private fun gameActionFrame(body: String): String =
-        "MESSAGE\ndestination:/topic/public\ncontent-type:application/json\n\n$body\u0000"
-
-    private class FakeWebSocketFactory : WebSocketFactory {
-        lateinit var listener: WebSocketListener
-        val socket = FakeWebSocket()
-        var createCount = 0
-
-        override fun create(request: Request, listener: WebSocketListener): WebSocket {
-            this.listener = listener
-            socket.request = request
-            createCount += 1
-            return socket
-        }
-
-        fun simulateOpen() {
-            listener.onOpen(socket, createResponse(socket.request))
-        }
-
-        fun simulateText(text: String) {
-            listener.onMessage(socket, text)
-        }
-
-        fun simulateClosing() {
-            listener.onClosing(socket, 1000, "closing")
-        }
-
-        fun simulateClosed() {
-            listener.onClosed(socket, 1000, "closed")
-        }
-
-        fun simulateFailure(throwable: Throwable) {
-            listener.onFailure(socket, throwable, createResponse(socket.request))
-        }
-
-        private fun createResponse(request: Request): Response {
-            return Response.Builder()
-                .request(request)
-                .protocol(Protocol.HTTP_1_1)
-                .code(101)
-                .message("Switching Protocols")
-                .build()
-        }
-    }
-
-    private class FakeWebSocket : WebSocket {
-        lateinit var request: Request
-        var closed = false
-        val sentMessages = mutableListOf<String>()
-
-        override fun request(): Request = request
-
-        override fun queueSize(): Long = 0L
-
-        override fun send(text: String): Boolean {
-            sentMessages += text
-            return true
-        }
-
-        override fun send(bytes: ByteString): Boolean = false
-
-        override fun close(code: Int, reason: String?): Boolean {
-            closed = true
-            return true
-        }
-
-        override fun cancel() {
-            closed = true
-        }
-    }
-
-    private class FakeSessionStateHolder(initial: Session? = null) : SessionStateHolder {
-        private val mutableSession = MutableStateFlow(initial)
-        override val session: StateFlow<Session?> = mutableSession.asStateFlow()
-        override fun signIn(token: String, username: String) {
-            mutableSession.value = Session(token, username)
-        }
-        override fun signOut() {
-            mutableSession.value = null
-        }
-    }
-
-    private companion object {
-        const val DEFAULT_TOKEN = "test-token"
-        const val DEFAULT_USERNAME = "test-user"
-        val DEFAULT_SESSION = Session(DEFAULT_TOKEN, DEFAULT_USERNAME)
-    }
-
-    /**
-     * Construct a client with a stub session by default so existing test
-     * assertions that don't care about auth keep working.
-     */
-    private fun newClient(
-        factory: FakeWebSocketFactory,
-        sessionStateHolder: SessionStateHolder = FakeSessionStateHolder(DEFAULT_SESSION),
-    ) = OkHttpWebSocketClient(
-        websocketUrl = "ws://10.0.2.2:8080/ws",
-        sessionStateHolder = sessionStateHolder,
-        webSocketFactory = factory,
-    )
 
     @Test
     fun connectWithNoSessionDoesNotOpenSocketAndDoesNotTransitionStatus() {
@@ -484,11 +351,6 @@ class OkHttpWebSocketClientTest {
 
     @Test
     fun disconnectWhenNeverConnectedIsNoOpAndDoesNotTransitionStatus() {
-        // Important for the LaunchedEffect in MainActivity: on cold start with no
-        // session, the initial collect emission is null and triggers disconnect().
-        // If disconnect() flipped status from IDLE to DISCONNECTED, the start
-        // screen would render "Connection status: disconnected" before the user
-        // has tried to connect.
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
 
@@ -512,15 +374,12 @@ class OkHttpWebSocketClientTest {
 
     @Test
     fun connectFrameUsesCurrentSessionTokenAtHandshakeTime() {
-        // Locks down "read token at onOpen, not at connect()" — if we ever capture
-        // the token at connect() time, mid-flight session changes would send the
-        // wrong header.
         val factory = FakeWebSocketFactory()
-        val sessionHolder = FakeSessionStateHolder(initial = Session("stale-token", "alice"))
+        val sessionHolder = FakeSessionStateHolder(initial = Session("stale-token", "alice", 1)) // NEU
         val client = newClient(factory, sessionStateHolder = sessionHolder)
 
         client.connect()
-        sessionHolder.signIn(token = "fresh-token", username = "alice")
+        sessionHolder.signIn(token = "fresh-token", username = "alice", userId = 1) // NEU
         factory.simulateOpen()
 
         val connectFrame = factory.socket.sentMessages.first { it.startsWith("CONNECT\n") }
@@ -535,19 +394,17 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory, sessionStateHolder = sessionHolder)
 
         client.connect()
-        sessionHolder.signOut()  // user logs out before WS handshake completes
+        sessionHolder.signOut()
         factory.simulateOpen()
 
         assertTrue(factory.socket.closed)
         assertFalse(factory.socket.sentMessages.any { it.startsWith("CONNECT\n") })
-        // Belt-and-braces — there should be no Authorization header in any frame.
         assertFalse(factory.socket.sentMessages.any { it.contains("Authorization") })
     }
 
     @Test
     fun lobbyCodeStartsAsNull() {
         val client = newClient(FakeWebSocketFactory())
-
         assertEquals(null, client.lobbyCode.value)
     }
 
@@ -559,16 +416,11 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-
         client.sendCreateLobby()
 
-        assertTrue(
-            factory.socket.sentMessages.any {
-                it.startsWith("SEND\n") &&
-                        it.contains("destination:/app/lobby.create") &&
-                        it.contains("\"type\":\"JOIN\"")
-            }
-        )
+        assertTrue(factory.socket.sentMessages.any {
+            it.startsWith("SEND\n") && it.contains("destination:/app/lobby.create") && it.contains("\"type\":\"JOIN\"")
+        })
     }
 
     @Test
@@ -589,12 +441,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""
-            )
-        )
+        factory.simulateText(gameActionFrame("""{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""))
 
         assertEquals("AJ25Z39", client.lobbyCode.value)
     }
@@ -607,7 +454,6 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-
         factory.simulateText(gameActionFrame("not json"))
 
         assertEquals(null, client.lobbyCode.value)
@@ -621,10 +467,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-
-        factory.simulateText(
-            gameActionFrame("""{"type":"LOBBY_CREATED","sender":"SERVER"}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"LOBBY_CREATED","sender":"SERVER"}"""))
 
         assertEquals(null, client.lobbyCode.value)
     }
@@ -639,13 +482,9 @@ class OkHttpWebSocketClientTest {
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         client.rollDice(diceCount = 1)
 
-        assertTrue(
-            factory.socket.sentMessages.any {
-                it.startsWith("SEND\n") &&
-                        it.contains("destination:/app/game.rollDice") &&
-                        it.contains("\"diceCount\":1")
-            }
-        )
+        assertTrue(factory.socket.sentMessages.any {
+            it.startsWith("SEND\n") && it.contains("destination:/app/game.rollDice") && it.contains("\"diceCount\":1")
+        })
     }
 
     @Test
@@ -658,11 +497,7 @@ class OkHttpWebSocketClientTest {
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         client.rollDice(diceCount = 2)
 
-        assertTrue(
-            factory.socket.sentMessages.any {
-                it.contains("\"diceCount\":2")
-            }
-        )
+        assertTrue(factory.socket.sentMessages.any { it.contains("\"diceCount\":2") })
     }
 
     @Test
@@ -673,11 +508,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"ROLL_DICE","payload":{"playerId":"p1","result":[3,5],"timestamp":123}}"""
-            )
-        )
+        factory.simulateText(gameActionFrame("""{"type":"ROLL_DICE","payload":{"playerId":"p1","result":[3,5],"timestamp":123}}"""))
 
         assertEquals(listOf(3, 5), client.diceResult.value)
     }
@@ -690,15 +521,73 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"ROLL_DICE","payload":{"playerId":"p1","result":[6],"timestamp":1}}"""
-            )
-        )
+        factory.simulateText(gameActionFrame("""{"type":"ROLL_DICE","payload":{"playerId":"p1","result":[6],"timestamp":1}}"""))
         assertEquals(listOf(6), client.diceResult.value)
 
         client.disconnect()
 
         assertNull(client.diceResult.value)
     }
+
+    private fun gameActionFrame(body: String): String =
+        "MESSAGE\ndestination:/topic/public\ncontent-type:application/json\n\n$body\u0000"
+
+    private class FakeWebSocketFactory : WebSocketFactory {
+        lateinit var listener: WebSocketListener
+        val socket = FakeWebSocket()
+        var createCount = 0
+
+        override fun create(request: Request, listener: WebSocketListener): WebSocket {
+            this.listener = listener
+            socket.request = request
+            createCount += 1
+            return socket
+        }
+
+        fun simulateOpen() { listener.onOpen(socket, createResponse(socket.request)) }
+        fun simulateText(text: String) { listener.onMessage(socket, text) }
+        fun simulateClosing() { listener.onClosing(socket, 1000, "closing") }
+        fun simulateClosed() { listener.onClosed(socket, 1000, "closed") }
+        fun simulateFailure(throwable: Throwable) { listener.onFailure(socket, throwable, createResponse(socket.request)) }
+
+        private fun createResponse(request: Request): Response =
+            Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(101).message("Switching Protocols").build()
+    }
+
+    private class FakeWebSocket : WebSocket {
+        lateinit var request: Request
+        var closed = false
+        val sentMessages = mutableListOf<String>()
+        override fun request(): Request = request
+        override fun queueSize(): Long = 0L
+        override fun send(text: String): Boolean { sentMessages += text; return true }
+        override fun send(bytes: ByteString): Boolean = false
+        override fun close(code: Int, reason: String?): Boolean { closed = true; return true }
+        override fun cancel() { closed = true }
+    }
+
+    private class FakeSessionStateHolder(initial: Session? = null) : SessionStateHolder {
+        private val mutableSession = MutableStateFlow(initial)
+        override val session: StateFlow<Session?> = mutableSession.asStateFlow()
+        override fun signIn(token: String, username: String, userId: Int) { // NEU
+            mutableSession.value = Session(token, username, userId)
+        }
+        override fun signOut() { mutableSession.value = null }
+    }
+
+    private companion object {
+        const val DEFAULT_TOKEN = "test-token"
+        const val DEFAULT_USERNAME = "test-user"
+        const val DEFAULT_USER_ID = 1 // NEU
+        val DEFAULT_SESSION = Session(DEFAULT_TOKEN, DEFAULT_USERNAME, DEFAULT_USER_ID) // NEU
+    }
+
+    private fun newClient(
+        factory: FakeWebSocketFactory,
+        sessionStateHolder: SessionStateHolder = FakeSessionStateHolder(DEFAULT_SESSION),
+    ) = OkHttpWebSocketClient(
+        websocketUrl = "ws://10.0.2.2:8080/ws",
+        sessionStateHolder = sessionStateHolder,
+        webSocketFactory = factory,
+    )
 }
