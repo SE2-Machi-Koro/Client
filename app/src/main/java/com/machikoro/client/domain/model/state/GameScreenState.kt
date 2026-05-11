@@ -8,7 +8,11 @@ data class GameScreenState(
     val players: List<PlayerCoinState>,
     val diceResult: List<Int>? = null,
     val activePlayerId: Int? = null,
+    val myUserId: Int? = null,
 ) {
+    val isActivePlayer: Boolean
+        get() = myUserId != null && myUserId == activePlayerId
+
     companion object {
         fun initial() = GameScreenState(
             connectionStatus = ConnectionStatus.IDLE,
@@ -16,6 +20,7 @@ data class GameScreenState(
             players = emptyList(),
             diceResult = null,
             activePlayerId = null,
+            myUserId = null,
         )
     }
 }
