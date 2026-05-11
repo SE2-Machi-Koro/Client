@@ -21,6 +21,7 @@ import com.machikoro.client.ui.theme.ClientTheme
 fun AppRoot(
     gameScreenState: GameScreenState,
     startScreenState: StartScreenState,
+    lobbyScreenState: LobbyScreenState,
     registerDialogState: RegisterDialogState,
     loginDialogState: LoginDialogState,
     logoutState: LogoutState,
@@ -37,11 +38,21 @@ fun AppRoot(
     onCreateLobbyClick: () -> Unit,
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
-    modifier: Modifier = Modifier,
+    onReadyToggle: () -> Unit = {},
     onStartGame: () -> Unit = {},
+    onLeaveLobby: () -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     if (gameScreenState.gamePhase != GamePhase.NONE) {
         GameScreen(state = gameScreenState, modifier = modifier)
+    } else if (loggedInAs != null && lobbyCode != null) {
+        LobbyScreen(
+            state = lobbyScreenState,
+            onReadyToggle = onReadyToggle,
+            onStartGame = onStartGame,
+            onLeaveLobby = onLeaveLobby,
+            modifier = modifier
+        )
     } else if (loggedInAs != null) {
         HomeScreen(
             lobbyCode = lobbyCode,
@@ -70,7 +81,6 @@ fun AppRoot(
             onLoginSubmit = onLoginSubmit,
             onLoginDialogReset = onLoginDialogReset,
             onLogoutSubmit = onLogoutSubmit,
-            onStartGame = onStartGame,
             modifier = modifier
         )
     }
@@ -83,6 +93,7 @@ private fun AppRootStartScreenPreview() {
         AppRoot(
             gameScreenState = GameScreenState.initial(),
             startScreenState = StartScreenState.placeholder(),
+            lobbyScreenState = LobbyScreenState.placeholder(),
             registerDialogState = RegisterDialogState(),
             loginDialogState = LoginDialogState(),
             logoutState = LogoutState(),
@@ -110,6 +121,7 @@ private fun AppRootGameScreenPreview() {
         AppRoot(
             gameScreenState = GameScreenState.initial().copy(gamePhase = GamePhase.ROLL_DICE),
             startScreenState = StartScreenState.placeholder(),
+            lobbyScreenState = LobbyScreenState.placeholder(),
             registerDialogState = RegisterDialogState(),
             loginDialogState = LoginDialogState(),
             logoutState = LogoutState(),
