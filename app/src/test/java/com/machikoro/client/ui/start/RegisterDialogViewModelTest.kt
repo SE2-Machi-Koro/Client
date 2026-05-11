@@ -21,7 +21,6 @@ import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
 
-
 @OptIn(ExperimentalCoroutinesApi::class)
 class RegisterDialogViewModelTest {
     @get:Rule
@@ -29,16 +28,12 @@ class RegisterDialogViewModelTest {
 
     @Test
     fun submitSuccessSetsRegisteredUsernameAndClearsSubmitting() = runTest {
-        val api = FakeAuthApi(
-            response = { request -> RegisterResponse(id = 7, username = request.username) },
-        )
+        val api = FakeAuthApi(response = { request -> RegisterResponse(id = 7, username = request.username) })
         val viewModel = RegisterDialogViewModel(api)
         viewModel.usernameChanged("alice")
         viewModel.passwordChanged("hunter2")
-
         viewModel.submit()
         advanceUntilIdle()
-
         val state = viewModel.state.value
         assertEquals("alice", state.registeredUsername)
         assertFalse(state.submitting)
@@ -48,16 +43,12 @@ class RegisterDialogViewModelTest {
     @Test
     fun submitHttpExceptionSurfacesServerErrorBody() = runTest {
         val errorBody = "Username 'alice' is already taken".toResponseBody("text/plain".toMediaType())
-        val api = FakeAuthApi(
-            response = { throw HttpException(Response.error<RegisterResponse>(400, errorBody)) },
-        )
+        val api = FakeAuthApi(response = { throw HttpException(Response.error<RegisterResponse>(400, errorBody)) })
         val viewModel = RegisterDialogViewModel(api)
         viewModel.usernameChanged("alice")
         viewModel.passwordChanged("hunter2")
-
         viewModel.submit()
         advanceUntilIdle()
-
         val state = viewModel.state.value
         assertEquals("Username 'alice' is already taken", state.errorMessage)
         assertNull(state.registeredUsername)
@@ -66,16 +57,12 @@ class RegisterDialogViewModelTest {
 
     @Test
     fun submitIoExceptionSurfacesNetworkErrorMessage() = runTest {
-        val api = FakeAuthApi(
-            response = { throw IOException("connect timed out") },
-        )
+        val api = FakeAuthApi(response = { throw IOException("connect timed out") })
         val viewModel = RegisterDialogViewModel(api)
         viewModel.usernameChanged("alice")
         viewModel.passwordChanged("hunter2")
-
         viewModel.submit()
         advanceUntilIdle()
-
         val state = viewModel.state.value
         assertEquals("Network error: connect timed out", state.errorMessage)
         assertFalse(state.submitting)
@@ -84,10 +71,8 @@ class RegisterDialogViewModelTest {
     @Test
     fun usernameAndPasswordChangedUpdateState() = runTest {
         val viewModel = RegisterDialogViewModel(FakeAuthApi())
-
         viewModel.usernameChanged("alice")
         viewModel.passwordChanged("hunter2")
-
         assertEquals("alice", viewModel.state.value.username)
         assertEquals("hunter2", viewModel.state.value.password)
     }
@@ -97,9 +82,7 @@ class RegisterDialogViewModelTest {
         val viewModel = RegisterDialogViewModel(FakeAuthApi())
         viewModel.usernameChanged("alice")
         viewModel.passwordChanged("hunter2")
-
         viewModel.reset()
-
         val state = viewModel.state.value
         assertEquals("", state.username)
         assertEquals("", state.password)
@@ -110,15 +93,9 @@ class RegisterDialogViewModelTest {
     @Test
     fun canSubmitIsFalseWhenFieldsBlankOrAlreadyRegisteredOrSubmitting() = runTest {
         val viewModel = RegisterDialogViewModel(FakeAuthApi())
-
-        // blank fields
         assertFalse(viewModel.state.value.canSubmit)
-
-        // username only
         viewModel.usernameChanged("alice")
         assertFalse(viewModel.state.value.canSubmit)
-
-        // both filled
         viewModel.passwordChanged("hunter2")
         assertTrue(viewModel.state.value.canSubmit)
     }
@@ -130,8 +107,7 @@ class RegisterDialogViewModelTest {
     ) : AuthApi {
         override suspend fun register(body: RegisterRequest): RegisterResponse = response(body)
         override suspend fun login(body: LoginRequest): LoginResponse =
-            LoginResponse(sessionToken = "stub-token", username = body.username)
-        override suspend fun logout(body: LogoutRequest): Response<Unit> =
-            Response.success(Unit)
+            LoginResponse(sessionToken = "stub-token", username = body.username, userId = 0) // NEU
+        override suspend fun logout(body: LogoutRequest): Response<Unit> = Response.success(Unit)
     }
 }
