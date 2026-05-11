@@ -55,7 +55,7 @@ fun GameEndScreen(players: List<String>) {
             )
             {
                 players.forEachIndexed { i, player ->
-                    AnimatedItem(i * 500, AnimationType.Bounce) {
+                    AnimatedItem(500 + i * 500, AnimationType.Bounce) {
                         PlayerProfileCard(player, i + 1)
                     }
                 }
