@@ -45,7 +45,6 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
-                    activeGameId = null,
                     isLobbyHost = false,
                     loggedInAs = null,
                     onCreateLobbyClick = {},
@@ -81,7 +80,6 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
-                    activeGameId = null,
                     isLobbyHost = false,
                     loggedInAs = null,
                     onCreateLobbyClick = {},
@@ -118,7 +116,6 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
-                    activeGameId = null,
                     isLobbyHost = false,
                     loggedInAs = null,
                     onCreateLobbyClick = {},
@@ -164,13 +161,10 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
-                    activeGameId = 7,
                     isLobbyHost = true,
                     loggedInAs = "alice",
                     onCreateLobbyClick = {},
-                    onReadyToggle = {},
                     onStartGame = {},
-                    onLeaveLobby = {},
                 )
             }
         }

@@ -31,17 +31,14 @@ class LobbyScreenViewModel(
         observeSession()
         observePlayers()
         observeConnectionStatus()
+        observeIsLobbyHost()
     }
 
     private fun observeSession() {
         viewModelScope.launch {
             sessionStateHolder.session.collect { session ->
                 mutableState.update { current ->
-                    current.copy(
-                        loggedInAs = session?.username,
-                        isHost = session?.username != null &&
-                                current.playerList.firstOrNull() == session.username
-                    )
+                    current.copy(loggedInAs = session?.username)
                 }
             }
         }
@@ -55,14 +52,22 @@ class LobbyScreenViewModel(
 
                     current.copy(
                         playerList = playerNames,
-                        isHost = current.loggedInAs != null &&
-                                playerNames.firstOrNull() == current.loggedInAs,
                         lobbyStatus = if (players.size >= 2) {
                             LobbyStatus.READY
                         } else {
                             LobbyStatus.WAITING_FOR_PLAYERS
                         }
                     )
+                }
+            }
+        }
+    }
+
+    private fun observeIsLobbyHost() {
+        viewModelScope.launch {
+            webSocketClient.isLobbyHost.collect { isHost ->
+                mutableState.update { current ->
+                    current.copy(isHost = isHost)
                 }
             }
         }

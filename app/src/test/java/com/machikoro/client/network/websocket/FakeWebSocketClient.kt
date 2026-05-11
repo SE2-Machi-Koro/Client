@@ -52,6 +52,8 @@ class FakeWebSocketClient : WebSocketClient {
 
     override fun clearLobbyCode() {
         mutableLobbyCode.value = null
+        mutableActiveGameId.value = null
+        mutableIsLobbyHost.value = false
     }
 
     fun emitConnectionStatus(status: ConnectionStatus) {
