@@ -77,3 +77,102 @@ class GameScreenViewModelTest {
         fakeClient.emitConnectionStatus(ConnectionStatus.CONNECTED)
         fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
         advanceUntilIdle()
+
+        assertEquals(ConnectionStatus.CONNECTED, viewModel.state.value.connectionStatus)
+        assertEquals(GamePhase.ROLL_DICE, viewModel.state.value.gamePhase)
+
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        advanceUntilIdle()
+        assertEquals(ConnectionStatus.CONNECTED, viewModel.state.value.connectionStatus)
+        assertEquals(GamePhase.BUY_OR_BUILD, viewModel.state.value.gamePhase)
+
+        fakeClient.emitConnectionStatus(ConnectionStatus.DISCONNECTED)
+        advanceUntilIdle()
+        assertEquals(ConnectionStatus.DISCONNECTED, viewModel.state.value.connectionStatus)
+        assertEquals(GamePhase.BUY_OR_BUILD, viewModel.state.value.gamePhase)
+    }
+
+    @Test
+    fun playerCoinUpdatesAreReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+        val players = listOf(
+            PlayerCoinState(id = "player-1", displayName = "You", coins = 3, isCurrentPlayer = true),
+            PlayerCoinState(id = "player-2", displayName = "SoupCube", coins = 5, isActivePlayer = true)
+        )
+
+        fakeClient.emitPlayers(players)
+        advanceUntilIdle()
+
+        assertEquals(players, viewModel.state.value.players)
+    }
+
+    @Test
+    fun playerCoinUpdatesReplacePreviousValuesForIncreasesAndDecreases() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(id = "player-1", displayName = "You", coins = 3),
+                PlayerCoinState(id = "player-2", displayName = "SoupCube", coins = 5)
+            )
+        )
+        advanceUntilIdle()
+
+        val updatedPlayers = listOf(
+            PlayerCoinState(id = "player-1", displayName = "You", coins = 8),
+            PlayerCoinState(id = "player-2", displayName = "SoupCube", coins = 2)
+        )
+        fakeClient.emitPlayers(updatedPlayers)
+        advanceUntilIdle()
+
+        assertEquals(updatedPlayers, viewModel.state.value.players)
+    }
+
+    @Test
+    fun diceResultIsNullInInitialState() = runTest {
+        val viewModel = GameScreenViewModel(FakeWebSocketClient())
+
+        advanceUntilIdle()
+
+        assertNull(viewModel.state.value.diceResult)
+    }
+
+    @Test
+    fun diceResultFromClientIsReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitDiceResult(listOf(3, 4))
+        advanceUntilIdle()
+
+        assertEquals(listOf(3, 4), viewModel.state.value.diceResult)
+    }
+
+    @Test
+    fun rollDiceForwardsDiceCountToClientWhenPhaseIsRollDice() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+
+        assertEquals(1, fakeClient.lastRolledDiceCount)
+    }
+
+    @Test
+    fun rollDiceIsIgnoredWhenPhaseIsNotRollDice() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+
+        assertNull(fakeClient.lastRolledDiceCount)
+    }
+}

@@ -7,14 +7,8 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface WebSocketClient {
     val connectionStatus: StateFlow<ConnectionStatus>
-
     val gamePhase: StateFlow<GamePhase>
-
-    // Backend coin payload is still pending; expose the UI-ready state now for #37.
     val players: StateFlow<List<PlayerCoinState>>
-
-    // Holds the latest created lobby code received from the server.
-    // Null if no lobby has been created yet.
     val lobbyCode: StateFlow<String?>
 
     // Holds the latest dice result received from the server.
@@ -22,13 +16,9 @@ interface WebSocketClient {
     val diceResult: StateFlow<List<Int>?>
 
     fun connect()
-
     fun disconnect()
-
     fun sendCreateLobby()
-
     fun clearLobbyCode()
-
     fun sendGameStart()
 
     // Sends a ROLL_DICE STOMP frame. diceCount is 1 by default,

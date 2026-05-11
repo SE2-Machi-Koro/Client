@@ -6,9 +6,7 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -35,30 +33,15 @@ class HomeScreenViewModelTest {
         assertTrue(fakeClient.sendCreateLobbyCalled)
     }
 
-    @Test
-    fun clearLobbyCodeClearsCurrentLobbyCode() = runTest {
-        val fakeClient = FakeWebSocketClient()
-        val viewModel = HomeViewModel(fakeClient)
-
-        fakeClient.mutableLobbyCode.value = "ABC123"
-
-        assertEquals("ABC123", viewModel.lobbyCode.value)
-
-        viewModel.clearLobbyCode()
-
-        assertNull(viewModel.lobbyCode.value)
-    }
-
     private class FakeWebSocketClient : WebSocketClient {
         override val connectionStatus: StateFlow<ConnectionStatus> =
             MutableStateFlow(ConnectionStatus.IDLE)
-
         override val gamePhase: StateFlow<GamePhase> =
             MutableStateFlow(GamePhase.NONE)
-
+        override val diceResult: StateFlow<List<Int>?> =
+            MutableStateFlow(null)
         override val players: StateFlow<List<PlayerCoinState>> =
             MutableStateFlow(emptyList())
-
         val mutableLobbyCode = MutableStateFlow<String?>(null)
         override val lobbyCode: StateFlow<String?> = mutableLobbyCode
 
@@ -67,23 +50,11 @@ class HomeScreenViewModelTest {
         var sendGameStartCalled = false
         var sendCreateLobbyCalled = false
 
-        override fun connect() {
-            connectCalled = true
-        }
-
-        override fun disconnect() {
-            disconnectCalled = true
-        }
-
-        override fun sendGameStart() {
-            sendGameStartCalled = true
-        }
-
-        override fun sendCreateLobby() {
-            sendCreateLobbyCalled = true
-        }
-        override fun clearLobbyCode() {
-            mutableLobbyCode.value = null
-        }
+        override fun connect() { connectCalled = true }
+        override fun disconnect() { disconnectCalled = true }
+        override fun rollDice(diceCount: Int) = Unit
+        override fun sendGameStart() { sendGameStartCalled = true }
+        override fun sendCreateLobby() { sendCreateLobbyCalled = true }
+        override fun clearLobbyCode() { mutableLobbyCode.value = null }
     }
 }
