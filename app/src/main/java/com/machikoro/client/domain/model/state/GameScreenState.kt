@@ -7,6 +7,7 @@ data class GameScreenState(
     val gamePhase: GamePhase,
     val players: List<PlayerCoinState>,
     val diceResult: List<Int>? = null,
+    val activePlayerId: Int? = null,
 ) {
     companion object {
         fun initial() = GameScreenState(
@@ -14,6 +15,7 @@ data class GameScreenState(
             gamePhase = GamePhase.NONE,
             players = emptyList(),
             diceResult = null,
+            activePlayerId = null,
         )
     }
 }
