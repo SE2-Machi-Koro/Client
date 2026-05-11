@@ -60,7 +60,7 @@ fun GameEndScreen(players: List<String>) {
                     }
                 }
             }
-
+            //Action buttons
             AnimatedItem(delayMillis = 5000, animationType = AnimationType.SlideUp) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)

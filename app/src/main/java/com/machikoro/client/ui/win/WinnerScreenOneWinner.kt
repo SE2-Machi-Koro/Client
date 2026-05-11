@@ -21,6 +21,17 @@ import com.machikoro.client.ui.Header
 import com.machikoro.client.ui.RegularInfoText
 import com.machikoro.client.ui.theme.ClientTheme
 
+/*
+This file contains the GameOverOneWinner composable,
+which displays the end-of-game screen when there is
+only one winner. The screen includes a background,
+a header, and an animated player profile card for
+the winner. It also displays the number of rounds
+it took for the winner to win the game. Finally,
+it includes buttons for navigating back to the home
+screen or starting a new game, which are also animated
+for visibility.
+ */
 @Composable
 fun GameOverOneWinner(winnerName: String, roundsNumber: Int) {
     Box(modifier = Modifier.fillMaxSize())
@@ -32,7 +43,6 @@ fun GameOverOneWinner(winnerName: String, roundsNumber: Int) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Header("Congratulations to...")
-            //Player cards
             Row(
                 modifier = Modifier.fillMaxWidth()
                     .weight(1f),
@@ -40,6 +50,7 @@ fun GameOverOneWinner(winnerName: String, roundsNumber: Int) {
                 verticalAlignment = Alignment.CenterVertically,
             )
             {
+                //Player card
                 AnimatedItem(delayMillis = 500, animationType = AnimationType.Bounce) {
                     PlayerProfileCard(winnerName, 1)
                 }
@@ -48,6 +59,7 @@ fun GameOverOneWinner(winnerName: String, roundsNumber: Int) {
                         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        //TODO: later add more info here like score, coins, etc
                         RegularInfoText("won the game in \n$roundsNumber rounds!")
                     }
                 }
