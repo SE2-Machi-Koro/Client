@@ -31,6 +31,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.machikoro.client.R
+import com.machikoro.client.ui.theme.ButtonColor
+import com.machikoro.client.ui.theme.ButtonShadowColor
+import com.machikoro.client.ui.theme.ButtonTextColor
+import com.machikoro.client.ui.theme.HeaderFill
+import com.machikoro.client.ui.theme.HeaderStroke
 import kotlinx.coroutines.delay
 
 // Shared UI components for the Machikoro client app, including background, header, action button, and animated item composables.
@@ -58,20 +63,21 @@ fun Background(painterResource: Int = R.drawable.background_wood) {
 @Composable
 fun Header(label: String) {
     Box {
+        //Stroke
         Text(
             text = label,
             style = MaterialTheme.typography.headlineLarge.copy(
                 drawStyle = Stroke(width = 12f)
             ),
             fontSize = 42.sp,
-            color = Color(0xFFB06207)
+            color = HeaderStroke
         )
 
         Text(
             text = label,
             style = MaterialTheme.typography.headlineLarge,
             fontSize = 42.sp,
-            color = Color(0xFFF49E0A)
+            color = HeaderFill
         )
     }
 }
@@ -90,7 +96,7 @@ fun ActionButton(label: String, onClick: (() -> Unit)?) {
                 .matchParentSize()
                 .offset(y = 4.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFFB97816))
+                .background(ButtonShadowColor)
         )
 
         // Main button
@@ -98,13 +104,13 @@ fun ActionButton(label: String, onClick: (() -> Unit)?) {
             onClick = { onClick },
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFF4B343)
+                containerColor = ButtonColor
             ),
 
             ) {
             Text(
                 text = label,
-                color = Color(0xFF7A4300),
+                color = ButtonTextColor,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold
             )
