@@ -34,10 +34,16 @@ fun AppRoot(
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
     onStartGame: () -> Unit = {},
+    onPurchaseClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (gameScreenState.gamePhase != GamePhase.NONE) {
-        GameScreen(state = gameScreenState, modifier = modifier)
+        // Game actions stay owned by GameScreenViewModel and are passed into the UI.
+        GameScreen(
+            state = gameScreenState,
+            onPurchaseClick = onPurchaseClick,
+            modifier = modifier
+        )
     } else if (loggedInAs != null) {
         HomeScreen(
             lobbyCode = lobbyCode,

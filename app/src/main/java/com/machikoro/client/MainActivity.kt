@@ -101,6 +101,7 @@ class MainActivity : ComponentActivity() {
                         lobbyCode = lobbyCode,
                         loggedInAs = startScreenState.loggedInAs,
                         onCreateLobbyClick = homeViewModel::createLobby,
+                        onPurchaseClick = gameScreenViewModel::purchase,
                     )
                 }
             }
