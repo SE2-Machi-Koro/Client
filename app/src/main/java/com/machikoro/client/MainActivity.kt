@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
         StartScreenViewModel.Factory(webSocketClient, SessionManager)
     }
     private val gameScreenViewModel by viewModels<GameScreenViewModel> {
-        GameScreenViewModel.Factory(webSocketClient)
+        GameScreenViewModel.Factory(webSocketClient, SessionManager) // NEU
     }
     private val homeViewModel by viewModels<HomeViewModel> {
         HomeViewModel.Factory(webSocketClient)
@@ -109,7 +109,7 @@ class MainActivity : ComponentActivity() {
                             lobbyScreenViewModel.onLeaveLobby()
                             homeViewModel.clearLobbyCode()
                         },
-                        onRollDice = gameScreenViewModel::rollDice, // NEU
+                        onRollDice = gameScreenViewModel::rollDice,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
                         loggedInAs = startScreenState.loggedInAs,
