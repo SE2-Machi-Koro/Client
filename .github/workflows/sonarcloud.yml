@@ -38,6 +38,6 @@ jobs:
 
       - name: Build, Test & SonarCloud Analysis
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.ACTIONS_CLIENT }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew testDebugUnitTest jacocoTestReport sonar --no-daemon
