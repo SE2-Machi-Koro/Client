@@ -55,6 +55,7 @@ fun HomeScreen(
     onRankingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onGoToLobbyClick: () -> Unit,
+    onLogoutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Root container. Box allows placing elements freely with align().
@@ -112,6 +113,17 @@ fun HomeScreen(
                 .padding(top = 25.dp, end = 30.dp)
         )
 
+        // Logout affordance in the top-left corner. Issue #106 places the
+        // logout action on the authenticated screen; the start screen never
+        // shows it because the routing in AppRoot collapses HomeScreen back to
+        // StartScreen the moment the session clears.
+        LogoutButton(
+            onClick = onLogoutClick,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = 25.dp, start = 30.dp)
+        )
+
         // === MAIN ACTION BUTTONS ===
         // Three main lobby actions in the center of the screen.
         Row(
@@ -165,6 +177,31 @@ fun HomeScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 0.dp)
+        )
+    }
+}
+
+@Composable
+private fun LogoutButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(40.dp),
+        shape = RoundedCornerShape(10.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = ButtonBlueDark,
+            contentColor = TextWhite,
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) {
+        Text(
+            text = "Abmelden",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = TextWhite,
         )
     }
 }

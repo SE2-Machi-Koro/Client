@@ -64,6 +64,7 @@ fun AppRoot(
                 lobbyCode = lobbyCode,
                 onCreateLobbyClick = onCreateLobbyClick,
                 onGoToLobbyClick = onGoToLobbyClick,
+                onLogoutClick = onLogoutSubmit,
                 modifier = modifier
             )
         }

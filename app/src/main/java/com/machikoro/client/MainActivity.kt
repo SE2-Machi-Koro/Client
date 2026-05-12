@@ -8,6 +8,8 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -79,6 +81,8 @@ class MainActivity : ComponentActivity() {
             val logoutState by logoutViewModel.state.collectAsState()
             var showLobbyScreen by remember { mutableStateOf(false) }             // Stores whether the user has confirmed the created lobby and should see the lobby screen.
 
+            val snackbarHostState = remember { SnackbarHostState() }
+
             // Drive WebSocket lifecycle from session changes during the foreground.
             // onStart/onStop handle the activity-lifecycle case; this handles the
             // user-logs-in-or-out-while-app-is-open case. connect() and disconnect()
@@ -93,8 +97,26 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Server #159 contract: STOMP CONNECT with a missing/expired token
+            // produces a STOMP ERROR frame, which OkHttpWebSocketClient handles
+            // by calling SessionManager.signOut() directly (durable side-effect
+            // that survives activity recreation). The snackbar below is the
+            // UI-only counterpart and is miss-tolerant: if the activity isn't
+            // attached when the event fires, the user is still signed out — we
+            // just skip the toast for that emission.
+            LaunchedEffect(Unit) {
+                webSocketClient.authRejections.collect {
+                    snackbarHostState.showSnackbar(
+                        "Sitzung abgelaufen, bitte erneut anmelden"
+                    )
+                }
+            }
+
             ClientTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                ) { innerPadding ->
                     AppRoot(
                         gameScreenState = gameScreenState,
                         startScreenState = startScreenState,
