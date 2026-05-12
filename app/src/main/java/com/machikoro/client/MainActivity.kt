@@ -8,33 +8,114 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
 import com.machikoro.client.config.AppConfig
+import com.machikoro.client.domain.session.DataStoreSessionStorage
+import com.machikoro.client.domain.session.SessionManager
+import com.machikoro.client.network.auth.AuthApiFactory
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
-import com.machikoro.client.ui.start.StartScreen
+import com.machikoro.client.ui.AppRoot
+import com.machikoro.client.ui.game.GameScreenViewModel
+import com.machikoro.client.ui.home.HomeViewModel
+import com.machikoro.client.ui.lobby.LobbyScreenViewModel
+import com.machikoro.client.ui.start.LoginDialogViewModel
+import com.machikoro.client.ui.start.LogoutViewModel
+import com.machikoro.client.ui.start.RegisterDialogViewModel
 import com.machikoro.client.ui.start.StartScreenViewModel
 import com.machikoro.client.ui.theme.ClientTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val webSocketClient by lazy {
-        OkHttpWebSocketClient(websocketUrl = AppConfig.websocketUrl)
+        OkHttpWebSocketClient(
+            websocketUrl = AppConfig.websocketUrl,
+            sessionStateHolder = SessionManager,
+        )
+    }
+    private val authApi by lazy {
+        AuthApiFactory.create(AppConfig.backendBaseUrl)
     }
     private val startScreenViewModel by viewModels<StartScreenViewModel> {
-        StartScreenViewModel.Factory(webSocketClient)
+        StartScreenViewModel.Factory(webSocketClient, SessionManager)
+    }
+    private val gameScreenViewModel by viewModels<GameScreenViewModel> {
+        GameScreenViewModel.Factory(webSocketClient)
+    }
+    private val homeViewModel by viewModels<HomeViewModel> {
+        HomeViewModel.Factory(webSocketClient)
+    }
+    private val lobbyScreenViewModel by viewModels<LobbyScreenViewModel> {
+        LobbyScreenViewModel.Factory(webSocketClient, SessionManager)
+    }
+    private val registerDialogViewModel by viewModels<RegisterDialogViewModel> {
+        RegisterDialogViewModel.Factory(authApi)
+    }
+    private val loginDialogViewModel by viewModels<LoginDialogViewModel> {
+        LoginDialogViewModel.Factory(authApi, SessionManager)
+    }
+    private val logoutViewModel by viewModels<LogoutViewModel> {
+        LogoutViewModel.Factory(authApi, SessionManager)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        SessionManager.attach(DataStoreSessionStorage(applicationContext))
+        lifecycleScope.launch { SessionManager.hydrate() }
         enableEdgeToEdge()
         setContent {
-            val state by startScreenViewModel.state.collectAsState()
+            val startScreenState by startScreenViewModel.state.collectAsState()
+            val gameScreenState by gameScreenViewModel.state.collectAsState()
+            val lobbyCode by homeViewModel.lobbyCode.collectAsState()
+            val lobbyScreenState by lobbyScreenViewModel.state.collectAsState()
+            val registerDialogState by registerDialogViewModel.state.collectAsState()
+            val loginDialogState by loginDialogViewModel.state.collectAsState()
+            val logoutState by logoutViewModel.state.collectAsState()
+
+            // Drive WebSocket lifecycle from session changes during the foreground.
+            // onStart/onStop handle the activity-lifecycle case; this handles the
+            // user-logs-in-or-out-while-app-is-open case. connect() and disconnect()
+            // are both idempotent so it's safe to call them on every emission.
+            LaunchedEffect(Unit) {
+                SessionManager.session.collect { session ->
+                    if (session != null) {
+                        webSocketClient.connect()
+                    } else {
+                        webSocketClient.disconnect()
+                    }
+                }
+            }
+
             ClientTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    StartScreen(
-                        state = state,
-                        modifier = Modifier.padding(innerPadding)
+                    AppRoot(
+                        gameScreenState = gameScreenState,
+                        startScreenState = startScreenState,
+                        lobbyScreenState = lobbyScreenState,
+                        registerDialogState = registerDialogState,
+                        loginDialogState = loginDialogState,
+                        logoutState = logoutState,
+                        onRegisterUsernameChange = registerDialogViewModel::usernameChanged,
+                        onRegisterPasswordChange = registerDialogViewModel::passwordChanged,
+                        onRegisterSubmit = registerDialogViewModel::submit,
+                        onRegisterDialogReset = registerDialogViewModel::reset,
+                        onLoginUsernameChange = loginDialogViewModel::usernameChanged,
+                        onLoginPasswordChange = loginDialogViewModel::passwordChanged,
+                        onLoginSubmit = loginDialogViewModel::submit,
+                        onLoginDialogReset = loginDialogViewModel::reset,
+                        onLogoutSubmit = logoutViewModel::submit,
+                        onReadyToggle = lobbyScreenViewModel::onReadyToggle,
+                        onStartGame = lobbyScreenViewModel::onStartGame,
+                        onLeaveLobby = {
+                            lobbyScreenViewModel.onLeaveLobby()
+                            homeViewModel.clearLobbyCode()
+                        },                        modifier = Modifier.padding(innerPadding),
+                        lobbyCode = lobbyCode,
+                        loggedInAs = startScreenState.loggedInAs,
+                        onCreateLobbyClick = homeViewModel::createLobby,
                     )
                 }
             }

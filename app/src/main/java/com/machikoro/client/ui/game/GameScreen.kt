@@ -1,103 +1,252 @@
-package com.machikoro.client.ui
+package com.machikoro.client.ui.game
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.machikoro.client.model.state.ConnectionStatus
-import com.machikoro.client.viewmodel.GameViewModel
+import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.model.state.PlayerCoinState
+import com.machikoro.client.domain.model.state.toDisplayText
+import com.machikoro.client.ui.theme.ClientTheme
+
+private const val BANNER_COLOR_ANIMATION_DURATION_MS = 300
 
 @Composable
-fun GameScreen(vm: GameViewModel) {
-    val connectionStatus by vm.connectionStatus.collectAsState()
-    val diceResult       by vm.diceResult.collectAsState()
-    val canRollTwo       by vm.canRollTwo.collectAsState()
-
-    var selectedDiceCount by remember { mutableStateOf(1) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-
-        // Verbindungsstatus
-        Text(
-            text = when (connectionStatus) {
-                ConnectionStatus.CONNECTED    -> "🟢 Verbunden"
-                ConnectionStatus.CONNECTING   -> "🟡 Verbinde..."
-                ConnectionStatus.DISCONNECTED -> "🔴 Getrennt"
-                ConnectionStatus.ERROR        -> "❌ Fehler"
-                ConnectionStatus.IDLE         -> "⚪ Bereit"
-            },
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline
-        )
-
-        Spacer(Modifier.height(32.dp))
-
-        // Würfelanzahl-Auswahl (nur wenn freigeschaltet)
-        if (canRollTwo) {
-            Text("Wie viele Würfel?", style = MaterialTheme.typography.labelLarge)
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                listOf(1, 2).forEach { count ->
-                    FilterChip(
-                        selected = selectedDiceCount == count,
-                        onClick = { selectedDiceCount = count },
-                        label = { Text("$count Würfel") }
-                    )
-                }
-            }
-            Spacer(Modifier.height(24.dp))
-        }
-
-        // Würfelergebnis
-        diceResult?.let { result ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                result.dice.forEach { value ->
-                    Text(diceFace(value), fontSize = 64.sp)
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = if (result.dice.size > 1)
-                    "${result.dice[0]} + ${result.dice[1]} = ${result.total}"
-                else
-                    "Ergebnis: ${result.total}",
-                style = MaterialTheme.typography.titleLarge
-            )
-        } ?: Text(
-            "Noch nicht gewürfelt",
-            color = MaterialTheme.colorScheme.outline,
-            style = MaterialTheme.typography.bodyLarge
-        )
-
-        Spacer(Modifier.height(32.dp))
-
-        // Würfeln-Button
-        Button(
-            onClick = { vm.rollDice(selectedDiceCount) },
-            enabled = connectionStatus == ConnectionStatus.CONNECTED,
+fun GameScreen(
+    state: GameScreenState,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier.fillMaxSize()) {
+        CoinDisplay(
+            players = state.players,
             modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-        ) {
-            Text("🎲 Würfeln", fontSize = 18.sp)
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        )
+
+        if (state.gamePhase != GamePhase.NONE) {
+            GamePhaseBanner(
+                phase = state.gamePhase,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = coinDisplayTopPadding(state.players))
+            )
         }
     }
 }
 
-private fun diceFace(value: Int): String = when (value) {
-    1 -> "⚀"; 2 -> "⚁"; 3 -> "⚂"
-    4 -> "⚃"; 5 -> "⚄"; 6 -> "⚅"
-    else -> "?"
+@Composable
+private fun CoinDisplay(
+    players: List<PlayerCoinState>,
+    modifier: Modifier = Modifier
+) {
+    if (players.isEmpty()) {
+        return
+    }
+
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        items(
+            items = players,
+            key = { it.id }
+        ) { player ->
+            PlayerCoinBadge(
+                player = player,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+        }
+    }
 }
+
+@Composable
+private fun PlayerCoinBadge(
+    player: PlayerCoinState,
+    modifier: Modifier = Modifier
+) {
+    val containerColor = when {
+        player.isCurrentPlayer -> MaterialTheme.colorScheme.primary
+        player.isActivePlayer -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val contentColor = when {
+        player.isCurrentPlayer -> MaterialTheme.colorScheme.onPrimary
+        player.isActivePlayer -> MaterialTheme.colorScheme.onTertiary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Surface(
+        color = containerColor,
+        contentColor = contentColor,
+        shape = RoundedCornerShape(8.dp),
+        tonalElevation = 3.dp,
+        modifier = modifier
+            .widthIn(min = 118.dp, max = 180.dp)
+            .semantics {
+                contentDescription = "${player.displayName}: ${player.coins} coins"
+            }
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+        ) {
+            CoinIcon(
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Column {
+                Text(
+                    text = player.displayName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
+                )
+                Text(
+                    text = "${player.coins} coins",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CoinIcon(modifier: Modifier = Modifier) {
+    Surface(
+        shape = CircleShape,
+        color = Color(0xFFFFD54F),
+        contentColor = Color(0xFF5D4100),
+        modifier = modifier.size(28.dp)
+    ) {
+        Text(
+            text = "\$",
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 3.dp)
+        )
+    }
+}
+
+private fun coinDisplayTopPadding(players: List<PlayerCoinState>) = if (players.isEmpty()) 0.dp else 68.dp
+
+@Composable
+private fun GamePhaseBanner(
+    phase: GamePhase,
+    modifier: Modifier = Modifier
+) {
+    val animatedColor by animateColorAsState(
+        targetValue = phase.toBannerColor(),
+        animationSpec = tween(durationMillis = BANNER_COLOR_ANIMATION_DURATION_MS),
+        label = "GamePhaseBannerColor"
+    )
+    Surface(
+        color = animatedColor,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = phase.toDisplayText(),
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onPrimary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        )
+    }
+}
+
+@Composable
+private fun GamePhase.toBannerColor(): Color = when (this) {
+    GamePhase.NONE -> Color.Transparent
+    GamePhase.ROLL_DICE -> MaterialTheme.colorScheme.primary
+    GamePhase.RESOLVE_EFFECTS -> MaterialTheme.colorScheme.secondary
+    GamePhase.BUY_OR_BUILD -> MaterialTheme.colorScheme.tertiary
+    GamePhase.END_TURN -> MaterialTheme.colorScheme.error
+}
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 200)
+@Composable
+private fun GameScreenRollDicePreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gamePhase = GamePhase.ROLL_DICE,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = previewPlayers()
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 200)
+@Composable
+private fun GameScreenBuyOrBuildPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gamePhase = GamePhase.BUY_OR_BUILD,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = previewPlayers()
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 200)
+@Composable
+private fun GameScreenNonePreview() {
+    ClientTheme {
+        GameScreen(state = GameScreenState.initial())
+    }
+}
+
+private fun previewPlayers() = listOf(
+    PlayerCoinState(
+        id = "player-1",
+        displayName = "You",
+        coins = 6,
+        isCurrentPlayer = true,
+        isActivePlayer = true
+    ),
+    PlayerCoinState(
+        id = "player-2",
+        displayName = "SoupCube",
+        coins = 3
+    ),
+    PlayerCoinState(
+        id = "player-3",
+        displayName = "doniliks",
+        coins = 0
+    )
+)
