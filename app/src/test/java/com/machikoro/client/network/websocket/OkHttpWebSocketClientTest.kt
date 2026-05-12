@@ -1,6 +1,7 @@
 package com.machikoro.client.network.websocket
 
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.model.shop.PurchaseType
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.session.Session
@@ -142,6 +143,13 @@ class OkHttpWebSocketClientTest {
         val client = newClient(FakeWebSocketFactory())
 
         assertEquals(emptyList<PlayerCoinState>(), client.players.value)
+    }
+
+    @Test
+    fun gameIdStartsAsNull() {
+        val client = newClient(FakeWebSocketFactory())
+
+        assertEquals(null, client.gameId.value)
     }
 
     @Test
@@ -369,6 +377,70 @@ class OkHttpWebSocketClientTest {
         assertTrue(factory.socket.sentMessages.isEmpty())
     }
 
+    @Test
+    fun sendPurchaseSendsServerAlignedEstablishmentRequest() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        client.sendPurchase(
+            gameId = 7,
+            purchaseType = PurchaseType.ESTABLISHMENT,
+            cardType = "BAKERY"
+        )
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND\n") &&
+                        it.contains("destination:/app/game.purchase") &&
+                        it.contains("\"gameId\":7") &&
+                        it.contains("\"purchaseType\":\"ESTABLISHMENT\"") &&
+                        it.contains("\"cardType\":\"BAKERY\"")
+            }
+        )
+    }
+
+    @Test
+    fun sendPurchaseSendsServerAlignedLandmarkRequest() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        client.sendPurchase(
+            gameId = 7,
+            purchaseType = PurchaseType.LANDMARK,
+            landmarkType = "TRAIN_STATION"
+        )
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND\n") &&
+                        it.contains("destination:/app/game.purchase") &&
+                        it.contains("\"gameId\":7") &&
+                        it.contains("\"purchaseType\":\"LANDMARK\"") &&
+                        it.contains("\"landmarkType\":\"TRAIN_STATION\"")
+            }
+        )
+    }
+
+    @Test
+    fun sendPurchaseWithoutConnectionIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.sendPurchase(
+            gameId = 7,
+            purchaseType = PurchaseType.ESTABLISHMENT,
+            cardType = "BAKERY"
+        )
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
     private fun gameActionFrame(body: String): String =
         "MESSAGE\ndestination:/topic/public\ncontent-type:application/json\n\n$body\u0000"
 
@@ -591,11 +663,12 @@ class OkHttpWebSocketClientTest {
 
         factory.simulateText(
             gameActionFrame(
-                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""
+                """{"type":"LOBBY_CREATED","sender":"SERVER","gameId":7,"payload":{"lobbyCode":"AJ25Z39"}}"""
             )
         )
 
         assertEquals("AJ25Z39", client.lobbyCode.value)
+        assertEquals(7, client.gameId.value)
     }
 
     @Test
