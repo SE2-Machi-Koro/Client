@@ -119,6 +119,11 @@ class MainActivity : ComponentActivity() {
                         },                        modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
                         loggedInAs = startScreenState.loggedInAs,
+                        showLobbyScreen = showLobbyScreen,
+                        onGoToLobbyClick = {
+                            // Navigates to the lobby screen after the user confirms the created lobby code.
+                            showLobbyScreen = true
+                        },
                         onCreateLobbyClick = homeViewModel::createLobby,
                     )
                 }
