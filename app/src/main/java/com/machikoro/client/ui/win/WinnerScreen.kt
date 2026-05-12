@@ -66,7 +66,6 @@ fun GameEndScreen(players: List<String>) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     ActionButton("Back to home screen", null)
-                    ActionButton("Play again", null)
                 }
             }
         }
