@@ -1,8 +1,10 @@
 package com.machikoro.client.ui.game
 
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.model.shop.PurchaseType
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
+import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.network.websocket.FakeWebSocketClient
 import com.machikoro.client.ui.start.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,6 +28,8 @@ class GameScreenViewModelTest {
         assertEquals(GamePhase.NONE, viewModel.state.value.gamePhase)
         assertEquals(ConnectionStatus.IDLE, viewModel.state.value.connectionStatus)
         assertEquals(emptyList<PlayerCoinState>(), viewModel.state.value.players)
+        assertEquals(null, viewModel.state.value.gameId)
+        assertEquals(PurchaseState.IDLE, viewModel.state.value.purchaseState)
     }
 
     @Test
@@ -139,4 +143,160 @@ class GameScreenViewModelTest {
         assertEquals(updatedPlayers, viewModel.state.value.players)
     }
 
+    @Test
+    fun gameIdUpdatesAreReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitGameId(7)
+        advanceUntilIdle()
+
+        assertEquals(7, viewModel.state.value.gameId)
+    }
+
+    @Test
+    fun activeCurrentPlayerCanPurchaseEstablishmentDuringBuyingPhase() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitGameId(7)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "player-1",
+                    displayName = "You",
+                    coins = 6,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true
+                )
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+
+        assertEquals(
+            FakeWebSocketClient.PurchaseCall(
+                gameId = 7,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                cardType = "BAKERY",
+                landmarkType = null
+            ),
+            fakeClient.lastPurchase
+        )
+        assertEquals(PurchaseState.SUCCESS, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun activeCurrentPlayerCanPurchaseLandmarkDuringBuyingPhase() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitGameId(7)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "player-1",
+                    displayName = "You",
+                    coins = 6,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true
+                )
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.purchase("TRAIN_STATION")
+
+        assertEquals(
+            FakeWebSocketClient.PurchaseCall(
+                gameId = 7,
+                purchaseType = PurchaseType.LANDMARK,
+                cardType = null,
+                landmarkType = "TRAIN_STATION"
+            ),
+            fakeClient.lastPurchase
+        )
+        assertEquals(PurchaseState.SUCCESS, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun purchaseIsIgnoredWithoutGameId() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "player-1",
+                    displayName = "You",
+                    coins = 6,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true
+                )
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+
+        assertEquals(null, fakeClient.lastPurchase)
+        assertEquals(PurchaseState.IDLE, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun nonActivePlayerCannotPurchase() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitGameId(7)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "player-1",
+                    displayName = "You",
+                    coins = 6,
+                    isCurrentPlayer = true,
+                    isActivePlayer = false
+                )
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+
+        assertEquals(null, fakeClient.lastPurchase)
+        assertEquals(PurchaseState.IDLE, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun successfulPurchaseDisablesAdditionalPurchases() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitGameId(7)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "player-1",
+                    displayName = "You",
+                    coins = 6,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true
+                )
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+        viewModel.purchase("CAFE")
+
+        assertEquals("BAKERY", fakeClient.lastPurchase?.cardType)
+        assertEquals(PurchaseState.SUCCESS, viewModel.state.value.purchaseState)
+    }
 }
