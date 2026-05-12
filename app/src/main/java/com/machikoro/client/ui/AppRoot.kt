@@ -62,6 +62,7 @@ fun AppRoot(
             onCreateLobbyClick = onCreateLobbyClick,
             modifier = modifier
         )
+
     } else {
         StartScreen(
             state = startScreenState,
