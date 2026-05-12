@@ -132,7 +132,9 @@ jobs:
 
       - name: Upload SonarCloud SARIF
         if: github.event_name == 'pull_request'
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: build/reports/sonar/sonarcloud.sarif
           category: SonarCloud
+          ref: refs/pull/${{ github.event.pull_request.number }}/head
+          sha: ${{ github.event.pull_request.head.sha }}
