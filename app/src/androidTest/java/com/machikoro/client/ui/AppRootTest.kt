@@ -19,6 +19,12 @@ import org.junit.Rule
 import org.junit.Test
 
 private const val START_SCREEN_TITLE = "MACHI KORO"
+// HomeScreen-specific labels — distinguish HomeScreen from StartScreen, which
+// shares the "MACHI KORO" title.
+private const val HOME_SCREEN_LOBBY_CARD = "Lobby beitreten"
+private const val HOME_SCREEN_LOGOUT = "Abmelden"
+private const val START_SCREEN_LOGIN = "Login"
+private const val START_SCREEN_REGISTER = "Register"
 
 class AppRootTest {
     @get:Rule
@@ -90,6 +96,56 @@ class AppRootTest {
 
         composeTestRule.onNodeWithText(GamePhase.ROLL_DICE.toDisplayText()).assertIsDisplayed()
         composeTestRule.onNodeWithText(START_SCREEN_TITLE).assertDoesNotExist()
+    }
+
+    @Test
+    fun showsStartScreenWhenUnauthenticated() {
+        setAppRoot(loggedInAs = null)
+
+        composeTestRule.onNodeWithText(START_SCREEN_REGISTER).assertIsDisplayed()
+        composeTestRule.onNodeWithText(START_SCREEN_LOGIN).assertIsDisplayed()
+        composeTestRule.onNodeWithText(HOME_SCREEN_LOGOUT).assertDoesNotExist()
+        composeTestRule.onNodeWithText(HOME_SCREEN_LOBBY_CARD).assertDoesNotExist()
+    }
+
+    @Test
+    fun showsHomeScreenWhenAuthenticated() {
+        setAppRoot(loggedInAs = "alice")
+
+        composeTestRule.onNodeWithText(HOME_SCREEN_LOBBY_CARD).assertIsDisplayed()
+        composeTestRule.onNodeWithText(HOME_SCREEN_LOGOUT).assertIsDisplayed()
+        composeTestRule.onNodeWithText(START_SCREEN_REGISTER).assertDoesNotExist()
+        composeTestRule.onNodeWithText(START_SCREEN_LOGIN).assertDoesNotExist()
+    }
+
+    private fun setAppRoot(loggedInAs: String?) {
+        composeTestRule.setContent {
+            ClientTheme {
+                AppRoot(
+                    gameScreenState = GameScreenState.initial(),
+                    startScreenState = StartScreenState.placeholder().copy(loggedInAs = loggedInAs),
+                    registerDialogState = RegisterDialogState(),
+                    loginDialogState = LoginDialogState(),
+                    logoutState = LogoutState(),
+                    onRegisterUsernameChange = {},
+                    onRegisterPasswordChange = {},
+                    onRegisterSubmit = {},
+                    onRegisterDialogReset = {},
+                    onLoginUsernameChange = {},
+                    onLoginPasswordChange = {},
+                    onLoginSubmit = {},
+                    onLoginDialogReset = {},
+                    onLogoutSubmit = {},
+                    lobbyScreenState = LobbyScreenState.placeholder(),
+                    lobbyCode = null,
+                    loggedInAs = loggedInAs,
+                    onCreateLobbyClick = {},
+                    onReadyToggle = {},
+                    onStartGame = {},
+                    onLeaveLobby = {},
+                )
+            }
+        }
     }
 
     @Test
