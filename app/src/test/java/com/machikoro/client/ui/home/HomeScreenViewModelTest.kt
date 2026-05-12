@@ -1,6 +1,7 @@
 package com.machikoro.client.ui.home
 
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.model.shop.PurchaseType
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.network.websocket.WebSocketClient
@@ -46,6 +47,9 @@ class HomeScreenViewModelTest {
         val mutableLobbyCode = MutableStateFlow<String?>(null)
         override val lobbyCode: StateFlow<String?> = mutableLobbyCode
 
+        override val gameId: StateFlow<Int?> =
+            MutableStateFlow(null)
+
         var connectCalled = false
         var disconnectCalled = false
         var sendGameStartCalled = false
@@ -66,5 +70,12 @@ class HomeScreenViewModelTest {
         override fun sendCreateLobby() {
             sendCreateLobbyCalled = true
         }
+
+        override fun sendPurchase(
+            gameId: Int,
+            purchaseType: PurchaseType,
+            cardType: String?,
+            landmarkType: String?
+        ) = Unit
     }
 }
