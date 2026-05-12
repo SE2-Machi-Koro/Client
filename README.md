@@ -158,3 +158,6 @@ We use **Jacoco** for coverage reporting. The build will fail if line coverage f
 ---
 
 *Developed as part of the SE2 Project.*
+
+*Last updated: May 12, 2026*
+
