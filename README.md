@@ -109,7 +109,7 @@ Runs on every push to `main` and on pull requests. It:
 #### Required GitHub Secret
 | Secret Name | Description |
 | :--- | :--- |
-| `ACTIONS_CLIENT` | SonarCloud analysis token. Generate at **sonarcloud.io → My Account → Security → Generate Token**, then add it under **GitHub repo → Settings → Secrets and variables → Actions**. |
+| `SONAR_TOKEN` | SonarCloud analysis token. Generate at **sonarcloud.io → My Account → Security → Generate Token**, then add it under **GitHub repo → Settings → Secrets and variables → Actions**. |
 
 #### SonarCloud Configuration (`sonar-project.properties`)
 | Property | Value |
