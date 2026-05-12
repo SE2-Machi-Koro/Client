@@ -624,7 +624,8 @@ class OkHttpWebSocketClientTest {
         // StompAuthChannelInterceptor. If the server message changes, this
         // test (and the client logic) must be updated together.
         val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
+        val sessionHolder = FakeSessionStateHolder(initial = DEFAULT_SESSION)
+        val client = newClient(factory, sessionStateHolder = sessionHolder)
         val rejections = mutableListOf<Unit>()
         client.authRejections.onEach { rejections += it }.launchIn(backgroundScope)
         runCurrent()
@@ -636,6 +637,10 @@ class OkHttpWebSocketClientTest {
 
         assertEquals(1, rejections.size)
         assertEquals(ConnectionStatus.DISCONNECTED, client.connectionStatus.value)
+        // Sign-out is performed by the WS client itself so the policy survives
+        // activity destruction (rotation / process death) — it must not depend
+        // on a Compose collector being attached.
+        assertEquals(null, sessionHolder.session.value)
     }
 
     @Test
@@ -670,4 +675,56 @@ class OkHttpWebSocketClientTest {
 
         assertEquals(null, client.lobbyCode.value)
     }
+
+    @Test
+    fun disconnectClearsLobbyCode() {
+        // Regression: a stale lobby code must not persist across a sign-out/
+        // sign-in cycle within the same app session. Same contract applies to
+        // the auth-rejection path which also funnels through resetGameState().
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""
+            )
+        )
+        assertEquals("AJ25Z39", client.lobbyCode.value)
+
+        client.disconnect()
+
+        assertEquals(null, client.lobbyCode.value)
+    }
+
+    @Test
+    fun authRejectionClearsLobbyCode() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.authRejections.onEach { }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""
+            )
+        )
+        assertEquals("AJ25Z39", client.lobbyCode.value)
+
+        factory.simulateText(authRejectionErrorFrame())
+        runCurrent()
+
+        assertEquals(null, client.lobbyCode.value)
+    }
+
+    private fun connectedFrame(): String =
+        "CONNECTED\nversion:1.2\n\n "
+
+    private fun authRejectionErrorFrame(): String =
+        "ERROR\nmessage:Authentication failed\n\nAuthentication failed "
 }

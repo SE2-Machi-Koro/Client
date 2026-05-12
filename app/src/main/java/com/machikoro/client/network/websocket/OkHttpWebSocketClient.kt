@@ -237,6 +237,14 @@ class OkHttpWebSocketClient(
                     // state, not a transport failure.
                     mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
                     resetGameState()
+                    // Sign out here rather than relying on a Compose collector
+                    // in the UI. The activity can be destroyed (rotation, process
+                    // death) between the emission and the collector attaching,
+                    // and `authRejections` uses replay = 0 so a missed event
+                    // would leave the user signed in against a token the server
+                    // no longer accepts. The snackbar in MainActivity is purely
+                    // a UI side-effect and remains miss-tolerant.
+                    sessionStateHolder.signOut()
                     // Invariant: extraBufferCapacity=1 + DROP_OLDEST means
                     // tryEmit is non-suspending and never returns false.
                     mutableAuthRejections.tryEmit(Unit)
@@ -335,6 +343,9 @@ class OkHttpWebSocketClient(
         mutableGamePhase.value = GamePhase.NONE
         // Keep #37 coin display clean after game end/disconnect until #45 reset flow owns this state.
         mutablePlayers.value = emptyList()
+        // Clear the latest lobby code so a stale code can't reappear on the
+        // next sign-in within the same app session.
+        mutableLobbyCode.value = null
     }
 
     private fun websocketHostHeader(): String {

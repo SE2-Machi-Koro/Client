@@ -95,13 +95,14 @@ class MainActivity : ComponentActivity() {
             }
 
             // Server #159 contract: STOMP CONNECT with a missing/expired token
-            // produces a STOMP ERROR frame. The transport layer surfaces that
-            // as `authRejections`; clearing the local session here keeps the
-            // policy decision in the UI layer rather than baking signOut into
-            // the network client.
+            // produces a STOMP ERROR frame, which OkHttpWebSocketClient handles
+            // by calling SessionManager.signOut() directly (durable side-effect
+            // that survives activity recreation). The snackbar below is the
+            // UI-only counterpart and is miss-tolerant: if the activity isn't
+            // attached when the event fires, the user is still signed out — we
+            // just skip the toast for that emission.
             LaunchedEffect(Unit) {
                 webSocketClient.authRejections.collect {
-                    SessionManager.signOut()
                     snackbarHostState.showSnackbar(
                         "Sitzung abgelaufen, bitte erneut anmelden"
                     )
