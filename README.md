@@ -1,7 +1,7 @@
 # Machi Koro Android Client
 
-[![CI](https://github.com/valentinaschiavon/SE2-Client/actions/workflows/ci.yml/badge.svg)](https://github.com/valentinaschiavon/SE2-Client/actions/workflows/ci.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=valentinaschiavon_SE2-Client&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=valentinaschiavon_SE2-Client)
+[![CI](https://github.com/SE2-Machi-Koro/Client/actions/workflows/ci.yml/badge.svg)](https://github.com/SE2-Machi-Koro/Client/actions/workflows/ci.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=SE2-Machi-Koro_Client&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=SE2-Machi-Koro_Client)
 
 A modern, reactive Android frontend for the Machi Koro board game. This application serves as the primary user interface, connecting to a dedicated backend via a robust WebSocket-based communication layer using the STOMP protocol.
 
@@ -93,6 +93,32 @@ The application uses Gradle properties to configure the backend connection. Thes
 - **Release Build**: `./gradlew assembleRelease`
 - **Linting**: `./gradlew lint`
 - **Full Quality Check**: `./gradlew check` (Runs tests, linting, and coverage verification)
+
+## 🔍 CI/CD & Code Quality
+
+The project uses two GitHub Actions workflows:
+
+### `ci.yml` — Continuous Integration
+Runs on every push and pull request. Executes lint, unit tests, and builds the debug APK. On `main` pushes, it also builds and uploads the release APK.
+
+### `sonarcloud.yml` — SonarCloud Analysis
+Runs on every push to `main` and on pull requests. It:
+1. Builds the project and generates the **JaCoCo** coverage report.
+2. Submits the analysis to [SonarCloud](https://sonarcloud.io/project/overview?id=SE2-Machi-Koro_Client) via the `SonarSource/sonarqube-scan-action`.
+
+#### Required GitHub Secret
+| Secret Name | Description |
+| :--- | :--- |
+| `ACTIONS_CLIENT` | SonarCloud analysis token. Generate at **sonarcloud.io → My Account → Security → Generate Token**, then add it under **GitHub repo → Settings → Secrets and variables → Actions**. |
+
+#### SonarCloud Configuration (`sonar-project.properties`)
+| Property | Value |
+| :--- | :--- |
+| `sonar.projectKey` | `SE2-Machi-Koro_Client` |
+| `sonar.organization` | `se2-machi-koro` |
+| `sonar.sources` | `app/src/main/java` |
+| `sonar.tests` | `app/src/test/java` |
+| `sonar.coverage.exclusions` | `**/MainActivity.kt` |
 
 ## 🧪 Testing
 
