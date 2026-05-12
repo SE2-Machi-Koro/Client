@@ -14,12 +14,12 @@ jobs:
   sonar:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -27,14 +27,17 @@ jobs:
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts') }}
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml') }}
+          restore-keys: ${{ runner.os }}-gradle-
 
-      - name: Build and run tests
-        run: ./gradlew testDebugUnitTest jacocoTestReport --info
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v6
+      - name: Build, Test & SonarCloud Analysis
         env:
+          SONAR_TOKEN: ${{ secrets.ACTIONS_CLIENT }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./gradlew testDebugUnitTest jacocoTestReport sonar --no-daemon
