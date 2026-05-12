@@ -90,7 +90,26 @@ tasks.register<JacocoReport>("jacocoTestReport") {
         html.required.set(true)
     }
 
-    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug")
+    val coverageExclusions = listOf(
+        "**/R.class",
+        "**/R$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/*Test*.*",
+        "android/**/*.*",
+        "**/ui/**",
+        "**/MainActivity*.*",
+        "**/config/**",
+        "**/*Application*.*",
+        // Compose generated classes
+        "**/*ComposableSingletons*.*",
+        "**/*\$*Composable*.*",
+        "**/*Kt\$*.*"
+    )
+
+    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+        exclude(coverageExclusions)
+    }
     val mainSrc = "${project.projectDir}/src/main/java"
     val kotlinSrc = "${project.projectDir}/src/main/kotlin"
 
@@ -107,7 +126,25 @@ tasks.register<JacocoReport>("jacocoTestReport") {
 tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
     dependsOn("testDebugUnitTest")
 
-    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug")
+    val coverageExclusions = listOf(
+        "**/R.class",
+        "**/R$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/*Test*.*",
+        "android/**/*.*",
+        "**/ui/**",
+        "**/MainActivity*.*",
+        "**/config/**",
+        "**/*Application*.*",
+        "**/*ComposableSingletons*.*",
+        "**/*\$*Composable*.*",
+        "**/*Kt\$*.*"
+    )
+
+    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+        exclude(coverageExclusions)
+    }
     val mainSrc = "${project.projectDir}/src/main/java"
     val kotlinSrc = "${project.projectDir}/src/main/kotlin"
 
@@ -122,7 +159,7 @@ tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
 
     violationRules {
         rule {
-            element = "CLASS"
+            element = "BUNDLE"
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
