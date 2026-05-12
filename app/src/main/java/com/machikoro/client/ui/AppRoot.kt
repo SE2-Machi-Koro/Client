@@ -43,20 +43,14 @@ fun AppRoot(
 ) {
     if (gameScreenState.gamePhase != GamePhase.NONE) {
         GameScreen(state = gameScreenState, modifier = modifier)
-    } else if (lobbyCode != null) {
-        LobbyScreen(
-            state = lobbyScreenState,
-            onReadyToggle = onReadyToggle,
-            onStartGame = onStartGame,
-            onLeaveLobby = onLeaveLobby,
-            modifier = modifier
-        )
+
     } else if (loggedInAs != null) {
         HomeScreen(
             lobbyCode = lobbyCode,
             onCreateLobbyClick = onCreateLobbyClick,
             modifier = modifier
         )
+
     } else {
         StartScreen(
             state = startScreenState,
