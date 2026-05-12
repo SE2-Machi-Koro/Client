@@ -17,6 +17,7 @@ composeMaterial3 = "1.6.0"
 retrofit = "2.11.0"
 kotlinxSerialization = "1.8.0"
 datastore = "1.1.1"
+sonarqube = "6.1.0.5360"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -48,3 +49,4 @@ androidx-datastore-preferences-core = { group = "androidx.datastore", name = "da
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
