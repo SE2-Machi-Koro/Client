@@ -101,7 +101,7 @@ fun ActionButton(label: String, onClick: (() -> Unit)?) {
 
         // Main button
         Button(
-            onClick = { onClick },
+            onClick = { onClick?.invoke() },
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = ButtonColor
