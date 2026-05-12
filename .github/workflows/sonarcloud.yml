@@ -36,8 +36,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build, Test & SonarCloud Analysis
+      - name: Build and run tests
+        run: ./gradlew testDebugUnitTest jacocoTestReport --no-daemon
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
-          SONAR_TOKEN: ${{ secrets.ACTIONS_CLIENT }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew testDebugUnitTest jacocoTestReport sonar --no-daemon
+          SONAR_TOKEN: ${{ secrets.ACTIONS_CLIENT }}
