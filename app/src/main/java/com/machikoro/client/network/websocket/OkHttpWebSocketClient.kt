@@ -170,13 +170,12 @@ class OkHttpWebSocketClient(
         // gameId is populated from the LOBBY_CREATED payload when the server returns it.
         // Fall back to a lobby-code-only start request so the host is never permanently
         // blocked if the server doesn't echo the gameId during lobby creation.
+        // The merged main branch expects a SEND frame to be emitted when connected
+        // even if neither value is known; send an empty JSON object in that case.
         val body = when {
             gameId != null -> JSONObject().put("gameId", gameId).toString()
             lobbyCode != null -> JSONObject().put("lobbyCode", lobbyCode).toString()
-            else -> {
-                Log.w(TAG, "sendGameStart called but neither gameId nor lobbyCode is available")
-                return
-            }
+            else -> "{}"
         }
 
         // Include lobbyCode when available to keep the host unblocked if the server
