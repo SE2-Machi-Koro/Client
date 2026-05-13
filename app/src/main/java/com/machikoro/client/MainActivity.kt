@@ -13,7 +13,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.machikoro.client.config.AppConfig
@@ -77,6 +79,7 @@ class MainActivity : ComponentActivity() {
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
+            var showLobbyScreen by remember { mutableStateOf(false) }             // Stores whether the user has confirmed the created lobby and should see the lobby screen.
 
             val snackbarHostState = remember { SnackbarHostState() }
 
@@ -138,6 +141,11 @@ class MainActivity : ComponentActivity() {
                         },                        modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
                         loggedInAs = startScreenState.loggedInAs,
+                        showLobbyScreen = showLobbyScreen,
+                        onGoToLobbyClick = {
+                            // Navigates to the lobby screen after the user confirms the created lobby code.
+                            showLobbyScreen = true
+                        },
                         onCreateLobbyClick = homeViewModel::createLobby,
                     )
                 }
