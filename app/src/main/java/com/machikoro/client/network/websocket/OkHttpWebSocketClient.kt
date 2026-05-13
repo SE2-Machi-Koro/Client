@@ -38,6 +38,12 @@ class OkHttpWebSocketClient(
     override val lobbyCode: StateFlow<String?> // Internal state for the latest lobby code returned by the backend
         get() = mutableLobbyCode.asStateFlow()
 
+    override val activeGameId: StateFlow<Int?>
+        get() = mutableActiveGameId.asStateFlow()
+
+    override val isLobbyHost: StateFlow<Boolean>
+        get() = mutableIsLobbyHost.asStateFlow()
+
     override val authRejections: SharedFlow<Unit>
         get() = mutableAuthRejections.asSharedFlow()
 
