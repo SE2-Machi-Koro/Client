@@ -45,10 +45,12 @@ class OkHttpWebSocketClient(
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null) // Exposes lobby code as read-only StateFlow to UI/ViewModels
+    private val mutableActiveGameId = MutableStateFlow<Int?>(null)
+    private val mutableIsLobbyHost = MutableStateFlow(false)
     // Buffer 1 + DROP_OLDEST so tryEmit never fails on the OkHttp listener
     // thread when nobody is collecting yet (e.g. emission during startup
     // before MainActivity wires its collector).
-    private val mutableAuthRejections = MutableSharedFlow<Unit>(
+    private val mutableAuthRejections = MutableSharedFlow<Unit>("}
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
