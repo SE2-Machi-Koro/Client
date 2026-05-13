@@ -17,7 +17,7 @@ class HomeScreenLogoutTest {
     fun showsLogoutButton() {
         composeTestRule.setContent {
             ClientTheme {
-                HomeScreen()
+                HomeScreen(onGoToLobbyClick = {})
             }
         }
 
@@ -29,7 +29,10 @@ class HomeScreenLogoutTest {
         var clicks = 0
         composeTestRule.setContent {
             ClientTheme {
-                HomeScreen(onLogoutClick = { clicks += 1 })
+                HomeScreen(
+                    onLogoutClick = { clicks += 1 },
+                    onGoToLobbyClick = {},
+                )
             }
         }
 

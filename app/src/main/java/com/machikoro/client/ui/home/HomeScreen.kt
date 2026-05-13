@@ -54,6 +54,7 @@ fun HomeScreen(
     onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onGoToLobbyClick: () -> Unit,
     onLogoutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -154,8 +155,10 @@ fun HomeScreen(
                 lobbyCode?.let { code ->
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    LobbyCodeRow(code = code)
-                }
+                    LobbyCodeRow(
+                        code = lobbyCode,
+                        onGoToLobbyClick = onGoToLobbyClick
+                    )                }
             }
 
             HomeCard(
@@ -254,7 +257,10 @@ private fun HomeCard(
 }
 
 @Composable
-private fun LobbyCodeRow(code: String) {
+private fun LobbyCodeRow(
+    code: String,
+    onGoToLobbyClick: () -> Unit
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -290,8 +296,9 @@ private fun LobbyCodeRow(code: String) {
             }
         }
 
+        // Allows the player to confirm the created lobby and continue to the lobby screen.
         Card(
-            modifier = Modifier.size(34.dp),
+            modifier = Modifier.size(34.dp).clickable(onClick = onGoToLobbyClick),
             shape = RoundedCornerShape(6.dp),
             colors = CardDefaults.cardColors(containerColor = White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -438,7 +445,9 @@ private fun BottomMenuItem(
 @Composable
 private fun HomeScreenPreview() {
     ClientTheme {
-        HomeScreen()
+        HomeScreen(
+            onGoToLobbyClick = {},
+        )
     }
 }
 
@@ -447,6 +456,7 @@ private fun HomeScreenPreview() {
 private fun HomeScreenWithLobbyCodePreview() {
     ClientTheme {
         HomeScreen(
+            onGoToLobbyClick = {},
             lobbyCode = "AJ25Z39"
         )
     }
