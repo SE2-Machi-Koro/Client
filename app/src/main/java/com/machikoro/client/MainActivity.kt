@@ -135,7 +135,7 @@ class MainActivity : ComponentActivity() {
                         onLoginDialogReset = loginDialogViewModel::reset,
                         onLogoutSubmit = logoutViewModel::submit,
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
-                        onStartGame = lobbyScreenViewModel::onStartGame,
+                        onStartGame = homeViewModel::startGame,
                         onLeaveLobby = {
                             lobbyScreenViewModel.onLeaveLobby()
                             homeViewModel.clearLobbyCode()

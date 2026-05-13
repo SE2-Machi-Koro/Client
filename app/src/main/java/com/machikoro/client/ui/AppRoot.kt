@@ -28,7 +28,6 @@ fun AppRoot(
     lobbyCode: String?,
     isLobbyHost: Boolean,
     loggedInAs: String?,
-    showLobbyScreen: Boolean,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
     onRegisterSubmit: () -> Unit,
@@ -37,7 +36,6 @@ fun AppRoot(
     onLoginPasswordChange: (String) -> Unit,
     onLoginSubmit: () -> Unit,
     onCreateLobbyClick: () -> Unit,
-    onGoToLobbyClick: () -> Unit,
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
     onReadyToggle: () -> Unit = {},
@@ -47,29 +45,19 @@ fun AppRoot(
 ) {
     if (gameScreenState.gamePhase != GamePhase.NONE) {
         GameScreen(state = gameScreenState, modifier = modifier)
-
     } else if (loggedInAs != null) {
-
-        if (showLobbyScreen) {
-
-            LobbyScreen(
-                state = lobbyScreenState,
-                onReadyToggle = onReadyToggle,
-                onStartGame = onStartGame,
-                onLeaveLobby = onLeaveLobby,
-                modifier = modifier
-            )
-
-        } else {
-
-            HomeScreen(
-                lobbyCode = lobbyCode,
-                onCreateLobbyClick = onCreateLobbyClick,
-                onGoToLobbyClick = onGoToLobbyClick,
-                onLogoutClick = onLogoutSubmit,
-                modifier = modifier
-            )
-        }
+        HomeScreen(
+            lobbyCode = lobbyCode,
+            isLobbyHost = isLobbyHost,
+            // activeGameId may not be available until the server echoes it back in
+            // LOBBY_CREATED (payload.gameId). Do not block the host button on it —
+            // sendGameStart() guards the actual WebSocket send independently.
+            canStartGame = isLobbyHost &&
+                startScreenState.connectionStatus == ConnectionStatus.CONNECTED,
+            onCreateLobbyClick = onCreateLobbyClick,
+            onStartGame = onStartGame,
+            modifier = modifier
+        )
 
     } else {
         StartScreen(
@@ -114,8 +102,6 @@ private fun AppRootStartScreenPreview() {
             lobbyCode = null,
             isLobbyHost = false,
             loggedInAs = null,
-            showLobbyScreen = false,
-            onGoToLobbyClick = {},
             onCreateLobbyClick = {},
         )
     }
@@ -144,8 +130,6 @@ private fun AppRootGameScreenPreview() {
             lobbyCode = null,
             isLobbyHost = false,
             loggedInAs = null,
-            showLobbyScreen = false,
-            onGoToLobbyClick = {},
             onCreateLobbyClick = {},
         )
     }

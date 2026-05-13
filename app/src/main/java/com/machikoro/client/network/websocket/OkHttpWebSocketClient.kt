@@ -148,7 +148,7 @@ class OkHttpWebSocketClient(
     }
 
     override fun clearLobbyCode() {
-        mutableLobbyCode.value = null
+        resetLobbyState()
     }
 
     override fun sendGameStart() {
@@ -165,8 +165,8 @@ class OkHttpWebSocketClient(
         // Fall back to a lobby-code-only start request so the host is never permanently
         // blocked if the server doesn't echo the gameId during lobby creation.
         val body = when {
-            gameId != null -> """{"gameId":$gameId}"""
-            lobbyCode != null -> """{"lobbyCode":"$lobbyCode"}"""
+            gameId != null -> JSONObject().put("gameId", gameId).toString()
+            lobbyCode != null -> JSONObject().put("lobbyCode", lobbyCode).toString()
             else -> {
                 Log.w(TAG, "sendGameStart called but neither gameId nor lobbyCode is available")
                 return
@@ -259,9 +259,16 @@ class OkHttpWebSocketClient(
 
             "MESSAGE" -> {
                 Log.d(TAG, "STOMP message received: ${frame.body}")
-                handleLobbyCreated(frame.body)
-                handleGameStarted(frame.body)
-                parseGameActionPhase(frame.body)?.let { mutableGamePhase.value = it }
+                if (frame.body.isBlank()) return
+                val json = try {
+                    JSONObject(frame.body)
+                } catch (e: JSONException) {
+                    Log.w(TAG, "Failed to parse MESSAGE frame as JSON: ${e.message}")
+                    return
+                }
+                handleLobbyCreated(json)
+                handleGameStarted(json)
+                parseGameActionPhase(json)?.let { mutableGamePhase.value = it }
             }
 
             "ERROR" -> {
@@ -303,16 +310,7 @@ class OkHttpWebSocketClient(
      *   }
      * }
      */
-    private fun handleLobbyCreated(body: String) {
-        if (body.isBlank()) return
-
-        val json = try {
-            JSONObject(body)
-        } catch (e: JSONException) {
-            Log.w(TAG, "Failed to parse lobby message as JSON: ${e.message}")
-            return
-        }
-
+    private fun handleLobbyCreated(json: JSONObject) {
         if (json.optString("type") != LOBBY_CREATED_TYPE) return
 
         val payload = json.optJSONObject("payload") ?: return
@@ -333,16 +331,7 @@ class OkHttpWebSocketClient(
         }
     }
 
-    private fun handleGameStarted(body: String) {
-        if (body.isBlank()) return
-
-        val json = try {
-            JSONObject(body)
-        } catch (e: JSONException) {
-            Log.w(TAG, "Failed to parse game start message as JSON: ${e.message}")
-            return
-        }
-
+    private fun handleGameStarted(json: JSONObject) {
         if (json.optString("type") != GAME_STARTED_TYPE) return
 
         val payload = json.optJSONObject("payload") ?: return
@@ -360,14 +349,7 @@ class OkHttpWebSocketClient(
         mutablePlayers.value = payload.optJSONArray("players").toPlayerCoinStates(payload, game)
     }
 
-    private fun parseGameActionPhase(body: String): GamePhase? {
-        if (body.isBlank()) return null
-        val json = try {
-            JSONObject(body)
-        } catch (e: JSONException) {
-            Log.w(TAG, "Failed to parse MESSAGE frame as JSON: ${e.message}")
-            return null
-        }
+    private fun parseGameActionPhase(json: JSONObject): GamePhase? {
         if (json.optString("type") != GAME_ACTION_TYPE) return null
         val payload = json.optJSONObject("payload") ?: return null
         val phaseName = payload.optString("turnPhase").takeIf { it.isNotEmpty() } ?: return null
