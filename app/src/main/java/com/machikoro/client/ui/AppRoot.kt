@@ -26,6 +26,7 @@ fun AppRoot(
     logoutState: LogoutState,
     lobbyCode: String?,
     loggedInAs: String?,
+    showLobbyScreen: Boolean,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
     onRegisterSubmit: () -> Unit,
@@ -34,6 +35,7 @@ fun AppRoot(
     onLoginPasswordChange: (String) -> Unit,
     onLoginSubmit: () -> Unit,
     onCreateLobbyClick: () -> Unit,
+    onGoToLobbyClick: () -> Unit,
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
     onReadyToggle: () -> Unit,
@@ -57,12 +59,27 @@ fun AppRoot(
             modifier = modifier
         )
     } else if (loggedInAs != null) {
-        HomeScreen(
-            lobbyCode = lobbyCode,
-            onCreateLobbyClick = onCreateLobbyClick,
-            onLogoutClick = onLogoutSubmit,
-            modifier = modifier
-        )
+
+        if (showLobbyScreen) {
+
+            LobbyScreen(
+                state = lobbyScreenState,
+                onReadyToggle = onReadyToggle,
+                onStartGame = onStartGame,
+                onLeaveLobby = onLeaveLobby,
+                modifier = modifier
+            )
+
+        } else {
+
+            HomeScreen(
+                lobbyCode = lobbyCode,
+                onCreateLobbyClick = onCreateLobbyClick,
+                onGoToLobbyClick = onGoToLobbyClick,
+                onLogoutClick = onLogoutSubmit,
+                modifier = modifier
+            )
+        }
 
     } else {
         StartScreen(
@@ -105,6 +122,8 @@ private fun AppRootStartScreenPreview() {
             onLogoutSubmit = {},
             lobbyCode = null,
             loggedInAs = null,
+            showLobbyScreen = false,
+            onGoToLobbyClick = {},
             onCreateLobbyClick = {},
             lobbyScreenState = LobbyScreenState.placeholder(),
             onReadyToggle = {},
@@ -136,6 +155,8 @@ private fun AppRootGameScreenPreview() {
             onLogoutSubmit = {},
             lobbyCode = null,
             loggedInAs = null,
+            showLobbyScreen = false,
+            onGoToLobbyClick = {},
             onCreateLobbyClick = {},
             lobbyScreenState = LobbyScreenState.placeholder(),
             onReadyToggle = {},
