@@ -464,7 +464,8 @@ class OkHttpWebSocketClientTest {
         runCurrent()
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("ERROR\nmessage:Authentication failed\n\nAuthentication failed ")
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText("ERROR\nmessage:Authentication failed\n\nAuthentication failed\u0000")
         runCurrent()
         assertEquals(1, rejections.size)
         assertEquals(ConnectionStatus.DISCONNECTED, client.connectionStatus.value)
@@ -480,7 +481,8 @@ class OkHttpWebSocketClientTest {
         runCurrent()
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("ERROR\n\nSome other error ")
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText("ERROR\n\nSome other error\u0000")
         runCurrent()
         assertTrue(rejections.isEmpty())
         assertEquals(ConnectionStatus.ERROR, client.connectionStatus.value)
@@ -492,7 +494,7 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         client.connect()
         factory.simulateOpen()
-        factory.simulateText(connectedFrame())
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         factory.simulateText(gameActionFrame("""{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""))
         assertEquals("AJ25Z39", client.lobbyCode.value)
         client.disconnect()
@@ -507,21 +509,16 @@ class OkHttpWebSocketClientTest {
         runCurrent()
         client.connect()
         factory.simulateOpen()
-        factory.simulateText(connectedFrame())
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         factory.simulateText(gameActionFrame("""{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""))
         assertEquals("AJ25Z39", client.lobbyCode.value)
-        factory.simulateText(authRejectionErrorFrame())
+        factory.simulateText("ERROR\nmessage:Authentication failed\n\nAuthentication failed\u0000")
         runCurrent()
         assertEquals(null, client.lobbyCode.value)
     }
 
     private fun gameActionFrame(body: String): String =
         "MESSAGE\ndestination:/topic/public\ncontent-type:application/json\n\n$body\u0000"
-
-    private fun connectedFrame(): String = "CONNECTED\nversion:1.2\n\n "
-
-    private fun authRejectionErrorFrame(): String =
-        "ERROR\nmessage:Authentication failed\n\nAuthentication failed "
 
     private class FakeWebSocketFactory : WebSocketFactory {
         lateinit var listener: WebSocketListener
