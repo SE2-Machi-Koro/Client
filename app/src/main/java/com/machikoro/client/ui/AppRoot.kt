@@ -28,6 +28,10 @@ fun AppRoot(
     lobbyCode: String?,
     isLobbyHost: Boolean,
     loggedInAs: String?,
+    // When a lobby has just been created the host confirms and navigates to the LobbyScreen.
+    // showLobbyScreen tracks whether the UI should show the lobby even if lobbyCode is not yet present.
+    showLobbyScreen: Boolean = false,
+    onGoToLobbyClick: () -> Unit = {},
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
     onRegisterSubmit: () -> Unit,
