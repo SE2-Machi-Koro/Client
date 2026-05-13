@@ -81,4 +81,8 @@ class FakeWebSocketClient : WebSocketClient {
     fun emitDiceResult(dice: List<Int>) {
         mutableDiceResult.value = dice
     }
+
+    fun emitAuthRejection() {
+        mutableAuthRejections.tryEmit(Unit)
+    }
 }

@@ -13,6 +13,17 @@ interface WebSocketClient {
     val players: StateFlow<List<PlayerCoinState>>
     val lobbyCode: StateFlow<String?>
 
+    // Holds the latest dice result received from the server.
+    // Null if no dice have been rolled yet in the current turn.
+    val diceResult: StateFlow<List<Int>?>
+
+    // Fires when the server rejects the STOMP CONNECT for auth reasons (token
+    // missing / invalid / server-side cleared). The UI layer is responsible for
+    // calling SessionManager.signOut() and surfacing a "session expired"
+    // message — kept out of the network client so transport and policy stay
+    // separated.
+    val authRejections: SharedFlow<Unit>
+
     fun connect()
     fun disconnect()
 

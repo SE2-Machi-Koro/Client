@@ -48,7 +48,6 @@ class OkHttpWebSocketClient(
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
     private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
-    private val mutableLobbyCode = MutableStateFlow<String?>(null) // Exposes lobby code as read-only StateFlow to UI/ViewModels
     // Buffer 1 + DROP_OLDEST so tryEmit never fails on the OkHttp listener
     // thread when nobody is collecting yet (e.g. emission during startup
     // before MainActivity wires its collector).
@@ -245,23 +244,9 @@ class OkHttpWebSocketClient(
             "ERROR" -> {
                 Log.e(TAG, "STOMP error frame received: ${frame.body}")
                 if (isAuthRejection(frame.body)) {
-                    // Server rejected the CONNECT for auth reasons (#159 path):
-                    // missing/malformed/unrecognised token. The connection will
-                    // be closed by the server; flip to DISCONNECTED rather than
-                    // ERROR because this is a recoverable, user-actionable
-                    // state, not a transport failure.
                     mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
                     resetGameState()
-                    // Sign out here rather than relying on a Compose collector
-                    // in the UI. The activity can be destroyed (rotation, process
-                    // death) between the emission and the collector attaching,
-                    // and `authRejections` uses replay = 0 so a missed event
-                    // would leave the user signed in against a token the server
-                    // no longer accepts. The snackbar in MainActivity is purely
-                    // a UI side-effect and remains miss-tolerant.
                     sessionStateHolder.signOut()
-                    // Invariant: extraBufferCapacity=1 + DROP_OLDEST means
-                    // tryEmit is non-suspending and never returns false.
                     mutableAuthRejections.tryEmit(Unit)
                 } else {
                     mutableConnectionStatus.value = ConnectionStatus.ERROR
@@ -369,10 +354,6 @@ class OkHttpWebSocketClient(
         }
     }
 
-    // Mirrors the literal body produced by Server #159's StompAuthChannelInterceptor
-    // (GENERIC_AUTH_FAILURE = "Authentication failed"). Strict equality — if the
-    // server message ever changes, fail closed (fall through to generic ERROR
-    // status) rather than match overly loosely.
     private fun isAuthRejection(body: String): Boolean =
         body == AUTH_REJECTION_BODY
 

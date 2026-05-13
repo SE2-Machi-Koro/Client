@@ -136,7 +136,7 @@ class MainActivity : ComponentActivity() {
                             lobbyScreenViewModel.onLeaveLobby()
                             homeViewModel.clearLobbyCode()
                         },
-                        onRollDice = gameScreenViewModel::rollDice, // NEU
+                        onRollDice = gameScreenViewModel::rollDice,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
                         loggedInAs = startScreenState.loggedInAs,
