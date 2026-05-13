@@ -60,6 +60,9 @@ fun AppRoot(
                 startScreenState.connectionStatus == ConnectionStatus.CONNECTED,
             onCreateLobbyClick = onCreateLobbyClick,
             onStartGame = onStartGame,
+            // showLobbyScreen allows the HomeScreen to signal immediate navigation to the lobby
+            showLobbyScreen = showLobbyScreen,
+            onGoToLobbyClick = onGoToLobbyClick,
             modifier = modifier
         )
 
