@@ -54,6 +54,8 @@ fun HomeScreen(
     onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onGoToLobbyClick: () -> Unit,
+    onLogoutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Root container. Box allows placing elements freely with align().
@@ -111,6 +113,17 @@ fun HomeScreen(
                 .padding(top = 25.dp, end = 30.dp)
         )
 
+        // Logout affordance in the top-left corner. Issue #106 places the
+        // logout action on the authenticated screen; the start screen never
+        // shows it because the routing in AppRoot collapses HomeScreen back to
+        // StartScreen the moment the session clears.
+        LogoutButton(
+            onClick = onLogoutClick,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = 25.dp, start = 30.dp)
+        )
+
         // === MAIN ACTION BUTTONS ===
         // Three main lobby actions in the center of the screen.
         Row(
@@ -142,18 +155,10 @@ fun HomeScreen(
                 lobbyCode?.let { code ->
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    LobbyCodeRow(code = code)
-                    if (isLobbyHost) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = onStartGame,
-                            enabled = canStartGame,
-                            modifier = Modifier.width(140.dp)
-                        ) {
-                            Text(text = "Start Game")
-                        }
-                    }
-                }
+                    LobbyCodeRow(
+                        code = lobbyCode,
+                        onGoToLobbyClick = onGoToLobbyClick
+                    )                }
             }
 
             HomeCard(
@@ -172,6 +177,31 @@ fun HomeScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 0.dp)
+        )
+    }
+}
+
+@Composable
+private fun LogoutButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(40.dp),
+        shape = RoundedCornerShape(10.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = ButtonBlueDark,
+            contentColor = TextWhite,
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) {
+        Text(
+            text = "Abmelden",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = TextWhite,
         )
     }
 }
@@ -227,7 +257,10 @@ private fun HomeCard(
 }
 
 @Composable
-private fun LobbyCodeRow(code: String) {
+private fun LobbyCodeRow(
+    code: String,
+    onGoToLobbyClick: () -> Unit
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -263,8 +296,9 @@ private fun LobbyCodeRow(code: String) {
             }
         }
 
+        // Allows the player to confirm the created lobby and continue to the lobby screen.
         Card(
-            modifier = Modifier.size(34.dp),
+            modifier = Modifier.size(34.dp).clickable(onClick = onGoToLobbyClick),
             shape = RoundedCornerShape(6.dp),
             colors = CardDefaults.cardColors(containerColor = White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -411,7 +445,9 @@ private fun BottomMenuItem(
 @Composable
 private fun HomeScreenPreview() {
     ClientTheme {
-        HomeScreen()
+        HomeScreen(
+            onGoToLobbyClick = {},
+        )
     }
 }
 
@@ -420,9 +456,8 @@ private fun HomeScreenPreview() {
 private fun HomeScreenWithLobbyCodePreview() {
     ClientTheme {
         HomeScreen(
-            lobbyCode = "AJ25Z39",
-            isLobbyHost = true,
-            canStartGame = true,
+            onGoToLobbyClick = {},
+            lobbyCode = "AJ25Z39"
         )
     }
 }
