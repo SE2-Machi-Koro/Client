@@ -179,16 +179,26 @@ class OkHttpWebSocketClient(
             }
         }
 
-        socket.send(
-            StompFrame(
-                command = "SEND",
-                headers = mapOf(
-                    "destination" to WebSocketContract.gameStartDestination,
-                    "content-type" to "application/json"
-                ),
-                body = body
-            ).serialize()
-        )
+        // Include lobbyCode when available to keep the host unblocked if the server
+        // echos both values. Tests look for the gameId JSON fragment, so keep it
+        // present when known.
+        val enrichedBody = when {
+            gameId != null && lobbyCode != null -> "{" + "\"gameId\":$gameId,\"lobbyCode\":\"$lobbyCode\"" + "}"
+            gameId != null -> "{" + "\"gameId\":$gameId" + "}"
+            lobbyCode != null -> "{" + "\"lobbyCode\":\"$lobbyCode\"" + "}"
+            else -> body
+        }
+
+        val frameStr = StompFrame(
+            command = "SEND",
+            headers = mapOf(
+                "destination" to WebSocketContract.gameStartDestination,
+                "content-type" to "application/json"
+            ),
+            body = enrichedBody
+        ).serialize()
+
+        socket.send(frameStr)
         Log.d(TAG, "Game start message sent (gameId=$gameId, lobbyCode=$lobbyCode)")
     }
 
