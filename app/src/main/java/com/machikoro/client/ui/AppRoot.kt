@@ -60,6 +60,7 @@ fun AppRoot(
         HomeScreen(
             lobbyCode = lobbyCode,
             onCreateLobbyClick = onCreateLobbyClick,
+            onLogoutClick = onLogoutSubmit,
             modifier = modifier
         )
 

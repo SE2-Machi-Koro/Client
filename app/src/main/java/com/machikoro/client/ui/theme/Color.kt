@@ -1,5 +1,6 @@
 package com.machikoro.client.ui.theme
 
+import androidx.compose.material3.ButtonColors
 import androidx.compose.ui.graphics.Color
 
 // Design
@@ -63,3 +64,12 @@ val OrangeDark = Color(0xFF7D3A1E)
 
 val LandmarkBackground = OrangeLight
 val LandmarkText = OrangeDark
+
+//Header
+val HeaderStroke = Color(0xFFB06207)
+val HeaderFill = Color(0xFFF49E0A)
+
+// Button
+val ButtonShadowColor = Color(0xFFB97816)
+val ButtonColor = Color(0xFFF4B343)
+val ButtonTextColor = Color(0xFF7A4300)
