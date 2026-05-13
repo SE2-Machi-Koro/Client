@@ -54,7 +54,9 @@ fun HomeScreen(
     onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    onGoToLobbyClick: () -> Unit,
+    // Allows immediate navigation to the lobby UI after lobby creation confirmation.
+    showLobbyScreen: Boolean = false,
+    onGoToLobbyClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
