@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface WebSocketClient {
     val connectionStatus: StateFlow<ConnectionStatus>
+
     val gamePhase: StateFlow<GamePhase>
     val players: StateFlow<List<PlayerCoinState>>
     val lobbyCode: StateFlow<String?>
@@ -17,6 +18,7 @@ interface WebSocketClient {
 
     fun connect()
     fun disconnect()
+
     fun sendCreateLobby()
     fun clearLobbyCode()
     fun sendGameStart()

@@ -43,7 +43,7 @@ private const val BANNER_COLOR_ANIMATION_DURATION_MS = 300
 @Composable
 fun GameScreen(
     state: GameScreenState,
-    onRollDice: () -> Unit = {}, // NEU
+    onRollDice: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -64,7 +64,6 @@ fun GameScreen(
             )
         }
 
-        // NEU: Würfel-Bereich unten
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -94,7 +93,6 @@ fun GameScreen(
     }
 }
 
-// NEU: Würfelergebnis-Anzeige
 @Composable
 private fun DiceResultDisplay(
     dice: List<Int>,
@@ -310,6 +308,14 @@ private fun previewPlayers() = listOf(
         isCurrentPlayer = true,
         isActivePlayer = true
     ),
-    PlayerCoinState(id = "player-2", displayName = "SoupCube", coins = 3),
-    PlayerCoinState(id = "player-3", displayName = "doniliks", coins = 0)
+    PlayerCoinState(
+        id = "player-2",
+        displayName = "SoupCube",
+        coins = 3
+    ),
+    PlayerCoinState(
+        id = "player-3",
+        displayName = "doniliks",
+        coins = 0
+    )
 )

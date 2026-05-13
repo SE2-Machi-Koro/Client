@@ -33,7 +33,6 @@ class OkHttpWebSocketClient(
     override val lobbyCode: StateFlow<String?>
         get() = mutableLobbyCode.asStateFlow()
 
-    // NEU: diceResult
     override val diceResult: StateFlow<List<Int>?>
         get() = mutableDiceResult.asStateFlow()
 
@@ -41,7 +40,7 @@ class OkHttpWebSocketClient(
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
-    private val mutableDiceResult = MutableStateFlow<List<Int>?>(null) // NEU
+    private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
     private val frameBuffer = StringBuilder()
 
     @Volatile
@@ -80,6 +79,11 @@ class OkHttpWebSocketClient(
             webSocket = null
             socket
         }
+        // True no-op when there was nothing to disconnect. Without this, every
+        // session-driven LaunchedEffect emission of `null` (including the initial
+        // one on cold start) would flip the status from IDLE to DISCONNECTED,
+        // which the start screen renders as "Connection status: disconnected"
+        // before the user has tried to connect.
         if (currentSocket == null) return
 
         currentSocket.send(StompFrame(command = "DISCONNECT").serialize())
@@ -131,7 +135,6 @@ class OkHttpWebSocketClient(
         Log.d(TAG, "Game start message sent")
     }
 
-    // NEU: rollDice
     override fun rollDice(diceCount: Int) {
         val socket = synchronized(this) { webSocket }
         if (socket == null) {
@@ -221,7 +224,7 @@ class OkHttpWebSocketClient(
                 Log.d(TAG, "STOMP message received: ${frame.body}")
                 handleLobbyCreated(frame.body)
                 parseGameActionPhase(frame.body)?.let { mutableGamePhase.value = it }
-                parseDiceResult(frame.body)?.let { mutableDiceResult.value = it } // NEU
+                parseDiceResult(frame.body)?.let { mutableDiceResult.value = it }
             }
 
             "ERROR" -> {
@@ -231,6 +234,17 @@ class OkHttpWebSocketClient(
         }
     }
 
+    /**
+     * Handles lobby creation responses from the backend.
+     *
+     * Expected message:
+     * {
+     *   "type": "LOBBY_CREATED",
+     *   "payload": {
+     *     "lobbyCode": "ABC123"
+     *   }
+     * }
+     */
     private fun handleLobbyCreated(body: String) {
         if (body.isBlank()) return
         val json = try {
@@ -262,7 +276,6 @@ class OkHttpWebSocketClient(
         return runCatching { GamePhase.valueOf(phaseName) }.getOrNull()
     }
 
-    // NEU: parseDiceResult
     /**
      * Parses incoming ROLL_DICE results from the server.
      *
@@ -323,7 +336,7 @@ class OkHttpWebSocketClient(
     private fun resetGameState() {
         mutableGamePhase.value = GamePhase.NONE
         mutablePlayers.value = emptyList()
-        mutableDiceResult.value = null // NEU
+        mutableDiceResult.value = null
     }
 
     private fun websocketHostHeader(): String {
@@ -348,7 +361,7 @@ class OkHttpWebSocketClient(
         private const val AUTH_HEADER = "Authorization"
         private const val BEARER_PREFIX = "Bearer "
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
-        private const val ROLL_DICE_TYPE = "ROLL_DICE" // NEU
+        private const val ROLL_DICE_TYPE = "ROLL_DICE"
         private const val GAME_START_BODY =
             """{"type":"START","sender":"${WebSocketContract.defaultSender}"}"""
     }
