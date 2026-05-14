@@ -121,7 +121,7 @@ class LobbyScreenViewModelTest {
         val viewModel = LobbyScreenViewModel(fakeClient, sessionHolder)
 
         sessionHolder.signIn(token = "uuid-123", username = "alice")
-
+        fakeClient.emitIsLobbyHost(true)
         fakeClient.emitPlayers(
             listOf(
                 PlayerCoinState(id = "1", displayName = "alice", coins = 3),
@@ -143,7 +143,7 @@ class LobbyScreenViewModelTest {
         val viewModel = LobbyScreenViewModel(fakeClient, sessionHolder)
 
         sessionHolder.signIn(token = "uuid-123", username = "bob")
-
+        fakeClient.emitIsLobbyHost(false)
         fakeClient.emitPlayers(
             listOf(
                 PlayerCoinState(id = "1", displayName = "alice", coins = 3),
@@ -156,6 +156,29 @@ class LobbyScreenViewModelTest {
         viewModel.onStartGame()
 
         assertFalse(fakeClient.gameStartSent)
+    }
+
+    @Test
+    fun onStartGameWithHostAndEnoughPlayersAndActiveGameIdSendsGameStart() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val sessionHolder = FakeSessionStateHolder()
+        val viewModel = LobbyScreenViewModel(fakeClient, sessionHolder)
+
+        sessionHolder.signIn(token = "uuid-123", username = "alice")
+        fakeClient.emitIsLobbyHost(true)
+        fakeClient.emitActiveGameId(42)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(id = "1", displayName = "alice", coins = 3),
+                PlayerCoinState(id = "2", displayName = "bob", coins = 5),
+            )
+        )
+
+        advanceUntilIdle()
+
+        viewModel.onStartGame()
+
+        assertTrue(fakeClient.gameStartSent)
     }
 
     private class FakeSessionStateHolder : SessionStateHolder {

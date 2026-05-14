@@ -12,6 +12,8 @@ interface WebSocketClient {
     val gamePhase: StateFlow<GamePhase>
     val players: StateFlow<List<PlayerCoinState>>
     val lobbyCode: StateFlow<String?>
+    val activeGameId: StateFlow<Int?>
+    val isLobbyHost: StateFlow<Boolean>
 
     // Holds the latest dice result received from the server.
     // Null if no dice have been rolled yet in the current turn.
