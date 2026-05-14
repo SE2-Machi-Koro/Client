@@ -21,7 +21,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,8 +41,11 @@ import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
+import kotlinx.coroutines.delay
 
 private const val BANNER_COLOR_ANIMATION_DURATION_MS = 300
+private const val DICE_ANIMATION_INTERVAL_MS = 100L
+private val DICE_FACES = listOf("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")
 
 @Composable
 fun GameScreen(
@@ -71,14 +78,15 @@ fun GameScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            state.diceResult?.let { dice ->
-                DiceResultDisplay(dice = dice)
+            when {
+                state.isRolling -> DiceAnimationDisplay()
+                state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
             }
 
-            // NEU: nur für aktiven Spieler sichtbar
             if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer) {
                 Button(
                     onClick = onRollDice,
+                    enabled = !state.isRolling,
                     modifier = Modifier.semantics {
                         contentDescription = "Würfeln"
                     }
@@ -95,11 +103,37 @@ fun GameScreen(
 }
 
 @Composable
+private fun DiceAnimationDisplay(modifier: Modifier = Modifier) {
+    var currentFaceIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(DICE_ANIMATION_INTERVAL_MS)
+            currentFaceIndex = (0..5).random()
+        }
+    }
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = 4.dp,
+        modifier = modifier.semantics {
+            contentDescription = "Würfelt..."
+        }
+    ) {
+        Text(
+            text = DICE_FACES[currentFaceIndex],
+            style = MaterialTheme.typography.displaySmall,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+        )
+    }
+}
+
+@Composable
 private fun DiceResultDisplay(
     dice: List<Int>,
     modifier: Modifier = Modifier
 ) {
-    val faces = listOf("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")
     val sum = dice.sum()
 
     Surface(
@@ -117,7 +151,7 @@ private fun DiceResultDisplay(
         ) {
             dice.forEach { value ->
                 Text(
-                    text = faces.getOrElse(value - 1) { value.toString() },
+                    text = DICE_FACES.getOrElse(value - 1) { value.toString() },
                     style = MaterialTheme.typography.displaySmall
                 )
             }
@@ -267,6 +301,23 @@ private fun GameScreenRollDicePreview() {
 
 @Preview(showBackground = true, widthDp = 412, heightDp = 400)
 @Composable
+private fun GameScreenRollingPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gamePhase = GamePhase.ROLL_DICE,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = previewPlayers(),
+                myUserId = 1,
+                activePlayerId = 1,
+                isRolling = true,
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Composable
 private fun GameScreenRollDiceNotActivePreview() {
     ClientTheme {
         GameScreen(
@@ -275,7 +326,7 @@ private fun GameScreenRollDiceNotActivePreview() {
                 connectionStatus = ConnectionStatus.CONNECTED,
                 players = previewPlayers(),
                 myUserId = 1,
-                activePlayerId = 2, // anderer Spieler ist aktiv
+                activePlayerId = 2,
             )
         )
     }
