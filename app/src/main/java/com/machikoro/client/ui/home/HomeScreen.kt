@@ -45,16 +45,18 @@ import com.machikoro.client.ui.theme.White
 fun HomeScreen(
     // Latest lobby code received from the server after creating a lobby.
     lobbyCode: String? = null,
-
-    // Callbacks passed from outside, e.g. from Navigation or ViewModel.
-    // This keeps the UI separated from the app logic.
+    isLobbyHost: Boolean = false,
+    canStartGame: Boolean = false,
     onJoinLobbyClick: () -> Unit = {},
     onCreateLobbyClick: () -> Unit = {},
+    onStartGame: () -> Unit = {},
     onPublicLobbiesClick: () -> Unit = {},
     onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    onGoToLobbyClick: () -> Unit,
+    // Allows immediate navigation to the lobby UI after lobby creation confirmation.
+    showLobbyScreen: Boolean = false,
+    onGoToLobbyClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -126,47 +128,79 @@ fun HomeScreen(
 
         // === MAIN ACTION BUTTONS ===
         // Three main lobby actions in the center of the screen.
-        Row(
+        Column(
             modifier = Modifier
                 .align(Alignment.Center)
                 .padding(top = 50.dp),
-            horizontalArrangement = Arrangement.spacedBy(60.dp),
-            verticalAlignment = Alignment.Top
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            HomeCard(
-                iconRes = R.drawable.home_lobby_join_icon,
-                text = "Lobby beitreten",
-                isPrimary = false,
-                onClick = onJoinLobbyClick
-            )
-
-            // Create lobby card with generated code displayed directly below it.
-            Column(
-                modifier = Modifier.width(150.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(60.dp),
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier
             ) {
                 HomeCard(
-                    iconRes = R.drawable.home_lobby_create_icon,
-                    text = "Lobby erstellen",
-                    isPrimary = true,
-                    onClick = onCreateLobbyClick
+                    iconRes = R.drawable.home_lobby_join_icon,
+                    text = "Lobby beitreten",
+                    isPrimary = false,
+                    onClick = onJoinLobbyClick
                 )
 
-                lobbyCode?.let { code ->
-                    Spacer(modifier = Modifier.height(8.dp))
+                // Create lobby card with generated code displayed directly below it.
+                Column(
+                    modifier = Modifier.width(150.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    HomeCard(
+                        iconRes = R.drawable.home_lobby_create_icon,
+                        text = "Lobby erstellen",
+                        isPrimary = true,
+                        onClick = onCreateLobbyClick
+                    )
 
-                    LobbyCodeRow(
-                        code = lobbyCode,
-                        onGoToLobbyClick = onGoToLobbyClick
-                    )                }
+                    lobbyCode?.let { code ->
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LobbyCodeRow(
+                            code = lobbyCode,
+                            onGoToLobbyClick = onGoToLobbyClick
+                        )
+                    }
+                }
+
+                HomeCard(
+                    iconRes = R.drawable.home_lobby_public_icon,
+                    text = "Öffentliche Lobbys",
+                    isPrimary = false,
+                    onClick = onPublicLobbiesClick
+                )
             }
 
-            HomeCard(
-                iconRes = R.drawable.home_lobby_public_icon,
-                text = "Öffentliche Lobbys",
-                isPrimary = false,
-                onClick = onPublicLobbiesClick
-            )
+            // Start Game button visible only to the lobby host and enabled when ready.
+            if (isLobbyHost) {
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = onStartGame,
+                    enabled = canStartGame,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ButtonBlueDark,
+                        contentColor = TextWhite,
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp),
+                    modifier = Modifier
+                        .height(44.dp)
+                ) {
+                    Text(
+                        text = "Spiel starten",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = TextWhite
+                    )
+                }
+            }
         }
         // === BOTTOM MENU ===
         // Clickable menu items for rules, ranking and settings.
