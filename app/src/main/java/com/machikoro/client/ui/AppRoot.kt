@@ -73,6 +73,7 @@ fun AppRoot(
             onStartGame = onStartGame,
             showLobbyScreen = showLobbyScreen,
             onGoToLobbyClick = onGoToLobbyClick,
+            onLogoutClick = onLogoutSubmit,
             modifier = modifier
         )
     } else {

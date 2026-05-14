@@ -13,6 +13,7 @@ data class GameScreenState(
     val myUserId: Int? = null,
     val purchaseState: PurchaseState
 
+    val isRolling: Boolean = false,
 ) {
     val isActivePlayer: Boolean
         get() = myUserId != null && myUserId == activePlayerId
@@ -31,6 +32,7 @@ data class GameScreenState(
             activePlayerId = null,
             myUserId = null,
             purchaseState = PurchaseState.IDLE
+            isRolling = false,
         )
     }
 }
