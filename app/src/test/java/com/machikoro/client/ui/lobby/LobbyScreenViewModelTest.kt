@@ -101,6 +101,7 @@ class LobbyScreenViewModelTest {
         val sessionHolder = FakeSessionStateHolder()
         val viewModel = LobbyScreenViewModel(fakeClient, sessionHolder)
         sessionHolder.signIn(token = "uuid-123", username = "alice", userId = 1)
+        fakeClient.emitIsLobbyHost(true)
         fakeClient.emitPlayers(listOf(
             PlayerCoinState(id = "1", displayName = "alice", coins = 3),
             PlayerCoinState(id = "2", displayName = "bob", coins = 5),
@@ -116,6 +117,7 @@ class LobbyScreenViewModelTest {
         val sessionHolder = FakeSessionStateHolder()
         val viewModel = LobbyScreenViewModel(fakeClient, sessionHolder)
         sessionHolder.signIn(token = "uuid-123", username = "bob", userId = 2)
+        fakeClient.emitIsLobbyHost(false)
         fakeClient.emitPlayers(listOf(
             PlayerCoinState(id = "1", displayName = "alice", coins = 3),
             PlayerCoinState(id = "2", displayName = "bob", coins = 5),
@@ -125,11 +127,28 @@ class LobbyScreenViewModelTest {
         assertFalse(fakeClient.gameStartSent)
     }
 
+    @Test
+    fun onStartGameWithHostAndEnoughPlayersAndActiveGameIdSendsGameStart() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val sessionHolder = FakeSessionStateHolder()
+        val viewModel = LobbyScreenViewModel(fakeClient, sessionHolder)
+        sessionHolder.signIn(token = "uuid-123", username = "alice", userId = 1)
+        fakeClient.emitIsLobbyHost(true)
+        fakeClient.emitActiveGameId(42)
+        fakeClient.emitPlayers(listOf(
+            PlayerCoinState(id = "1", displayName = "alice", coins = 3),
+            PlayerCoinState(id = "2", displayName = "bob", coins = 5),
+        ))
+        advanceUntilIdle()
+        viewModel.onStartGame()
+        assertTrue(fakeClient.gameStartSent)
+    }
+
     private class FakeSessionStateHolder : SessionStateHolder {
         private val mutableSession = MutableStateFlow<Session?>(null)
         override val session: StateFlow<Session?> = mutableSession.asStateFlow()
 
-        override fun signIn(token: String, username: String, userId: Int) { // NEU
+        override fun signIn(token: String, username: String, userId: Int) {
             mutableSession.value = Session(token, username, userId)
         }
 

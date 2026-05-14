@@ -45,15 +45,19 @@ import com.machikoro.client.ui.theme.White
 fun HomeScreen(
     // Latest lobby code received from the server after creating a lobby.
     lobbyCode: String? = null,
-
-    // Callbacks passed from outside, e.g. from Navigation or ViewModel.
-    // This keeps the UI separated from the app logic.
+    isLobbyHost: Boolean = false,
+    canStartGame: Boolean = false,
     onJoinLobbyClick: () -> Unit = {},
     onCreateLobbyClick: () -> Unit = {},
+    onStartGame: () -> Unit = {},
     onPublicLobbiesClick: () -> Unit = {},
     onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    // Allows immediate navigation to the lobby UI after lobby creation confirmation.
+    showLobbyScreen: Boolean = false,
+    onGoToLobbyClick: () -> Unit = {},
+    onLogoutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Root container. Box allows placing elements freely with align().
@@ -111,47 +115,92 @@ fun HomeScreen(
                 .padding(top = 25.dp, end = 30.dp)
         )
 
+        // Logout affordance in the top-left corner. Issue #106 places the
+        // logout action on the authenticated screen; the start screen never
+        // shows it because the routing in AppRoot collapses HomeScreen back to
+        // StartScreen the moment the session clears.
+        LogoutButton(
+            onClick = onLogoutClick,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = 25.dp, start = 30.dp)
+        )
+
         // === MAIN ACTION BUTTONS ===
         // Three main lobby actions in the center of the screen.
-        Row(
+        Column(
             modifier = Modifier
                 .align(Alignment.Center)
                 .padding(top = 50.dp),
-            horizontalArrangement = Arrangement.spacedBy(60.dp),
-            verticalAlignment = Alignment.Top
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            HomeCard(
-                iconRes = R.drawable.home_lobby_join_icon,
-                text = "Lobby beitreten",
-                isPrimary = false,
-                onClick = onJoinLobbyClick
-            )
-
-            // Create lobby card with generated code displayed directly below it.
-            Column(
-                modifier = Modifier.width(150.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(60.dp),
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier
             ) {
                 HomeCard(
-                    iconRes = R.drawable.home_lobby_create_icon,
-                    text = "Lobby erstellen",
-                    isPrimary = true,
-                    onClick = onCreateLobbyClick
+                    iconRes = R.drawable.home_lobby_join_icon,
+                    text = "Lobby beitreten",
+                    isPrimary = false,
+                    onClick = onJoinLobbyClick
                 )
 
-                lobbyCode?.let { code ->
-                    Spacer(modifier = Modifier.height(8.dp))
+                // Create lobby card with generated code displayed directly below it.
+                Column(
+                    modifier = Modifier.width(150.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    HomeCard(
+                        iconRes = R.drawable.home_lobby_create_icon,
+                        text = "Lobby erstellen",
+                        isPrimary = true,
+                        onClick = onCreateLobbyClick
+                    )
 
-                    LobbyCodeRow(code = code)
+                    lobbyCode?.let { code ->
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LobbyCodeRow(
+                            code = lobbyCode,
+                            onGoToLobbyClick = onGoToLobbyClick
+                        )
+                    }
                 }
+
+                HomeCard(
+                    iconRes = R.drawable.home_lobby_public_icon,
+                    text = "Öffentliche Lobbys",
+                    isPrimary = false,
+                    onClick = onPublicLobbiesClick
+                )
             }
 
-            HomeCard(
-                iconRes = R.drawable.home_lobby_public_icon,
-                text = "Öffentliche Lobbys",
-                isPrimary = false,
-                onClick = onPublicLobbiesClick
-            )
+            // Start Game button visible only to the lobby host and enabled when ready.
+            if (isLobbyHost) {
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = onStartGame,
+                    enabled = canStartGame,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ButtonBlueDark,
+                        contentColor = TextWhite,
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp),
+                    modifier = Modifier
+                        .height(44.dp)
+                ) {
+                    Text(
+                        text = "Spiel starten",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = TextWhite
+                    )
+                }
+            }
         }
         // === BOTTOM MENU ===
         // Clickable menu items for rules, ranking and settings.
@@ -162,6 +211,31 @@ fun HomeScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 0.dp)
+        )
+    }
+}
+
+@Composable
+private fun LogoutButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(40.dp),
+        shape = RoundedCornerShape(10.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = ButtonBlueDark,
+            contentColor = TextWhite,
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) {
+        Text(
+            text = "Abmelden",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = TextWhite,
         )
     }
 }
@@ -217,7 +291,10 @@ private fun HomeCard(
 }
 
 @Composable
-private fun LobbyCodeRow(code: String) {
+private fun LobbyCodeRow(
+    code: String,
+    onGoToLobbyClick: () -> Unit
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -253,8 +330,9 @@ private fun LobbyCodeRow(code: String) {
             }
         }
 
+        // Allows the player to confirm the created lobby and continue to the lobby screen.
         Card(
-            modifier = Modifier.size(34.dp),
+            modifier = Modifier.size(34.dp).clickable(onClick = onGoToLobbyClick),
             shape = RoundedCornerShape(6.dp),
             colors = CardDefaults.cardColors(containerColor = White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -401,7 +479,9 @@ private fun BottomMenuItem(
 @Composable
 private fun HomeScreenPreview() {
     ClientTheme {
-        HomeScreen()
+        HomeScreen(
+            onGoToLobbyClick = {},
+        )
     }
 }
 
@@ -410,6 +490,7 @@ private fun HomeScreenPreview() {
 private fun HomeScreenWithLobbyCodePreview() {
     ClientTheme {
         HomeScreen(
+            onGoToLobbyClick = {},
             lobbyCode = "AJ25Z39"
         )
     }

@@ -8,9 +8,14 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.machikoro.client.config.AppConfig
@@ -70,10 +75,14 @@ class MainActivity : ComponentActivity() {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
+            val isLobbyHost by homeViewModel.isLobbyHost.collectAsState()
             val lobbyScreenState by lobbyScreenViewModel.state.collectAsState()
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
+            var showLobbyScreen by remember { mutableStateOf(false) }
+
+            val snackbarHostState = remember { SnackbarHostState() }
 
             LaunchedEffect(Unit) {
                 SessionManager.session.collect { session ->
@@ -85,8 +94,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            LaunchedEffect(Unit) {
+                webSocketClient.authRejections.collect {
+                    snackbarHostState.showSnackbar(
+                        "Sitzung abgelaufen, bitte erneut anmelden"
+                    )
+                }
+            }
+
             ClientTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                ) { innerPadding ->
                     AppRoot(
                         gameScreenState = gameScreenState,
                         startScreenState = startScreenState,
@@ -104,7 +124,7 @@ class MainActivity : ComponentActivity() {
                         onLoginDialogReset = loginDialogViewModel::reset,
                         onLogoutSubmit = logoutViewModel::submit,
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
-                        onStartGame = lobbyScreenViewModel::onStartGame,
+                        onStartGame = homeViewModel::startGame,
                         onLeaveLobby = {
                             lobbyScreenViewModel.onLeaveLobby()
                             homeViewModel.clearLobbyCode()
@@ -112,7 +132,12 @@ class MainActivity : ComponentActivity() {
                         onRollDice = gameScreenViewModel::rollDice,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
+                        isLobbyHost = isLobbyHost,
                         loggedInAs = startScreenState.loggedInAs,
+                        showLobbyScreen = showLobbyScreen,
+                        onGoToLobbyClick = {
+                            showLobbyScreen = true
+                        },
                         onCreateLobbyClick = homeViewModel::createLobby,
                     )
                 }

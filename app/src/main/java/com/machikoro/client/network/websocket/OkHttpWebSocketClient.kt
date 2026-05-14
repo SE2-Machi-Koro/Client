@@ -6,13 +6,18 @@ import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.session.SessionStateHolder
 import java.net.URI
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -36,19 +41,35 @@ class OkHttpWebSocketClient(
     override val diceResult: StateFlow<List<Int>?>
         get() = mutableDiceResult.asStateFlow()
 
-    override val activePlayerId: StateFlow<Int?> // NEU
+    override val activePlayerId: StateFlow<Int?>
         get() = mutableActivePlayerId.asStateFlow()
+
+    override val activeGameId: StateFlow<Int?>
+        get() = mutableActiveGameId.asStateFlow()
+
+    override val isLobbyHost: StateFlow<Boolean>
+        get() = mutableIsLobbyHost.asStateFlow()
+
+    override val authRejections: SharedFlow<Unit>
+        get() = mutableAuthRejections.asSharedFlow()
 
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
     private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
-    private val mutableActivePlayerId = MutableStateFlow<Int?>(null) // NEU
+    private val mutableActivePlayerId = MutableStateFlow<Int?>(null)
+    private val mutableActiveGameId = MutableStateFlow<Int?>(null)
+    private val mutableIsLobbyHost = MutableStateFlow(false)
+    private val mutableAuthRejections = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     private val frameBuffer = StringBuilder()
 
     @Volatile
     private var webSocket: WebSocket? = null
+    private var subscribedGameId: Int? = null
 
     override fun connect() {
         synchronized(this) {
@@ -77,12 +98,22 @@ class OkHttpWebSocketClient(
             webSocket = null
             socket
         }
-        if (currentSocket == null) return
+        if (currentSocket == null) {
+            if (sessionStateHolder.session.value == null) {
+                resetGameState()
+                resetLobbyState()
+            }
+            return
+        }
+
         currentSocket.send(StompFrame(command = "DISCONNECT").serialize())
         currentSocket.close(NORMAL_CLOSURE_STATUS, "Client disconnect")
         Log.d(TAG, "Disconnect requested by client")
         mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
         resetGameState()
+        if (sessionStateHolder.session.value == null) {
+            resetLobbyState()
+        }
     }
 
     override fun sendCreateLobby() {
@@ -91,7 +122,8 @@ class OkHttpWebSocketClient(
             Log.w(TAG, "sendCreateLobby called but no active WebSocket connection")
             return
         }
-        socket.send(
+
+        val sent = socket.send(
             StompFrame(
                 command = "SEND",
                 headers = mapOf(
@@ -101,11 +133,17 @@ class OkHttpWebSocketClient(
                 body = """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}"}"""
             ).serialize()
         )
-        Log.d(TAG, "Lobby create message sent")
+
+        if (sent) {
+            mutableIsLobbyHost.value = true
+            Log.d(TAG, "Lobby create message sent")
+        } else {
+            Log.w(TAG, "sendCreateLobby: failed to send create-lobby frame")
+        }
     }
 
     override fun clearLobbyCode() {
-        mutableLobbyCode.value = null
+        resetLobbyState()
     }
 
     override fun sendGameStart() {
@@ -114,17 +152,28 @@ class OkHttpWebSocketClient(
             Log.w(TAG, "sendGameStart called but no active WebSocket connection")
             return
         }
-        socket.send(
-            StompFrame(
-                command = "SEND",
-                headers = mapOf(
-                    "destination" to WebSocketContract.gameStartDestination,
-                    "content-type" to "application/json"
-                ),
-                body = GAME_START_BODY
-            ).serialize()
-        )
-        Log.d(TAG, "Game start message sent")
+
+        val gameId = mutableActiveGameId.value
+        val lobbyCode = mutableLobbyCode.value
+
+        val enrichedBody = when {
+            gameId != null && lobbyCode != null -> "{\"gameId\":$gameId,\"lobbyCode\":\"$lobbyCode\"}"
+            gameId != null -> "{\"gameId\":$gameId}"
+            lobbyCode != null -> "{\"lobbyCode\":\"$lobbyCode\"}"
+            else -> "{}"
+        }
+
+        val frameStr = StompFrame(
+            command = "SEND",
+            headers = mapOf(
+                "destination" to WebSocketContract.gameStartDestination,
+                "content-type" to "application/json"
+            ),
+            body = enrichedBody
+        ).serialize()
+
+        socket.send(frameStr)
+        Log.d(TAG, "Game start message sent (gameId=$gameId, lobbyCode=$lobbyCode)")
     }
 
     override fun rollDice(diceCount: Int) {
@@ -205,65 +254,92 @@ class OkHttpWebSocketClient(
                 Log.d(TAG, "STOMP connected")
                 mutableConnectionStatus.value = ConnectionStatus.CONNECTED
                 subscribeToPublicTopic()
+                mutableActiveGameId.value?.let(::subscribeToGameTopic)
                 sendJoinMessage()
             }
             "MESSAGE" -> {
                 Log.d(TAG, "STOMP message received: ${frame.body}")
-                handleLobbyCreated(frame.body)
-                val (phase, activePlayerId) = parseGameAction(frame.body) // NEU
-                phase?.let { mutableGamePhase.value = it }
-                activePlayerId?.let { mutableActivePlayerId.value = it } // NEU
-                parseDiceResult(frame.body)?.let { mutableDiceResult.value = it }
+                if (frame.body.isBlank()) return
+                val json = try {
+                    JSONObject(frame.body)
+                } catch (e: JSONException) {
+                    Log.w(TAG, "Failed to parse MESSAGE frame as JSON: ${e.message}")
+                    return
+                }
+                handleLobbyCreated(json)
+                handleGameStarted(json)
+                parseGameAction(json).let { (phase, activePlayerId) ->
+                    phase?.let { mutableGamePhase.value = it }
+                    activePlayerId?.let { mutableActivePlayerId.value = it }
+                }
+                parseDiceResult(json)?.let { mutableDiceResult.value = it }
             }
             "ERROR" -> {
                 Log.e(TAG, "STOMP error frame received: ${frame.body}")
-                mutableConnectionStatus.value = ConnectionStatus.ERROR
+                if (isAuthRejection(frame.body)) {
+                    mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
+                    resetGameState()
+                    sessionStateHolder.signOut()
+                    mutableAuthRejections.tryEmit(Unit)
+                } else {
+                    mutableConnectionStatus.value = ConnectionStatus.ERROR
+                }
             }
         }
     }
 
-    private fun handleLobbyCreated(body: String) {
-        if (body.isBlank()) return
-        val json = try {
-            JSONObject(body)
-        } catch (e: JSONException) {
-            Log.w(TAG, "Failed to parse lobby message as JSON: ${e.message}")
-            return
-        }
+    /**
+     * Handles lobby creation responses from the backend.
+     */
+    private fun handleLobbyCreated(json: JSONObject) {
         if (json.optString("type") != LOBBY_CREATED_TYPE) return
         val payload = json.optJSONObject("payload") ?: return
         val code = payload.optString("lobbyCode")
+        val gameId = json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId")
+
         if (code.isNotBlank()) {
             Log.d(TAG, "Lobby created with code: $code")
             mutableLobbyCode.value = code
         }
+
+        if (gameId != null) {
+            mutableActiveGameId.value = gameId
+            subscribeToGameTopic(gameId)
+        }
     }
 
-    // NEU: ersetzt parseGameActionPhase, gibt auch activePlayerId zurück
-    private fun parseGameAction(body: String): Pair<GamePhase?, Int?> {
-        if (body.isBlank()) return Pair(null, null)
-        val json = try {
-            JSONObject(body)
-        } catch (e: JSONException) {
-            Log.w(TAG, "Failed to parse MESSAGE frame as JSON: ${e.message}")
-            return Pair(null, null)
-        }
+    private fun handleGameStarted(json: JSONObject) {
+        if (json.optString("type") != GAME_STARTED_TYPE) return
+
+        val payload = json.optJSONObject("payload") ?: return
+        val game = payload.optJSONObject("game") ?: return
+        val gameId = json.optIntOrNull("gameId") ?: game.optIntOrNull("id") ?: return
+
+        mutableActiveGameId.value = gameId
+        subscribeToGameTopic(gameId)
+
+        game.optString("lobbyCode")
+            .takeIf { it.isNotBlank() }
+            ?.let { mutableLobbyCode.value = it }
+
+        parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
+        mutablePlayers.value = payload.optJSONArray("players").toPlayerCoinStates(payload, game)
+    }
+
+    private fun parseGameAction(json: JSONObject): Pair<GamePhase?, Int?> {
         if (json.optString("type") != GAME_ACTION_TYPE) return Pair(null, null)
         val payload = json.optJSONObject("payload") ?: return Pair(null, null)
         val phaseName = payload.optString("turnPhase").takeIf { it.isNotEmpty() }
-        val phase = phaseName?.let { runCatching { GamePhase.valueOf(it) }.getOrNull() }
+        val phase = phaseName?.let { parseTurnPhase(it) }
         val activePlayerId = if (payload.has("activePlayerId") && !payload.isNull("activePlayerId"))
             payload.optInt("activePlayerId") else null
         return Pair(phase, activePlayerId)
     }
 
-    private fun parseDiceResult(body: String): List<Int>? {
-        if (body.isBlank()) return null
-        val json = try {
-            JSONObject(body)
-        } catch (e: JSONException) {
-            return null
-        }
+    /**
+     * Parses incoming ROLL_DICE results from the server.
+     */
+    private fun parseDiceResult(json: JSONObject): List<Int>? {
         if (json.optString("type") != ROLL_DICE_TYPE) return null
         val payload = json.optJSONObject("payload") ?: return null
         val resultArray = payload.optJSONArray("result") ?: return null
@@ -282,6 +358,33 @@ class OkHttpWebSocketClient(
         )
     }
 
+    private fun subscribeToGameTopic(gameId: Int) {
+        if (subscribedGameId == gameId) return
+
+        val socket = webSocket ?: return
+
+        subscribedGameId?.let { oldId ->
+            socket.send(
+                StompFrame(
+                    command = "UNSUBSCRIBE",
+                    headers = mapOf("id" to "game-topic-$oldId")
+                ).serialize()
+            )
+        }
+
+        val subscribeFrame = StompFrame(
+            command = "SUBSCRIBE",
+            headers = mapOf(
+                "id" to "game-topic-$gameId",
+                "destination" to "${WebSocketContract.gameTopicPrefix}/$gameId"
+            )
+        ).serialize()
+
+        if (socket.send(subscribeFrame)) {
+            subscribedGameId = gameId
+        }
+    }
+
     private fun sendJoinMessage() {
         webSocket?.send(
             StompFrame(
@@ -296,15 +399,63 @@ class OkHttpWebSocketClient(
     }
 
     private fun clearSocket() {
-        synchronized(this) { webSocket = null }
+        synchronized(this) {
+            webSocket = null
+            subscribedGameId = null
+        }
     }
+
+    private fun isAuthRejection(body: String): Boolean =
+        body == AUTH_REJECTION_BODY
 
     private fun resetGameState() {
         mutableGamePhase.value = GamePhase.NONE
         mutablePlayers.value = emptyList()
         mutableDiceResult.value = null
-        mutableActivePlayerId.value = null // NEU
+        mutableActivePlayerId.value = null
+        mutableLobbyCode.value = null
     }
+
+    private fun resetLobbyState() {
+        mutableLobbyCode.value = null
+        mutableActiveGameId.value = null
+        mutableIsLobbyHost.value = false
+    }
+
+    private fun parseTurnPhase(phaseName: String): GamePhase? =
+        phaseName.takeIf { it.isNotEmpty() }?.let { runCatching { GamePhase.valueOf(it) }.getOrNull() }
+
+    private fun JSONArray?.toPlayerCoinStates(payload: JSONObject, game: JSONObject): List<PlayerCoinState> {
+        if (this == null) return emptyList()
+
+        val currentTurnIndex = game.optIntOrNull("currentTurnIndex")
+        val currentPlayerId = payload.optJSONArray("turnOrder")
+            ?.takeIf { currentTurnIndex != null && currentTurnIndex in 0 until it.length() }
+            ?.let { turnOrder -> currentTurnIndex?.let(turnOrder::optInt) }
+
+        return List(length()) { index ->
+            getJSONObject(index).toPlayerCoinState(currentPlayerId)
+        }
+    }
+
+    private fun JSONObject.toPlayerCoinState(currentPlayerId: Int?): PlayerCoinState {
+        val playerId = optInt("id")
+        val resolvedDisplayName =
+            optString("username").takeIf { it.isNotBlank() }
+                ?: optString("name").takeIf { it.isNotBlank() }
+                ?: optString("displayName").takeIf { it.isNotBlank() }
+                ?: "Player $playerId"
+        return PlayerCoinState(
+            id = playerId.toString(),
+            displayName = resolvedDisplayName,
+            coins = optInt("coins"),
+            isCurrentPlayer = playerId == currentPlayerId,
+            isActivePlayer = playerId == currentPlayerId,
+        )
+    }
+
+    private fun JSONObject.optIntOrNull(key: String): Int? =
+        if (has(key) && !isNull(key)) optInt(key) else null
 
     private fun websocketHostHeader(): String {
         val uri = URI(websocketUrl)
@@ -322,10 +473,15 @@ class OkHttpWebSocketClient(
         private const val NORMAL_CLOSURE_STATUS = 1000
         private const val TAG = "OkHttpWebSocketClient"
         private const val GAME_ACTION_TYPE = "GAME_ACTION"
+        private const val GAME_STARTED_TYPE = "GAME_STARTED"
         private const val AUTH_HEADER = "Authorization"
         private const val BEARER_PREFIX = "Bearer "
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
         private const val ROLL_DICE_TYPE = "ROLL_DICE"
+        // Frozen contract: matches GENERIC_AUTH_FAILURE on the server's
+        // StompAuthChannelInterceptor. If the server message changes, this
+        // client will silently fall through to the generic ERROR handling.
+        private const val AUTH_REJECTION_BODY = "Authentication failed"
         private const val GAME_START_BODY =
             """{"type":"START","sender":"${WebSocketContract.defaultSender}"}"""
     }

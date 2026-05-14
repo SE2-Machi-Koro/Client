@@ -329,6 +329,14 @@ private fun previewPlayers() = listOf(
         isCurrentPlayer = true,
         isActivePlayer = true
     ),
-    PlayerCoinState(id = "player-2", displayName = "SoupCube", coins = 3),
-    PlayerCoinState(id = "player-3", displayName = "doniliks", coins = 0)
+    PlayerCoinState(
+        id = "player-2",
+        displayName = "SoupCube",
+        coins = 3
+    ),
+    PlayerCoinState(
+        id = "player-3",
+        displayName = "doniliks",
+        coins = 0
+    )
 )
