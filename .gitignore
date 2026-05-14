@@ -20,3 +20,5 @@
 .cxx
 local.properties
 package-lock.json
+.ai/
+.ai/mcp/
