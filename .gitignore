@@ -1,24 +1,85 @@
-*.iml
-.gradle
-.idea
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.idea/deploymentTargetSelector.xml
-.idea/codeStyles/
-.idea/inspectionProfiles/
-.idea/markdown.xml
+# IDE e sistema
+.idea/
+.vscode/
 .DS_Store
-/build
-/captures
-.gradle-local/
-.externalNativeBuild
-.cxx
+*.iml
+*.sublime-workspace
+*.sublime-project
+
+# Build e output
+/build/
+/app/build/
+/captures/
+/outputs/
+
+# Gradle e Kotlin
+.gradle/
+.kotlin/
+.cxx/
+.externalNativeBuild/
+
+# Configurazioni locali e segreti
 local.properties
+*.keystore
+*.jks
+*.pem
+*.p12
+.env
+.env.*
+
+# File temporanei, backup e lock
+*.bak
+*.tmp
+*.swp
+*.orig
+*.rej
 package-lock.json
+yarn.lock
+
+# AI e automazione
 .ai/
 .ai/mcp/
+
+# GitHub (se vuoi ignorare tutto, altrimenti specifica solo file temporanei)
+.github/
+
+# Node.js
+node_modules/
+
+# Test e coverage
+coverage/
+test-results/
+*.test.js.snap
+
+# Android artifacts
+*.apk
+*.ap_
+*.aab
+
+# Python
+*.pyc
+__pycache__/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# Database
+*.db
+*.sqlite
+*.db-journal
+
+# Log e output
+*.log
+*.out
+
+# Archivi
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# Jupyter
+*.ipynb_checkpoints
