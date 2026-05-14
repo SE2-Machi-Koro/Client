@@ -13,7 +13,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -171,7 +173,7 @@ class GameScreenViewModelTest {
         val viewModel = viewModel(fakeClient, userId = 42)
 
         fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
-        fakeClient.emitActivePlayerId(42) // gleiche userId → aktiver Spieler
+        fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
 
         viewModel.rollDice(diceCount = 1)
@@ -199,7 +201,7 @@ class GameScreenViewModelTest {
         val viewModel = viewModel(fakeClient, userId = 1)
 
         fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
-        fakeClient.emitActivePlayerId(99) // anderer Spieler ist aktiv
+        fakeClient.emitActivePlayerId(99)
         advanceUntilIdle()
 
         viewModel.rollDice(diceCount = 1)
@@ -238,5 +240,72 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         assertEquals(false, viewModel.state.value.isActivePlayer)
+    }
+
+    @Test
+    fun isRollingIsFalseInInitialState() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        assertFalse(viewModel.state.value.isRolling)
+    }
+
+    @Test
+    fun rollDiceSetsIsRollingToTrue() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+
+        assertTrue(viewModel.state.value.isRolling)
+    }
+
+    @Test
+    fun isRollingIsClearedWhenDiceResultArrives() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+        assertTrue(viewModel.state.value.isRolling)
+
+        fakeClient.emitDiceResult(listOf(4))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isRolling)
+    }
+
+    @Test
+    fun rollDiceDoesNotSetIsRollingWhenPhaseIsNotRollDice() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+
+        assertFalse(viewModel.state.value.isRolling)
+    }
+
+    @Test
+    fun rollDiceDoesNotSetIsRollingWhenNotActivePlayer() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 1)
+
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(99)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+
+        assertFalse(viewModel.state.value.isRolling)
     }
 }
