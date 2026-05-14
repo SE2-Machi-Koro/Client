@@ -5,6 +5,24 @@ plugins {
     jacoco
 }
 
+// List of class file patterns to exclude from Jacoco coverage. Used by both report and verification tasks.
+val coverageExclusions = listOf(
+    "**/R.class",
+    "**/R$*.class",
+    "**/BuildConfig.*",
+    "**/Manifest*.*",
+    "**/*Test*.*",
+    "android/**/*.*",
+    "**/ui/**",
+    "**/MainActivity*.*",
+    "**/config/**",
+    "**/*Application*.*",
+    // Compose generated classes
+    "**/*ComposableSingletons*.*",
+    "**/*$*Composable*.*",
+    "**/*Kt$*.*"
+)
+
 val backendBaseUrl = providers.gradleProperty("backendBaseUrl").orElse("http://10.0.2.2:8080")
 val websocketUrl = providers.gradleProperty("websocketUrl").orElse("ws://10.0.2.2:8080/ws")
 
@@ -90,23 +108,6 @@ tasks.register<JacocoReport>("jacocoTestReport") {
         html.required.set(true)
     }
 
-    val coverageExclusions = listOf(
-        "**/R.class",
-        "**/R$*.class",
-        "**/BuildConfig.*",
-        "**/Manifest*.*",
-        "**/*Test*.*",
-        "android/**/*.*",
-        "**/ui/**",
-        "**/MainActivity*.*",
-        "**/config/**",
-        "**/*Application*.*",
-        // Compose generated classes
-        "**/*ComposableSingletons*.*",
-        "**/*\$*Composable*.*",
-        "**/*Kt\$*.*"
-    )
-
     val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
         exclude(coverageExclusions)
     }
@@ -125,22 +126,6 @@ tasks.register<JacocoReport>("jacocoTestReport") {
 
 tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
     dependsOn("testDebugUnitTest")
-
-    val coverageExclusions = listOf(
-        "**/R.class",
-        "**/R$*.class",
-        "**/BuildConfig.*",
-        "**/Manifest*.*",
-        "**/*Test*.*",
-        "android/**/*.*",
-        "**/ui/**",
-        "**/MainActivity*.*",
-        "**/config/**",
-        "**/*Application*.*",
-        "**/*ComposableSingletons*.*",
-        "**/*\$*Composable*.*",
-        "**/*Kt\$*.*"
-    )
 
     val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
         exclude(coverageExclusions)
