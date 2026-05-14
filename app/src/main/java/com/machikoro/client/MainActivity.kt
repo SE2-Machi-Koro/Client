@@ -132,7 +132,6 @@ class MainActivity : ComponentActivity() {
                         onRollDice = gameScreenViewModel::rollDice,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
-                        isLobbyHost = isLobbyHost,
                         loggedInAs = startScreenState.loggedInAs,
                         showLobbyScreen = showLobbyScreen,
                         onGoToLobbyClick = {
