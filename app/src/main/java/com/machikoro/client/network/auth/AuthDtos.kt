@@ -24,6 +24,7 @@ data class LoginRequest(
 data class LoginResponse(
     val sessionToken: String,
     val username: String,
+    val userId: Int,
 )
 
 @Serializable

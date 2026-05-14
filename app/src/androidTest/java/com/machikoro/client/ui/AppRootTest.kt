@@ -55,6 +55,7 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
+                    isLobbyHost = false,
                     loggedInAs = null,
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
@@ -91,6 +92,7 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
+                    isLobbyHost = false,
                     loggedInAs = null,
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
@@ -230,6 +232,7 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
+                    isLobbyHost = false,
                     loggedInAs = null,
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
@@ -250,5 +253,41 @@ class AppRootTest {
         phase = GamePhase.NONE
         composeTestRule.onNodeWithText(START_SCREEN_TITLE).assertIsDisplayed()
         composeTestRule.onNodeWithText(GamePhase.BUY_OR_BUILD.toDisplayText()).assertDoesNotExist()
+    }
+
+    @Test
+    fun showsHomeScreenWithStartGameWhenLoggedInHostHasActiveGame() {
+        composeTestRule.setContent {
+            ClientTheme {
+                AppRoot(
+                    gameScreenState = GameScreenState.initial(),
+                    startScreenState = StartScreenState.placeholder().copy(
+                        loggedInAs = "alice",
+                        connectionStatus = com.machikoro.client.domain.model.state.ConnectionStatus.CONNECTED,
+                    ),
+                    registerDialogState = RegisterDialogState(),
+                    loginDialogState = LoginDialogState(),
+                    logoutState = LogoutState(),
+                    onRegisterUsernameChange = {},
+                    onRegisterPasswordChange = {},
+                    onRegisterSubmit = {},
+                    onRegisterDialogReset = {},
+                    onLoginUsernameChange = {},
+                    onLoginPasswordChange = {},
+                    onLoginSubmit = {},
+                    onLoginDialogReset = {},
+                    onLogoutSubmit = {},
+                    lobbyScreenState = LobbyScreenState.placeholder(),
+                    lobbyCode = null,
+                    isLobbyHost = true,
+                    loggedInAs = "alice",
+                    onCreateLobbyClick = {},
+                    onStartGame = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Lobby erstellen").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Spiel starten").assertIsDisplayed()
     }
 }

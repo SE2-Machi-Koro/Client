@@ -3,6 +3,7 @@ package com.machikoro.client.ui.game
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,6 +54,7 @@ private const val BANNER_COLOR_ANIMATION_DURATION_MS = 300
 fun GameScreen(
     state: GameScreenState,
     onPurchaseClick: (String) -> Unit = {},
+    onRollDice: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -84,6 +86,71 @@ fun GameScreen(
                     .padding(top = shopTopPadding(state.players))
                     .padding(horizontal = 12.dp)
             )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            state.diceResult?.let { dice ->
+                DiceResultDisplay(dice = dice)
+            }
+
+            // NEU: nur für aktiven Spieler sichtbar
+            if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer) {
+                Button(
+                    onClick = onRollDice,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Würfeln"
+                    }
+                ) {
+                    Text(
+                        text = if (state.diceResult == null) "🎲 Würfeln" else "🎲 Nochmal würfeln",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DiceResultDisplay(
+    dice: List<Int>,
+    modifier: Modifier = Modifier
+) {
+    val faces = listOf("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")
+    val sum = dice.sum()
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = 4.dp,
+        modifier = modifier.semantics {
+            contentDescription = "Würfelergebnis: $sum"
+        }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            dice.forEach { value ->
+                Text(
+                    text = faces.getOrElse(value - 1) { value.toString() },
+                    style = MaterialTheme.typography.displaySmall
+                )
+            }
+            if (dice.size > 1) {
+                Text(
+                    text = "= $sum",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }
@@ -93,22 +160,13 @@ private fun CoinDisplay(
     players: List<PlayerCoinState>,
     modifier: Modifier = Modifier
 ) {
-    if (players.isEmpty()) {
-        return
-    }
-
+    if (players.isEmpty()) return
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        items(
-            items = players,
-            key = { it.id }
-        ) { player ->
-            PlayerCoinBadge(
-                player = player,
-                modifier = Modifier.padding(end = 8.dp)
-            )
+        items(items = players, key = { it.id }) { player ->
+            PlayerCoinBadge(player = player, modifier = Modifier.padding(end = 8.dp))
         }
     }
 }
@@ -128,7 +186,6 @@ private fun PlayerCoinBadge(
         player.isActivePlayer -> MaterialTheme.colorScheme.onTertiary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-
     Surface(
         color = containerColor,
         contentColor = contentColor,
@@ -136,17 +193,13 @@ private fun PlayerCoinBadge(
         tonalElevation = 3.dp,
         modifier = modifier
             .widthIn(min = 118.dp, max = 180.dp)
-            .semantics {
-                contentDescription = "${player.displayName}: ${player.coins} coins"
-            }
+            .semantics { contentDescription = "${player.displayName}: ${player.coins} coins" }
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
         ) {
-            CoinIcon(
-                modifier = Modifier.padding(end = 8.dp)
-            )
+            CoinIcon(modifier = Modifier.padding(end = 8.dp))
             Column {
                 Text(
                     text = player.displayName,
@@ -183,7 +236,8 @@ private fun CoinIcon(modifier: Modifier = Modifier) {
     }
 }
 
-private fun coinDisplayTopPadding(players: List<PlayerCoinState>) = if (players.isEmpty()) 0.dp else 68.dp
+private fun coinDisplayTopPadding(players: List<PlayerCoinState>) =
+    if (players.isEmpty()) 0.dp else 68.dp
 
 @Composable
 private fun BuyingPhaseShop(
@@ -335,10 +389,7 @@ private fun GamePhaseBanner(
         animationSpec = tween(durationMillis = BANNER_COLOR_ANIMATION_DURATION_MS),
         label = "GamePhaseBannerColor"
     )
-    Surface(
-        color = animatedColor,
-        modifier = modifier.fillMaxWidth()
-    ) {
+    Surface(color = animatedColor, modifier = modifier.fillMaxWidth()) {
         Text(
             text = phase.toDisplayText(),
             style = MaterialTheme.typography.headlineSmall,
@@ -360,7 +411,7 @@ private fun GamePhase.toBannerColor(): Color = when (this) {
     GamePhase.END_TURN -> MaterialTheme.colorScheme.error
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 200)
+@Preview(showBackground = true, widthDp = 412, heightDp = 400)
 @Composable
 private fun GameScreenRollDicePreview() {
     ClientTheme {
@@ -370,13 +421,48 @@ private fun GameScreenRollDicePreview() {
                 gamePhase = GamePhase.ROLL_DICE,
                 connectionStatus = ConnectionStatus.CONNECTED,
                 players = previewPlayers(),
-                purchaseState = PurchaseState.IDLE
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
             )
         )
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 200)
+@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Composable
+private fun GameScreenRollDiceNotActivePreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gamePhase = GamePhase.ROLL_DICE,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = previewPlayers(),
+                myUserId = 1,
+                activePlayerId = 2, // anderer Spieler ist aktiv
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Composable
+private fun GameScreenWithResultPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gamePhase = GamePhase.ROLL_DICE,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = previewPlayers(),
+                diceResult = listOf(3, 4),
+                myUserId = 1,
+                activePlayerId = 1,
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 400)
 @Composable
 private fun GameScreenBuyOrBuildPreview() {
     ClientTheme {
@@ -387,12 +473,13 @@ private fun GameScreenBuyOrBuildPreview() {
                 connectionStatus = ConnectionStatus.CONNECTED,
                 players = previewPlayers(),
                 purchaseState = PurchaseState.IDLE
+                diceResult = listOf(5)
             )
         )
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 200)
+@Preview(showBackground = true, widthDp = 412, heightDp = 400)
 @Composable
 private fun GameScreenNonePreview() {
     ClientTheme {

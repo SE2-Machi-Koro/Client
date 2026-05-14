@@ -11,13 +11,15 @@ interface WebSocketClient {
     val connectionStatus: StateFlow<ConnectionStatus>
 
     val gamePhase: StateFlow<GamePhase>
-
-    // Backend coin payload is still pending; expose the UI-ready state now for #37.
     val players: StateFlow<List<PlayerCoinState>>
-
-    // Holds the latest created lobby code received from the server.
-    // Null if no lobby has been created yet.
     val lobbyCode: StateFlow<String?>
+    val activeGameId: StateFlow<Int?>
+    val isLobbyHost: StateFlow<Boolean>
+
+    // Holds the latest dice result received from the server.
+    // Null if no dice have been rolled yet in the current turn.
+    val diceResult: StateFlow<List<Int>?>
+    val activePlayerId: StateFlow<Int?>
 
     // Latest server game id, needed for game-scoped actions such as purchase.
     val gameId: StateFlow<Int?>
@@ -29,13 +31,10 @@ interface WebSocketClient {
     val authRejections: SharedFlow<Unit>
 
     fun connect()
-
     fun disconnect()
 
     fun sendCreateLobby()
-
     fun clearLobbyCode()
-
     fun sendGameStart()
 
     // Matches Server PR #216 PurchaseRequest: gameId + purchaseType + one target field.
@@ -45,4 +44,6 @@ interface WebSocketClient {
         cardType: String? = null,
         landmarkType: String? = null
     )
+}
+    fun rollDice(diceCount: Int = 1)
 }
