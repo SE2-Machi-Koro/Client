@@ -11,8 +11,7 @@ data class GameScreenState(
     val diceResult: List<Int>? = null,
     val activePlayerId: Int? = null,
     val myUserId: Int? = null,
-    val purchaseState: PurchaseState
-
+    val purchaseState: PurchaseState,
     val isRolling: Boolean = false,
 ) {
     val isActivePlayer: Boolean
@@ -31,8 +30,8 @@ data class GameScreenState(
             diceResult = null,
             activePlayerId = null,
             myUserId = null,
-            purchaseState = PurchaseState.IDLE
-            isRolling = false,
+            purchaseState = PurchaseState.IDLE,
+            isRolling = false
         )
     }
 }
