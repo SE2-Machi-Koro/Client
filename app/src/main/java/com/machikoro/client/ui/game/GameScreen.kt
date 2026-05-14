@@ -469,9 +469,11 @@ private fun GameScreenRollingPreview() {
     ClientTheme {
         GameScreen(
             state = GameScreenState(
+                gameId = 1,
                 gamePhase = GamePhase.ROLL_DICE,
                 connectionStatus = ConnectionStatus.CONNECTED,
                 players = previewPlayers(),
+                purchaseState = PurchaseState.IDLE,
                 myUserId = 1,
                 activePlayerId = 1,
                 isRolling = true,

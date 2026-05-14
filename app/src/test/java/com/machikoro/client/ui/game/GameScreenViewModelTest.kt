@@ -360,7 +360,8 @@ class GameScreenViewModelTest {
         )
         assertEquals(PurchaseState.SUCCESS, viewModel.state.value.purchaseState)
     }
-}
+
+    @Test
     fun isRollingIsFalseInInitialState() = runTest {
         val viewModel = viewModel()
         advanceUntilIdle()
