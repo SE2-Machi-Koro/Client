@@ -17,6 +17,8 @@ interface WebSocketClient {
     // Holds the latest created lobby code received from the server.
     // Null if no lobby has been created yet.
     val lobbyCode: StateFlow<String?>
+    val activeGameId: StateFlow<Int?>
+    val isLobbyHost: StateFlow<Boolean>
 
     // Fires when the server rejects the STOMP CONNECT for auth reasons (token
     // missing / invalid / server-side cleared). The UI layer is responsible for
