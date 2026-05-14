@@ -22,6 +22,7 @@ import okhttp3.WebSocketListener
 import okio.ByteString
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,9 +32,7 @@ class OkHttpWebSocketClientTest {
     fun connectMovesStatusToConnecting() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
-
         assertEquals(ConnectionStatus.CONNECTING, client.connectionStatus.value)
     }
 
@@ -41,10 +40,8 @@ class OkHttpWebSocketClientTest {
     fun openSendsStompConnectFrame() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
-
         assertTrue(factory.socket.sentMessages.first().startsWith("CONNECT\n"))
         assertTrue(factory.socket.sentMessages.first().contains("accept-version:1.2"))
         assertTrue(factory.socket.sentMessages.first().contains("host:10.0.2.2:8080"))
@@ -54,11 +51,9 @@ class OkHttpWebSocketClientTest {
     fun connectedFrameMovesStatusToConnectedAndTriggersSubscribeAndJoin() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-
         assertEquals(ConnectionStatus.CONNECTED, client.connectionStatus.value)
         assertTrue(factory.socket.sentMessages.any { it.startsWith("SUBSCRIBE\n") && it.contains("destination:/topic/public") })
         assertTrue(factory.socket.sentMessages.any { it.startsWith("SEND\n") && it.contains("destination:/app/chat.addUser") })
@@ -69,11 +64,9 @@ class OkHttpWebSocketClientTest {
     fun disconnectClosesSocketAndMovesStatusToDisconnected() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         client.disconnect()
-
         assertEquals(ConnectionStatus.DISCONNECTED, client.connectionStatus.value)
         assertTrue(factory.socket.closed)
         assertTrue(factory.socket.sentMessages.any { it.startsWith("DISCONNECT\n") })
@@ -83,10 +76,8 @@ class OkHttpWebSocketClientTest {
     fun failureMovesStatusToError() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateFailure(IOException("boom"))
-
         assertEquals(ConnectionStatus.ERROR, client.connectionStatus.value)
     }
 
@@ -94,10 +85,8 @@ class OkHttpWebSocketClientTest {
     fun closingMovesStatusToDisconnected() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateClosing()
-
         assertEquals(ConnectionStatus.DISCONNECTED, client.connectionStatus.value)
         assertTrue(factory.socket.closed)
     }
@@ -106,10 +95,8 @@ class OkHttpWebSocketClientTest {
     fun closedMovesStatusToDisconnected() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateClosed()
-
         assertEquals(ConnectionStatus.DISCONNECTED, client.connectionStatus.value)
     }
 
@@ -117,10 +104,8 @@ class OkHttpWebSocketClientTest {
     fun secondConnectDoesNotCreateAnotherSocket() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         client.connect()
-
         assertEquals(1, factory.createCount)
     }
 
@@ -130,23 +115,19 @@ class OkHttpWebSocketClientTest {
             websocketUrl = "not-a-url",
             sessionStateHolder = FakeSessionStateHolder(DEFAULT_SESSION),
         )
-
         client.connect()
-
         assertEquals(ConnectionStatus.ERROR, client.connectionStatus.value)
     }
 
     @Test
     fun gamePhaseStartsAsNone() {
         val client = newClient(FakeWebSocketFactory())
-
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
 
     @Test
     fun playersStartEmpty() {
         val client = newClient(FakeWebSocketFactory())
-
         assertEquals(emptyList<PlayerCoinState>(), client.players.value)
     }
 
@@ -154,14 +135,10 @@ class OkHttpWebSocketClientTest {
     fun gameActionMessageUpdatesGamePhase() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","sender":"server","payload":{"turnPhase":"ROLL_DICE"}}""")
-        )
-
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","sender":"server","payload":{"turnPhase":"ROLL_DICE"}}"""))
         assertEquals(GamePhase.ROLL_DICE, client.gamePhase.value)
     }
 
@@ -169,20 +146,11 @@ class OkHttpWebSocketClientTest {
     fun gameActionMessagesAdvanceThroughAllPhases() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-
-        listOf(
-            GamePhase.ROLL_DICE,
-            GamePhase.RESOLVE_EFFECTS,
-            GamePhase.BUY_OR_BUILD,
-            GamePhase.END_TURN
-        ).forEach { phase ->
-            factory.simulateText(
-                gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"${phase.name}"}}""")
-            )
+        listOf(GamePhase.ROLL_DICE, GamePhase.RESOLVE_EFFECTS, GamePhase.BUY_OR_BUILD, GamePhase.END_TURN).forEach { phase ->
+            factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"${phase.name}"}}"""))
             assertEquals(phase, client.gamePhase.value)
         }
     }
@@ -191,14 +159,10 @@ class OkHttpWebSocketClientTest {
     fun nonGameActionMessageDoesNotChangeGamePhase() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"CHAT","sender":"someone","content":"hello"}""")
-        )
-
+        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"someone","content":"hello"}"""))
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
 
@@ -206,14 +170,10 @@ class OkHttpWebSocketClientTest {
     fun messageWithoutCoinPayloadLeavesPlayersUnchanged() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE"}}""")
-        )
-
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE"}}"""))
         assertEquals(emptyList<PlayerCoinState>(), client.players.value)
     }
 
@@ -221,12 +181,10 @@ class OkHttpWebSocketClientTest {
     fun malformedJsonMessageDoesNotCrashAndLeavesGamePhaseUnchanged() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         factory.simulateText(gameActionFrame("not even json"))
-
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
 
@@ -234,14 +192,10 @@ class OkHttpWebSocketClientTest {
     fun gameActionWithoutPayloadLeavesGamePhaseUnchanged() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","sender":"server"}""")
-        )
-
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","sender":"server"}"""))
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
 
@@ -249,14 +203,10 @@ class OkHttpWebSocketClientTest {
     fun gameActionWithUnknownTurnPhaseLeavesGamePhaseUnchanged() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"NOT_A_PHASE"}}""")
-        )
-
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"NOT_A_PHASE"}}"""))
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
 
@@ -264,14 +214,10 @@ class OkHttpWebSocketClientTest {
     fun gameActionWithMissingTurnPhaseLeavesGamePhaseUnchanged() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"other":"value"}}""")
-        )
-
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"other":"value"}}"""))
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
 
@@ -279,17 +225,12 @@ class OkHttpWebSocketClientTest {
     fun disconnectResetsGamePhaseToNone() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"BUY_OR_BUILD"}}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"BUY_OR_BUILD"}}"""))
         assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
-
         client.disconnect()
-
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
 
@@ -297,17 +238,12 @@ class OkHttpWebSocketClientTest {
     fun closingResetsGamePhaseToNone() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"RESOLVE_EFFECTS"}}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"RESOLVE_EFFECTS"}}"""))
         assertEquals(GamePhase.RESOLVE_EFFECTS, client.gamePhase.value)
-
         factory.simulateClosing()
-
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
 
@@ -315,17 +251,12 @@ class OkHttpWebSocketClientTest {
     fun closedResetsGamePhaseToNone() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"END_TURN"}}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"END_TURN"}}"""))
         assertEquals(GamePhase.END_TURN, client.gamePhase.value)
-
         factory.simulateClosed()
-
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
 
@@ -333,17 +264,12 @@ class OkHttpWebSocketClientTest {
     fun failureResetsGamePhaseToNone() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE"}}""")
-        )
+        factory.simulateText(gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE"}}"""))
         assertEquals(GamePhase.ROLL_DICE, client.gamePhase.value)
-
         factory.simulateFailure(IOException("boom"))
-
         assertEquals(GamePhase.NONE, client.gamePhase.value)
     }
 
@@ -351,28 +277,244 @@ class OkHttpWebSocketClientTest {
     fun sendGameStartSendsStompFrameToGameStartDestination() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         client.sendGameStart()
-
-        assertTrue(
-            factory.socket.sentMessages.any {
-                it.startsWith("SEND\n") && it.contains("destination:/app/game.start")
-            }
-        )
+        assertTrue(factory.socket.sentMessages.any { it.startsWith("SEND\n") && it.contains("destination:/app/game.start") })
     }
 
     @Test
     fun sendGameStartWithoutConnectionIsIgnored() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
-        // No connect() call — should not throw
         client.sendGameStart()
-
         assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
+    @Test
+    fun connectWithNoSessionDoesNotOpenSocketAndDoesNotTransitionStatus() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, sessionStateHolder = FakeSessionStateHolder(initial = null))
+        client.connect()
+        assertEquals(ConnectionStatus.IDLE, client.connectionStatus.value)
+        assertEquals(0, factory.createCount)
+    }
+
+    @Test
+    fun disconnectWhenNeverConnectedIsNoOpAndDoesNotTransitionStatus() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.disconnect()
+        assertEquals(ConnectionStatus.IDLE, client.connectionStatus.value)
+        assertEquals(0, factory.createCount)
+    }
+
+    @Test
+    fun connectFrameIncludesAuthorizationBearerHeaderWhenSessionPresent() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        val connectFrame = factory.socket.sentMessages.first { it.startsWith("CONNECT\n") }
+        assertTrue(connectFrame.contains("Authorization:Bearer $DEFAULT_TOKEN"))
+    }
+
+    @Test
+    fun connectFrameUsesCurrentSessionTokenAtHandshakeTime() {
+        val factory = FakeWebSocketFactory()
+        val sessionHolder = FakeSessionStateHolder(initial = Session("stale-token", "alice"))
+        val client = newClient(factory, sessionStateHolder = sessionHolder)
+        client.connect()
+        sessionHolder.signIn(token = "fresh-token", username = "alice")
+        factory.simulateOpen()
+        val connectFrame = factory.socket.sentMessages.first { it.startsWith("CONNECT\n") }
+        assertTrue(connectFrame.contains("Authorization:Bearer fresh-token"))
+        assertFalse(connectFrame.contains("stale-token"))
+    }
+
+    @Test
+    fun handshakeClosesCleanlyIfSessionVanishedBetweenConnectAndOnOpen() {
+        val factory = FakeWebSocketFactory()
+        val sessionHolder = FakeSessionStateHolder(initial = DEFAULT_SESSION)
+        val client = newClient(factory, sessionStateHolder = sessionHolder)
+        client.connect()
+        sessionHolder.signOut()
+        factory.simulateOpen()
+        assertTrue(factory.socket.closed)
+        assertFalse(factory.socket.sentMessages.any { it.startsWith("CONNECT\n") })
+        assertFalse(factory.socket.sentMessages.any { it.contains("Authorization") })
+    }
+
+    @Test
+    fun lobbyCodeStartsAsNull() {
+        val client = newClient(FakeWebSocketFactory())
+        assertEquals(null, client.lobbyCode.value)
+    }
+
+    @Test
+    fun sendCreateLobbySendsStompFrameToCreateLobbyDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        client.sendCreateLobby()
+        assertTrue(factory.socket.sentMessages.any {
+            it.startsWith("SEND\n") && it.contains("destination:/app/lobby.create") && it.contains("\"type\":\"JOIN\"")
+        })
+    }
+
+    @Test
+    fun sendCreateLobbyWithoutConnectionIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.sendCreateLobby()
+        assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
+    @Test
+    fun lobbyCreatedMessageUpdatesLobbyCode() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameActionFrame("""{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""))
+        assertEquals("AJ25Z39", client.lobbyCode.value)
+    }
+
+    @Test
+    fun malformedLobbyCreatedMessageDoesNotCrashAndLeavesLobbyCodeNull() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameActionFrame("not json"))
+        assertEquals(null, client.lobbyCode.value)
+    }
+
+    @Test
+    fun lobbyCreatedWithoutPayloadLeavesLobbyCodeNull() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameActionFrame("""{"type":"LOBBY_CREATED","sender":"SERVER"}"""))
+        assertEquals(null, client.lobbyCode.value)
+    }
+
+    @Test
+    fun rollDiceSendsStompFrameToRollDiceDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        client.rollDice(diceCount = 1)
+        assertTrue(factory.socket.sentMessages.any {
+            it.startsWith("SEND\n") && it.contains("destination:/app/game.rollDice") && it.contains("\"diceCount\":1")
+        })
+    }
+
+    @Test
+    fun rollDiceWithTwoDiceSendsDiceCountTwo() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        client.rollDice(diceCount = 2)
+        assertTrue(factory.socket.sentMessages.any { it.contains("\"diceCount\":2") })
+    }
+
+    @Test
+    fun rollDiceMessageFromServerUpdatesDiceResult() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameActionFrame("""{"type":"ROLL_DICE","payload":{"playerId":"p1","result":[3,5],"timestamp":123}}"""))
+        assertEquals(listOf(3, 5), client.diceResult.value)
+    }
+
+    @Test
+    fun disconnectResetsDiceResultToNull() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameActionFrame("""{"type":"ROLL_DICE","payload":{"playerId":"p1","result":[6],"timestamp":1}}"""))
+        assertEquals(listOf(6), client.diceResult.value)
+        client.disconnect()
+        assertNull(client.diceResult.value)
+    }
+
+    @Test
+    fun stompErrorFrameWithAuthFailureBodyEmitsAuthRejectionAndDisconnects() = runTest {
+        val factory = FakeWebSocketFactory()
+        val sessionHolder = FakeSessionStateHolder(initial = DEFAULT_SESSION)
+        val client = newClient(factory, sessionStateHolder = sessionHolder)
+        val rejections = mutableListOf<Unit>()
+        client.authRejections.onEach { rejections += it }.launchIn(backgroundScope)
+        runCurrent()
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText("ERROR\nmessage:Authentication failed\n\nAuthentication failed\u0000")
+        runCurrent()
+        assertEquals(1, rejections.size)
+        assertEquals(ConnectionStatus.DISCONNECTED, client.connectionStatus.value)
+        assertEquals(null, sessionHolder.session.value)
+    }
+
+    @Test
+    fun stompErrorFrameWithNonAuthBodyDoesNotEmitAuthRejectionAndSetsErrorStatus() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val rejections = mutableListOf<Unit>()
+        client.authRejections.onEach { rejections += it }.launchIn(backgroundScope)
+        runCurrent()
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText("ERROR\n\nSome other error\u0000")
+        runCurrent()
+        assertTrue(rejections.isEmpty())
+        assertEquals(ConnectionStatus.ERROR, client.connectionStatus.value)
+    }
+
+    @Test
+    fun disconnectClearsLobbyCode() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameActionFrame("""{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""))
+        assertEquals("AJ25Z39", client.lobbyCode.value)
+        client.disconnect()
+        assertEquals(null, client.lobbyCode.value)
+    }
+
+    @Test
+    fun authRejectionClearsLobbyCode() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.authRejections.onEach { }.launchIn(backgroundScope)
+        runCurrent()
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameActionFrame("""{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""))
+        assertEquals("AJ25Z39", client.lobbyCode.value)
+        factory.simulateText("ERROR\nmessage:Authentication failed\n\nAuthentication failed\u0000")
+        runCurrent()
+        assertEquals(null, client.lobbyCode.value)
     }
 
     private fun gameActionFrame(body: String): String =
@@ -390,71 +532,33 @@ class OkHttpWebSocketClientTest {
             return socket
         }
 
-        fun simulateOpen() {
-            listener.onOpen(socket, createResponse(socket.request))
-        }
+        fun simulateOpen() { listener.onOpen(socket, createResponse(socket.request)) }
+        fun simulateText(text: String) { listener.onMessage(socket, text) }
+        fun simulateClosing() { listener.onClosing(socket, 1000, "closing") }
+        fun simulateClosed() { listener.onClosed(socket, 1000, "closed") }
+        fun simulateFailure(throwable: Throwable) { listener.onFailure(socket, throwable, createResponse(socket.request)) }
 
-        fun simulateText(text: String) {
-            listener.onMessage(socket, text)
-        }
-
-        fun simulateClosing() {
-            listener.onClosing(socket, 1000, "closing")
-        }
-
-        fun simulateClosed() {
-            listener.onClosed(socket, 1000, "closed")
-        }
-
-        fun simulateFailure(throwable: Throwable) {
-            listener.onFailure(socket, throwable, createResponse(socket.request))
-        }
-
-        private fun createResponse(request: Request): Response {
-            return Response.Builder()
-                .request(request)
-                .protocol(Protocol.HTTP_1_1)
-                .code(101)
-                .message("Switching Protocols")
-                .build()
-        }
+        private fun createResponse(request: Request): Response =
+            Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(101).message("Switching Protocols").build()
     }
 
     private class FakeWebSocket : WebSocket {
         lateinit var request: Request
         var closed = false
         val sentMessages = mutableListOf<String>()
-
         override fun request(): Request = request
-
         override fun queueSize(): Long = 0L
-
-        override fun send(text: String): Boolean {
-            sentMessages += text
-            return true
-        }
-
+        override fun send(text: String): Boolean { sentMessages += text; return true }
         override fun send(bytes: ByteString): Boolean = false
-
-        override fun close(code: Int, reason: String?): Boolean {
-            closed = true
-            return true
-        }
-
-        override fun cancel() {
-            closed = true
-        }
+        override fun close(code: Int, reason: String?): Boolean { closed = true; return true }
+        override fun cancel() { closed = true }
     }
 
     private class FakeSessionStateHolder(initial: Session? = null) : SessionStateHolder {
         private val mutableSession = MutableStateFlow(initial)
         override val session: StateFlow<Session?> = mutableSession.asStateFlow()
-        override fun signIn(token: String, username: String) {
-            mutableSession.value = Session(token, username)
-        }
-        override fun signOut() {
-            mutableSession.value = null
-        }
+        override fun signIn(token: String, username: String) { mutableSession.value = Session(token, username) }
+        override fun signOut() { mutableSession.value = null }
     }
 
     private companion object {
@@ -463,10 +567,6 @@ class OkHttpWebSocketClientTest {
         val DEFAULT_SESSION = Session(DEFAULT_TOKEN, DEFAULT_USERNAME)
     }
 
-    /**
-     * Construct a client with a stub session by default so existing test
-     * assertions that don't care about auth keep working.
-     */
     private fun newClient(
         factory: FakeWebSocketFactory,
         sessionStateHolder: SessionStateHolder = FakeSessionStateHolder(DEFAULT_SESSION),
@@ -475,256 +575,4 @@ class OkHttpWebSocketClientTest {
         sessionStateHolder = sessionStateHolder,
         webSocketFactory = factory,
     )
-
-    @Test
-    fun connectWithNoSessionDoesNotOpenSocketAndDoesNotTransitionStatus() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory, sessionStateHolder = FakeSessionStateHolder(initial = null))
-
-        client.connect()
-
-        assertEquals(ConnectionStatus.IDLE, client.connectionStatus.value)
-        assertEquals(0, factory.createCount)
-    }
-
-    @Test
-    fun disconnectWhenNeverConnectedIsNoOpAndDoesNotTransitionStatus() {
-        // Important for the LaunchedEffect in MainActivity: on cold start with no
-        // session, the initial collect emission is null and triggers disconnect().
-        // If disconnect() flipped status from IDLE to DISCONNECTED, the start
-        // screen would render "Connection status: disconnected" before the user
-        // has tried to connect.
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-
-        client.disconnect()
-
-        assertEquals(ConnectionStatus.IDLE, client.connectionStatus.value)
-        assertEquals(0, factory.createCount)
-    }
-
-    @Test
-    fun connectFrameIncludesAuthorizationBearerHeaderWhenSessionPresent() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-
-        client.connect()
-        factory.simulateOpen()
-
-        val connectFrame = factory.socket.sentMessages.first { it.startsWith("CONNECT\n") }
-        assertTrue(connectFrame.contains("Authorization:Bearer $DEFAULT_TOKEN"))
-    }
-
-    @Test
-    fun connectFrameUsesCurrentSessionTokenAtHandshakeTime() {
-        // Locks down "read token at onOpen, not at connect()" — if we ever capture
-        // the token at connect() time, mid-flight session changes would send the
-        // wrong header.
-        val factory = FakeWebSocketFactory()
-        val sessionHolder = FakeSessionStateHolder(initial = Session("stale-token", "alice"))
-        val client = newClient(factory, sessionStateHolder = sessionHolder)
-
-        client.connect()
-        sessionHolder.signIn(token = "fresh-token", username = "alice")
-        factory.simulateOpen()
-
-        val connectFrame = factory.socket.sentMessages.first { it.startsWith("CONNECT\n") }
-        assertTrue(connectFrame.contains("Authorization:Bearer fresh-token"))
-        assertFalse(connectFrame.contains("stale-token"))
-    }
-
-    @Test
-    fun handshakeClosesCleanlyIfSessionVanishedBetweenConnectAndOnOpen() {
-        val factory = FakeWebSocketFactory()
-        val sessionHolder = FakeSessionStateHolder(initial = DEFAULT_SESSION)
-        val client = newClient(factory, sessionStateHolder = sessionHolder)
-
-        client.connect()
-        sessionHolder.signOut()  // user logs out before WS handshake completes
-        factory.simulateOpen()
-
-        assertTrue(factory.socket.closed)
-        assertFalse(factory.socket.sentMessages.any { it.startsWith("CONNECT\n") })
-        // Belt-and-braces — there should be no Authorization header in any frame.
-        assertFalse(factory.socket.sentMessages.any { it.contains("Authorization") })
-    }
-
-    @Test
-    fun lobbyCodeStartsAsNull() {
-        val client = newClient(FakeWebSocketFactory())
-
-        assertEquals(null, client.lobbyCode.value)
-    }
-
-    @Test
-    fun sendCreateLobbySendsStompFrameToCreateLobbyDestination() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-
-        client.sendCreateLobby()
-
-        assertTrue(
-            factory.socket.sentMessages.any {
-                it.startsWith("SEND\n") &&
-                        it.contains("destination:/app/lobby.create") &&
-                        it.contains("\"type\":\"JOIN\"")
-            }
-        )
-    }
-
-    @Test
-    fun sendCreateLobbyWithoutConnectionIsIgnored() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-
-        client.sendCreateLobby()
-
-        assertTrue(factory.socket.sentMessages.isEmpty())
-    }
-
-    @Test
-    fun lobbyCreatedMessageUpdatesLobbyCode() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""
-            )
-        )
-
-        assertEquals("AJ25Z39", client.lobbyCode.value)
-    }
-
-    @Test
-    fun malformedLobbyCreatedMessageDoesNotCrashAndLeavesLobbyCodeNull() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-
-        factory.simulateText(gameActionFrame("not json"))
-
-        assertEquals(null, client.lobbyCode.value)
-    }
-
-    @Test
-    fun stompErrorFrameWithAuthFailureBodyEmitsAuthRejectionAndDisconnects() = runTest {
-        // Frozen contract: matches GENERIC_AUTH_FAILURE on Server #159's
-        // StompAuthChannelInterceptor. If the server message changes, this
-        // test (and the client logic) must be updated together.
-        val factory = FakeWebSocketFactory()
-        val sessionHolder = FakeSessionStateHolder(initial = DEFAULT_SESSION)
-        val client = newClient(factory, sessionStateHolder = sessionHolder)
-        val rejections = mutableListOf<Unit>()
-        client.authRejections.onEach { rejections += it }.launchIn(backgroundScope)
-        runCurrent()
-
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText("ERROR\nmessage:Authentication failed\n\nAuthentication failed ")
-        runCurrent()
-
-        assertEquals(1, rejections.size)
-        assertEquals(ConnectionStatus.DISCONNECTED, client.connectionStatus.value)
-        // Sign-out is performed by the WS client itself so the policy survives
-        // activity destruction (rotation / process death) — it must not depend
-        // on a Compose collector being attached.
-        assertEquals(null, sessionHolder.session.value)
-    }
-
-    @Test
-    fun stompErrorFrameWithNonAuthBodyDoesNotEmitAuthRejectionAndSetsErrorStatus() = runTest {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        val rejections = mutableListOf<Unit>()
-        client.authRejections.onEach { rejections += it }.launchIn(backgroundScope)
-        runCurrent()
-
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText("ERROR\n\nSome other error ")
-        runCurrent()
-
-        assertTrue(rejections.isEmpty())
-        assertEquals(ConnectionStatus.ERROR, client.connectionStatus.value)
-    }
-
-    @Test
-    fun lobbyCreatedWithoutPayloadLeavesLobbyCodeNull() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-
-        factory.simulateText(
-            gameActionFrame("""{"type":"LOBBY_CREATED","sender":"SERVER"}""")
-        )
-
-        assertEquals(null, client.lobbyCode.value)
-    }
-
-    @Test
-    fun disconnectClearsLobbyCode() {
-        // Regression: a stale lobby code must not persist across a sign-out/
-        // sign-in cycle within the same app session. Same contract applies to
-        // the auth-rejection path which also funnels through resetGameState().
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""
-            )
-        )
-        assertEquals("AJ25Z39", client.lobbyCode.value)
-
-        client.disconnect()
-
-        assertEquals(null, client.lobbyCode.value)
-    }
-
-    @Test
-    fun authRejectionClearsLobbyCode() = runTest {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.authRejections.onEach { }.launchIn(backgroundScope)
-        runCurrent()
-
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"AJ25Z39"}}"""
-            )
-        )
-        assertEquals("AJ25Z39", client.lobbyCode.value)
-
-        factory.simulateText(authRejectionErrorFrame())
-        runCurrent()
-
-        assertEquals(null, client.lobbyCode.value)
-    }
-
-    private fun connectedFrame(): String =
-        "CONNECTED\nversion:1.2\n\n "
-
-    private fun authRejectionErrorFrame(): String =
-        "ERROR\nmessage:Authentication failed\n\nAuthentication failed "
 }

@@ -3,15 +3,17 @@ package com.machikoro.client.domain.model.state
 import com.machikoro.client.domain.enums.GamePhase
 
 data class GameScreenState(
-    val gamePhase: GamePhase,
     val connectionStatus: ConnectionStatus,
-    val players: List<PlayerCoinState>
+    val gamePhase: GamePhase,
+    val players: List<PlayerCoinState>,
+    val diceResult: List<Int>? = null,
 ) {
     companion object {
         fun initial() = GameScreenState(
-            gamePhase = GamePhase.NONE,
             connectionStatus = ConnectionStatus.IDLE,
-            players = emptyList()
+            gamePhase = GamePhase.NONE,
+            players = emptyList(),
+            diceResult = null,
         )
     }
 }

@@ -3,6 +3,7 @@ package com.machikoro.client.ui.game
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +42,20 @@ class GameScreenViewModel(
                 }
             }
         }
+        // NEU: diceResult vom Server sammeln
+        viewModelScope.launch {
+            webSocketClient.diceResult.collect { diceResult ->
+                mutableState.update { current ->
+                    current.copy(diceResult = diceResult)
+                }
+            }
+        }
+    }
+
+    // NEU: nur erlaubt während ROLL_DICE Phase
+    fun rollDice(diceCount: Int = 1) {
+        if (mutableState.value.gamePhase != GamePhase.ROLL_DICE) return
+        webSocketClient.rollDice(diceCount)
     }
 
     class Factory(

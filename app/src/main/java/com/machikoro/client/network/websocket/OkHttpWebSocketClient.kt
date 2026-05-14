@@ -35,8 +35,11 @@ class OkHttpWebSocketClient(
     override val players: StateFlow<List<PlayerCoinState>>
         get() = mutablePlayers.asStateFlow()
 
-    override val lobbyCode: StateFlow<String?> // Internal state for the latest lobby code returned by the backend
+    override val lobbyCode: StateFlow<String?>
         get() = mutableLobbyCode.asStateFlow()
+
+    override val diceResult: StateFlow<List<Int>?>
+        get() = mutableDiceResult.asStateFlow()
 
     override val activeGameId: StateFlow<Int?>
         get() = mutableActiveGameId.asStateFlow()
@@ -50,7 +53,8 @@ class OkHttpWebSocketClient(
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
-    private val mutableLobbyCode = MutableStateFlow<String?>(null) // Exposes lobby code as read-only StateFlow to UI/ViewModels
+    private val mutableLobbyCode = MutableStateFlow<String?>(null)
+    private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
     private val mutableActiveGameId = MutableStateFlow<Int?>(null)
     private val mutableIsLobbyHost = MutableStateFlow(false)
     // Buffer 1 + DROP_OLDEST so tryEmit never fails on the OkHttp listener
@@ -71,11 +75,6 @@ class OkHttpWebSocketClient(
             if (webSocket != null) {
                 return
             }
-            // Strict-reject server (#159): no session means we have nothing to
-            // present at STOMP CONNECT. Don't open a socket only to be kicked.
-            // Status stays at whatever it was — IDLE on first launch, DISCONNECTED
-            // after a logout — so the user doesn't see a misleading "connection
-            // error" when they simply aren't logged in yet.
             if (sessionStateHolder.session.value == null) {
                 Log.d(TAG, "Skipping WS connect — no session token")
                 return
@@ -104,11 +103,6 @@ class OkHttpWebSocketClient(
             webSocket = null
             socket
         }
-        // True no-op when there was nothing to disconnect. Without this, every
-        // session-driven LaunchedEffect emission of `null` (including the initial
-        // one on cold start) would flip the status from IDLE to DISCONNECTED,
-        // which the start screen renders as "Connection status: disconnected"
-        // before the user has tried to connect.
         if (currentSocket == null) {
             if (sessionStateHolder.session.value == null) {
                 resetGameState()
@@ -167,25 +161,11 @@ class OkHttpWebSocketClient(
         val gameId = mutableActiveGameId.value
         val lobbyCode = mutableLobbyCode.value
 
-        // gameId is populated from the LOBBY_CREATED payload when the server returns it.
-        // Fall back to a lobby-code-only start request so the host is never permanently
-        // blocked if the server doesn't echo the gameId during lobby creation.
-        // The merged main branch expects a SEND frame to be emitted when connected
-        // even if neither value is known; send an empty JSON object in that case.
-        val body = when {
-            gameId != null -> JSONObject().put("gameId", gameId).toString()
-            lobbyCode != null -> JSONObject().put("lobbyCode", lobbyCode).toString()
-            else -> "{}"
-        }
-
-        // Include lobbyCode when available to keep the host unblocked if the server
-        // echos both values. Tests look for the gameId JSON fragment, so keep it
-        // present when known.
         val enrichedBody = when {
-            gameId != null && lobbyCode != null -> "{" + "\"gameId\":$gameId,\"lobbyCode\":\"$lobbyCode\"" + "}"
-            gameId != null -> "{" + "\"gameId\":$gameId" + "}"
-            lobbyCode != null -> "{" + "\"lobbyCode\":\"$lobbyCode\"" + "}"
-            else -> body
+            gameId != null && lobbyCode != null -> "{\"gameId\":$gameId,\"lobbyCode\":\"$lobbyCode\"}"
+            gameId != null -> "{\"gameId\":$gameId}"
+            lobbyCode != null -> "{\"lobbyCode\":\"$lobbyCode\"}"
+            else -> "{}"
         }
 
         val frameStr = StompFrame(
@@ -201,13 +181,28 @@ class OkHttpWebSocketClient(
         Log.d(TAG, "Game start message sent (gameId=$gameId, lobbyCode=$lobbyCode)")
     }
 
+    override fun rollDice(diceCount: Int) {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "rollDice called but no active WebSocket connection")
+            return
+        }
+        socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.rollDiceDestination,
+                    "content-type" to "application/json"
+                ),
+                body = """{"type":"ROLL_DICE","payload":{"diceCount":$diceCount}}"""
+            ).serialize()
+        )
+        Log.d(TAG, "Roll dice message sent (diceCount=$diceCount)")
+    }
+
     private val listener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             Log.d(TAG, "WebSocket opened: ${response.code} ${response.message}")
-            // Read the token at handshake time, not at connect-time. Closes the
-            // race where the user logged out between connect() and the WS being
-            // ready — without this we'd send a CONNECT frame with a stale token
-            // that the server would reject anyway.
             val token = sessionStateHolder.session.value?.sessionToken
             if (token == null) {
                 Log.w(TAG, "WS opened but session vanished — closing without sending CONNECT")
@@ -284,16 +279,12 @@ class OkHttpWebSocketClient(
                 handleLobbyCreated(json)
                 handleGameStarted(json)
                 parseGameActionPhase(json)?.let { mutableGamePhase.value = it }
+                parseDiceResult(json)?.let { mutableDiceResult.value = it }
             }
 
             "ERROR" -> {
                 Log.e(TAG, "STOMP error frame received: ${frame.body}")
                 if (isAuthRejection(frame.body)) {
-                    // Server rejected the CONNECT for auth reasons (#159 path):
-                    // missing/malformed/unrecognised token. The connection will
-                    // be closed by the server; flip to DISCONNECTED rather than
-                    // ERROR because this is a recoverable, user-actionable
-                    // state, not a transport failure.
                     mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
                     resetGameState()
                     // Sign out here rather than relying on a Compose collector
@@ -304,8 +295,6 @@ class OkHttpWebSocketClient(
                     // no longer accepts. The snackbar in MainActivity is purely
                     // a UI side-effect and remains miss-tolerant.
                     sessionStateHolder.signOut()
-                    // Invariant: extraBufferCapacity=1 + DROP_OLDEST means
-                    // tryEmit is non-suspending and never returns false.
                     mutableAuthRejections.tryEmit(Unit)
                 } else {
                     mutableConnectionStatus.value = ConnectionStatus.ERROR
@@ -327,12 +316,8 @@ class OkHttpWebSocketClient(
      */
     private fun handleLobbyCreated(json: JSONObject) {
         if (json.optString("type") != LOBBY_CREATED_TYPE) return
-
         val payload = json.optJSONObject("payload") ?: return
         val code = payload.optString("lobbyCode")
-        // gameId may live at the top level or inside the payload object depending on the
-        // server version being targeted. Check both so lobby creation always yields a
-        // valid activeGameId and the "Start Game" button can be enabled.
         val gameId = json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId")
 
         if (code.isNotBlank()) {
@@ -369,6 +354,26 @@ class OkHttpWebSocketClient(
         val payload = json.optJSONObject("payload") ?: return null
         val phaseName = payload.optString("turnPhase").takeIf { it.isNotEmpty() } ?: return null
         return parseTurnPhase(phaseName)
+    }
+
+    /**
+     * Parses incoming ROLL_DICE results from the server.
+     *
+     * Expected payload:
+     * {
+     *   "type": "ROLL_DICE",
+     *   "payload": {
+     *     "playerId": "abc",
+     *     "result": [3, 5],
+     *     "timestamp": 1234567890
+     *   }
+     * }
+     */
+    private fun parseDiceResult(json: JSONObject): List<Int>? {
+        if (json.optString("type") != ROLL_DICE_TYPE) return null
+        val payload = json.optJSONObject("payload") ?: return null
+        val resultArray = payload.optJSONArray("result") ?: return null
+        return List(resultArray.length()) { resultArray.getInt(it) }
     }
 
     private fun subscribeToPublicTopic() {
@@ -430,19 +435,13 @@ class OkHttpWebSocketClient(
         }
     }
 
-    // Mirrors the literal body produced by Server #159's StompAuthChannelInterceptor
-    // (GENERIC_AUTH_FAILURE = "Authentication failed"). Strict equality — if the
-    // server message ever changes, fail closed (fall through to generic ERROR
-    // status) rather than match overly loosely.
     private fun isAuthRejection(body: String): Boolean =
         body == AUTH_REJECTION_BODY
 
     private fun resetGameState() {
         mutableGamePhase.value = GamePhase.NONE
-        // Keep #37 coin display clean after game end/disconnect until #45 reset flow owns this state.
         mutablePlayers.value = emptyList()
-        // Clear the latest lobby code so a stale code can't reappear on the
-        // next sign-in within the same app session.
+        mutableDiceResult.value = null
         mutableLobbyCode.value = null
     }
 
@@ -470,10 +469,6 @@ class OkHttpWebSocketClient(
 
     private fun JSONObject.toPlayerCoinState(currentPlayerId: Int?): PlayerCoinState {
         val playerId = optInt("id")
-        // Prefer the real username returned by the server (may be keyed as "username",
-        // "name", or "displayName"). Falling back to the numeric "Player N" label is
-        // only a last resort so that host-detection logic that compares session username
-        // against player display names has a real value to work with.
         val resolvedDisplayName =
             optString("username").takeIf { it.isNotBlank() }
                 ?: optString("name").takeIf { it.isNotBlank() }
@@ -511,11 +506,10 @@ class OkHttpWebSocketClient(
         private const val TAG = "OkHttpWebSocketClient"
         private const val GAME_ACTION_TYPE = "GAME_ACTION"
         private const val GAME_STARTED_TYPE = "GAME_STARTED"
-        // Match Server #159's StompAuthChannelInterceptor expectation:
-        // accessor.getFirstNativeHeader("Authorization") + BEARER_PREFIX = "Bearer ".
         private const val AUTH_HEADER = "Authorization"
         private const val BEARER_PREFIX = "Bearer "
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
+        private const val ROLL_DICE_TYPE = "ROLL_DICE"
         // Frozen contract: matches GENERIC_AUTH_FAILURE on the server's
         // StompAuthChannelInterceptor. If the server message changes, this
         // client will silently fall through to the generic ERROR handling.

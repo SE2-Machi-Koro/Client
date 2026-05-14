@@ -22,6 +22,9 @@ class FakeWebSocketClient : WebSocketClient {
     override val lobbyCode: StateFlow<String?>
         get() = mutableLobbyCode
 
+    override val diceResult: StateFlow<List<Int>?>
+        get() = mutableDiceResult
+
     override val activeGameId: StateFlow<Int?>
         get() = mutableActiveGameId
 
@@ -35,6 +38,7 @@ class FakeWebSocketClient : WebSocketClient {
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
+    private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
     private val mutableActiveGameId = MutableStateFlow<Int?>(null)
     private val mutableIsLobbyHost = MutableStateFlow(false)
     private val mutableAuthRejections = MutableSharedFlow<Unit>(
@@ -45,8 +49,10 @@ class FakeWebSocketClient : WebSocketClient {
     var gameStartSent = false
         private set
 
-    override fun connect() = Unit
+    var lastRolledDiceCount: Int? = null
+        private set
 
+    override fun connect() = Unit
     override fun disconnect() = Unit
 
     override fun sendGameStart() {
@@ -66,6 +72,10 @@ class FakeWebSocketClient : WebSocketClient {
         mutableIsLobbyHost.value = false
     }
 
+    override fun rollDice(diceCount: Int) {
+        lastRolledDiceCount = diceCount
+    }
+
     fun emitConnectionStatus(status: ConnectionStatus) {
         mutableConnectionStatus.value = status
     }
@@ -78,11 +88,19 @@ class FakeWebSocketClient : WebSocketClient {
         mutablePlayers.value = players
     }
 
+    fun emitDiceResult(dice: List<Int>) {
+        mutableDiceResult.value = dice
+    }
+
     fun emitActiveGameId(gameId: Int?) {
         mutableActiveGameId.value = gameId
     }
 
     fun emitIsLobbyHost(isHost: Boolean) {
         mutableIsLobbyHost.value = isHost
+    }
+
+    fun emitAuthRejection() {
+        mutableAuthRejections.tryEmit(Unit)
     }
 }
