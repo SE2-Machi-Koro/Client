@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -42,13 +43,26 @@ class HomeScreenViewModelTest {
     }
 
     @Test
-    fun createLobbyConnectsAndSendsCreateLobbyRequest() {
+    fun createLobbyConnectsWhenWebSocketIsNotConnected() {
         val fakeClient = FakeWebSocketClient()
         val viewModel = HomeViewModel(fakeClient)
 
         viewModel.createLobby()
 
         assertTrue(fakeClient.connectCalled)
+        assertFalse(fakeClient.sendCreateLobbyCalled)
+    }
+
+    @Test
+    fun createLobbySendsCreateLobbyRequestWhenWebSocketIsConnected() {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+
+        viewModel.createLobby()
+
+        assertFalse(fakeClient.connectCalled)
         assertTrue(fakeClient.sendCreateLobbyCalled)
     }
 
@@ -77,8 +91,10 @@ class HomeScreenViewModelTest {
     }
 
     private class FakeWebSocketClient : WebSocketClient {
-        override val connectionStatus: StateFlow<ConnectionStatus> =
+        val mutableConnectionStatus =
             MutableStateFlow(ConnectionStatus.IDLE)
+        override val connectionStatus: StateFlow<ConnectionStatus> =
+            mutableConnectionStatus
         override val gamePhase: StateFlow<GamePhase> =
             MutableStateFlow(GamePhase.NONE)
         override val diceResult: StateFlow<List<Int>?> =

@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.ui.theme.ClientTheme
 import org.junit.Rule
@@ -28,8 +29,7 @@ class LoginDialogTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Login").assertIsDisplayed().assertIsNotEnabled()
-    }
+        composeTestRule.onAllNodesWithText("Login")[1].assertIsDisplayed().assertIsNotEnabled()    }
 
     @Test
     fun submitButtonIsEnabledWhenBothFieldsFilled() {
@@ -45,8 +45,7 @@ class LoginDialogTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Login").assertIsDisplayed().assertIsEnabled()
-    }
+        composeTestRule.onAllNodesWithText("Login")[1].assertIsDisplayed().assertIsEnabled()    }
 
     @Test
     fun errorMessageIsRenderedWhenPresent() {
