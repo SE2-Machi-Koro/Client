@@ -2,6 +2,7 @@ package com.machikoro.client.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.network.websocket.WebSocketClient
 
 class HomeViewModel(
@@ -13,7 +14,11 @@ class HomeViewModel(
     val isLobbyHost = webSocketClient.isLobbyHost
 
     fun createLobby() {
-        webSocketClient.connect()
+        if (webSocketClient.connectionStatus.value != ConnectionStatus.CONNECTED) {
+            webSocketClient.connect()
+            return
+        }
+
         webSocketClient.sendCreateLobby()
     }
 
