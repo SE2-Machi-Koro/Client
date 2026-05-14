@@ -45,11 +45,8 @@ import com.machikoro.client.ui.theme.White
 fun HomeScreen(
     // Latest lobby code received from the server after creating a lobby.
     lobbyCode: String? = null,
-    isLobbyHost: Boolean = false,
-    canStartGame: Boolean = false,
     onJoinLobbyClick: () -> Unit = {},
     onCreateLobbyClick: () -> Unit = {},
-    onStartGame: () -> Unit = {},
     onPublicLobbiesClick: () -> Unit = {},
     onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
@@ -173,33 +170,8 @@ fun HomeScreen(
                     onClick = onPublicLobbiesClick
                 )
             }
-
-            // Start Game button visible only to the lobby host and enabled when ready.
-            if (isLobbyHost) {
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Button(
-                    onClick = onStartGame,
-                    enabled = canStartGame,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = ButtonBlueDark,
-                        contentColor = TextWhite,
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp),
-                    contentPadding = PaddingValues(horizontal = 20.dp),
-                    modifier = Modifier
-                        .height(44.dp)
-                ) {
-                    Text(
-                        text = "Spiel starten",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = TextWhite
-                    )
-                }
-            }
         }
+
         // === BOTTOM MENU ===
         // Clickable menu items for rules, ranking and settings.
         BottomMenuBar(
