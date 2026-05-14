@@ -39,8 +39,6 @@ class OkHttpWebSocketClient(
     override val lobbyCode: StateFlow<String?>
         get() = mutableLobbyCode.asStateFlow()
 
-    override val gameId: StateFlow<Int?>
-        get() = mutableGameId.asStateFlow()
     override val diceResult: StateFlow<List<Int>?>
         get() = mutableDiceResult.asStateFlow()
 
@@ -337,31 +335,6 @@ class OkHttpWebSocketClient(
         if (gameId != null) {
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
-        }
-    }
-
-    private fun parseGameId(body: String): Int? {
-        if (body.isBlank()) return null
-        val json = try {
-            JSONObject(body)
-        } catch (_: JSONException) {
-            return null
-        }
-        // Lobby messages carry gameId at the top level; GAME_STARTED carries it under payload.game.id.
-        return json.optInt("gameId", 0).takeIf { it > 0 }
-            ?: json.optJSONObject("payload")
-                ?.optJSONObject("game")
-                ?.optInt("id", 0)
-                ?.takeIf { it > 0 }
-    }
-
-    private fun parseGameActionPhase(body: String): GamePhase? {
-        if (body.isBlank()) return null
-        val json = try {
-            JSONObject(body)
-        } catch (e: JSONException) {
-            Log.w(TAG, "Failed to parse MESSAGE frame as JSON: ${e.message}")
-            return null
         }
     }
 

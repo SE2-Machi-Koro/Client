@@ -86,6 +86,7 @@ fun GameScreen(
                     .padding(top = shopTopPadding(state.players))
                     .padding(horizontal = 12.dp)
             )
+        }
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -340,8 +341,7 @@ private fun ShopItemCard(
     }
 }
 
-private fun GameScreenState.canCurrentPlayerPurchase(): Boolean =
-    players.any { it.isCurrentPlayer && it.isActivePlayer }
+private fun GameScreenState.canCurrentPlayerPurchase(): Boolean = isActivePlayer
 
 private fun shopTopPadding(players: List<PlayerCoinState>) = if (players.isEmpty()) 76.dp else 144.dp
 
@@ -435,9 +435,11 @@ private fun GameScreenRollDiceNotActivePreview() {
     ClientTheme {
         GameScreen(
             state = GameScreenState(
+                gameId = 1,
                 gamePhase = GamePhase.ROLL_DICE,
                 connectionStatus = ConnectionStatus.CONNECTED,
                 players = previewPlayers(),
+                purchaseState = PurchaseState.IDLE,
                 myUserId = 1,
                 activePlayerId = 2, // anderer Spieler ist aktiv
             )
@@ -451,10 +453,12 @@ private fun GameScreenWithResultPreview() {
     ClientTheme {
         GameScreen(
             state = GameScreenState(
+                gameId = 1,
                 gamePhase = GamePhase.ROLL_DICE,
                 connectionStatus = ConnectionStatus.CONNECTED,
                 players = previewPlayers(),
                 diceResult = listOf(3, 4),
+                purchaseState = PurchaseState.IDLE,
                 myUserId = 1,
                 activePlayerId = 1,
             )
@@ -472,7 +476,7 @@ private fun GameScreenBuyOrBuildPreview() {
                 gamePhase = GamePhase.BUY_OR_BUILD,
                 connectionStatus = ConnectionStatus.CONNECTED,
                 players = previewPlayers(),
-                purchaseState = PurchaseState.IDLE
+                purchaseState = PurchaseState.IDLE,
                 diceResult = listOf(5)
             )
         )

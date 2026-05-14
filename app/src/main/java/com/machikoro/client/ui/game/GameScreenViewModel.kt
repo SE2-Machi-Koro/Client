@@ -27,7 +27,7 @@ class GameScreenViewModel(
 
     init {
         viewModelScope.launch {
-            webSocketClient.gameId.collect { gameId ->
+            webSocketClient.activeGameId.collect { gameId ->
                 mutableState.update { current ->
                     current.copy(gameId = gameId)
                 }
@@ -79,7 +79,7 @@ class GameScreenViewModel(
         // Item type is the server enum name (for example BAKERY or TRAIN_STATION).
         val item = ShopCatalog.defaultItems.firstOrNull { it.type == itemType && it.isAvailable } ?: return
         if (!current.isBuyingPhase || current.purchaseState != PurchaseState.IDLE) return
-        if (!current.players.any { it.isCurrentPlayer && it.isActivePlayer }) return
+        if (!current.isActivePlayer) return
 
         mutableState.update { state ->
             state.copy(purchaseState = PurchaseState.PENDING)

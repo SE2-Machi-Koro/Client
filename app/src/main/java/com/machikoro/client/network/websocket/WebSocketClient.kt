@@ -21,8 +21,6 @@ interface WebSocketClient {
     val diceResult: StateFlow<List<Int>?>
     val activePlayerId: StateFlow<Int?>
 
-    // Latest server game id, needed for game-scoped actions such as purchase.
-    val gameId: StateFlow<Int?>
     // Fires when the server rejects the STOMP CONNECT for auth reasons (token
     // missing / invalid / server-side cleared). The UI layer is responsible for
     // calling SessionManager.signOut() and surfacing a "session expired"
@@ -44,6 +42,6 @@ interface WebSocketClient {
         cardType: String? = null,
         landmarkType: String? = null
     )
-}
+
     fun rollDice(diceCount: Int = 1)
 }
