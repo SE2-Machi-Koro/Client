@@ -9,6 +9,6 @@ import kotlinx.coroutines.flow.StateFlow
  */
 interface SessionStateHolder {
     val session: StateFlow<Session?>
-    fun signIn(token: String, username: String)
+    fun signIn(token: String, username: String, userId: Int)
     fun signOut()
 }

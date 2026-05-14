@@ -18,6 +18,7 @@ interface WebSocketClient {
     // Holds the latest dice result received from the server.
     // Null if no dice have been rolled yet in the current turn.
     val diceResult: StateFlow<List<Int>?>
+    val activePlayerId: StateFlow<Int?>
 
     // Fires when the server rejects the STOMP CONNECT for auth reasons (token
     // missing / invalid / server-side cleared). The UI layer is responsible for
@@ -32,8 +33,5 @@ interface WebSocketClient {
     fun sendCreateLobby()
     fun clearLobbyCode()
     fun sendGameStart()
-
-    // Sends a ROLL_DICE STOMP frame. diceCount is 1 by default,
-    // 2 once the player has built the Bahnhof and chooses two dice.
     fun rollDice(diceCount: Int = 1)
 }
