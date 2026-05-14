@@ -1,4 +1,4 @@
-# IDE e sistema
+# IDE and system files
 .idea/
 .vscode/
 .DS_Store
@@ -6,19 +6,19 @@
 *.sublime-workspace
 *.sublime-project
 
-# Build e output
+# Build and output directories
 /build/
 /app/build/
 /captures/
 /outputs/
 
-# Gradle e Kotlin
+# Gradle and Kotlin
 .gradle/
 .kotlin/
 .cxx/
 .externalNativeBuild/
 
-# Configurazioni locali e segreti
+# Local configuration and secrets
 local.properties
 *.keystore
 *.jks
@@ -27,7 +27,7 @@ local.properties
 .env
 .env.*
 
-# File temporanei, backup e lock
+# Temporary, backup, and lock files
 *.bak
 *.tmp
 *.swp
@@ -36,17 +36,14 @@ local.properties
 package-lock.json
 yarn.lock
 
-# AI e automazione
+# AI and automation
 .ai/
 .ai/mcp/
-
-# GitHub (se vuoi ignorare tutto, altrimenti specifica solo file temporanei)
-.github/
 
 # Node.js
 node_modules/
 
-# Test e coverage
+# Test and coverage
 coverage/
 test-results/
 *.test.js.snap
@@ -71,11 +68,11 @@ __pycache__/
 *.sqlite
 *.db-journal
 
-# Log e output
+# Log and output files
 *.log
 *.out
 
-# Archivi
+# Archives
 *.zip
 *.tar
 *.tar.gz
@@ -83,3 +80,5 @@ __pycache__/
 
 # Jupyter
 *.ipynb_checkpoints
+
+# Note: Do NOT ignore .github/workflows/ to keep GitHub Actions workflows under version control.
