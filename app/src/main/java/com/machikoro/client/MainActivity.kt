@@ -126,7 +126,7 @@ class MainActivity : ComponentActivity() {
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
                         onStartGame = homeViewModel::startGame,
                         onLeaveLobby = {
-                            lobbyScreenViewModel.onLeaveLobby()
+                            showLobbyScreen = false
                             homeViewModel.clearLobbyCode()
                         },
                         onRollDice = gameScreenViewModel::rollDice,
