@@ -4,7 +4,11 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.network.websocket.WebSocketClient
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -12,6 +16,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class HomeScreenViewModelTest {
 
     @Test
@@ -25,6 +30,18 @@ class HomeScreenViewModelTest {
     }
 
     @Test
+    fun exposesActiveGameIdAndHostStateFromWebSocketClient() {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableActiveGameId.value = 42
+        fakeClient.mutableIsLobbyHost.value = true
+
+        assertEquals(42, viewModel.activeGameId.value)
+        assertTrue(viewModel.isLobbyHost.value)
+    }
+
+    @Test
     fun createLobbyConnectsAndSendsCreateLobbyRequest() {
         val fakeClient = FakeWebSocketClient()
         val viewModel = HomeViewModel(fakeClient)
@@ -33,6 +50,16 @@ class HomeScreenViewModelTest {
 
         assertTrue(fakeClient.connectCalled)
         assertTrue(fakeClient.sendCreateLobbyCalled)
+    }
+
+    @Test
+    fun startGameDelegatesToWebSocketClient() {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        viewModel.startGame()
+
+        assertTrue(fakeClient.sendGameStartCalled)
     }
 
     @Test
@@ -52,38 +79,36 @@ class HomeScreenViewModelTest {
     private class FakeWebSocketClient : WebSocketClient {
         override val connectionStatus: StateFlow<ConnectionStatus> =
             MutableStateFlow(ConnectionStatus.IDLE)
-
         override val gamePhase: StateFlow<GamePhase> =
             MutableStateFlow(GamePhase.NONE)
-
+        override val diceResult: StateFlow<List<Int>?> =
+            MutableStateFlow(null)
+        override val activePlayerId: StateFlow<Int?> = // NEU
+            MutableStateFlow(null)
         override val players: StateFlow<List<PlayerCoinState>> =
             MutableStateFlow(emptyList())
-
         val mutableLobbyCode = MutableStateFlow<String?>(null)
         override val lobbyCode: StateFlow<String?> = mutableLobbyCode
+        val mutableActiveGameId = MutableStateFlow<Int?>(null)
+        override val activeGameId: StateFlow<Int?> = mutableActiveGameId
+        val mutableIsLobbyHost = MutableStateFlow(false)
+        override val isLobbyHost: StateFlow<Boolean> = mutableIsLobbyHost
+
+        override val authRejections: SharedFlow<Unit> = MutableSharedFlow(
+            extraBufferCapacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
 
         var connectCalled = false
         var disconnectCalled = false
         var sendGameStartCalled = false
         var sendCreateLobbyCalled = false
 
-        override fun connect() {
-            connectCalled = true
-        }
-
-        override fun disconnect() {
-            disconnectCalled = true
-        }
-
-        override fun sendGameStart() {
-            sendGameStartCalled = true
-        }
-
-        override fun sendCreateLobby() {
-            sendCreateLobbyCalled = true
-        }
-        override fun clearLobbyCode() {
-            mutableLobbyCode.value = null
-        }
+        override fun connect() { connectCalled = true }
+        override fun disconnect() { disconnectCalled = true }
+        override fun rollDice(diceCount: Int) = Unit
+        override fun sendGameStart() { sendGameStartCalled = true }
+        override fun sendCreateLobby() { sendCreateLobbyCalled = true }
+        override fun clearLobbyCode() { mutableLobbyCode.value = null }
     }
 }

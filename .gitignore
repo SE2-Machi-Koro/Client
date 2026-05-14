@@ -1,22 +1,84 @@
-*.iml
-.gradle
-.idea
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.idea/deploymentTargetSelector.xml
-.idea/codeStyles/
-.idea/inspectionProfiles/
-.idea/markdown.xml
+# IDE and system files
+.idea/
+.vscode/
 .DS_Store
-/build
-/captures
-.gradle-local/
-.externalNativeBuild
-.cxx
+*.iml
+*.sublime-workspace
+*.sublime-project
+
+# Build and output directories
+/build/
+/app/build/
+/captures/
+/outputs/
+
+# Gradle and Kotlin
+.gradle/
+.kotlin/
+.cxx/
+.externalNativeBuild/
+
+# Local configuration and secrets
 local.properties
+*.keystore
+*.jks
+*.pem
+*.p12
+.env
+.env.*
+
+# Temporary, backup, and lock files
+*.bak
+*.tmp
+*.swp
+*.orig
+*.rej
 package-lock.json
+yarn.lock
+
+# AI and automation
+.ai/
+.ai/mcp/
+
+# Node.js
+node_modules/
+
+# Test and coverage
+coverage/
+test-results/
+*.test.js.snap
+
+# Android artifacts
+*.apk
+*.ap_
+*.aab
+
+# Python
+*.pyc
+__pycache__/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# Database
+*.db
+*.sqlite
+*.db-journal
+
+# Log and output files
+*.log
+*.out
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# Jupyter
+*.ipynb_checkpoints
+
+# Note: Do NOT ignore .github/workflows/ to keep GitHub Actions workflows under version control.
