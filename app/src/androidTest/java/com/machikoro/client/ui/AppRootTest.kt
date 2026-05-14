@@ -288,6 +288,6 @@ class AppRootTest {
         }
 
         composeTestRule.onNodeWithText("Lobby erstellen").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Start Game").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Spiel starten").assertIsDisplayed()
     }
 }
