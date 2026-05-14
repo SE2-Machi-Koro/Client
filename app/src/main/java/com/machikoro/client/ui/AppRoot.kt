@@ -54,6 +54,7 @@ fun AppRoot(
     } else if (showLobbyScreen) {
         LobbyScreen(
             state = lobbyScreenState,
+            lobbyCode = lobbyCode,
             onReadyToggle = onReadyToggle,
             onStartGame = onStartGame,
             onLeaveLobby = onLeaveLobby,
