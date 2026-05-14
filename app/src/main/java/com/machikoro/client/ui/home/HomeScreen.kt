@@ -141,7 +141,7 @@ fun HomeScreen(
             ) {
                 HomeCard(
                     iconRes = R.drawable.home_lobby_join_icon,
-                    text = "Lobby beitreten",
+                    text = "Join Lobby",
                     isPrimary = false,
                     onClick = onJoinLobbyClick
                 )
@@ -153,7 +153,7 @@ fun HomeScreen(
                 ) {
                     HomeCard(
                         iconRes = R.drawable.home_lobby_create_icon,
-                        text = "Lobby erstellen",
+                        text = "Create Lobby",
                         isPrimary = true,
                         onClick = onCreateLobbyClick
                     )
@@ -170,7 +170,7 @@ fun HomeScreen(
 
                 HomeCard(
                     iconRes = R.drawable.home_lobby_public_icon,
-                    text = "Öffentliche Lobbys",
+                    text = "Public Lobbys",
                     isPrimary = false,
                     onClick = onPublicLobbiesClick
                 )
@@ -207,7 +207,7 @@ private fun LogoutButton(
         contentPadding = PaddingValues(horizontal = 16.dp),
     ) {
         Text(
-            text = "Abmelden",
+            text = "Logout",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             color = TextWhite,
@@ -413,21 +413,21 @@ private fun BottomMenuBar(
             // Opens the rules screen / PDF viewer.
             BottomMenuItem(
                 iconRes = R.drawable.home_rules_icon,
-                text = "Regeln",
+                text = "Rules",
                 onClick = onRulesClick
             )
 
             // Opens the ranking / leaderboard screen.
             BottomMenuItem(
                 iconRes = R.drawable.home_rang_icon,
-                text = "Rangliste",
+                text = "Leaderboard",
                 onClick = onRankingClick
             )
 
             // Opens the settings screen.
             BottomMenuItem(
                 iconRes = R.drawable.home_settings_icon,
-                text = "Einstellungen",
+                text = "Settings",
                 onClick = onSettingsClick
             )
         }

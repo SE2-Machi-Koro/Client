@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -35,7 +34,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.R
@@ -143,7 +141,7 @@ fun LobbyScreen(
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
                 Text(
-                    text = "Spielerliste",
+                    text = "Players",
                     modifier = Modifier.width(220.dp),
                     color = TextBlueDark,
                     style = MaterialTheme.typography.bodyMedium
@@ -170,7 +168,7 @@ fun LobbyScreen(
                     PlayerSlot(
                         name = when {
                             name == null -> ""
-                            isCurrentUser -> "$name (ich)"
+                            isCurrentUser -> "$name (you)"
                             else -> name
                         },
                         isHost = isHostPlayer
@@ -179,8 +177,8 @@ fun LobbyScreen(
                     // TODO: Replace placeholder ready state once backend exposes readiness per player.
                     val statusText = when {
                         name == null -> ""
-                        isCurrentUser && !isReady -> "nicht bereit"
-                        else -> "bereit"
+                        isCurrentUser && !isReady -> "not ready"
+                        else -> "ready"
                     }
 
                     StatusSlot(text = statusText)
@@ -201,7 +199,7 @@ fun LobbyScreen(
                     disabledContainerColor = ButtonBlueDark.copy(alpha = 0.65f)
                 )
             ) {
-                Text("Spiel starten", color = TextWhite, style =  MaterialTheme.typography.labelLarge)
+                Text("Start Game", color = TextWhite, style =  MaterialTheme.typography.labelLarge)
             }
         }
 
@@ -296,7 +294,7 @@ fun ReadyToggle(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "bereit",
+            text = "ready",
             color = White,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold
@@ -336,7 +334,7 @@ fun ReadyToggle(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "nicht\nbereit",
+            text = "not\nready",
             color = White,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold
@@ -408,7 +406,7 @@ private fun LeaveLobbyButton(
 ) {
     Card(
         modifier = modifier
-            .width(120.dp)
+            .width(105.dp)
             .height(42.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(10.dp),
@@ -430,7 +428,7 @@ private fun LeaveLobbyButton(
             Spacer(modifier = Modifier.width(10.dp))
 
             Text(
-                text = "Lobby verlassen",
+                text = "Leave Lobby",
                 color = TextWhite,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold
@@ -444,9 +442,9 @@ private fun LeaveLobbyButton(
 private fun LobbyScreenPreview() {
     ClientTheme {
         LobbyScreen(
-            playerNames = listOf("Spieler1"),
-            currentUsername = "Spieler1",
-            hostUsername = "Spieler1",
+            playerNames = listOf("Player1"),
+            currentUsername = "Player1",
+            hostUsername = "Player",
             isHost = true,
             isReady = false
         )
@@ -458,9 +456,9 @@ private fun LobbyScreenPreview() {
 private fun LobbyScreenFullPreview() {
     ClientTheme {
         LobbyScreen(
-            playerNames = listOf("Spieler1", "Spieler2", "Spieler3", "Spieler4"),
-            currentUsername = "Spieler1",
-            hostUsername = "Spieler1",
+            playerNames = listOf("Player1", "Player2", "Player3", "Player4"),
+            currentUsername = "Player1",
+            hostUsername = "Player1",
             isHost = true,
             isReady = true
         )
