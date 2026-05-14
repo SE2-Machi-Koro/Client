@@ -4,15 +4,19 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.network.websocket.WebSocketClient
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class HomeScreenViewModelTest {
 
     @Test

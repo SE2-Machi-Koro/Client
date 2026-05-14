@@ -99,7 +99,6 @@ class FakeWebSocketClient : WebSocketClient {
     fun emitIsLobbyHost(isHost: Boolean) {
         mutableIsLobbyHost.value = isHost
     }
-}
 
     fun emitAuthRejection() {
         mutableAuthRejections.tryEmit(Unit)

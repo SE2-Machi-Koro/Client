@@ -38,24 +38,18 @@ fun AppRoot(
     onCreateLobbyClick: () -> Unit,
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
-    onReadyToggle: () -> Unit,
-    onStartGame: () -> Unit,
-    onLeaveLobby: () -> Unit,
-    onRollDice: () -> Unit, // NEU
-    modifier: Modifier = Modifier
     onReadyToggle: () -> Unit = {},
     onStartGame: () -> Unit = {},
     onLeaveLobby: () -> Unit = {},
+    onRollDice: () -> Unit = {},
     modifier: Modifier = Modifier,
-    // When a lobby has just been created the host confirms and navigates to the LobbyScreen.
-    // showLobbyScreen tracks whether the UI should show the lobby even if lobbyCode is not yet present.
     showLobbyScreen: Boolean = false,
     onGoToLobbyClick: () -> Unit = {},
 ) {
     if (gameScreenState.gamePhase != GamePhase.NONE) {
         GameScreen(
             state = gameScreenState,
-            onRollDice = onRollDice, // NEU
+            onRollDice = onRollDice,
             modifier = modifier
         )
     } else if (lobbyCode != null) {
@@ -66,24 +60,18 @@ fun AppRoot(
             onLeaveLobby = onLeaveLobby,
             modifier = modifier
         )
-        GameScreen(state = gameScreenState, modifier = modifier)
     } else if (loggedInAs != null) {
         HomeScreen(
             lobbyCode = lobbyCode,
             isLobbyHost = isLobbyHost,
-            // activeGameId may not be available until the server echoes it back in
-            // LOBBY_CREATED (payload.gameId). Do not block the host button on it —
-            // sendGameStart() guards the actual WebSocket send independently.
             canStartGame = isLobbyHost &&
-                startScreenState.connectionStatus == ConnectionStatus.CONNECTED,
+                    startScreenState.connectionStatus == ConnectionStatus.CONNECTED,
             onCreateLobbyClick = onCreateLobbyClick,
             onStartGame = onStartGame,
-            // showLobbyScreen allows the HomeScreen to signal immediate navigation to the lobby
             showLobbyScreen = showLobbyScreen,
             onGoToLobbyClick = onGoToLobbyClick,
             modifier = modifier
         )
-
     } else {
         StartScreen(
             state = startScreenState,
@@ -128,11 +116,6 @@ private fun AppRootStartScreenPreview() {
             isLobbyHost = false,
             loggedInAs = null,
             onCreateLobbyClick = {},
-            lobbyScreenState = LobbyScreenState.placeholder(),
-            onReadyToggle = {},
-            onStartGame = {},
-            onLeaveLobby = {},
-            onRollDice = {}, // NEU
         )
     }
 }
@@ -161,11 +144,6 @@ private fun AppRootGameScreenPreview() {
             isLobbyHost = false,
             loggedInAs = null,
             onCreateLobbyClick = {},
-            lobbyScreenState = LobbyScreenState.placeholder(),
-            onReadyToggle = {},
-            onStartGame = {},
-            onLeaveLobby = {},
-            onRollDice = {}, // NEU
         )
     }
 }
