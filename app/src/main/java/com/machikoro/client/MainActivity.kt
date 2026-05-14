@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
         StartScreenViewModel.Factory(webSocketClient, SessionManager)
     }
     private val gameScreenViewModel by viewModels<GameScreenViewModel> {
-        GameScreenViewModel.Factory(webSocketClient)
+        GameScreenViewModel.Factory(webSocketClient, SessionManager) // NEU
     }
     private val homeViewModel by viewModels<HomeViewModel> {
         HomeViewModel.Factory(webSocketClient)

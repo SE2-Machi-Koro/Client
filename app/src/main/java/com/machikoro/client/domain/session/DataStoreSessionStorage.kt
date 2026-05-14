@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
@@ -20,13 +21,15 @@ class DataStoreSessionStorage(
         val prefs = dataStore.data.first()
         val token = prefs[KEY_TOKEN] ?: return null
         val username = prefs[KEY_USERNAME] ?: return null
-        return Session(sessionToken = token, username = username)
+        val userId = prefs[KEY_USER_ID] ?: return null
+        return Session(sessionToken = token, username = username, userId = userId)
     }
 
     override suspend fun write(session: Session) {
         dataStore.edit { prefs ->
             prefs[KEY_TOKEN] = session.sessionToken
             prefs[KEY_USERNAME] = session.username
+            prefs[KEY_USER_ID] = session.userId
         }
     }
 
@@ -34,11 +37,13 @@ class DataStoreSessionStorage(
         dataStore.edit { prefs ->
             prefs.remove(KEY_TOKEN)
             prefs.remove(KEY_USERNAME)
+            prefs.remove(KEY_USER_ID)
         }
     }
 
     private companion object {
         val KEY_TOKEN = stringPreferencesKey("session_token")
         val KEY_USERNAME = stringPreferencesKey("session_username")
+        val KEY_USER_ID = intPreferencesKey("session_user_id") // NEU
     }
 }

@@ -323,10 +323,10 @@ class OkHttpWebSocketClientTest {
     @Test
     fun connectFrameUsesCurrentSessionTokenAtHandshakeTime() {
         val factory = FakeWebSocketFactory()
-        val sessionHolder = FakeSessionStateHolder(initial = Session("stale-token", "alice"))
+        val sessionHolder = FakeSessionStateHolder(initial = Session("stale-token", "alice", 1))
         val client = newClient(factory, sessionStateHolder = sessionHolder)
         client.connect()
-        sessionHolder.signIn(token = "fresh-token", username = "alice")
+        sessionHolder.signIn(token = "fresh-token", username = "alice", userId = 1)
         factory.simulateOpen()
         val connectFrame = factory.socket.sentMessages.first { it.startsWith("CONNECT\n") }
         assertTrue(connectFrame.contains("Authorization:Bearer fresh-token"))
@@ -557,14 +557,17 @@ class OkHttpWebSocketClientTest {
     private class FakeSessionStateHolder(initial: Session? = null) : SessionStateHolder {
         private val mutableSession = MutableStateFlow(initial)
         override val session: StateFlow<Session?> = mutableSession.asStateFlow()
-        override fun signIn(token: String, username: String) { mutableSession.value = Session(token, username) }
+        override fun signIn(token: String, username: String, userId: Int) {
+            mutableSession.value = Session(token, username, userId)
+        }
         override fun signOut() { mutableSession.value = null }
     }
 
     private companion object {
         const val DEFAULT_TOKEN = "test-token"
         const val DEFAULT_USERNAME = "test-user"
-        val DEFAULT_SESSION = Session(DEFAULT_TOKEN, DEFAULT_USERNAME)
+        const val DEFAULT_USER_ID = 1
+        val DEFAULT_SESSION = Session(DEFAULT_TOKEN, DEFAULT_USERNAME, DEFAULT_USER_ID)
     }
 
     private fun newClient(
