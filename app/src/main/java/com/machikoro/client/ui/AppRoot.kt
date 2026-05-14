@@ -52,7 +52,7 @@ fun AppRoot(
             onRollDice = onRollDice,
             modifier = modifier
         )
-    } else if (lobbyCode != null) {
+    } else if (showLobbyScreen) {
         LobbyScreen(
             state = lobbyScreenState,
             onReadyToggle = onReadyToggle,
@@ -68,7 +68,6 @@ fun AppRoot(
                     startScreenState.connectionStatus == ConnectionStatus.CONNECTED,
             onCreateLobbyClick = onCreateLobbyClick,
             onStartGame = onStartGame,
-            showLobbyScreen = showLobbyScreen,
             onGoToLobbyClick = onGoToLobbyClick,
             onLogoutClick = onLogoutSubmit,
             modifier = modifier
