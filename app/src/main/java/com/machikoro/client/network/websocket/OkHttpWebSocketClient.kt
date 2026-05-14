@@ -287,6 +287,13 @@ class OkHttpWebSocketClient(
                 if (isAuthRejection(frame.body)) {
                     mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
                     resetGameState()
+                    // Sign out here rather than relying on a Compose collector
+                    // in the UI. The activity can be destroyed (rotation, process
+                    // death) between the emission and the collector attaching,
+                    // and `authRejections` uses replay = 0 so a missed event
+                    // would leave the user signed in against a token the server
+                    // no longer accepts. The snackbar in MainActivity is purely
+                    // a UI side-effect and remains miss-tolerant.
                     sessionStateHolder.signOut()
                     mutableAuthRejections.tryEmit(Unit)
                 } else {
