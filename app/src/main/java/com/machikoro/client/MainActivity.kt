@@ -8,22 +8,31 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
 import com.machikoro.client.config.AppConfig
+import com.machikoro.client.domain.session.DataStoreSessionStorage
 import com.machikoro.client.domain.session.SessionManager
 import com.machikoro.client.network.auth.AuthApiFactory
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.AppRoot
 import com.machikoro.client.ui.game.GameScreenViewModel
 import com.machikoro.client.ui.home.HomeViewModel
+import com.machikoro.client.ui.lobby.LobbyScreenViewModel
 import com.machikoro.client.ui.start.LoginDialogViewModel
 import com.machikoro.client.ui.start.LogoutViewModel
 import com.machikoro.client.ui.start.RegisterDialogViewModel
 import com.machikoro.client.ui.start.StartScreenViewModel
 import com.machikoro.client.ui.theme.ClientTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val webSocketClient by lazy {
@@ -44,6 +53,9 @@ class MainActivity : ComponentActivity() {
     private val homeViewModel by viewModels<HomeViewModel> {
         HomeViewModel.Factory(webSocketClient)
     }
+    private val lobbyScreenViewModel by viewModels<LobbyScreenViewModel> {
+        LobbyScreenViewModel.Factory(webSocketClient, SessionManager)
+    }
     private val registerDialogViewModel by viewModels<RegisterDialogViewModel> {
         RegisterDialogViewModel.Factory(authApi)
     }
@@ -56,14 +68,20 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        SessionManager.attach(DataStoreSessionStorage(applicationContext))
+        lifecycleScope.launch { SessionManager.hydrate() }
         enableEdgeToEdge()
         setContent {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
+            val lobbyScreenState by lobbyScreenViewModel.state.collectAsState()
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
+            var showLobbyScreen by remember { mutableStateOf(false) }             // Stores whether the user has confirmed the created lobby and should see the lobby screen.
+
+            val snackbarHostState = remember { SnackbarHostState() }
 
             // Drive WebSocket lifecycle from session changes during the foreground.
             // onStart/onStop handle the activity-lifecycle case; this handles the
@@ -79,11 +97,30 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Server #159 contract: STOMP CONNECT with a missing/expired token
+            // produces a STOMP ERROR frame, which OkHttpWebSocketClient handles
+            // by calling SessionManager.signOut() directly (durable side-effect
+            // that survives activity recreation). The snackbar below is the
+            // UI-only counterpart and is miss-tolerant: if the activity isn't
+            // attached when the event fires, the user is still signed out — we
+            // just skip the toast for that emission.
+            LaunchedEffect(Unit) {
+                webSocketClient.authRejections.collect {
+                    snackbarHostState.showSnackbar(
+                        "Sitzung abgelaufen, bitte erneut anmelden"
+                    )
+                }
+            }
+
             ClientTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                ) { innerPadding ->
                     AppRoot(
                         gameScreenState = gameScreenState,
                         startScreenState = startScreenState,
+                        lobbyScreenState = lobbyScreenState,
                         registerDialogState = registerDialogState,
                         loginDialogState = loginDialogState,
                         logoutState = logoutState,
@@ -96,10 +133,19 @@ class MainActivity : ComponentActivity() {
                         onLoginSubmit = loginDialogViewModel::submit,
                         onLoginDialogReset = loginDialogViewModel::reset,
                         onLogoutSubmit = logoutViewModel::submit,
-                        onStartGame = startScreenViewModel::onStartGame,
-                        modifier = Modifier.padding(innerPadding),
+                        onReadyToggle = lobbyScreenViewModel::onReadyToggle,
+                        onStartGame = lobbyScreenViewModel::onStartGame,
+                        onLeaveLobby = {
+                            lobbyScreenViewModel.onLeaveLobby()
+                            homeViewModel.clearLobbyCode()
+                        },                        modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
                         loggedInAs = startScreenState.loggedInAs,
+                        showLobbyScreen = showLobbyScreen,
+                        onGoToLobbyClick = {
+                            // Navigates to the lobby screen after the user confirms the created lobby code.
+                            showLobbyScreen = true
+                        },
                         onCreateLobbyClick = homeViewModel::createLobby,
                         onPurchaseClick = gameScreenViewModel::purchase,
                     )

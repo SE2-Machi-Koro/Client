@@ -5,12 +5,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.model.state.LobbyScreenState
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.ui.game.GameScreen
 import com.machikoro.client.ui.home.HomeScreen
+import com.machikoro.client.ui.lobby.LobbyScreen
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
 
@@ -18,11 +20,13 @@ import com.machikoro.client.ui.theme.ClientTheme
 fun AppRoot(
     gameScreenState: GameScreenState,
     startScreenState: StartScreenState,
+    lobbyScreenState: LobbyScreenState,
     registerDialogState: RegisterDialogState,
     loginDialogState: LoginDialogState,
     logoutState: LogoutState,
     lobbyCode: String?,
     loggedInAs: String?,
+    showLobbyScreen: Boolean,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
     onRegisterSubmit: () -> Unit,
@@ -31,10 +35,13 @@ fun AppRoot(
     onLoginPasswordChange: (String) -> Unit,
     onLoginSubmit: () -> Unit,
     onCreateLobbyClick: () -> Unit,
+    onGoToLobbyClick: () -> Unit,
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
-    onStartGame: () -> Unit = {},
+    onReadyToggle: () -> Unit,
+    onStartGame: () -> Unit,
     onPurchaseClick: (String) -> Unit = {},
+    onLeaveLobby: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (gameScreenState.gamePhase != GamePhase.NONE) {
@@ -44,12 +51,30 @@ fun AppRoot(
             onPurchaseClick = onPurchaseClick,
             modifier = modifier
         )
+
     } else if (loggedInAs != null) {
-        HomeScreen(
-            lobbyCode = lobbyCode,
-            onCreateLobbyClick = onCreateLobbyClick,
-            modifier = modifier
-        )
+
+        if (showLobbyScreen) {
+
+            LobbyScreen(
+                state = lobbyScreenState,
+                onReadyToggle = onReadyToggle,
+                onStartGame = onStartGame,
+                onLeaveLobby = onLeaveLobby,
+                modifier = modifier
+            )
+
+        } else {
+
+            HomeScreen(
+                lobbyCode = lobbyCode,
+                onCreateLobbyClick = onCreateLobbyClick,
+                onGoToLobbyClick = onGoToLobbyClick,
+                onLogoutClick = onLogoutSubmit,
+                modifier = modifier
+            )
+        }
+
     } else {
         StartScreen(
             state = startScreenState,
@@ -65,7 +90,6 @@ fun AppRoot(
             onLoginSubmit = onLoginSubmit,
             onLoginDialogReset = onLoginDialogReset,
             onLogoutSubmit = onLogoutSubmit,
-            onStartGame = onStartGame,
             modifier = modifier
         )
     }
@@ -92,7 +116,13 @@ private fun AppRootStartScreenPreview() {
             onLogoutSubmit = {},
             lobbyCode = null,
             loggedInAs = null,
+            showLobbyScreen = false,
+            onGoToLobbyClick = {},
             onCreateLobbyClick = {},
+            lobbyScreenState = LobbyScreenState.placeholder(),
+            onReadyToggle = {},
+            onStartGame = {},
+            onLeaveLobby = {},
         )
     }
 }
@@ -118,7 +148,13 @@ private fun AppRootGameScreenPreview() {
             onLogoutSubmit = {},
             lobbyCode = null,
             loggedInAs = null,
+            showLobbyScreen = false,
+            onGoToLobbyClick = {},
             onCreateLobbyClick = {},
+            lobbyScreenState = LobbyScreenState.placeholder(),
+            onReadyToggle = {},
+            onStartGame = {},
+            onLeaveLobby = {},
         )
     }
 }

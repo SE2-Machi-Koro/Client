@@ -4,7 +4,10 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.shop.PurchaseType
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class FakeWebSocketClient : WebSocketClient {
@@ -22,12 +25,18 @@ class FakeWebSocketClient : WebSocketClient {
 
     override val gameId: StateFlow<Int?>
         get() = mutableGameId
+    override val authRejections: SharedFlow<Unit>
+        get() = mutableAuthRejections
 
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
     private val mutableGameId = MutableStateFlow<Int?>(null)
+    private val mutableAuthRejections = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
 
     var gameStartSent = false
         private set
@@ -62,6 +71,8 @@ class FakeWebSocketClient : WebSocketClient {
             cardType = cardType,
             landmarkType = landmarkType
         )
+    override fun clearLobbyCode() {
+        mutableLobbyCode.value = null
     }
 
     fun emitConnectionStatus(status: ConnectionStatus) {

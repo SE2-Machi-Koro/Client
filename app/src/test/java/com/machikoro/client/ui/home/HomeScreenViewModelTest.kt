@@ -5,9 +5,14 @@ import com.machikoro.client.domain.model.shop.PurchaseType
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.network.websocket.WebSocketClient
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -34,6 +39,20 @@ class HomeScreenViewModelTest {
         assertTrue(fakeClient.sendCreateLobbyCalled)
     }
 
+    @Test
+    fun clearLobbyCodeClearsCurrentLobbyCode() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableLobbyCode.value = "ABC123"
+
+        assertEquals("ABC123", viewModel.lobbyCode.value)
+
+        viewModel.clearLobbyCode()
+
+        assertNull(viewModel.lobbyCode.value)
+    }
+
     private class FakeWebSocketClient : WebSocketClient {
         override val connectionStatus: StateFlow<ConnectionStatus> =
             MutableStateFlow(ConnectionStatus.IDLE)
@@ -49,6 +68,10 @@ class HomeScreenViewModelTest {
 
         override val gameId: StateFlow<Int?> =
             MutableStateFlow(null)
+        override val authRejections: SharedFlow<Unit> = MutableSharedFlow(
+            extraBufferCapacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
 
         var connectCalled = false
         var disconnectCalled = false
@@ -77,5 +100,8 @@ class HomeScreenViewModelTest {
             cardType: String?,
             landmarkType: String?
         ) = Unit
+        override fun clearLobbyCode() {
+            mutableLobbyCode.value = null
+        }
     }
 }

@@ -3,9 +3,25 @@ package com.machikoro.client.ui.home
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,7 +34,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.R
-import com.machikoro.client.ui.theme.*
+import com.machikoro.client.ui.theme.ButtonBlueDark
+import com.machikoro.client.ui.theme.ButtonBlueLight
+import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.TextBlueDark
+import com.machikoro.client.ui.theme.TextWhite
+import com.machikoro.client.ui.theme.White
 
 @Composable
 fun HomeScreen(
@@ -33,6 +54,8 @@ fun HomeScreen(
     onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onGoToLobbyClick: () -> Unit,
+    onLogoutClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Root container. Box allows placing elements freely with align().
@@ -90,6 +113,17 @@ fun HomeScreen(
                 .padding(top = 25.dp, end = 30.dp)
         )
 
+        // Logout affordance in the top-left corner. Issue #106 places the
+        // logout action on the authenticated screen; the start screen never
+        // shows it because the routing in AppRoot collapses HomeScreen back to
+        // StartScreen the moment the session clears.
+        LogoutButton(
+            onClick = onLogoutClick,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = 25.dp, start = 30.dp)
+        )
+
         // === MAIN ACTION BUTTONS ===
         // Three main lobby actions in the center of the screen.
         Row(
@@ -121,8 +155,10 @@ fun HomeScreen(
                 lobbyCode?.let { code ->
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    LobbyCodeRow(code = code)
-                }
+                    LobbyCodeRow(
+                        code = lobbyCode,
+                        onGoToLobbyClick = onGoToLobbyClick
+                    )                }
             }
 
             HomeCard(
@@ -141,6 +177,31 @@ fun HomeScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 0.dp)
+        )
+    }
+}
+
+@Composable
+private fun LogoutButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(40.dp),
+        shape = RoundedCornerShape(10.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = ButtonBlueDark,
+            contentColor = TextWhite,
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) {
+        Text(
+            text = "Abmelden",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = TextWhite,
         )
     }
 }
@@ -196,7 +257,10 @@ private fun HomeCard(
 }
 
 @Composable
-private fun LobbyCodeRow(code: String) {
+private fun LobbyCodeRow(
+    code: String,
+    onGoToLobbyClick: () -> Unit
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -232,8 +296,9 @@ private fun LobbyCodeRow(code: String) {
             }
         }
 
+        // Allows the player to confirm the created lobby and continue to the lobby screen.
         Card(
-            modifier = Modifier.size(34.dp),
+            modifier = Modifier.size(34.dp).clickable(onClick = onGoToLobbyClick),
             shape = RoundedCornerShape(6.dp),
             colors = CardDefaults.cardColors(containerColor = White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -380,7 +445,9 @@ private fun BottomMenuItem(
 @Composable
 private fun HomeScreenPreview() {
     ClientTheme {
-        HomeScreen()
+        HomeScreen(
+            onGoToLobbyClick = {},
+        )
     }
 }
 
@@ -389,6 +456,7 @@ private fun HomeScreenPreview() {
 private fun HomeScreenWithLobbyCodePreview() {
     ClientTheme {
         HomeScreen(
+            onGoToLobbyClick = {},
             lobbyCode = "AJ25Z39"
         )
     }
