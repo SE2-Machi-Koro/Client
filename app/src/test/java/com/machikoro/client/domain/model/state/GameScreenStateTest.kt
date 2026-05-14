@@ -13,6 +13,10 @@ class GameScreenStateTest {
         assertEquals(ConnectionStatus.IDLE, state.connectionStatus)
         assertEquals(emptyList<PlayerCoinState>(), state.players)
         assertEquals(null, state.gameId)
+        assertEquals(null, state.diceResult)
+        assertEquals(null, state.activePlayerId)
+        assertEquals(null, state.myUserId)
+        assertEquals(false, state.isActivePlayer)
         assertEquals(PurchaseState.IDLE, state.purchaseState)
         assertEquals(false, state.isBuyingPhase)
     }

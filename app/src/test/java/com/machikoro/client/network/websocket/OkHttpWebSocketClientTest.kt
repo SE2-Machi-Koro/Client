@@ -1,6 +1,7 @@
 package com.machikoro.client.network.websocket
 
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.model.shop.PurchaseType
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.session.Session
@@ -320,107 +321,6 @@ class OkHttpWebSocketClientTest {
         assertTrue(factory.socket.sentMessages.isEmpty())
     }
 
-    private fun gameActionFrame(body: String): String =
-        "MESSAGE\ndestination:/topic/public\ncontent-type:application/json\n\n$body\u0000"
-
-    private class FakeWebSocketFactory : WebSocketFactory {
-        lateinit var listener: WebSocketListener
-        val socket = FakeWebSocket()
-        var createCount = 0
-
-        override fun create(request: Request, listener: WebSocketListener): WebSocket {
-            this.listener = listener
-            socket.request = request
-            createCount += 1
-            return socket
-        }
-
-        fun simulateOpen() {
-            listener.onOpen(socket, createResponse(socket.request))
-        }
-
-        fun simulateText(text: String) {
-            listener.onMessage(socket, text)
-        }
-
-        fun simulateClosing() {
-            listener.onClosing(socket, 1000, "closing")
-        }
-
-        fun simulateClosed() {
-            listener.onClosed(socket, 1000, "closed")
-        }
-
-        fun simulateFailure(throwable: Throwable) {
-            listener.onFailure(socket, throwable, createResponse(socket.request))
-        }
-
-        private fun createResponse(request: Request): Response {
-            return Response.Builder()
-                .request(request)
-                .protocol(Protocol.HTTP_1_1)
-                .code(101)
-                .message("Switching Protocols")
-                .build()
-        }
-    }
-
-    private class FakeWebSocket : WebSocket {
-        lateinit var request: Request
-        var closed = false
-        val sentMessages = mutableListOf<String>()
-
-        override fun request(): Request = request
-
-        override fun queueSize(): Long = 0L
-
-        override fun send(text: String): Boolean {
-            sentMessages += text
-            return true
-        }
-
-        override fun send(bytes: ByteString): Boolean = false
-
-        override fun close(code: Int, reason: String?): Boolean {
-            closed = true
-            return true
-        }
-
-        override fun cancel() {
-            closed = true
-        }
-    }
-
-    private class FakeSessionStateHolder(initial: Session? = null) : SessionStateHolder {
-        private val mutableSession = MutableStateFlow(initial)
-        override val session: StateFlow<Session?> = mutableSession.asStateFlow()
-        override fun signIn(token: String, username: String) {
-            mutableSession.value = Session(token, username)
-        }
-        override fun signOut() {
-            mutableSession.value = null
-        }
-    }
-
-    private companion object {
-        const val DEFAULT_TOKEN = "test-token"
-        const val DEFAULT_USERNAME = "test-user"
-        val DEFAULT_SESSION = Session(DEFAULT_TOKEN, DEFAULT_USERNAME)
-    }
-
-    /**
-     * Construct a client with a stub session by default so existing test
-     * assertions that don't care about auth keep working.
-     */
-    private fun newClient(
-        factory: FakeWebSocketFactory,
-        sessionStateHolder: SessionStateHolder = FakeSessionStateHolder(DEFAULT_SESSION),
-    ) = OkHttpWebSocketClient(
-        websocketUrl = "ws://10.0.2.2:8080/ws",
-        sessionStateHolder = sessionStateHolder,
-        webSocketFactory = factory,
-    )
-
     @Test
     fun connectWithNoSessionDoesNotOpenSocketAndDoesNotTransitionStatus() {
         val factory = FakeWebSocketFactory()
@@ -462,11 +362,11 @@ class OkHttpWebSocketClientTest {
         // the token at connect() time, mid-flight session changes would send the
         // wrong header.
         val factory = FakeWebSocketFactory()
-        val sessionHolder = FakeSessionStateHolder(initial = Session("stale-token", "alice"))
+        val sessionHolder = FakeSessionStateHolder(initial = Session("stale-token", "alice", DEFAULT_USER_ID))
         val client = newClient(factory, sessionStateHolder = sessionHolder)
 
         client.connect()
-        sessionHolder.signIn(token = "fresh-token", username = "alice")
+        sessionHolder.signIn(token = "fresh-token", username = "alice", userId = DEFAULT_USER_ID)
         factory.simulateOpen()
 
         val connectFrame = factory.socket.sentMessages.first { it.startsWith("CONNECT\n") }
@@ -578,6 +478,67 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun sendPurchaseEstablishmentSendsServerAlignedPayload() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.sendPurchase(
+            gameId = 7,
+            purchaseType = PurchaseType.ESTABLISHMENT,
+            cardType = "BAKERY",
+            landmarkType = null
+        )
+
+        val purchaseFrame = factory.socket.sentMessages.last { it.startsWith("SEND\n") }
+        assertTrue(purchaseFrame.contains("destination:/app/game.purchase"))
+        assertTrue(purchaseFrame.contains("\"gameId\":7"))
+        assertTrue(purchaseFrame.contains("\"purchaseType\":\"ESTABLISHMENT\""))
+        assertTrue(purchaseFrame.contains("\"cardType\":\"BAKERY\""))
+        assertFalse(purchaseFrame.contains("landmarkType"))
+    }
+
+    @Test
+    fun sendPurchaseLandmarkSendsServerAlignedPayload() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.sendPurchase(
+            gameId = 7,
+            purchaseType = PurchaseType.LANDMARK,
+            cardType = null,
+            landmarkType = "TRAIN_STATION"
+        )
+
+        val purchaseFrame = factory.socket.sentMessages.last { it.startsWith("SEND\n") }
+        assertTrue(purchaseFrame.contains("destination:/app/game.purchase"))
+        assertTrue(purchaseFrame.contains("\"gameId\":7"))
+        assertTrue(purchaseFrame.contains("\"purchaseType\":\"LANDMARK\""))
+        assertTrue(purchaseFrame.contains("\"landmarkType\":\"TRAIN_STATION\""))
+        assertFalse(purchaseFrame.contains("cardType"))
+    }
+
+    @Test
+    fun sendPurchaseWithoutConnectionIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.sendPurchase(
+            gameId = 7,
+            purchaseType = PurchaseType.ESTABLISHMENT,
+            cardType = "BAKERY",
+            landmarkType = null
+        )
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
+    @Test
     fun rollDiceWithTwoDiceSendsDiceCountTwo() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -623,7 +584,7 @@ class OkHttpWebSocketClientTest {
 
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("ERROR\nmessage:Authentication failed\n\nAuthentication failed ")
+        factory.simulateText("ERROR\nmessage:Authentication failed\n\nAuthentication failed\u0000")
         runCurrent()
 
         assertEquals(1, rejections.size)
@@ -648,22 +609,6 @@ class OkHttpWebSocketClientTest {
         runCurrent()
         assertTrue(rejections.isEmpty())
         assertEquals(ConnectionStatus.ERROR, client.connectionStatus.value)
-    }
-
-    @Test
-    fun lobbyCreatedWithoutPayloadLeavesLobbyCodeNull() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-
-        factory.simulateText(
-            gameActionFrame("""{"type":"LOBBY_CREATED","sender":"SERVER"}""")
-        )
-
-        assertEquals(null, client.lobbyCode.value)
     }
 
     @Test
@@ -705,10 +650,10 @@ class OkHttpWebSocketClientTest {
         assertEquals(null, client.lobbyCode.value)
     }
     private fun connectedFrame(): String =
-        "CONNECTED\nversion:1.2\n\n "
+        "CONNECTED\nversion:1.2\n\n\u0000"
 
     private fun authRejectionErrorFrame(): String =
-        "ERROR\nmessage:Authentication failed\n\nAuthentication failed "
+        "ERROR\nmessage:Authentication failed\n\nAuthentication failed\u0000"
   
     private fun gameActionFrame(body: String): String =
         "MESSAGE\ndestination:/topic/public\ncontent-type:application/json\n\n$body\u0000"

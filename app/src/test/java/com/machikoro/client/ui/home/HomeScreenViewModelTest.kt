@@ -95,8 +95,6 @@ class HomeScreenViewModelTest {
         val mutableIsLobbyHost = MutableStateFlow(false)
         override val isLobbyHost: StateFlow<Boolean> = mutableIsLobbyHost
 
-        override val gameId: StateFlow<Int?> =
-            MutableStateFlow(null)
         override val authRejections: SharedFlow<Unit> = MutableSharedFlow(
             extraBufferCapacity = 1,
             onBufferOverflow = BufferOverflow.DROP_OLDEST,
