@@ -9,6 +9,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
@@ -96,18 +97,8 @@ class GameScreenViewModelTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = GameScreenViewModel(fakeClient)
         val players = listOf(
-            PlayerCoinState(
-                id = "player-1",
-                displayName = "You",
-                coins = 3,
-                isCurrentPlayer = true
-            ),
-            PlayerCoinState(
-                id = "player-2",
-                displayName = "SoupCube",
-                coins = 5,
-                isActivePlayer = true
-            )
+            PlayerCoinState(id = "player-1", displayName = "You", coins = 3, isCurrentPlayer = true),
+            PlayerCoinState(id = "player-2", displayName = "SoupCube", coins = 5, isActivePlayer = true)
         )
 
         fakeClient.emitPlayers(players)
@@ -139,4 +130,49 @@ class GameScreenViewModelTest {
         assertEquals(updatedPlayers, viewModel.state.value.players)
     }
 
+    @Test
+    fun diceResultIsNullInInitialState() = runTest {
+        val viewModel = GameScreenViewModel(FakeWebSocketClient())
+
+        advanceUntilIdle()
+
+        assertNull(viewModel.state.value.diceResult)
+    }
+
+    @Test
+    fun diceResultFromClientIsReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitDiceResult(listOf(3, 4))
+        advanceUntilIdle()
+
+        assertEquals(listOf(3, 4), viewModel.state.value.diceResult)
+    }
+
+    @Test
+    fun rollDiceForwardsDiceCountToClientWhenPhaseIsRollDice() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+
+        assertEquals(1, fakeClient.lastRolledDiceCount)
+    }
+
+    @Test
+    fun rollDiceIsIgnoredWhenPhaseIsNotRollDice() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = GameScreenViewModel(fakeClient)
+
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+
+        assertNull(fakeClient.lastRolledDiceCount)
+    }
 }
