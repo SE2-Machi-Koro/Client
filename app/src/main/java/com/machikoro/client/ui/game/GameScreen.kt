@@ -75,7 +75,8 @@ fun GameScreen(
                 DiceResultDisplay(dice = dice)
             }
 
-            if (state.gamePhase == GamePhase.ROLL_DICE) {
+            // NEU: nur für aktiven Spieler sichtbar
+            if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer) {
                 Button(
                     onClick = onRollDice,
                     modifier = Modifier.semantics {
@@ -256,7 +257,25 @@ private fun GameScreenRollDicePreview() {
             state = GameScreenState(
                 gamePhase = GamePhase.ROLL_DICE,
                 connectionStatus = ConnectionStatus.CONNECTED,
-                players = previewPlayers()
+                players = previewPlayers(),
+                myUserId = 1,
+                activePlayerId = 1,
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Composable
+private fun GameScreenRollDiceNotActivePreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gamePhase = GamePhase.ROLL_DICE,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = previewPlayers(),
+                myUserId = 1,
+                activePlayerId = 2, // anderer Spieler ist aktiv
             )
         )
     }
@@ -271,7 +290,9 @@ private fun GameScreenWithResultPreview() {
                 gamePhase = GamePhase.ROLL_DICE,
                 connectionStatus = ConnectionStatus.CONNECTED,
                 players = previewPlayers(),
-                diceResult = listOf(3, 4)
+                diceResult = listOf(3, 4),
+                myUserId = 1,
+                activePlayerId = 1,
             )
         )
     }
