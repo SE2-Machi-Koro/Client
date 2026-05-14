@@ -84,11 +84,23 @@ fun StartScreen(
             ) {
                 SecondaryActionButton(
                     text = "Register",
-                    onClick = { showRegisterDialog = true },
+                    // Reset dialog VM state before opening so the dialog can't
+                    // surface leftover values from a previous successful
+                    // submission — the route flips to HomeScreen on success
+                    // before the user can dismiss the dialog, so the dismissal
+                    // reset never fires and the Activity-scoped VM keeps its
+                    // stale state until the user comes back to StartScreen.
+                    onClick = {
+                        onRegisterDialogReset()
+                        showRegisterDialog = true
+                    },
                 )
                 SecondaryActionButton(
                     text = "Login",
-                    onClick = { showLoginDialog = true },
+                    onClick = {
+                        onLoginDialogReset()
+                        showLoginDialog = true
+                    },
                 )
             }
 
