@@ -57,7 +57,7 @@ fun HomeScreen(
     // Allows immediate navigation to the lobby UI after lobby creation confirmation.
     showLobbyScreen: Boolean = false,
     onGoToLobbyClick: () -> Unit = {},
-    onLogoutClick: () -> Unit = {},
+    onLogoutClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Root container. Box allows placing elements freely with align().
@@ -480,6 +480,7 @@ private fun BottomMenuItem(
 private fun HomeScreenPreview() {
     ClientTheme {
         HomeScreen(
+            onLogoutClick = {},
             onGoToLobbyClick = {},
         )
     }
@@ -490,6 +491,7 @@ private fun HomeScreenPreview() {
 private fun HomeScreenWithLobbyCodePreview() {
     ClientTheme {
         HomeScreen(
+            onLogoutClick = {},
             onGoToLobbyClick = {},
             lobbyCode = "AJ25Z39"
         )
