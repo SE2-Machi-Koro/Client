@@ -1,0 +1,28 @@
+[1mdiff --cc app/src/test/java/com/machikoro/client/network/websocket/FakeWebSocketClient.kt[m
+[1mindex a56a202,84ab163..0000000[m
+[1m--- a/app/src/test/java/com/machikoro/client/network/websocket/FakeWebSocketClient.kt[m
+[1m+++ b/app/src/test/java/com/machikoro/client/network/websocket/FakeWebSocketClient.kt[m
+[36m@@@ -99,20 -70,6 +99,23 @@@[m [mclass FakeWebSocketClient : WebSocketCl[m
+          createLobbySent = true[m
+      }[m
+  [m
+[32m++<<<<<<< HEAD[m
+[32m +    override fun sendPurchase([m
+[32m +        gameId: Int,[m
+[32m +        purchaseType: PurchaseType,[m
+[32m +        cardType: String?,[m
+[32m +        landmarkType: String?[m
+[32m +    ) {[m
+[32m +        lastPurchase = PurchaseCall([m
+[32m +            gameId = gameId,[m
+[32m +            purchaseType = purchaseType,[m
+[32m +            cardType = cardType,[m
+[32m +            landmarkType = landmarkType[m
+[32m +        )[m
+[32m +    }[m
+[32m +[m
+[32m++=======[m
+[32m++>>>>>>> 84994b0 (feat: send join lobby request via websocket)[m
+      var lastJoinLobbyCode: String? = null[m
+          private set[m
+  [m
