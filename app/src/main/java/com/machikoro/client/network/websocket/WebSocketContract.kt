@@ -14,5 +14,9 @@ object WebSocketContract {
     const val rollDiceDestination: String = "/app/game.rollDice"
     const val createLobbyDestination: String = "/app/lobby.create"
     const val gameStartDestination: String = "/app/game.start"
+    const val gameSyncDestination: String = "/app/game.sync"
+    // Per-user reconnect snapshot queue. The server resolves /user/** to the
+    // authenticated principal, so each client only sees its own snapshot.
+    const val gameSyncQueue: String = "/user/queue/game-sync"
     const val defaultSender: String = "android-client"
 }
