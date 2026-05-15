@@ -12,7 +12,7 @@ class WebSocketFactoryTest {
     fun testOkHttpWebSocketFactoryCreate() {
         val factory = OkHttpWebSocketFactory(OkHttpClient())
         val request = Request.Builder().url("ws://localhost").build()
-        val listener = mock(WebSocketListener::class.java)
+        val listener = object : WebSocketListener() {}
         val ws = factory.create(request, listener)
         assertNotNull(ws)
     }
