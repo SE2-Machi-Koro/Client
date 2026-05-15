@@ -1,8 +1,12 @@
 package com.machikoro.client.network.websocket
 
+import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.GameStatus
+import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
+import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.session.Session
 import com.machikoro.client.domain.session.SessionStateHolder
 import java.io.IOException
@@ -517,6 +521,124 @@ class OkHttpWebSocketClientTest {
         assertEquals(null, client.lobbyCode.value)
     }
 
+    // ── reconnect snapshot (/app/game.sync -> /user/queue/game-sync) ─────────
+
+    @Test
+    fun connectedFrameSubscribesToGameSyncQueue() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SUBSCRIBE") && it.contains("destination:/user/queue/game-sync")
+            }
+        )
+    }
+
+    @Test
+    fun syncMessageRestoresGameStatusPhaseAndRound() {
+        val client = clientAfterSync()
+        assertEquals(GameStatus.IN_PROGRESS, client.gameStatus.value)
+        assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
+        assertEquals(3, client.roundNumber.value)
+    }
+
+    @Test
+    fun syncMessageRestoresPlayers() {
+        val client = clientAfterSync()
+        assertEquals(2, client.players.value.size)
+        assertEquals(10, client.players.value.first { it.id == "11" }.coins)
+        assertEquals(7, client.players.value.first { it.id == "22" }.coins)
+    }
+
+    @Test
+    fun syncMessageResolvesActivePlayerUserIdFromTurnOrder() {
+        // turnOrder[currentTurnIndex=0] = playerId 11, whose userId is 1.
+        val client = clientAfterSync()
+        assertEquals(1, client.activePlayerId.value)
+    }
+
+    @Test
+    fun syncMessageSurfacesLastDiceRollAsDiceResult() {
+        val client = clientAfterSync()
+        assertEquals(listOf(8), client.diceResult.value)
+    }
+
+    @Test
+    fun syncMessageRestoresMarketplaceSupply() {
+        val client = clientAfterSync()
+        assertEquals(
+            mapOf(CardType.WHEAT_FIELD to 6, CardType.BAKERY to 5),
+            client.marketplace.value
+        )
+    }
+
+    @Test
+    fun syncMessageRestoresPlayerLandmarkBuildState() {
+        val client = clientAfterSync()
+        val playerOneLandmarks = client.playerLandmarks.value[11].orEmpty()
+        assertEquals(
+            PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
+            playerOneLandmarks.first { it.landmarkType == LandmarkType.TRAIN_STATION }
+        )
+        assertFalse(
+            playerOneLandmarks.first { it.landmarkType == LandmarkType.SHOPPING_MALL }.isBuilt
+        )
+        assertFalse(client.playerLandmarks.value[22].orEmpty().single().isBuilt)
+    }
+
+    @Test
+    fun malformedSyncMessageDoesNotCrashAndLeavesSnapshotEmpty() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(syncFrame("""{"type":"SYNC","payload":{"state":"not an object"}}"""))
+        assertNull(client.gameStatus.value)
+        assertNull(client.roundNumber.value)
+        assertTrue(client.marketplace.value.isEmpty())
+        assertTrue(client.playerLandmarks.value.isEmpty())
+    }
+
+    @Test
+    fun disconnectResetsSnapshotState() {
+        val client = clientAfterSync()
+        client.disconnect()
+        assertNull(client.gameStatus.value)
+        assertNull(client.roundNumber.value)
+        assertTrue(client.marketplace.value.isEmpty())
+        assertTrue(client.playerLandmarks.value.isEmpty())
+    }
+
+    /** Connects a client and feeds it one realistic SYNC snapshot frame. */
+    private fun clientAfterSync(): OkHttpWebSocketClient {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(syncFrame(SYNC_SNAPSHOT_BODY))
+        return client
+    }
+
+    /** A bare STOMP CONNECTED frame, correctly NUL-terminated by serialize(). */
+    private fun connectedFrame(): String =
+        StompFrame(command = "CONNECTED", headers = mapOf("version" to "1.2")).serialize()
+
+    /** A MESSAGE frame on the per-user game-sync queue carrying [body]. */
+    private fun syncFrame(body: String): String =
+        StompFrame(
+            command = "MESSAGE",
+            headers = mapOf(
+                "destination" to WebSocketContract.gameSyncQueue,
+                "content-type" to "application/json",
+            ),
+            body = body,
+        ).serialize()
+
     private fun gameActionFrame(body: String): String =
         "MESSAGE\ndestination:/topic/public\ncontent-type:application/json\n\n$body\u0000"
 
@@ -568,6 +690,19 @@ class OkHttpWebSocketClientTest {
         const val DEFAULT_USERNAME = "test-user"
         const val DEFAULT_USER_ID = 1
         val DEFAULT_SESSION = Session(DEFAULT_TOKEN, DEFAULT_USERNAME, DEFAULT_USER_ID)
+
+        // A full /app/game.sync snapshot: game IN_PROGRESS / BUY_OR_BUILD,
+        // round 3, last roll 8; player 11 (userId 1) is active with one
+        // landmark built; marketplace has WHEAT_FIELD x6 and BAKERY x5.
+        const val SYNC_SNAPSHOT_BODY =
+            """{"type":"SYNC","sender":"server","gameId":7,"payload":{"targetUserId":1,""" +
+                """"state":{"game":{"id":7,"status":"IN_PROGRESS","turnPhase":"BUY_OR_BUILD",""" +
+                """"lastDiceRoll":8,"roundNumber":3,"currentTurnIndex":0},""" +
+                """"players":[{"id":11,"userId":1,"coins":10},{"id":22,"userId":2,"coins":7}],""" +
+                """"playerLandmarks":{"11":[{"playerId":11,"landmarkType":"TRAIN_STATION","isBuilt":true},""" +
+                """{"playerId":11,"landmarkType":"SHOPPING_MALL","isBuilt":false}],""" +
+                """"22":[{"playerId":22,"landmarkType":"TRAIN_STATION","isBuilt":false}]},""" +
+                """"marketplace":{"WHEAT_FIELD":6,"BAKERY":5},"turnOrder":[11,22]}}}"""
     }
 
     private fun newClient(
