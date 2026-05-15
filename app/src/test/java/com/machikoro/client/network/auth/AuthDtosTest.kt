@@ -24,9 +24,10 @@ class AuthDtosTest {
     }
     @Test
     fun testLoginResponse() {
-        val res = LoginResponse("token", "user")
+        val res = LoginResponse("token", "user", 42)
         assertEquals("token", res.sessionToken)
         assertEquals("user", res.username)
+        assertEquals(42, res.userId)
     }
     @Test
     fun testLogoutRequest() {

@@ -10,11 +10,17 @@ class DummyWebSocketClient : WebSocketClient {
     override val gamePhase: StateFlow<com.machikoro.client.domain.enums.GamePhase> = MutableStateFlow(com.machikoro.client.domain.enums.GamePhase.NONE)
     override val players: StateFlow<List<com.machikoro.client.domain.model.state.PlayerCoinState>> = MutableStateFlow(emptyList())
     override val lobbyCode: StateFlow<String?> = MutableStateFlow(null)
+    override val activeGameId: StateFlow<Int?> = MutableStateFlow(null)
+    override val isLobbyHost: StateFlow<Boolean> = MutableStateFlow(false)
+    override val diceResult: StateFlow<List<Int>?> = MutableStateFlow(null)
+    override val activePlayerId: StateFlow<Int?> = MutableStateFlow(null)
+    override val authRejections = kotlinx.coroutines.flow.MutableSharedFlow<Unit>()
     override fun connect() {}
     override fun disconnect() {}
     override fun sendCreateLobby() {}
     override fun clearLobbyCode() {}
     override fun sendGameStart() {}
+    override fun rollDice(diceCount: Int) {}
 }
 
 class WebSocketClientTest {
