@@ -28,6 +28,8 @@ fun AppRoot(
     loginDialogState: LoginDialogState,
     logoutState: LogoutState,
     lobbyCode: String?,
+    joinLobbyCode: String = "",
+    showJoinLobbyInput: Boolean = false,
     loggedInAs: String?,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
@@ -37,6 +39,9 @@ fun AppRoot(
     onLoginPasswordChange: (String) -> Unit,
     onLoginSubmit: () -> Unit,
     onCreateLobbyClick: () -> Unit,
+    onJoinLobbyClick: () -> Unit = {},
+    onJoinLobbyCodeChange: (String) -> Unit = {},
+    onJoinLobbySubmit: () -> Unit = {},
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
     onReadyToggle: () -> Unit = {},
@@ -74,6 +79,11 @@ fun AppRoot(
     } else if (loggedInAs != null) {
         HomeScreen(
             lobbyCode = lobbyCode,
+            joinLobbyCode = joinLobbyCode,
+            showJoinLobbyInput = showJoinLobbyInput,
+            onJoinLobbyClick = onJoinLobbyClick,
+            onJoinLobbyCodeChange = onJoinLobbyCodeChange,
+            onJoinLobbySubmit = onJoinLobbySubmit,
             onCreateLobbyClick = onCreateLobbyClick,
             onGoToLobbyClick = onGoToLobbyClick,
             onLogoutClick = onLogoutSubmit,
@@ -140,6 +150,8 @@ private fun AppRootStartScreenPreview() {
             lobbyCode = null,
             loggedInAs = null,
             onCreateLobbyClick = {},
+            joinLobbyCode = "",
+            showJoinLobbyInput = false,
         )
     }
 }
@@ -167,6 +179,8 @@ private fun AppRootGameScreenPreview() {
             lobbyCode = null,
             loggedInAs = null,
             onCreateLobbyClick = {},
+            joinLobbyCode = "",
+            showJoinLobbyInput = false,
         )
     }
 }
