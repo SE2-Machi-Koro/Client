@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -50,6 +52,9 @@ import com.machikoro.client.ui.theme.White
 fun HomeScreen(
     // Latest lobby code received from the server after creating a lobby.
     lobbyCode: String? = null,
+    joinLobbyCode: String = "",
+    showJoinLobbyInput: Boolean = false,
+    onJoinLobbyCodeChange: (String) -> Unit = {},
     onJoinLobbyClick: () -> Unit = {},
     onCreateLobbyClick: () -> Unit = {},
     onPublicLobbiesClick: () -> Unit = {},
@@ -57,6 +62,7 @@ fun HomeScreen(
     onRankingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onGoToLobbyClick: () -> Unit = {},
+    onJoinLobbySubmit: () -> Unit = {},
     onLogoutClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -139,12 +145,28 @@ fun HomeScreen(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier
             ) {
-                HomeCard(
-                    iconRes = R.drawable.home_lobby_join_icon,
-                    text = "Join Lobby",
-                    isPrimary = false,
-                    onClick = onJoinLobbyClick
-                )
+                // Join lobby card. The code input only appears after clicking the card.
+                Column(
+                    modifier = Modifier.width(150.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    HomeCard(
+                        iconRes = R.drawable.home_lobby_join_icon,
+                        text = "Join Lobby",
+                        isPrimary = false,
+                        onClick = onJoinLobbyClick
+                    )
+
+                    if (showJoinLobbyInput) {
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        JoinLobbyCodeRow(
+                            code = joinLobbyCode,
+                            onCodeChange = onJoinLobbyCodeChange,
+                            onJoinLobbySubmit = onJoinLobbySubmit
+                        )
+                    }
+                }
 
                 // Create lobby card with generated code displayed directly below it.
                 Column(
@@ -343,6 +365,84 @@ private fun LobbyCodeRow(
 }
 
 @Composable
+private fun JoinLobbyCodeRow(
+    code: String,
+    onCodeChange: (String) -> Unit,
+    onJoinLobbySubmit: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Card(
+            modifier = Modifier
+                .width(110.dp)
+                .height(34.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 12.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BasicTextField(
+                    value = code,
+                    onValueChange = { input ->
+                        onCodeChange(input.uppercase())
+                    },
+                    singleLine = true,
+                    textStyle = TextStyle(
+                        color = Color(0x4D004E7E),
+                        fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = Modifier.weight(1f),
+                    decorationBox = { innerTextField ->
+                        if (code.isBlank()) {
+                            Text(
+                                text = "Code",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0x4D004E7E),
+                                maxLines = 1
+                            )
+                        }
+
+                        innerTextField()
+                    }
+                )
+            }
+        }
+
+        // Sends the entered lobby code to the backend.
+        Card(
+            modifier = Modifier
+                .size(34.dp)
+                .clickable(
+                    enabled = code.isNotBlank(),
+                    onClick = onJoinLobbySubmit
+                ),
+            shape = RoundedCornerShape(6.dp),
+            colors = CardDefaults.cardColors(containerColor = White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.home_check_icon),
+                    contentDescription = "Join lobby",
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProfileCard(
     modifier: Modifier = Modifier
 ) {
@@ -485,6 +585,21 @@ private fun HomeScreenWithLobbyCodePreview() {
             onLogoutClick = {},
             onGoToLobbyClick = {},
             lobbyCode = "AJ25Z39"
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 917, heightDp = 412)
+@Composable
+private fun HomeScreenWithJoinLobbyCodePreview() {
+    ClientTheme {
+        HomeScreen(
+            onLogoutClick = {},
+            onGoToLobbyClick = {},
+            joinLobbyCode = "AJ25Z39",
+            showJoinLobbyInput = true,
+            onJoinLobbyCodeChange = {},
+            onJoinLobbySubmit = {},
         )
     }
 }
