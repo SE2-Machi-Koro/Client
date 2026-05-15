@@ -5,20 +5,33 @@ import com.machikoro.client.domain.model.shop.PurchaseType
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.network.websocket.WebSocketClient
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeScreenViewModelTest {
+
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
 
     @Test
     fun exposesLobbyCodeFromWebSocketClient() {
@@ -43,13 +56,47 @@ class HomeScreenViewModelTest {
     }
 
     @Test
-    fun createLobbyConnectsAndSendsCreateLobbyRequest() {
+    fun createLobbyConnectsAndSendsCreateLobbyRequestAfterWebSocketConnects() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = HomeViewModel(fakeClient)
 
         viewModel.createLobby()
 
         assertTrue(fakeClient.connectCalled)
+        assertFalse(fakeClient.sendCreateLobbyCalled)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+        advanceUntilIdle()
+
+        assertTrue(fakeClient.sendCreateLobbyCalled)
+    }
+
+    @Test
+    fun createLobbyDoesNotSendCreateLobbyRequestWhenWebSocketFails() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        viewModel.createLobby()
+
+        assertTrue(fakeClient.connectCalled)
+        assertFalse(fakeClient.sendCreateLobbyCalled)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.ERROR
+        advanceUntilIdle()
+
+        assertFalse(fakeClient.sendCreateLobbyCalled)
+    }
+
+    @Test
+    fun createLobbySendsCreateLobbyRequestWhenWebSocketIsConnected() {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+
+        viewModel.createLobby()
+
+        assertFalse(fakeClient.connectCalled)
         assertTrue(fakeClient.sendCreateLobbyCalled)
     }
 
@@ -78,8 +125,10 @@ class HomeScreenViewModelTest {
     }
 
     private class FakeWebSocketClient : WebSocketClient {
-        override val connectionStatus: StateFlow<ConnectionStatus> =
+        val mutableConnectionStatus =
             MutableStateFlow(ConnectionStatus.IDLE)
+        override val connectionStatus: StateFlow<ConnectionStatus> =
+            mutableConnectionStatus
         override val gamePhase: StateFlow<GamePhase> =
             MutableStateFlow(GamePhase.NONE)
         override val diceResult: StateFlow<List<Int>?> =
@@ -117,5 +166,18 @@ class HomeScreenViewModelTest {
             landmarkType: String?
         ) = Unit
         override fun clearLobbyCode() { mutableLobbyCode.value = null }
+    }
+}
+
+class MainDispatcherRule(
+    private val testDispatcher: TestDispatcher = StandardTestDispatcher(),
+) : TestWatcher() {
+
+    override fun starting(description: Description) {
+        Dispatchers.setMain(testDispatcher)
+    }
+
+    override fun finished(description: Description) {
+        Dispatchers.resetMain()
     }
 }
