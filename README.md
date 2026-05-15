@@ -2,7 +2,7 @@
 
 
 [![CI](https://github.com/SE2-Machi-Koro/Client/actions/workflows/ci.yml/badge.svg)](https://github.com/SE2-Machi-Koro/Client/actions/workflows/ci.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=SE2-Machi-Koro_Client&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=SE2-Machi-Koro_Client)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=SE2-Machi-Koro_Client&metric=alert_status)](https://sonarcloud.io/summary/overall?id=SE2-Machi-Koro_Client)
 
 A modern, reactive Android frontend for the Machi Koro board game. This application serves as the primary user interface, connecting to a dedicated backend via a robust WebSocket-based communication layer using the STOMP protocol.
 
