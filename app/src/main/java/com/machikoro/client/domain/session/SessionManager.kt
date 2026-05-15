@@ -25,13 +25,11 @@ object SessionManager : SessionStateHolder {
     suspend fun hydrate() {
         if (mutableSession.value != null) return
         val persisted = storage?.read() ?: return
-        // Guard against the race where signIn() fired between the read and the
-        // set — in that case the in-memory session wins, persisted is stale.
         mutableSession.compareAndSet(expect = null, update = persisted)
     }
 
-    override fun signIn(token: String, username: String) {
-        val session = Session(sessionToken = token, username = username)
+    override fun signIn(token: String, username: String, userId: Int) { // NEU
+        val session = Session(sessionToken = token, username = username, userId = userId)
         mutableSession.value = session
         storage?.let { s ->
             persistenceScope.launch {

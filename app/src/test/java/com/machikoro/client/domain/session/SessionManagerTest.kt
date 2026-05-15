@@ -13,29 +13,26 @@ class SessionManagerTest {
 
     @Before
     fun ensureCleanStartingState() {
-        // Defensive — if a prior test class left state in the singleton (or a
-        // prior test in this class threw before its @After), don't read it.
         SessionManager.signOut()
         SessionManager.attach(NoopSessionStorage)
     }
 
     @After
     fun resetSingleton() {
-        // Tests share the global singleton; clear after each so order doesn't matter.
         SessionManager.signOut()
         SessionManager.attach(NoopSessionStorage)
     }
 
     @Test
     fun `signIn populates session`() {
-        SessionManager.signIn(token = "uuid-123", username = "alice")
+        SessionManager.signIn(token = "uuid-123", username = "alice", userId = 1)
 
-        assertEquals(Session("uuid-123", "alice"), SessionManager.session.value)
+        assertEquals(Session("uuid-123", "alice", 1), SessionManager.session.value)
     }
 
     @Test
     fun `signOut clears session`() {
-        SessionManager.signIn(token = "uuid-123", username = "alice")
+        SessionManager.signIn(token = "uuid-123", username = "alice", userId = 1)
 
         SessionManager.signOut()
 
@@ -47,10 +44,10 @@ class SessionManagerTest {
         val fake = FakeSessionStorage()
         SessionManager.attach(fake)
 
-        SessionManager.signIn(token = "uuid-123", username = "alice")
+        SessionManager.signIn(token = "uuid-123", username = "alice", userId = 1)
 
         val written = withTimeout(2_000) { fake.awaitWrite() }
-        assertEquals(Session("uuid-123", "alice"), written)
+        assertEquals(Session("uuid-123", "alice", 1), written)
     }
 
     @Test
@@ -65,23 +62,23 @@ class SessionManagerTest {
 
     @Test
     fun `hydrate emits persisted session into the flow`() = runBlocking {
-        val fake = FakeSessionStorage(initial = Session("uuid-xyz", "bob"))
+        val fake = FakeSessionStorage(initial = Session("uuid-xyz", "bob", 2))
         SessionManager.attach(fake)
 
         SessionManager.hydrate()
 
-        assertEquals(Session("uuid-xyz", "bob"), SessionManager.session.value)
+        assertEquals(Session("uuid-xyz", "bob", 2), SessionManager.session.value)
     }
 
     @Test
     fun `hydrate is a no-op when already signed in`() = runBlocking {
-        val fake = FakeSessionStorage(initial = Session("from-disk", "from-disk"))
+        val fake = FakeSessionStorage(initial = Session("from-disk", "from-disk", 99))
         SessionManager.attach(fake)
-        SessionManager.signIn(token = "in-memory", username = "alice")
+        SessionManager.signIn(token = "in-memory", username = "alice", userId = 1)
 
         SessionManager.hydrate()
 
-        assertEquals(Session("in-memory", "alice"), SessionManager.session.value)
+        assertEquals(Session("in-memory", "alice", 1), SessionManager.session.value)
     }
 
     @Test

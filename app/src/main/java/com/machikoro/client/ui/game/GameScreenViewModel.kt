@@ -3,7 +3,9 @@ package com.machikoro.client.ui.game
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +14,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class GameScreenViewModel(
-    private val webSocketClient: WebSocketClient
+    private val webSocketClient: WebSocketClient,
+    private val sessionStateHolder: SessionStateHolder,
 ) : ViewModel() {
     val state: StateFlow<GameScreenState>
         get() = mutableState.asStateFlow()
@@ -22,36 +25,53 @@ class GameScreenViewModel(
     init {
         viewModelScope.launch {
             webSocketClient.connectionStatus.collect { connectionStatus ->
-                mutableState.update { current ->
-                    current.copy(connectionStatus = connectionStatus)
-                }
+                mutableState.update { it.copy(connectionStatus = connectionStatus) }
             }
         }
         viewModelScope.launch {
             webSocketClient.gamePhase.collect { gamePhase ->
-                mutableState.update { current ->
-                    current.copy(gamePhase = gamePhase)
-                }
+                mutableState.update { it.copy(gamePhase = gamePhase) }
             }
         }
         viewModelScope.launch {
             webSocketClient.players.collect { players ->
-                mutableState.update { current ->
-                    current.copy(players = players)
-                }
+                mutableState.update { it.copy(players = players) }
+            }
+        }
+        viewModelScope.launch {
+            webSocketClient.diceResult.collect { diceResult ->
+                mutableState.update { it.copy(diceResult = diceResult, isRolling = false) }
+            }
+        }
+        viewModelScope.launch {
+            webSocketClient.activePlayerId.collect { activePlayerId ->
+                mutableState.update { it.copy(activePlayerId = activePlayerId) }
+            }
+        }
+        viewModelScope.launch {
+            sessionStateHolder.session.collect { session ->
+                mutableState.update { it.copy(myUserId = session?.userId) }
             }
         }
     }
 
+    fun rollDice(diceCount: Int = 1) {
+        if (mutableState.value.gamePhase != GamePhase.ROLL_DICE) return
+        if (!mutableState.value.isActivePlayer) return
+        mutableState.update { it.copy(isRolling = true) }
+        webSocketClient.rollDice(diceCount)
+    }
+
     class Factory(
-        private val webSocketClient: WebSocketClient
+        private val webSocketClient: WebSocketClient,
+        private val sessionStateHolder: SessionStateHolder,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(GameScreenViewModel::class.java)) {
                 "Unknown ViewModel class: ${modelClass.name}"
             }
-            return GameScreenViewModel(webSocketClient) as T
+            return GameScreenViewModel(webSocketClient, sessionStateHolder) as T
         }
     }
 }

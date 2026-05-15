@@ -45,7 +45,11 @@ class LoginDialogViewModel(
             mutableState.update { previous ->
                 result.fold(
                     onSuccess = { response ->
-                        sessionStateHolder.signIn(response.sessionToken, response.username)
+                        sessionStateHolder.signIn(
+                            response.sessionToken,
+                            response.username,
+                            response.userId,
+                        )
                         previous.copy(
                             submitting = false,
                             loggedInAs = response.username,

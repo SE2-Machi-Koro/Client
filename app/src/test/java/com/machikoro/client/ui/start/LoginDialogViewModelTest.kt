@@ -35,7 +35,7 @@ class LoginDialogViewModelTest {
     fun submitSuccessSetsLoggedInAsAndPopulatesSessionStateHolder() = runTest {
         val sessionHolder = FakeSessionStateHolder()
         val api = FakeAuthApi(loginHandler = { request ->
-            LoginResponse(sessionToken = "uuid-123", username = request.username)
+            LoginResponse(sessionToken = "uuid-123", username = request.username, userId = 42)
         })
         val viewModel = LoginDialogViewModel(api, sessionHolder)
         viewModel.usernameChanged("alice")
@@ -48,7 +48,7 @@ class LoginDialogViewModelTest {
         assertEquals("alice", state.loggedInAs)
         assertFalse(state.submitting)
         assertNull(state.errorMessage)
-        assertEquals(Session("uuid-123", "alice"), sessionHolder.session.value)
+        assertEquals(Session("uuid-123", "alice", 42), sessionHolder.session.value)
     }
 
     @Test
@@ -74,9 +74,7 @@ class LoginDialogViewModelTest {
     @Test
     fun submitIoExceptionSurfacesNetworkErrorMessage() = runTest {
         val sessionHolder = FakeSessionStateHolder()
-        val api = FakeAuthApi(loginHandler = {
-            throw IOException("connect timed out")
-        })
+        val api = FakeAuthApi(loginHandler = { throw IOException("connect timed out") })
         val viewModel = LoginDialogViewModel(api, sessionHolder)
         viewModel.usernameChanged("alice")
         viewModel.passwordChanged("hunter2")
@@ -92,10 +90,8 @@ class LoginDialogViewModelTest {
     @Test
     fun usernameAndPasswordChangedUpdateState() = runTest {
         val viewModel = LoginDialogViewModel(FakeAuthApi(), FakeSessionStateHolder())
-
         viewModel.usernameChanged("alice")
         viewModel.passwordChanged("hunter2")
-
         assertEquals("alice", viewModel.state.value.username)
         assertEquals("hunter2", viewModel.state.value.password)
     }
@@ -105,9 +101,7 @@ class LoginDialogViewModelTest {
         val viewModel = LoginDialogViewModel(FakeAuthApi(), FakeSessionStateHolder())
         viewModel.usernameChanged("alice")
         viewModel.passwordChanged("hunter2")
-
         viewModel.reset()
-
         val state = viewModel.state.value
         assertEquals("", state.username)
         assertEquals("", state.password)
@@ -118,12 +112,9 @@ class LoginDialogViewModelTest {
     @Test
     fun canSubmitGateBlocksWhenBlankOrAlreadyLoggedInOrSubmitting() = runTest {
         val viewModel = LoginDialogViewModel(FakeAuthApi(), FakeSessionStateHolder())
-
         assertFalse(viewModel.state.value.canSubmit)
-
         viewModel.usernameChanged("alice")
         assertFalse(viewModel.state.value.canSubmit)
-
         viewModel.passwordChanged("hunter2")
         assertTrue(viewModel.state.value.canSubmit)
     }
@@ -131,25 +122,20 @@ class LoginDialogViewModelTest {
     private class FakeSessionStateHolder : SessionStateHolder {
         private val mutableSession = MutableStateFlow<Session?>(null)
         override val session: StateFlow<Session?> = mutableSession.asStateFlow()
-        override fun signIn(token: String, username: String) {
-            mutableSession.value = Session(token, username)
+        override fun signIn(token: String, username: String, userId: Int) { // NEU
+            mutableSession.value = Session(token, username, userId)
         }
-        override fun signOut() {
-            mutableSession.value = null
-        }
+        override fun signOut() { mutableSession.value = null }
     }
 
     private class FakeAuthApi(
         private val loginHandler: (LoginRequest) -> LoginResponse = { _ ->
-            LoginResponse("stub-token", "stub")
+            LoginResponse("stub-token", "stub", 0)
         },
     ) : AuthApi {
         override suspend fun register(body: RegisterRequest): RegisterResponse =
             RegisterResponse(id = 0, username = body.username)
-
         override suspend fun login(body: LoginRequest): LoginResponse = loginHandler(body)
-
-        override suspend fun logout(body: LogoutRequest): Response<Unit> =
-            Response.success(Unit)
+        override suspend fun logout(body: LogoutRequest): Response<Unit> = Response.success(Unit)
     }
 }

@@ -45,7 +45,7 @@ class DataStoreSessionStorageTest {
 
     @Test
     fun `write then read returns the same session`() = runBlocking {
-        val session = Session(sessionToken = "uuid-123", username = "alice")
+        val session = Session(sessionToken = "uuid-123", username = "alice", userId = 42)
 
         storage.write(session)
 
@@ -54,7 +54,7 @@ class DataStoreSessionStorageTest {
 
     @Test
     fun `clear removes the persisted session`() = runBlocking {
-        storage.write(Session(sessionToken = "uuid-123", username = "alice"))
+        storage.write(Session(sessionToken = "uuid-123", username = "alice", userId = 42))
 
         storage.clear()
 
@@ -63,9 +63,9 @@ class DataStoreSessionStorageTest {
 
     @Test
     fun `write overwrites previous session`() = runBlocking {
-        storage.write(Session(sessionToken = "old", username = "alice"))
-        storage.write(Session(sessionToken = "new", username = "bob"))
+        storage.write(Session(sessionToken = "old", username = "alice", userId = 1))
+        storage.write(Session(sessionToken = "new", username = "bob", userId = 2))
 
-        assertEquals(Session("new", "bob"), storage.read())
+        assertEquals(Session("new", "bob", 2), storage.read())
     }
 }
