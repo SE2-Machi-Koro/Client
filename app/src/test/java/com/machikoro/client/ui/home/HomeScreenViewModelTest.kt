@@ -105,6 +105,20 @@ class HomeScreenViewModelTest {
     }
 
     @Test
+    fun joinLobbySendsJoinRequestWhenWebSocketIsConnected() {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+        viewModel.onJoinLobbyCodeChange("abc123")
+
+        viewModel.joinLobby()
+
+        assertTrue(fakeClient.sendJoinLobbyCalled)
+        assertEquals("ABC123", fakeClient.joinedLobbyCode)
+    }
+
+    @Test
     fun startGameDelegatesToWebSocketClient() {
         val fakeClient = FakeWebSocketClient()
         val viewModel = HomeViewModel(fakeClient)
@@ -167,6 +181,13 @@ class HomeScreenViewModelTest {
         var disconnectCalled = false
         var sendGameStartCalled = false
         var sendCreateLobbyCalled = false
+        var sendJoinLobbyCalled = false
+        var joinedLobbyCode: String? = null
+
+        override fun sendJoinLobby(lobbyCode: String) {
+            sendJoinLobbyCalled = true
+            joinedLobbyCode = lobbyCode
+        }
 
         override fun connect() { connectCalled = true }
         override fun disconnect() { disconnectCalled = true }
