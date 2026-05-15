@@ -80,7 +80,7 @@ fun HomeScreen(
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .offset(x = -15.dp, y = 25.dp)
+               .offset(x = 0.dp, y = 53.dp)
                 .blur(3.5.dp)
         )
 
@@ -91,14 +91,15 @@ fun HomeScreen(
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .offset(x = 15.dp, y = 25.dp)
+                .offset(x = 15.dp, y = 53.dp)
                 .blur(3.5.dp)
         )
 
         // White transparent overlay for better readability.
         Box(
             modifier = Modifier
-                .matchParentSize()
+                .fillMaxSize()
+                .offset(x = 0.dp, y = 20.dp)
                 .background(Color.White.copy(alpha = 0.7f))
         )
 
@@ -110,7 +111,7 @@ fun HomeScreen(
             color = TextBlueDark,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 70.dp),
+                .padding(top = 50.dp),
         )
 
         // === PROFILE SECTION ===
@@ -137,9 +138,10 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
-                .padding(top = 50.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+                .padding(top = 50.dp)
+                .height(180.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top        ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(60.dp),
                 verticalAlignment = Alignment.Top,
@@ -207,7 +209,7 @@ fun HomeScreen(
             onSettingsClick = onSettingsClick,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 0.dp)
+                .offset(x = 0.dp, y = 20.dp)
         )
     }
 }
@@ -566,7 +568,7 @@ private fun BottomMenuItem(
     }
 }
 
-@Preview(showBackground = true, widthDp = 917, heightDp = 412)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun HomeScreenPreview() {
     ClientTheme {
@@ -577,7 +579,7 @@ private fun HomeScreenPreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 917, heightDp = 412)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun HomeScreenWithLobbyCodePreview() {
     ClientTheme {
@@ -589,7 +591,7 @@ private fun HomeScreenWithLobbyCodePreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 917, heightDp = 412)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun HomeScreenWithJoinLobbyCodePreview() {
     ClientTheme {
