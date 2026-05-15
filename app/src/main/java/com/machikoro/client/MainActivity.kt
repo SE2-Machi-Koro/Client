@@ -75,6 +75,7 @@ class MainActivity : ComponentActivity() {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
+            val activeGameId by homeViewModel.activeGameId.collectAsState()
             val joinLobbyCode by homeViewModel.joinLobbyCode.collectAsState()
             val lobbyScreenState by lobbyScreenViewModel.state.collectAsState()
             val registerDialogState by registerDialogViewModel.state.collectAsState()
@@ -99,6 +100,13 @@ class MainActivity : ComponentActivity() {
                     snackbarHostState.showSnackbar(
                         "Sitzung abgelaufen, bitte erneut anmelden"
                     )
+                }
+            }
+
+            LaunchedEffect(activeGameId) {
+                if (activeGameId != null) {
+                    showJoinLobbyInput = false
+                    showLobbyScreen = true
                 }
             }
 
