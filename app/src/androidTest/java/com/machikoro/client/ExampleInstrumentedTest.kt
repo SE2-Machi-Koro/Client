@@ -42,7 +42,7 @@ class ExampleInstrumentedTest {
         }
 
         composeTestRule.onNodeWithText("MACHI KORO").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Connection status: connected").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Lobby/start: placeholder").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Login").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Register").assertIsDisplayed()
     }
 }

@@ -31,14 +31,12 @@ class LogoutViewModelTest {
     @Test
     fun submitCallsApiAndClearsSession() = runTest {
         val sessionHolder = FakeSessionStateHolder().apply {
-            signIn(token = "uuid-123", username = "alice")
+            signIn(token = "uuid-123", username = "alice", userId = 1)
         }
         val api = FakeAuthApi()
         val viewModel = LogoutViewModel(api, sessionHolder)
-
         viewModel.submit()
         advanceUntilIdle()
-
         assertEquals(listOf(LogoutRequest("uuid-123")), api.logoutCalls)
         assertNull(sessionHolder.session.value)
         assertFalse(viewModel.state.value.submitting)
@@ -49,10 +47,8 @@ class LogoutViewModelTest {
         val sessionHolder = FakeSessionStateHolder()
         val api = FakeAuthApi()
         val viewModel = LogoutViewModel(api, sessionHolder)
-
         viewModel.submit()
         advanceUntilIdle()
-
         assertTrue(api.logoutCalls.isEmpty())
         assertFalse(viewModel.state.value.submitting)
     }
@@ -60,16 +56,12 @@ class LogoutViewModelTest {
     @Test
     fun submitClearsLocalSessionEvenWhenNetworkCallFails() = runTest {
         val sessionHolder = FakeSessionStateHolder().apply {
-            signIn(token = "uuid-123", username = "alice")
+            signIn(token = "uuid-123", username = "alice", userId = 1)
         }
         val api = FakeAuthApi(logoutHandler = { throw IOException("connection refused") })
         val viewModel = LogoutViewModel(api, sessionHolder)
-
         viewModel.submit()
         advanceUntilIdle()
-
-        // The API attempt is recorded — proves we tried — but the failure must
-        // not strand the user. Local session is cleared regardless.
         assertEquals(listOf(LogoutRequest("uuid-123")), api.logoutCalls)
         assertNull(sessionHolder.session.value)
         assertFalse(viewModel.state.value.submitting)
@@ -78,41 +70,33 @@ class LogoutViewModelTest {
     @Test
     fun secondSubmitWhileInFlightIsIgnored() = runTest {
         val sessionHolder = FakeSessionStateHolder().apply {
-            signIn(token = "uuid-123", username = "alice")
+            signIn(token = "uuid-123", username = "alice", userId = 1)
         }
         val api = FakeAuthApi()
         val viewModel = LogoutViewModel(api, sessionHolder)
-
         viewModel.submit()
-        // Don't advance — the first submit hasn't completed.
         viewModel.submit()
         advanceUntilIdle()
-
         assertEquals(1, api.logoutCalls.size)
     }
 
     private class FakeSessionStateHolder : SessionStateHolder {
         private val mutableSession = MutableStateFlow<Session?>(null)
         override val session: StateFlow<Session?> = mutableSession.asStateFlow()
-        override fun signIn(token: String, username: String) {
-            mutableSession.value = Session(token, username)
+        override fun signIn(token: String, username: String, userId: Int) { // NEU
+            mutableSession.value = Session(token, username, userId)
         }
-        override fun signOut() {
-            mutableSession.value = null
-        }
+        override fun signOut() { mutableSession.value = null }
     }
 
     private class FakeAuthApi(
         private val logoutHandler: (LogoutRequest) -> Response<Unit> = { Response.success(Unit) },
     ) : AuthApi {
         val logoutCalls = mutableListOf<LogoutRequest>()
-
         override suspend fun register(body: RegisterRequest): RegisterResponse =
             RegisterResponse(id = 0, username = body.username)
-
         override suspend fun login(body: LoginRequest): LoginResponse =
-            LoginResponse(sessionToken = "stub-token", username = body.username)
-
+            LoginResponse(sessionToken = "stub-token", username = body.username, userId = 0) // NEU
         override suspend fun logout(body: LogoutRequest): Response<Unit> {
             logoutCalls.add(body)
             return logoutHandler(body)

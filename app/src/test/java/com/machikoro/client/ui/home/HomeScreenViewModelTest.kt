@@ -4,15 +4,33 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.network.websocket.WebSocketClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class HomeScreenViewModelTest {
+
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
 
     @Test
     fun exposesLobbyCodeFromWebSocketClient() {
@@ -25,14 +43,70 @@ class HomeScreenViewModelTest {
     }
 
     @Test
-    fun createLobbyConnectsAndSendsCreateLobbyRequest() {
+    fun exposesActiveGameIdAndHostStateFromWebSocketClient() {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableActiveGameId.value = 42
+        fakeClient.mutableIsLobbyHost.value = true
+
+        assertEquals(42, viewModel.activeGameId.value)
+        assertTrue(viewModel.isLobbyHost.value)
+    }
+
+    @Test
+    fun createLobbyConnectsAndSendsCreateLobbyRequestAfterWebSocketConnects() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = HomeViewModel(fakeClient)
 
         viewModel.createLobby()
 
         assertTrue(fakeClient.connectCalled)
+        assertFalse(fakeClient.sendCreateLobbyCalled)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+        advanceUntilIdle()
+
         assertTrue(fakeClient.sendCreateLobbyCalled)
+    }
+
+    @Test
+    fun createLobbyDoesNotSendCreateLobbyRequestWhenWebSocketFails() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        viewModel.createLobby()
+
+        assertTrue(fakeClient.connectCalled)
+        assertFalse(fakeClient.sendCreateLobbyCalled)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.ERROR
+        advanceUntilIdle()
+
+        assertFalse(fakeClient.sendCreateLobbyCalled)
+    }
+
+    @Test
+    fun createLobbySendsCreateLobbyRequestWhenWebSocketIsConnected() {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+
+        viewModel.createLobby()
+
+        assertFalse(fakeClient.connectCalled)
+        assertTrue(fakeClient.sendCreateLobbyCalled)
+    }
+
+    @Test
+    fun startGameDelegatesToWebSocketClient() {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        viewModel.startGame()
+
+        assertTrue(fakeClient.sendGameStartCalled)
     }
 
     @Test
@@ -50,40 +124,53 @@ class HomeScreenViewModelTest {
     }
 
     private class FakeWebSocketClient : WebSocketClient {
-        override val connectionStatus: StateFlow<ConnectionStatus> =
+        val mutableConnectionStatus =
             MutableStateFlow(ConnectionStatus.IDLE)
-
+        override val connectionStatus: StateFlow<ConnectionStatus> =
+            mutableConnectionStatus
         override val gamePhase: StateFlow<GamePhase> =
             MutableStateFlow(GamePhase.NONE)
-
+        override val diceResult: StateFlow<List<Int>?> =
+            MutableStateFlow(null)
+        override val activePlayerId: StateFlow<Int?> = // NEU
+            MutableStateFlow(null)
         override val players: StateFlow<List<PlayerCoinState>> =
             MutableStateFlow(emptyList())
-
         val mutableLobbyCode = MutableStateFlow<String?>(null)
         override val lobbyCode: StateFlow<String?> = mutableLobbyCode
+        val mutableActiveGameId = MutableStateFlow<Int?>(null)
+        override val activeGameId: StateFlow<Int?> = mutableActiveGameId
+        val mutableIsLobbyHost = MutableStateFlow(false)
+        override val isLobbyHost: StateFlow<Boolean> = mutableIsLobbyHost
+
+        override val authRejections: SharedFlow<Unit> = MutableSharedFlow(
+            extraBufferCapacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
 
         var connectCalled = false
         var disconnectCalled = false
         var sendGameStartCalled = false
         var sendCreateLobbyCalled = false
 
-        override fun connect() {
-            connectCalled = true
-        }
+        override fun connect() { connectCalled = true }
+        override fun disconnect() { disconnectCalled = true }
+        override fun rollDice(diceCount: Int) = Unit
+        override fun sendGameStart() { sendGameStartCalled = true }
+        override fun sendCreateLobby() { sendCreateLobbyCalled = true }
+        override fun clearLobbyCode() { mutableLobbyCode.value = null }
+    }
+}
 
-        override fun disconnect() {
-            disconnectCalled = true
-        }
+class MainDispatcherRule(
+    private val testDispatcher: TestDispatcher = StandardTestDispatcher(),
+) : TestWatcher() {
 
-        override fun sendGameStart() {
-            sendGameStartCalled = true
-        }
+    override fun starting(description: Description) {
+        Dispatchers.setMain(testDispatcher)
+    }
 
-        override fun sendCreateLobby() {
-            sendCreateLobbyCalled = true
-        }
-        override fun clearLobbyCode() {
-            mutableLobbyCode.value = null
-        }
+    override fun finished(description: Description) {
+        Dispatchers.resetMain()
     }
 }

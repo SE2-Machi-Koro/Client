@@ -8,6 +8,8 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,7 +48,7 @@ class MainActivity : ComponentActivity() {
         StartScreenViewModel.Factory(webSocketClient, SessionManager)
     }
     private val gameScreenViewModel by viewModels<GameScreenViewModel> {
-        GameScreenViewModel.Factory(webSocketClient)
+        GameScreenViewModel.Factory(webSocketClient, SessionManager) // NEU
     }
     private val homeViewModel by viewModels<HomeViewModel> {
         HomeViewModel.Factory(webSocketClient)
@@ -73,16 +75,15 @@ class MainActivity : ComponentActivity() {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
+            val isLobbyHost by homeViewModel.isLobbyHost.collectAsState()
             val lobbyScreenState by lobbyScreenViewModel.state.collectAsState()
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
-            var showLobbyScreen by remember { mutableStateOf(false) }             // Stores whether the user has confirmed the created lobby and should see the lobby screen.
+            var showLobbyScreen by remember { mutableStateOf(false) }
 
-            // Drive WebSocket lifecycle from session changes during the foreground.
-            // onStart/onStop handle the activity-lifecycle case; this handles the
-            // user-logs-in-or-out-while-app-is-open case. connect() and disconnect()
-            // are both idempotent so it's safe to call them on every emission.
+            val snackbarHostState = remember { SnackbarHostState() }
+
             LaunchedEffect(Unit) {
                 SessionManager.session.collect { session ->
                     if (session != null) {
@@ -93,8 +94,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            LaunchedEffect(Unit) {
+                webSocketClient.authRejections.collect {
+                    snackbarHostState.showSnackbar(
+                        "Sitzung abgelaufen, bitte erneut anmelden"
+                    )
+                }
+            }
+
             ClientTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                ) { innerPadding ->
                     AppRoot(
                         gameScreenState = gameScreenState,
                         startScreenState = startScreenState,
@@ -112,16 +124,17 @@ class MainActivity : ComponentActivity() {
                         onLoginDialogReset = loginDialogViewModel::reset,
                         onLogoutSubmit = logoutViewModel::submit,
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
-                        onStartGame = lobbyScreenViewModel::onStartGame,
+                        onStartGame = homeViewModel::startGame,
                         onLeaveLobby = {
-                            lobbyScreenViewModel.onLeaveLobby()
+                            showLobbyScreen = false
                             homeViewModel.clearLobbyCode()
-                        },                        modifier = Modifier.padding(innerPadding),
+                        },
+                        onRollDice = gameScreenViewModel::rollDice,
+                        modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
                         loggedInAs = startScreenState.loggedInAs,
                         showLobbyScreen = showLobbyScreen,
                         onGoToLobbyClick = {
-                            // Navigates to the lobby screen after the user confirms the created lobby code.
                             showLobbyScreen = true
                         },
                         onCreateLobbyClick = homeViewModel::createLobby,

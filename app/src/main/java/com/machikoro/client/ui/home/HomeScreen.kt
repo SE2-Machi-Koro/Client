@@ -1,5 +1,9 @@
 package com.machikoro.client.ui.home
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,16 +50,14 @@ import com.machikoro.client.ui.theme.White
 fun HomeScreen(
     // Latest lobby code received from the server after creating a lobby.
     lobbyCode: String? = null,
-
-    // Callbacks passed from outside, e.g. from Navigation or ViewModel.
-    // This keeps the UI separated from the app logic.
     onJoinLobbyClick: () -> Unit = {},
     onCreateLobbyClick: () -> Unit = {},
     onPublicLobbiesClick: () -> Unit = {},
     onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    onGoToLobbyClick: () -> Unit,
+    onGoToLobbyClick: () -> Unit = {},
+    onLogoutClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Root container. Box allows placing elements freely with align().
@@ -112,50 +115,68 @@ fun HomeScreen(
                 .padding(top = 25.dp, end = 30.dp)
         )
 
+        // Logout affordance in the top-left corner. Issue #106 places the
+        // logout action on the authenticated screen; the start screen never
+        // shows it because the routing in AppRoot collapses HomeScreen back to
+        // StartScreen the moment the session clears.
+        LogoutButton(
+            onClick = onLogoutClick,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = 25.dp, start = 30.dp)
+        )
+
         // === MAIN ACTION BUTTONS ===
         // Three main lobby actions in the center of the screen.
-        Row(
+        Column(
             modifier = Modifier
                 .align(Alignment.Center)
                 .padding(top = 50.dp),
-            horizontalArrangement = Arrangement.spacedBy(60.dp),
-            verticalAlignment = Alignment.Top
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            HomeCard(
-                iconRes = R.drawable.home_lobby_join_icon,
-                text = "Lobby beitreten",
-                isPrimary = false,
-                onClick = onJoinLobbyClick
-            )
-
-            // Create lobby card with generated code displayed directly below it.
-            Column(
-                modifier = Modifier.width(150.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(60.dp),
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier
             ) {
                 HomeCard(
-                    iconRes = R.drawable.home_lobby_create_icon,
-                    text = "Lobby erstellen",
-                    isPrimary = true,
-                    onClick = onCreateLobbyClick
+                    iconRes = R.drawable.home_lobby_join_icon,
+                    text = "Join Lobby",
+                    isPrimary = false,
+                    onClick = onJoinLobbyClick
                 )
 
-                lobbyCode?.let { code ->
-                    Spacer(modifier = Modifier.height(8.dp))
+                // Create lobby card with generated code displayed directly below it.
+                Column(
+                    modifier = Modifier.width(150.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    HomeCard(
+                        iconRes = R.drawable.home_lobby_create_icon,
+                        text = "Create Lobby",
+                        isPrimary = true,
+                        onClick = onCreateLobbyClick
+                    )
 
-                    LobbyCodeRow(
-                        code = lobbyCode,
-                        onGoToLobbyClick = onGoToLobbyClick
-                    )                }
+                    lobbyCode?.let { code ->
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LobbyCodeRow(
+                            code = code,
+                            onGoToLobbyClick = onGoToLobbyClick
+                        )
+                    }
+                }
+
+                HomeCard(
+                    iconRes = R.drawable.home_lobby_public_icon,
+                    text = "Public Lobbys",
+                    isPrimary = false,
+                    onClick = onPublicLobbiesClick
+                )
             }
-
-            HomeCard(
-                iconRes = R.drawable.home_lobby_public_icon,
-                text = "Öffentliche Lobbys",
-                isPrimary = false,
-                onClick = onPublicLobbiesClick
-            )
         }
+
         // === BOTTOM MENU ===
         // Clickable menu items for rules, ranking and settings.
         BottomMenuBar(
@@ -165,6 +186,31 @@ fun HomeScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 0.dp)
+        )
+    }
+}
+
+@Composable
+private fun LogoutButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(40.dp),
+        shape = RoundedCornerShape(10.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = ButtonBlueDark,
+            contentColor = TextWhite,
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) {
+        Text(
+            text = "Logout",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = TextWhite,
         )
     }
 }
@@ -224,6 +270,18 @@ private fun LobbyCodeRow(
     code: String,
     onGoToLobbyClick: () -> Unit
 ) {
+    val context = LocalContext.current
+
+    fun copyLobbyCodeToClipboard() {
+        val clipboard =
+            context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+
+        val clip = ClipData.newPlainText("Lobby Code", code)
+        clipboard.setPrimaryClip(clip)
+
+        Toast.makeText(context, "Lobby code copied", Toast.LENGTH_SHORT).show()
+    }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -254,7 +312,11 @@ private fun LobbyCodeRow(
                 Image(
                     painter = painterResource(id = R.drawable.home_copy_icon),
                     contentDescription = "Copy lobby code",
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable {
+                            copyLobbyCodeToClipboard()
+                        }
                 )
             }
         }
@@ -351,21 +413,21 @@ private fun BottomMenuBar(
             // Opens the rules screen / PDF viewer.
             BottomMenuItem(
                 iconRes = R.drawable.home_rules_icon,
-                text = "Regeln",
+                text = "Rules",
                 onClick = onRulesClick
             )
 
             // Opens the ranking / leaderboard screen.
             BottomMenuItem(
                 iconRes = R.drawable.home_rang_icon,
-                text = "Rangliste",
+                text = "Leaderboard",
                 onClick = onRankingClick
             )
 
             // Opens the settings screen.
             BottomMenuItem(
                 iconRes = R.drawable.home_settings_icon,
-                text = "Einstellungen",
+                text = "Settings",
                 onClick = onSettingsClick
             )
         }
@@ -409,6 +471,7 @@ private fun BottomMenuItem(
 private fun HomeScreenPreview() {
     ClientTheme {
         HomeScreen(
+            onLogoutClick = {},
             onGoToLobbyClick = {},
         )
     }
@@ -419,6 +482,7 @@ private fun HomeScreenPreview() {
 private fun HomeScreenWithLobbyCodePreview() {
     ClientTheme {
         HomeScreen(
+            onLogoutClick = {},
             onGoToLobbyClick = {},
             lobbyCode = "AJ25Z39"
         )
