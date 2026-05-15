@@ -1,8 +1,11 @@
 package com.machikoro.client.ui.home
 
+import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
+import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -142,6 +145,14 @@ class HomeScreenViewModelTest {
         override val activeGameId: StateFlow<Int?> = mutableActiveGameId
         val mutableIsLobbyHost = MutableStateFlow(false)
         override val isLobbyHost: StateFlow<Boolean> = mutableIsLobbyHost
+        override val gameStatus: StateFlow<GameStatus?> =
+            MutableStateFlow(null)
+        override val roundNumber: StateFlow<Int?> =
+            MutableStateFlow(null)
+        override val playerLandmarks: StateFlow<Map<Int, List<PlayerLandmarkState>>> =
+            MutableStateFlow(emptyMap())
+        override val marketplace: StateFlow<Map<CardType, Int>> =
+            MutableStateFlow(emptyMap())
 
         override val authRejections: SharedFlow<Unit> = MutableSharedFlow(
             extraBufferCapacity = 1,

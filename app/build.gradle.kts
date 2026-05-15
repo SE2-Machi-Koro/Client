@@ -108,7 +108,16 @@ tasks.register<JacocoReport>("jacocoTestReport") {
         html.required.set(true)
     }
 
-    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+    // AGP's built-in Kotlin compiler emits debug classes under
+    // intermediates/built_in_kotlinc/...; older toolchains used
+    // tmp/kotlin-classes/debug. Include both so JaCoCo finds the classes
+    // regardless of toolchain — otherwise the coverage report is empty and
+    // SonarCloud sees 0% coverage.
+    val debugTree = fileTree(project.layout.buildDirectory.get()) {
+        include(
+            "tmp/kotlin-classes/debug/**",
+            "intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes/**",
+        )
         exclude(coverageExclusions)
     }
     val mainSrc = "${project.projectDir}/src/main/java"
@@ -127,7 +136,16 @@ tasks.register<JacocoReport>("jacocoTestReport") {
 tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
     dependsOn("testDebugUnitTest")
 
-    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+    // AGP's built-in Kotlin compiler emits debug classes under
+    // intermediates/built_in_kotlinc/...; older toolchains used
+    // tmp/kotlin-classes/debug. Include both so JaCoCo finds the classes
+    // regardless of toolchain — otherwise the coverage report is empty and
+    // SonarCloud sees 0% coverage.
+    val debugTree = fileTree(project.layout.buildDirectory.get()) {
+        include(
+            "tmp/kotlin-classes/debug/**",
+            "intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes/**",
+        )
         exclude(coverageExclusions)
     }
     val mainSrc = "${project.projectDir}/src/main/java"
