@@ -60,6 +60,7 @@ fun AppRoot(
     showLobbyScreen: Boolean = false,
     onGoToLobbyClick: () -> Unit = {},
 ) {
+
     val navController = rememberNavController()
 
     // Keep the current state-based screen priority while hosting screens in one NavHost.
