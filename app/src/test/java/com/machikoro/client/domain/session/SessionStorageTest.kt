@@ -15,7 +15,7 @@ class SessionStorageTest {
     fun testDummyImplementation() = runBlocking {
         val storage = DummySessionStorage()
         assertNull(storage.read())
-        storage.write(Session("token", "user"))
+        storage.write(Session("token", "user", 1))
         storage.clear()
     }
 }
