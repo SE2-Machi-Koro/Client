@@ -8,7 +8,7 @@ import org.junit.Test
 
 class DummySessionStateHolder : SessionStateHolder {
     override val session: StateFlow<Session?> = MutableStateFlow(null)
-    override fun signIn(token: String, username: String) {}
+    override fun signIn(token: String, username: String, userId: Int) {}
     override fun signOut() {}
 }
 
@@ -17,7 +17,7 @@ class SessionStateHolderTest {
     fun testDummyImplementation() {
         val holder = DummySessionStateHolder()
         assertNull(holder.session.value)
-        holder.signIn("token", "user")
+        holder.signIn("token", "user", 123)
         holder.signOut()
     }
 }
