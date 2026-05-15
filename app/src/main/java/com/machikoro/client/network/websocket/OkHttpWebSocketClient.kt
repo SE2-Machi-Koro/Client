@@ -376,6 +376,7 @@ class OkHttpWebSocketClient(
                     return
                 }
                 handleLobbyCreated(json)
+                handleLobbyJoined(json)
                 handleGameStarted(json)
                 handleSync(json)
                 parseGameAction(json).let { (phase, activePlayerId) ->
@@ -417,6 +418,24 @@ class OkHttpWebSocketClient(
             mutableLobbyCode.value = code
         }
         if (gameId != null) {
+            mutableActiveGameId.value = gameId
+            subscribeToGameTopic(gameId)
+        }
+    }
+
+    /**
+     * Handles successful lobby join responses from the backend.
+     */
+    private fun handleLobbyJoined(json: JSONObject) {
+        if (json.optString("type") != LOBBY_JOINED_TYPE) return
+
+        val payload = json.optJSONObject("payload") ?: return
+        val gameId = json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId")
+
+        mutableIsLobbyHost.value = false
+
+        if (gameId != null) {
+            Log.d(TAG, "Joined lobby with gameId: $gameId")
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
         }
@@ -776,6 +795,7 @@ class OkHttpWebSocketClient(
         private const val AUTH_HEADER = "Authorization"
         private const val BEARER_PREFIX = "Bearer "
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
+        private const val LOBBY_JOINED_TYPE = "LOBBY_JOINED"
         private const val ROLL_DICE_TYPE = "ROLL_DICE"
         private const val SYNC_TYPE = "SYNC"
         // Frozen contract: matches GENERIC_AUTH_FAILURE on the server's
