@@ -21,7 +21,7 @@ class HomeScreenLogoutTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Abmelden").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Logout").assertIsDisplayed()
     }
 
     @Test
@@ -36,7 +36,7 @@ class HomeScreenLogoutTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Abmelden").performClick()
+        composeTestRule.onNodeWithText("Logout").performClick()
 
         assertEquals(1, clicks)
     }
