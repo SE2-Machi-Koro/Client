@@ -28,6 +28,9 @@ class FakeWebSocketClient : WebSocketClient {
     override val lobbyCode: StateFlow<String?>
         get() = mutableLobbyCode
 
+    override val lobbyJoinErrors: SharedFlow<String>
+        get() = mutableLobbyJoinErrors
+
     override val diceResult: StateFlow<List<Int>?>
         get() = mutableDiceResult
 
@@ -65,6 +68,10 @@ class FakeWebSocketClient : WebSocketClient {
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
+    private val mutableLobbyJoinErrors = MutableSharedFlow<String>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
     private val mutableActivePlayerId = MutableStateFlow<Int?>(null)
     private val mutableActiveGameId = MutableStateFlow<Int?>(null)

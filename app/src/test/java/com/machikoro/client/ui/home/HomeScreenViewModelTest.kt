@@ -179,6 +179,10 @@ class HomeScreenViewModelTest {
             extraBufferCapacity = 1,
             onBufferOverflow = BufferOverflow.DROP_OLDEST,
         )
+        override val lobbyJoinErrors: SharedFlow<String> = MutableSharedFlow(
+            extraBufferCapacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
 
         var connectCalled = false
         var disconnectCalled = false
