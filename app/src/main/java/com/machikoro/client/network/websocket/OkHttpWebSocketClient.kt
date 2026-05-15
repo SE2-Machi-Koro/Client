@@ -46,6 +46,9 @@ class OkHttpWebSocketClient(
     override val lobbyCode: StateFlow<String?>
         get() = mutableLobbyCode.asStateFlow()
 
+    override val lobbyJoinErrors: SharedFlow<String>
+        get() = mutableLobbyJoinErrors.asSharedFlow()
+
     override val diceResult: StateFlow<List<Int>?>
         get() = mutableDiceResult.asStateFlow()
 
@@ -83,6 +86,10 @@ class OkHttpWebSocketClient(
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
+    private val mutableLobbyJoinErrors = MutableSharedFlow<String>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
     private val mutableActivePlayerId = MutableStateFlow<Int?>(null)
     private val mutableActiveGameId = MutableStateFlow<Int?>(null)
@@ -377,6 +384,7 @@ class OkHttpWebSocketClient(
                 }
                 handleLobbyCreated(json)
                 handleLobbyJoined(json)
+                handleLobbyError(json)
                 handleGameStarted(json)
                 handleSync(json)
                 parseGameAction(json).let { (phase, activePlayerId) ->
@@ -400,6 +408,7 @@ class OkHttpWebSocketClient(
                         PurchaseEvent.Failure(frame.body.ifBlank { "Purchase failed" })
                     )
                 }
+                Log.e(TAG, "Join lobby error emitted")
             }
         }
     }
@@ -438,6 +447,18 @@ class OkHttpWebSocketClient(
             Log.d(TAG, "Joined lobby with gameId: $gameId")
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
+        }
+    }
+    private fun handleLobbyError(json: JSONObject) {
+        if (json.optString("type") != ERROR_TYPE) return
+
+        val payload = json.optJSONObject("payload")
+        val errorCode = payload?.optString("errorCode").orEmpty()
+        val message = json.optString("content").ifBlank { "Failed to join lobby" }
+
+        if (errorCode == "INVALID_LOBBY_CODE") {
+            Log.w(TAG, "Lobby join error received: $message")
+            mutableLobbyJoinErrors.tryEmit(message)
         }
     }
 
@@ -796,6 +817,7 @@ class OkHttpWebSocketClient(
         private const val BEARER_PREFIX = "Bearer "
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
         private const val LOBBY_JOINED_TYPE = "LOBBY_JOINED"
+        private const val ERROR_TYPE = "ERROR"
         private const val ROLL_DICE_TYPE = "ROLL_DICE"
         private const val SYNC_TYPE = "SYNC"
         // Frozen contract: matches GENERIC_AUTH_FAILURE on the server's

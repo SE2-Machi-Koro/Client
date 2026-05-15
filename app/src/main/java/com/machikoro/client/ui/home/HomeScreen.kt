@@ -6,6 +6,7 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,6 +64,7 @@ fun HomeScreen(
     onSettingsClick: () -> Unit = {},
     onGoToLobbyClick: () -> Unit = {},
     onJoinLobbySubmit: () -> Unit = {},
+    joinLobbyError: Boolean = false,
     onLogoutClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -165,7 +167,8 @@ fun HomeScreen(
                         JoinLobbyCodeRow(
                             code = joinLobbyCode,
                             onCodeChange = onJoinLobbyCodeChange,
-                            onJoinLobbySubmit = onJoinLobbySubmit
+                            onJoinLobbySubmit = onJoinLobbySubmit,
+                            isError = joinLobbyError
                         )
                     }
                 }
@@ -370,7 +373,9 @@ private fun LobbyCodeRow(
 private fun JoinLobbyCodeRow(
     code: String,
     onCodeChange: (String) -> Unit,
-    onJoinLobbySubmit: () -> Unit
+    onJoinLobbySubmit: () -> Unit,
+    isError: Boolean = false
+
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -382,6 +387,10 @@ private fun JoinLobbyCodeRow(
                 .height(34.dp),
             shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(containerColor = White),
+            border = BorderStroke(
+                width = if (isError) 2.dp else 0.dp,
+                color = if (isError) Color.Red else Color.Transparent
+            ),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Row(

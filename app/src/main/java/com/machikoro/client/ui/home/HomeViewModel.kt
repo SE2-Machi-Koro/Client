@@ -16,12 +16,11 @@ class HomeViewModel(
 ) : ViewModel() {
 
     private var createLobbyJob: Job? = null
-
     private var joinLobbyJob: Job? = null
-
     private val mutableJoinLobbyCode = MutableStateFlow("")
     val joinLobbyCode: StateFlow<String> = mutableJoinLobbyCode
-
+    private val mutableJoinLobbyError = MutableStateFlow(false)
+    val joinLobbyError: StateFlow<Boolean> = mutableJoinLobbyError
     val lobbyCode = webSocketClient.lobbyCode
     val activeGameId = webSocketClient.activeGameId
     val isLobbyHost = webSocketClient.isLobbyHost
@@ -50,9 +49,9 @@ class HomeViewModel(
     }
 
     fun onJoinLobbyCodeChange(code: String) {
+        mutableJoinLobbyError.value = false
         mutableJoinLobbyCode.value = code.trim().uppercase()
     }
-
     /**
      * Sends the entered lobby code once the WebSocket connection is ready.
      * If the socket is not connected yet, the first click starts the connection
@@ -82,6 +81,10 @@ class HomeViewModel(
                 webSocketClient.sendJoinLobby(code)
             }
         }
+    }
+
+    fun setJoinLobbyError() {
+        mutableJoinLobbyError.value = true
     }
 
     fun startGame() {
