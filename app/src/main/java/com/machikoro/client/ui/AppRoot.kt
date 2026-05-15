@@ -80,7 +80,7 @@ fun AppRoot(
         HomeScreen(
             lobbyCode = lobbyCode,
             joinLobbyCode = joinLobbyCode,
-            showJoinLobbyInput = showJoinLobbyInput,
+            showJoinLobbyInput = showJoinLobbyInput && lobbyCode == null,
             onJoinLobbyClick = onJoinLobbyClick,
             onJoinLobbyCodeChange = onJoinLobbyCodeChange,
             onJoinLobbySubmit = onJoinLobbySubmit,

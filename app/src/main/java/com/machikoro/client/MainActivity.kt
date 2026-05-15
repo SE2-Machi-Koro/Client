@@ -139,10 +139,14 @@ class MainActivity : ComponentActivity() {
                         onGoToLobbyClick = {
                             showLobbyScreen = true
                         },
-                        onCreateLobbyClick = homeViewModel::createLobby,
+                        onCreateLobbyClick = {
+                            showJoinLobbyInput = false
+                            homeViewModel.createLobby()
+                        },
                         onPurchaseClick = gameScreenViewModel::purchase,
                         onJoinLobbyClick = {
-                            showJoinLobbyInput = !showJoinLobbyInput
+                            homeViewModel.clearLobbyCode()
+                            showJoinLobbyInput = true
                         },
                         onJoinLobbyCodeChange = homeViewModel::onJoinLobbyCodeChange,
                         onJoinLobbySubmit = homeViewModel::joinLobby,
