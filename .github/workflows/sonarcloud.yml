@@ -23,15 +23,23 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: 'gradle'
 
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts') }}
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
-      - name: Build and run tests
-        run: ./gradlew testDebugUnitTest jacocoTestReport --info
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build, run tests and generate JaCoCo report
+        run: ./gradlew testDebugUnitTest jacocoTestReport --no-daemon --stacktrace
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v6

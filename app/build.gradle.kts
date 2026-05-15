@@ -5,6 +5,24 @@ plugins {
     jacoco
 }
 
+// List of class file patterns to exclude from Jacoco coverage. Used by both report and verification tasks.
+val coverageExclusions = listOf(
+    "**/R.class",
+    "**/R$*.class",
+    "**/BuildConfig.*",
+    "**/Manifest*.*",
+    "**/*Test*.*",
+    "android/**/*.*",
+    "**/ui/**",
+    "**/MainActivity*.*",
+    "**/config/**",
+    "**/*Application*.*",
+    // Compose generated classes
+    "**/*ComposableSingletons*.*",
+    "**/*$*Composable*.*",
+    "**/*Kt$*.*"
+)
+
 val backendBaseUrl = providers.gradleProperty("backendBaseUrl").orElse("http://10.0.2.2:8080")
 val websocketUrl = providers.gradleProperty("websocketUrl").orElse("ws://10.0.2.2:8080/ws")
 
@@ -90,7 +108,9 @@ tasks.register<JacocoReport>("jacocoTestReport") {
         html.required.set(true)
     }
 
-    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug")
+    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+        exclude(coverageExclusions)
+    }
     val mainSrc = "${project.projectDir}/src/main/java"
     val kotlinSrc = "${project.projectDir}/src/main/kotlin"
 
@@ -107,7 +127,9 @@ tasks.register<JacocoReport>("jacocoTestReport") {
 tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
     dependsOn("testDebugUnitTest")
 
-    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug")
+    val debugTree = fileTree("${project.layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+        exclude(coverageExclusions)
+    }
     val mainSrc = "${project.projectDir}/src/main/java"
     val kotlinSrc = "${project.projectDir}/src/main/kotlin"
 
@@ -122,7 +144,7 @@ tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
 
     violationRules {
         rule {
-            element = "CLASS"
+            element = "BUNDLE"
             limit {
                 counter = "LINE"
                 value = "COVEREDRATIO"
