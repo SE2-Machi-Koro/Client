@@ -26,7 +26,6 @@ fun AppRoot(
     loginDialogState: LoginDialogState,
     logoutState: LogoutState,
     lobbyCode: String?,
-    isLobbyHost: Boolean,
     loggedInAs: String?,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
@@ -52,9 +51,10 @@ fun AppRoot(
             onRollDice = onRollDice,
             modifier = modifier
         )
-    } else if (lobbyCode != null) {
+    } else if (showLobbyScreen) {
         LobbyScreen(
             state = lobbyScreenState,
+            lobbyCode = lobbyCode,
             onReadyToggle = onReadyToggle,
             onStartGame = onStartGame,
             onLeaveLobby = onLeaveLobby,
@@ -63,12 +63,7 @@ fun AppRoot(
     } else if (loggedInAs != null) {
         HomeScreen(
             lobbyCode = lobbyCode,
-            isLobbyHost = isLobbyHost,
-            canStartGame = isLobbyHost &&
-                    startScreenState.connectionStatus == ConnectionStatus.CONNECTED,
             onCreateLobbyClick = onCreateLobbyClick,
-            onStartGame = onStartGame,
-            showLobbyScreen = showLobbyScreen,
             onGoToLobbyClick = onGoToLobbyClick,
             onLogoutClick = onLogoutSubmit,
             modifier = modifier
@@ -114,7 +109,6 @@ private fun AppRootStartScreenPreview() {
             onLoginDialogReset = {},
             onLogoutSubmit = {},
             lobbyCode = null,
-            isLobbyHost = false,
             loggedInAs = null,
             onCreateLobbyClick = {},
         )
@@ -142,7 +136,6 @@ private fun AppRootGameScreenPreview() {
             onLoginDialogReset = {},
             onLogoutSubmit = {},
             lobbyCode = null,
-            isLobbyHost = false,
             loggedInAs = null,
             onCreateLobbyClick = {},
         )
