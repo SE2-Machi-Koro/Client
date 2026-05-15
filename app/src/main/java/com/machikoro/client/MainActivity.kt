@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
             val joinLobbyCode by homeViewModel.joinLobbyCode.collectAsState()
+            val isLobbyHost by homeViewModel.isLobbyHost.collectAsState()
             val lobbyScreenState by lobbyScreenViewModel.state.collectAsState()
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
