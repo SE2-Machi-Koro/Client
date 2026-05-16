@@ -111,6 +111,11 @@ fun AppRoot(
         composable(AppRoute.Home.route) {
             HomeScreen(
                 lobbyCode = lobbyCode,
+                joinLobbyCode = joinLobbyCode,
+                showJoinLobbyInput = showJoinLobbyInput,
+                onJoinLobbyClick = onJoinLobbyClick,
+                onJoinLobbyCodeChange = onJoinLobbyCodeChange,
+                onJoinLobbySubmit = onJoinLobbySubmit,
                 onCreateLobbyClick = onCreateLobbyClick,
                 onGoToLobbyClick = onGoToLobbyClick,
                 onLogoutClick = onLogoutSubmit,
