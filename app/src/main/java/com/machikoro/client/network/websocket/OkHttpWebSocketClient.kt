@@ -7,6 +7,7 @@ import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.ShopItemColor
+import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
@@ -72,6 +73,9 @@ class OkHttpWebSocketClient(
     override val shopItems: StateFlow<List<ShopItem>>
         get() = mutableShopItems.asStateFlow()
 
+    override val purchaseEvents: SharedFlow<PurchaseEvent>
+        get() = mutablePurchaseEvents.asSharedFlow()
+
     override val authRejections: SharedFlow<Unit>
         get() = mutableAuthRejections.asSharedFlow()
 
@@ -89,6 +93,10 @@ class OkHttpWebSocketClient(
         MutableStateFlow<Map<Int, List<PlayerLandmarkState>>>(emptyMap())
     private val mutableMarketplace = MutableStateFlow<Map<CardType, Int>>(emptyMap())
     private val mutableShopItems = MutableStateFlow<List<ShopItem>>(emptyList())
+    private val mutablePurchaseEvents = MutableSharedFlow<PurchaseEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     private val mutableAuthRejections = MutableSharedFlow<Unit>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -374,6 +382,7 @@ class OkHttpWebSocketClient(
                     phase?.let { mutableGamePhase.value = it }
                     activePlayerId?.let { mutableActivePlayerId.value = it }
                 }
+                parsePurchaseSuccess(json)?.let { mutablePurchaseEvents.tryEmit(it) }
                 parseDiceResult(json)?.let { mutableDiceResult.value = it }
             }
             "ERROR" -> {
@@ -384,7 +393,11 @@ class OkHttpWebSocketClient(
                     sessionStateHolder.signOut()
                     mutableAuthRejections.tryEmit(Unit)
                 } else {
-                    mutableConnectionStatus.value = ConnectionStatus.ERROR
+                    // Purchase validation failures arrive as regular STOMP ERROR frames.
+                    // Surface them to the shop without marking the transport itself as failed.
+                    mutablePurchaseEvents.tryEmit(
+                        PurchaseEvent.Failure(frame.body.ifBlank { "Purchase failed" })
+                    )
                 }
             }
         }
@@ -589,6 +602,20 @@ class OkHttpWebSocketClient(
         val activePlayerId = if (payload.has("activePlayerId") && !payload.isNull("activePlayerId"))
             payload.optInt("activePlayerId") else null
         return Pair(phase, activePlayerId)
+    }
+
+    private fun parsePurchaseSuccess(json: JSONObject): PurchaseEvent.Success? {
+        if (json.optString("type") != GAME_ACTION_TYPE) return null
+        val payload = json.optJSONObject("payload") ?: return null
+        // Server broadcasts the bought target in GAME_ACTION after PurchaseService accepts it.
+        val purchaseType = runCatching {
+            PurchaseType.valueOf(payload.optString("purchaseType"))
+        }.getOrNull() ?: return null
+        val itemType = when (purchaseType) {
+            PurchaseType.ESTABLISHMENT -> payload.optString("cardType")
+            PurchaseType.LANDMARK -> payload.optString("landmarkType")
+        }.takeIf { it.isNotBlank() } ?: return null
+        return PurchaseEvent.Success(purchaseType = purchaseType, itemType = itemType)
     }
 
     /**

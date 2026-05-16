@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -41,18 +42,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.machikoro.client.R
-import com.machikoro.client.domain.model.state.PurchaseState
-import com.machikoro.client.domain.model.shop.ShopCatalog
-import com.machikoro.client.domain.model.shop.ShopItem
-import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.LandmarkType
+import com.machikoro.client.domain.enums.PurchaseType
+import com.machikoro.client.domain.enums.ShopItemColor
+import com.machikoro.client.domain.model.shop.ShopCatalog
+import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
+import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
 import kotlinx.coroutines.delay
@@ -480,12 +481,20 @@ private fun BuyingPhaseShop(
                 ) { item ->
                     ShopItemCard(
                         item = item,
-                        purchaseState = state.purchaseState,
-                        canPurchase = canPurchase,
+                        state = state,
+                        canPurchase = canPurchase && state.canPurchaseItem(item),
                         onPurchaseClick = onPurchaseClick,
                         modifier = Modifier.padding(end = 10.dp)
                     )
                 }
+            }
+            state.purchaseMessage?.let { message ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = state.purchaseState.toFeedbackColor()
+                )
             }
         }
     }
@@ -494,25 +503,28 @@ private fun BuyingPhaseShop(
 @Composable
 private fun ShopItemCard(
     item: ShopItem,
-    purchaseState: PurchaseState,
+    state: GameScreenState,
     canPurchase: Boolean,
     onPurchaseClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isPurchaseEnabled = canPurchase && item.isAvailable && purchaseState == PurchaseState.IDLE
+    val isPurchaseEnabled =
+        canPurchase && (state.purchaseState == PurchaseState.IDLE || state.purchaseState == PurchaseState.ERROR)
     Surface(
-        color = item.color.toContainerColor(),
+        color = if (canPurchase) item.color.toContainerColor() else MaterialTheme.colorScheme.surfaceVariant,
         contentColor = item.color.toContentColor(),
         shape = RoundedCornerShape(8.dp),
         tonalElevation = 2.dp,
-        modifier = modifier.widthIn(min = 140.dp, max = 150.dp)
+        modifier = modifier
+            .widthIn(min = 140.dp, max = 150.dp)
+            .alpha(if (canPurchase) 1f else 0.72f)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(10.dp)
         ) {
             Image(
-                painter = painterResource(id = item.imageKey.toDrawableRes()),
+                painter = painterResource(id = ShopImageResolver.drawableFor(item.imageKey)),
                 contentDescription = item.displayName,
                 modifier = Modifier.size(68.dp)
             )
@@ -535,6 +547,15 @@ private fun ShopItemCard(
                 maxLines = 1,
                 textAlign = TextAlign.Center
             )
+            if (!canPurchase) {
+                Text(
+                    text = state.disabledReasonFor(item),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Button(
                 onClick = { onPurchaseClick(item.type) },
@@ -545,13 +566,41 @@ private fun ShopItemCard(
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                Text(text = purchaseState.toButtonText())
+                Text(text = state.buttonTextFor(item))
             }
         }
     }
 }
 
 private fun GameScreenState.canCurrentPlayerPurchase(): Boolean = isActivePlayer
+
+private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
+    item.isAvailable &&
+        hasEnoughKnownCoinsFor(item) &&
+        !isKnownBuiltLandmark(item)
+
+private fun GameScreenState.disabledReasonFor(item: ShopItem): String = when {
+    !isActivePlayer -> "Waiting"
+    gameId == null -> "No game"
+    !item.isAvailable -> "Unavailable"
+    !hasEnoughKnownCoinsFor(item) -> "Need coins"
+    isKnownBuiltLandmark(item) -> "Built"
+    else -> "Blocked"
+}
+
+private fun GameScreenState.hasEnoughKnownCoinsFor(item: ShopItem): Boolean {
+    val activePlayerCoins = players.firstOrNull { it.isActivePlayer }?.coins
+    return activePlayerCoins == null || activePlayerCoins >= item.cost
+}
+
+private fun GameScreenState.isKnownBuiltLandmark(item: ShopItem): Boolean {
+    if (item.purchaseType != PurchaseType.LANDMARK) return false
+    val activePlayerId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull() ?: return false
+    val landmarkType = runCatching { LandmarkType.valueOf(item.type) }.getOrNull() ?: return false
+    return playerLandmarks[activePlayerId].orEmpty().any {
+        it.landmarkType == landmarkType && it.isBuilt
+    }
+}
 
 private fun shopTopPadding(players: List<PlayerCoinState>) = if (players.isEmpty()) 76.dp else 144.dp
 
@@ -573,20 +622,19 @@ private fun ShopItemColor.toContentColor(): Color = when (this) {
     ShopItemColor.LANDMARK -> Color(0xFF7D3A1E)
 }
 
-private fun PurchaseState.toButtonText(): String = when (this) {
-    PurchaseState.IDLE -> "Buy"
-    PurchaseState.PENDING -> "Buying"
-    PurchaseState.SUCCESS -> "Bought"
+private fun GameScreenState.buttonTextFor(item: ShopItem): String = when {
+    purchaseFeedbackItemType != item.type -> "Buy"
+    purchaseState == PurchaseState.PENDING -> "Buying"
+    purchaseState == PurchaseState.SUCCESS -> "Bought"
+    purchaseState == PurchaseState.ERROR -> "Retry"
+    else -> "Buy"
 }
 
-private fun String.toDrawableRes(): Int = when (this) {
-    // Maps server-aligned catalog keys to Android drawables.
-    "card_wheat_field" -> R.drawable.card_wheat_field_image
-    "card_ranch" -> R.drawable.card_ranch_image
-    "card_bakery" -> R.drawable.card_bakery_image
-    "card_cafe" -> R.drawable.card_cafe_image
-    "landmark_train_station" -> R.drawable.landmark_train_station_image
-    else -> R.drawable.card_bakery_image
+@Composable
+private fun PurchaseState.toFeedbackColor(): Color = when (this) {
+    PurchaseState.ERROR -> MaterialTheme.colorScheme.error
+    PurchaseState.SUCCESS -> Color(0xFF306514)
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 @Composable
