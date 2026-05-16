@@ -5,6 +5,7 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
+import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
@@ -543,6 +544,53 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun gameActionWithPurchasePayloadEmitsPurchaseSuccessEvent() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
+        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_ACTION","payload":{"turnPhase":"BUY_OR_BUILD","purchaseType":"ESTABLISHMENT","cardType":"BAKERY"}}"""
+            )
+        )
+        runCurrent()
+
+        assertEquals(
+            listOf(PurchaseEvent.Success(PurchaseType.ESTABLISHMENT, "BAKERY")),
+            purchaseEvents
+        )
+        assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
+    }
+
+    @Test
+    fun malformedPurchasePayloadDoesNotEmitPurchaseSuccessEvent() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
+        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_ACTION","payload":{"turnPhase":"BUY_OR_BUILD","purchaseType":"ESTABLISHMENT"}}"""
+            )
+        )
+        runCurrent()
+
+        assertTrue(purchaseEvents.isEmpty())
+        assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
+    }
+
+    @Test
     fun rollDiceWithTwoDiceSendsDiceCountTwo() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -604,7 +652,9 @@ class OkHttpWebSocketClientTest {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
         val rejections = mutableListOf<Unit>()
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
         client.authRejections.onEach { rejections += it }.launchIn(backgroundScope)
+        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
         runCurrent()
         client.connect()
         factory.simulateOpen()
@@ -612,6 +662,7 @@ class OkHttpWebSocketClientTest {
         factory.simulateText("ERROR\n\nSome other error\u0000")
         runCurrent()
         assertTrue(rejections.isEmpty())
+        assertEquals(listOf(PurchaseEvent.Failure("Some other error")), purchaseEvents)
         assertEquals(ConnectionStatus.ERROR, client.connectionStatus.value)
     }
 

@@ -7,6 +7,7 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
+import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.session.Session
@@ -282,7 +283,8 @@ class GameScreenViewModelTest {
             ),
             fakeClient.lastPurchase
         )
-        assertEquals(PurchaseState.SUCCESS, viewModel.state.value.purchaseState)
+        assertEquals(PurchaseState.PENDING, viewModel.state.value.purchaseState)
+        assertEquals("BAKERY", viewModel.state.value.pendingPurchaseItemType)
     }
 
     @Test
@@ -306,7 +308,8 @@ class GameScreenViewModelTest {
             ),
             fakeClient.lastPurchase
         )
-        assertEquals(PurchaseState.SUCCESS, viewModel.state.value.purchaseState)
+        assertEquals(PurchaseState.PENDING, viewModel.state.value.purchaseState)
+        assertEquals("TRAIN_STATION", viewModel.state.value.pendingPurchaseItemType)
     }
 
     @Test
@@ -362,7 +365,82 @@ class GameScreenViewModelTest {
             ),
             fakeClient.lastPurchase
         )
+        assertEquals(PurchaseState.PENDING, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun matchingPurchaseSuccessEventCompletesPendingPurchase() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+        fakeClient.emitPurchaseEvent(
+            PurchaseEvent.Success(
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                itemType = "BAKERY"
+            )
+        )
+        advanceUntilIdle()
+
         assertEquals(PurchaseState.SUCCESS, viewModel.state.value.purchaseState)
+        assertNull(viewModel.state.value.pendingPurchaseItemType)
+        assertEquals("Bakery bought", viewModel.state.value.purchaseMessage)
+    }
+
+    @Test
+    fun purchaseFailureEventShowsErrorAndAllowsRetry() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+        fakeClient.emitPurchaseEvent(PurchaseEvent.Failure("Not enough coins"))
+        advanceUntilIdle()
+
+        assertEquals(PurchaseState.ERROR, viewModel.state.value.purchaseState)
+        assertNull(viewModel.state.value.pendingPurchaseItemType)
+        assertEquals("Not enough coins", viewModel.state.value.purchaseMessage)
+
+        viewModel.purchase("CAFE")
+
+        assertEquals(
+            FakeWebSocketClient.PurchaseCall(
+                gameId = 7,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                cardType = "CAFE",
+                landmarkType = null
+            ),
+            fakeClient.lastPurchase
+        )
+        assertEquals(PurchaseState.PENDING, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun purchaseFeedbackResetsWhenLeavingBuyingPhase() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+        fakeClient.emitGamePhase(GamePhase.END_TURN)
+        advanceUntilIdle()
+
+        assertEquals(PurchaseState.IDLE, viewModel.state.value.purchaseState)
+        assertNull(viewModel.state.value.pendingPurchaseItemType)
+        assertNull(viewModel.state.value.purchaseMessage)
     }
 
     @Test
