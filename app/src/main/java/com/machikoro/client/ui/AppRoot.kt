@@ -56,11 +56,9 @@ fun AppRoot(
     onRollDice: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
-    isLobbyHost: Boolean = false,
     showLobbyScreen: Boolean = false,
     onGoToLobbyClick: () -> Unit = {},
 ) {
-
     val navController = rememberNavController()
     val appNavigator = AppNavigator(navController)
 
@@ -183,8 +181,6 @@ private fun AppRootStartScreenPreview() {
             lobbyCode = null,
             loggedInAs = null,
             onCreateLobbyClick = {},
-            joinLobbyCode = "",
-            showJoinLobbyInput = false,
         )
     }
 }
@@ -212,8 +208,6 @@ private fun AppRootGameScreenPreview() {
             lobbyCode = null,
             loggedInAs = null,
             onCreateLobbyClick = {},
-            joinLobbyCode = "",
-            showJoinLobbyInput = false,
         )
     }
 }

@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.machikoro.client.domain.enums.PurchaseType
+import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.ShopCatalog
+import com.machikoro.client.domain.model.shop.ShopItem
+import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.enums.GamePhase
@@ -40,7 +43,10 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.gamePhase.collect { gamePhase ->
-                mutableState.update { it.copy(gamePhase = gamePhase) }
+                mutableState.update { state ->
+                    state.copy(gamePhase = gamePhase)
+                        .resetPurchaseFeedbackIf(gamePhase != GamePhase.BUY_OR_BUILD)
+                }
             }
         }
         viewModelScope.launch {
@@ -55,7 +61,10 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.activePlayerId.collect { activePlayerId ->
-                mutableState.update { it.copy(activePlayerId = activePlayerId) }
+                mutableState.update { state ->
+                    state.copy(activePlayerId = activePlayerId)
+                        .resetPurchaseFeedbackIf(state.activePlayerId != activePlayerId)
+                }
             }
         }
         viewModelScope.launch {
@@ -65,7 +74,10 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.roundNumber.collect { roundNumber ->
-                mutableState.update { it.copy(roundNumber = roundNumber) }
+                mutableState.update { state ->
+                    state.copy(roundNumber = roundNumber)
+                        .resetPurchaseFeedbackIf(state.roundNumber != roundNumber)
+                }
             }
         }
         viewModelScope.launch {
@@ -81,6 +93,11 @@ class GameScreenViewModel(
         viewModelScope.launch {
             webSocketClient.shopItems.collect { shopItems ->
                 mutableState.update { it.copy(shopItems = shopItems) }
+            }
+        }
+        viewModelScope.launch {
+            webSocketClient.purchaseEvents.collect { event ->
+                mutableState.update { state -> state.applyPurchaseEvent(event) }
             }
         }
         viewModelScope.launch {
@@ -102,23 +119,94 @@ class GameScreenViewModel(
         val gameId = current.gameId ?: return
         val availableItems = current.shopItems.ifEmpty { ShopCatalog.defaultItems }
         val item = availableItems.firstOrNull { it.type == itemType && it.isAvailable } ?: return
-        if (!current.isBuyingPhase || current.purchaseState != PurchaseState.IDLE) return
-        if (!current.isActivePlayer) return
+        if (!current.canStartPurchase(item)) return
 
         mutableState.update { state ->
-            state.copy(purchaseState = PurchaseState.PENDING)
+            state.copy(
+                purchaseState = PurchaseState.PENDING,
+                pendingPurchaseItemType = item.type,
+                purchaseFeedbackItemType = item.type,
+                purchaseMessage = "Buying ${item.displayName}..."
+            )
         }
-        // TODO(#39): wait for backend success/error response before showing final feedback.
         webSocketClient.sendPurchase(
             gameId = gameId,
             purchaseType = item.purchaseType,
             cardType = item.type.takeIf { item.purchaseType == PurchaseType.ESTABLISHMENT },
             landmarkType = item.type.takeIf { item.purchaseType == PurchaseType.LANDMARK }
         )
-        mutableState.update { state ->
-            state.copy(purchaseState = PurchaseState.SUCCESS)
+    }
+
+    private fun GameScreenState.canStartPurchase(item: ShopItem): Boolean =
+        isBuyingPhase &&
+            isActivePlayer &&
+            purchaseState != PurchaseState.PENDING &&
+            purchaseState != PurchaseState.SUCCESS &&
+            item.isAvailable &&
+            hasEnoughKnownCoinsFor(item) &&
+            !isKnownBuiltLandmark(item)
+
+    private fun GameScreenState.hasEnoughKnownCoinsFor(item: ShopItem): Boolean {
+        val activePlayerCoins = players.firstOrNull { it.isActivePlayer }?.coins
+        return activePlayerCoins == null || activePlayerCoins >= item.cost
+    }
+
+    private fun GameScreenState.isKnownBuiltLandmark(item: ShopItem): Boolean {
+        if (item.purchaseType != PurchaseType.LANDMARK) return false
+        val activePlayerId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull() ?: return false
+        val landmarkType = runCatching { LandmarkType.valueOf(item.type) }.getOrNull() ?: return false
+        return playerLandmarks[activePlayerId].orEmpty().any {
+            it.landmarkType == landmarkType && it.isBuilt
         }
     }
+
+    private fun GameScreenState.applyPurchaseEvent(event: PurchaseEvent): GameScreenState =
+        when (event) {
+            is PurchaseEvent.Success -> {
+                // Only finish the local pending action when the server confirms the same target.
+                val matchesPending = pendingPurchaseItemType == event.itemType
+                if (!matchesPending) {
+                    this
+                } else {
+                    copy(
+                        purchaseState = PurchaseState.SUCCESS,
+                        pendingPurchaseItemType = null,
+                        purchaseFeedbackItemType = event.itemType,
+                        purchaseMessage = "${event.itemType.toDisplayName()} bought"
+                    )
+                }
+            }
+            is PurchaseEvent.Failure -> {
+                // Failed purchases are retryable; the backend stays authoritative for the reason.
+                if (purchaseState != PurchaseState.PENDING) {
+                    this
+                } else {
+                    copy(
+                        purchaseState = PurchaseState.ERROR,
+                        pendingPurchaseItemType = null,
+                        purchaseFeedbackItemType = purchaseFeedbackItemType,
+                        purchaseMessage = event.message.ifBlank { "Purchase failed" }
+                    )
+                }
+            }
+        }
+
+    private fun GameScreenState.resetPurchaseFeedbackIf(shouldReset: Boolean): GameScreenState =
+        if (!shouldReset) {
+            this
+        } else {
+            copy(
+                purchaseState = PurchaseState.IDLE,
+                pendingPurchaseItemType = null,
+                purchaseFeedbackItemType = null,
+                purchaseMessage = null
+            )
+        }
+
+    private fun String.toDisplayName(): String =
+        lowercase()
+            .split("_")
+            .joinToString(" ") { part -> part.replaceFirstChar { it.titlecase() } }
 
     class Factory(
         private val webSocketClient: WebSocketClient,
