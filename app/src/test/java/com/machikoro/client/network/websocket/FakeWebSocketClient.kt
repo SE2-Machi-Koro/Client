@@ -1,9 +1,12 @@
 package com.machikoro.client.network.websocket
 
+import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.shop.PurchaseType
+import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
+import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +38,18 @@ class FakeWebSocketClient : WebSocketClient {
     override val isLobbyHost: StateFlow<Boolean>
         get() = mutableIsLobbyHost
 
+    override val gameStatus: StateFlow<GameStatus?>
+        get() = mutableGameStatus
+
+    override val roundNumber: StateFlow<Int?>
+        get() = mutableRoundNumber
+
+    override val playerLandmarks: StateFlow<Map<Int, List<PlayerLandmarkState>>>
+        get() = mutablePlayerLandmarks
+
+    override val marketplace: StateFlow<Map<CardType, Int>>
+        get() = mutableMarketplace
+
     override val authRejections: SharedFlow<Unit>
         get() = mutableAuthRejections
 
@@ -46,6 +61,11 @@ class FakeWebSocketClient : WebSocketClient {
     private val mutableActivePlayerId = MutableStateFlow<Int?>(null)
     private val mutableActiveGameId = MutableStateFlow<Int?>(null)
     private val mutableIsLobbyHost = MutableStateFlow(false)
+    private val mutableGameStatus = MutableStateFlow<GameStatus?>(null)
+    private val mutableRoundNumber = MutableStateFlow<Int?>(null)
+    private val mutablePlayerLandmarks =
+        MutableStateFlow<Map<Int, List<PlayerLandmarkState>>>(emptyMap())
+    private val mutableMarketplace = MutableStateFlow<Map<CardType, Int>>(emptyMap())
     private val mutableAuthRejections = MutableSharedFlow<Unit>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -124,6 +144,22 @@ class FakeWebSocketClient : WebSocketClient {
 
     fun emitIsLobbyHost(isHost: Boolean) {
         mutableIsLobbyHost.value = isHost
+    }
+
+    fun emitGameStatus(status: GameStatus?) {
+        mutableGameStatus.value = status
+    }
+
+    fun emitRoundNumber(round: Int?) {
+        mutableRoundNumber.value = round
+    }
+
+    fun emitPlayerLandmarks(landmarks: Map<Int, List<PlayerLandmarkState>>) {
+        mutablePlayerLandmarks.value = landmarks
+    }
+
+    fun emitMarketplace(marketplace: Map<CardType, Int>) {
+        mutableMarketplace.value = marketplace
     }
 
     fun emitAuthRejection() {

@@ -1,6 +1,8 @@
 package com.machikoro.client.domain.model.state
 
+import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.GameStatus
 
 data class GameScreenState(
     // Required by Server PurchaseRequest; populated from lobby/game WebSocket messages.
@@ -13,6 +15,11 @@ data class GameScreenState(
     val myUserId: Int? = null,
     val purchaseState: PurchaseState,
     val isRolling: Boolean = false,
+    // Reconnect snapshot fields (from /app/game.sync).
+    val gameStatus: GameStatus? = null,
+    val roundNumber: Int? = null,
+    val playerLandmarks: Map<Int, List<PlayerLandmarkState>> = emptyMap(),
+    val marketplace: Map<CardType, Int> = emptyMap(),
 ) {
     val isActivePlayer: Boolean
         get() = myUserId != null && myUserId == activePlayerId
@@ -31,7 +38,11 @@ data class GameScreenState(
             activePlayerId = null,
             myUserId = null,
             purchaseState = PurchaseState.IDLE,
-            isRolling = false
+            isRolling = false,
+            gameStatus = null,
+            roundNumber = null,
+            playerLandmarks = emptyMap(),
+            marketplace = emptyMap(),
         )
     }
 }

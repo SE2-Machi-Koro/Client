@@ -1,10 +1,14 @@
 package com.machikoro.client.ui.game
 
+import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.shop.PurchaseType
-import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PurchaseState
+import com.machikoro.client.domain.enums.GameStatus
+import com.machikoro.client.domain.enums.LandmarkType
+import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.session.Session
 import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.websocket.FakeWebSocketClient
@@ -426,5 +430,57 @@ class GameScreenViewModelTest {
         viewModel.rollDice(diceCount = 1)
 
         assertFalse(viewModel.state.value.isRolling)
+    }
+
+
+    @Test
+    fun gameStatusFromClientIsReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        advanceUntilIdle()
+
+        assertEquals(GameStatus.IN_PROGRESS, viewModel.state.value.gameStatus)
+    }
+
+    @Test
+    fun roundNumberFromClientIsReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        fakeClient.emitRoundNumber(4)
+        advanceUntilIdle()
+
+        assertEquals(4, viewModel.state.value.roundNumber)
+    }
+
+    @Test
+    fun playerLandmarksFromClientAreReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        val landmarks = mapOf(
+            1 to listOf(
+                PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
+                PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = false),
+            )
+        )
+
+        fakeClient.emitPlayerLandmarks(landmarks)
+        advanceUntilIdle()
+
+        assertEquals(landmarks, viewModel.state.value.playerLandmarks)
+    }
+
+    @Test
+    fun marketplaceFromClientIsReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        val marketplace = mapOf(CardType.WHEAT_FIELD to 6, CardType.BAKERY to 5)
+
+        fakeClient.emitMarketplace(marketplace)
+        advanceUntilIdle()
+
+        assertEquals(marketplace, viewModel.state.value.marketplace)
     }
 }

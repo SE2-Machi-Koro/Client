@@ -59,6 +59,26 @@ class GameScreenViewModel(
             }
         }
         viewModelScope.launch {
+            webSocketClient.gameStatus.collect { gameStatus ->
+                mutableState.update { it.copy(gameStatus = gameStatus) }
+            }
+        }
+        viewModelScope.launch {
+            webSocketClient.roundNumber.collect { roundNumber ->
+                mutableState.update { it.copy(roundNumber = roundNumber) }
+            }
+        }
+        viewModelScope.launch {
+            webSocketClient.playerLandmarks.collect { playerLandmarks ->
+                mutableState.update { it.copy(playerLandmarks = playerLandmarks) }
+            }
+        }
+        viewModelScope.launch {
+            webSocketClient.marketplace.collect { marketplace ->
+                mutableState.update { it.copy(marketplace = marketplace) }
+            }
+        }
+        viewModelScope.launch {
             sessionStateHolder.session.collect { session ->
                 mutableState.update { it.copy(myUserId = session?.userId) }
             }

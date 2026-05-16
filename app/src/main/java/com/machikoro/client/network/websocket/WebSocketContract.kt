@@ -16,5 +16,9 @@ object WebSocketContract {
     const val gameStartDestination: String = "/app/game.start"
     // Server PR #216 exposes PurchaseRequest at @MessageMapping("/game.purchase").
     const val purchaseDestination: String = "/app/game.purchase"
+    const val gameSyncDestination: String = "/app/game.sync"
+    // Per-user reconnect snapshot queue. The server resolves /user/** to the
+    // authenticated principal, so each client only sees its own snapshot.
+    const val gameSyncQueue: String = "/user/queue/game-sync"
     const val defaultSender: String = "android-client"
 }
