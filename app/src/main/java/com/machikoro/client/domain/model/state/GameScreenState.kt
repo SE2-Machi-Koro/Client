@@ -15,6 +15,10 @@ data class GameScreenState(
     val activePlayerId: Int? = null,
     val myUserId: Int? = null,
     val purchaseState: PurchaseState,
+    // Tracks the one local buy/build request currently waiting for a server GAME_ACTION.
+    val pendingPurchaseItemType: String? = null,
+    // Short feedback text shown in the shop for pending, success, or retryable errors.
+    val purchaseMessage: String? = null,
     val isRolling: Boolean = false,
     // Reconnect snapshot fields (from /app/game.sync).
     val gameStatus: GameStatus? = null,
@@ -40,6 +44,8 @@ data class GameScreenState(
             activePlayerId = null,
             myUserId = null,
             purchaseState = PurchaseState.IDLE,
+            pendingPurchaseItemType = null,
+            purchaseMessage = null,
             isRolling = false,
             gameStatus = null,
             roundNumber = null,

@@ -1,9 +1,9 @@
 package com.machikoro.client.domain.model.state
 
-// Local UI state for the first purchase flow; issue #39 should replace
-// optimistic SUCCESS handling with server success/error feedback.
+// UI state for one buy/build action in the current BUY_OR_BUILD phase.
 enum class PurchaseState {
     IDLE,
     PENDING,
-    SUCCESS
+    SUCCESS,
+    ERROR
 }
