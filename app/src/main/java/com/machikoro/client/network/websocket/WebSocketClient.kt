@@ -8,6 +8,7 @@ import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.shop.ShopItem
+import com.machikoro.client.domain.model.shop.PurchaseEvent
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -35,6 +36,8 @@ interface WebSocketClient {
     val marketplace: StateFlow<Map<CardType, Int>>
     // DB-backed shop definitions received from GAME_STARTED or /app/game.sync.
     val shopItems: StateFlow<List<ShopItem>>
+    // One-shot purchase success/error updates used to move the shop out of optimistic UI state.
+    val purchaseEvents: SharedFlow<PurchaseEvent>
 
     // Fires when the server rejects the STOMP CONNECT for auth reasons (token
     // missing / invalid / server-side cleared). The UI layer is responsible for
