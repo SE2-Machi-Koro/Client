@@ -178,6 +178,45 @@ class OkHttpWebSocketClient(
         }
     }
 
+    /**
+     * Sends a join-lobby request to the backend.
+     *
+     * The backend expects the lobby code inside the payload and resolves the
+     * authenticated user from the STOMP session, so the sender field is not used
+     * for identity.
+     */
+    override fun sendJoinLobby(lobbyCode: String) {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "sendJoinLobby called but no active WebSocket connection")
+            return
+        }
+
+        val payload = JSONObject()
+            .put("lobbyCode", lobbyCode)
+
+        val enrichedBody = JSONObject()
+            .put("type", "JOIN")
+            .put("sender", WebSocketContract.defaultSender)
+            .put("payload", payload)
+            .toString()
+
+        val frameStr = StompFrame(
+            command = "SEND",
+            headers = mapOf(
+                "destination" to WebSocketContract.joinLobbyDestination,
+                "content-type" to "application/json"
+            ),
+            body = enrichedBody
+        ).serialize()
+
+        if (socket.send(frameStr)) {
+            Log.d(TAG, "Join lobby message sent with code: $lobbyCode")
+        } else {
+            Log.w(TAG, "sendJoinLobby: failed to send join-lobby frame")
+        }
+    }
+
     override fun clearLobbyCode() {
         resetLobbyState()
     }

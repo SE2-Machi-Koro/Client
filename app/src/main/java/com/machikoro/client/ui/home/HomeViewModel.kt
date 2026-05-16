@@ -8,12 +8,19 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.network.websocket.WebSocketClient
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 class HomeViewModel(
     private val webSocketClient: WebSocketClient,
 ) : ViewModel() {
 
     private var createLobbyJob: Job? = null
+
+    private var joinLobbyJob: Job? = null
+
+    private val mutableJoinLobbyCode = MutableStateFlow("")
+    val joinLobbyCode: StateFlow<String> = mutableJoinLobbyCode
 
     val lobbyCode = webSocketClient.lobbyCode
     val activeGameId = webSocketClient.activeGameId
@@ -38,6 +45,41 @@ class HomeViewModel(
 
             if (status == ConnectionStatus.CONNECTED) {
                 webSocketClient.sendCreateLobby()
+            }
+        }
+    }
+
+    fun onJoinLobbyCodeChange(code: String) {
+        mutableJoinLobbyCode.value = code.trim().uppercase()
+    }
+
+    /**
+     * Sends the entered lobby code once the WebSocket connection is ready.
+     * If the socket is not connected yet, the first click starts the connection
+     * and continues automatically after CONNECTED.
+     */
+    fun joinLobby() {
+        val code = mutableJoinLobbyCode.value.trim()
+        if (code.isBlank()) return
+
+        if (webSocketClient.connectionStatus.value == ConnectionStatus.CONNECTED) {
+            webSocketClient.sendJoinLobby(code)
+            return
+        }
+
+        if (joinLobbyJob?.isActive == true) return
+
+        webSocketClient.connect()
+
+        joinLobbyJob = viewModelScope.launch {
+            val status = webSocketClient.connectionStatus.first { status ->
+                status == ConnectionStatus.CONNECTED ||
+                        status == ConnectionStatus.ERROR ||
+                        status == ConnectionStatus.DISCONNECTED
+            }
+
+            if (status == ConnectionStatus.CONNECTED) {
+                webSocketClient.sendJoinLobby(code)
             }
         }
     }
