@@ -43,6 +43,7 @@ fun AppRoot(
     onStartGame: () -> Unit = {},
     onLeaveLobby: () -> Unit = {},
     onRollDice: () -> Unit = {},
+    onPurchaseClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     showLobbyScreen: Boolean = false,
     onGoToLobbyClick: () -> Unit = {},
@@ -58,6 +59,7 @@ fun AppRoot(
         GameScreen(
             state = gameScreenState,
             onRollDice = onRollDice,
+            onPurchaseClick = onPurchaseClick,
             modifier = modifier
         )
     } else if (showLobbyScreen) {

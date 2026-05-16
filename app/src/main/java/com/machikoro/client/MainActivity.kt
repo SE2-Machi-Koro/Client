@@ -138,6 +138,7 @@ class MainActivity : ComponentActivity() {
                             showLobbyScreen = true
                         },
                         onCreateLobbyClick = homeViewModel::createLobby,
+                        onPurchaseClick = gameScreenViewModel::purchase,
                     )
                 }
             }
