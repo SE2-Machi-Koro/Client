@@ -113,6 +113,13 @@ class FakeWebSocketClient : WebSocketClient {
         )
     }
 
+    var lastJoinLobbyCode: String? = null
+        private set
+
+    override fun sendJoinLobby(lobbyCode: String) {
+        lastJoinLobbyCode = lobbyCode
+    }
+
     override fun clearLobbyCode() {
         mutableLobbyCode.value = null
         mutableActiveGameId.value = null

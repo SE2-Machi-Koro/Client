@@ -75,13 +75,13 @@ class MainActivity : ComponentActivity() {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
-            val isLobbyHost by homeViewModel.isLobbyHost.collectAsState()
+            val joinLobbyCode by homeViewModel.joinLobbyCode.collectAsState()
             val lobbyScreenState by lobbyScreenViewModel.state.collectAsState()
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
             var showLobbyScreen by remember { mutableStateOf(false) }
-
+            var showJoinLobbyInput by remember { mutableStateOf(false) }
             val snackbarHostState = remember { SnackbarHostState() }
 
             LaunchedEffect(Unit) {
@@ -133,13 +133,24 @@ class MainActivity : ComponentActivity() {
                         onRollDice = gameScreenViewModel::rollDice,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
+                        joinLobbyCode = joinLobbyCode,
+                        showJoinLobbyInput = showJoinLobbyInput,
                         loggedInAs = startScreenState.loggedInAs,
                         showLobbyScreen = showLobbyScreen,
                         onGoToLobbyClick = {
                             showLobbyScreen = true
                         },
-                        onCreateLobbyClick = homeViewModel::createLobby,
+                        onCreateLobbyClick = {
+                            showJoinLobbyInput = false
+                            homeViewModel.createLobby()
+                        },
                         onPurchaseClick = gameScreenViewModel::purchase,
+                        onJoinLobbyClick = {
+                            homeViewModel.clearLobbyCode()
+                            showJoinLobbyInput = true
+                        },
+                        onJoinLobbyCodeChange = homeViewModel::onJoinLobbyCodeChange,
+                        onJoinLobbySubmit = homeViewModel::joinLobby,
                     )
                 }
             }
