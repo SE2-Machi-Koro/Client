@@ -2,11 +2,14 @@ package com.machikoro.client.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.ConnectionStatus
@@ -60,7 +63,7 @@ fun AppRoot(
     onGoToLobbyClick: () -> Unit = {},
 ) {
     val navController = rememberNavController()
-    val appNavigator = AppNavigator(navController)
+    val appNavigator = remember(navController) { AppNavigator(navController) }
 
     // Keep the current state-based screen priority while hosting screens in one NavHost.
     // TODO(#68,#69): Move route decisions into ViewModel navigation state/events.
@@ -71,9 +74,13 @@ fun AppRoot(
         loggedInAs != null -> AppRoute.Home
         else -> AppRoute.Main
     }
+    val routeArguments = AppRoute.AppRouteArguments(
+        lobbyCode = lobbyCode,
+        gameId = gameScreenState.gameId,
+    )
 
-    LaunchedEffect(targetRoute) {
-        appNavigator.navigateTo(targetRoute)
+    LaunchedEffect(targetRoute, routeArguments) {
+        appNavigator.navigateTo(targetRoute, routeArguments)
     }
 
     NavHost(
@@ -113,19 +120,42 @@ fun AppRoot(
             )
         }
 
-        composable(AppRoute.Lobby.route) {
+        composable(
+            route = AppRoute.Lobby.route,
+            arguments = listOf(
+                navArgument(AppRoute.Lobby.LOBBY_CODE_ARGUMENT) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            ),
+        ) { backStackEntry ->
+            val routedLobbyCode = backStackEntry.arguments
+                ?.getString(AppRoute.Lobby.LOBBY_CODE_ARGUMENT)
+                ?.takeIf { it.isNotBlank() }
             LobbyScreen(
                 state = lobbyScreenState,
-                lobbyCode = lobbyCode,
+                lobbyCode = routedLobbyCode ?: lobbyCode,
                 onReadyToggle = onReadyToggle,
                 onStartGame = onStartGame,
                 onLeaveLobby = onLeaveLobby,
             )
         }
 
-        composable(AppRoute.Game.route) {
+        composable(
+            route = AppRoute.Game.route,
+            arguments = listOf(
+                navArgument(AppRoute.Game.GAME_ID_ARGUMENT) {
+                    type = NavType.IntType
+                    defaultValue = AppRoute.Game.MISSING_GAME_ID
+                }
+            ),
+        ) { backStackEntry ->
+            val routedGameId = backStackEntry.arguments
+                ?.getInt(AppRoute.Game.GAME_ID_ARGUMENT)
+                ?.takeIf { it != AppRoute.Game.MISSING_GAME_ID }
             GameScreen(
-                state = gameScreenState,
+                state = gameScreenState.copy(gameId = routedGameId ?: gameScreenState.gameId),
                 onRollDice = onRollDice,
                 onPurchaseClick = onPurchaseClick,
             )
