@@ -126,6 +126,7 @@ class MainActivity : ComponentActivity() {
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
                         onStartGame = homeViewModel::startGame,
                         onLeaveLobby = {
+                            showLobbyScreen = false
                             lobbyScreenViewModel.onLeaveLobby()
                             homeViewModel.clearLobbyCode()
                         },
