@@ -544,28 +544,67 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
-    fun gameActionWithPurchasePayloadEmitsPurchaseSuccessEvent() = runTest {
+    fun lobbyJoinedMessageUpdatesActiveGameIdAndClearsHostFlag() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-        val purchaseEvents = mutableListOf<PurchaseEvent>()
-        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_JOINED","sender":"SERVER","gameId":42,"payload":{"gameId":42}}"""
+            )
+        )
+
+        assertEquals(42, client.activeGameId.value)
+        assertFalse(client.isLobbyHost.value)
+    }
+
+    @Test
+    fun invalidLobbyCodeErrorEmitsLobbyJoinError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+
+        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
         runCurrent()
 
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
+
         factory.simulateText(
             gameActionFrame(
-                """{"type":"GAME_ACTION","payload":{"turnPhase":"BUY_OR_BUILD","purchaseType":"ESTABLISHMENT","cardType":"BAKERY"}}"""
+                """{"type":"ERROR","sender":"SERVER","content":"Lobby code is invalid","payload":{"errorCode":"INVALID_LOBBY_CODE"}}"""
             )
         )
+
         runCurrent()
 
-        assertEquals(
-            listOf(PurchaseEvent.Success(PurchaseType.ESTABLISHMENT, "BAKERY")),
-            purchaseEvents
+        assertEquals(listOf("Lobby code is invalid"), errors)
+    }
+
+    @Test
+    fun sendJoinLobbySendsStompFrameToJoinLobbyDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.sendJoinLobby("ABC1234")
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND\n") &&
+                        it.contains("destination:${WebSocketContract.joinLobbyDestination}") &&
+                        it.contains("\"type\":\"JOIN\"") &&
+                        it.contains("\"lobbyCode\":\"ABC1234\"")
+            }
         )
-        assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
     }
 
         
@@ -591,26 +630,31 @@ class OkHttpWebSocketClientTest {
         assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
                      
      }
-  
-  
-      @Test  
-      fun sendJoinLobbySendsStompFrameToJoinLobbyDestination() {
+
+    @Test
+    fun gameActionWithPurchasePayloadEmitsPurchaseSuccessEvent() = runTest {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
+
+        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
-        
-        client.sendJoinLobby("ABC1234")
-        
-        assertTrue(
-            factory.socket.sentMessages.any {
-                it.startsWith("SEND\n") &&
-                        it.contains("destination:${WebSocketContract.joinLobbyDestination}") &&
-                        it.contains("\"type\":\"JOIN\"") &&
-                        it.contains("\"lobbyCode\":\"ABC1234\"")
-            }
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_ACTION","payload":{"turnPhase":"BUY_OR_BUILD","purchaseType":"ESTABLISHMENT","cardType":"BAKERY"}}"""
+            )
         )
+        runCurrent()
+
+        assertEquals(
+            listOf(PurchaseEvent.Success(PurchaseType.ESTABLISHMENT, "BAKERY")),
+            purchaseEvents
+        )
+        assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
     }
 
     @Test
