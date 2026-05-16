@@ -355,11 +355,10 @@ class OkHttpWebSocketClient(
                     mutableAuthRejections.tryEmit(Unit)
                 } else {
                     // Purchase validation failures arrive as regular STOMP ERROR frames.
-                    // Surface them to the shop while preserving the existing connection status behavior.
+                    // Surface them to the shop without marking the transport itself as failed.
                     mutablePurchaseEvents.tryEmit(
                         PurchaseEvent.Failure(frame.body.ifBlank { "Purchase failed" })
                     )
-                    mutableConnectionStatus.value = ConnectionStatus.ERROR
                 }
             }
         }

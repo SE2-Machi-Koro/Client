@@ -648,7 +648,7 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
-    fun stompErrorFrameWithNonAuthBodyDoesNotEmitAuthRejectionAndSetsErrorStatus() = runTest {
+    fun stompErrorFrameWithNonAuthBodyEmitsPurchaseErrorWithoutConnectionError() = runTest {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
         val rejections = mutableListOf<Unit>()
@@ -663,7 +663,7 @@ class OkHttpWebSocketClientTest {
         runCurrent()
         assertTrue(rejections.isEmpty())
         assertEquals(listOf(PurchaseEvent.Failure("Some other error")), purchaseEvents)
-        assertEquals(ConnectionStatus.ERROR, client.connectionStatus.value)
+        assertEquals(ConnectionStatus.CONNECTED, client.connectionStatus.value)
     }
 
     @Test

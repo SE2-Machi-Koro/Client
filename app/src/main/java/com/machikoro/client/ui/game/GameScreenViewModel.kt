@@ -125,6 +125,7 @@ class GameScreenViewModel(
             state.copy(
                 purchaseState = PurchaseState.PENDING,
                 pendingPurchaseItemType = item.type,
+                purchaseFeedbackItemType = item.type,
                 purchaseMessage = "Buying ${item.displayName}..."
             )
         }
@@ -170,6 +171,7 @@ class GameScreenViewModel(
                     copy(
                         purchaseState = PurchaseState.SUCCESS,
                         pendingPurchaseItemType = null,
+                        purchaseFeedbackItemType = event.itemType,
                         purchaseMessage = "${event.itemType.toDisplayName()} bought"
                     )
                 }
@@ -182,6 +184,7 @@ class GameScreenViewModel(
                     copy(
                         purchaseState = PurchaseState.ERROR,
                         pendingPurchaseItemType = null,
+                        purchaseFeedbackItemType = purchaseFeedbackItemType,
                         purchaseMessage = event.message.ifBlank { "Purchase failed" }
                     )
                 }
@@ -195,6 +198,7 @@ class GameScreenViewModel(
             copy(
                 purchaseState = PurchaseState.IDLE,
                 pendingPurchaseItemType = null,
+                purchaseFeedbackItemType = null,
                 purchaseMessage = null
             )
         }

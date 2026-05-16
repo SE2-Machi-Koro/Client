@@ -389,6 +389,7 @@ class GameScreenViewModelTest {
 
         assertEquals(PurchaseState.SUCCESS, viewModel.state.value.purchaseState)
         assertNull(viewModel.state.value.pendingPurchaseItemType)
+        assertEquals("BAKERY", viewModel.state.value.purchaseFeedbackItemType)
         assertEquals("Bakery bought", viewModel.state.value.purchaseMessage)
     }
 
@@ -408,6 +409,7 @@ class GameScreenViewModelTest {
 
         assertEquals(PurchaseState.ERROR, viewModel.state.value.purchaseState)
         assertNull(viewModel.state.value.pendingPurchaseItemType)
+        assertEquals("BAKERY", viewModel.state.value.purchaseFeedbackItemType)
         assertEquals("Not enough coins", viewModel.state.value.purchaseMessage)
 
         viewModel.purchase("CAFE")
@@ -440,6 +442,7 @@ class GameScreenViewModelTest {
 
         assertEquals(PurchaseState.IDLE, viewModel.state.value.purchaseState)
         assertNull(viewModel.state.value.pendingPurchaseItemType)
+        assertNull(viewModel.state.value.purchaseFeedbackItemType)
         assertNull(viewModel.state.value.purchaseMessage)
     }
 

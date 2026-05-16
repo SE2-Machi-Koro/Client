@@ -566,7 +566,7 @@ private fun ShopItemCard(
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                Text(text = state.purchaseState.toButtonText())
+                Text(text = state.buttonTextFor(item))
             }
         }
     }
@@ -622,11 +622,12 @@ private fun ShopItemColor.toContentColor(): Color = when (this) {
     ShopItemColor.LANDMARK -> Color(0xFF7D3A1E)
 }
 
-private fun PurchaseState.toButtonText(): String = when (this) {
-    PurchaseState.IDLE -> "Buy"
-    PurchaseState.PENDING -> "Buying"
-    PurchaseState.SUCCESS -> "Bought"
-    PurchaseState.ERROR -> "Retry"
+private fun GameScreenState.buttonTextFor(item: ShopItem): String = when {
+    purchaseFeedbackItemType != item.type -> "Buy"
+    purchaseState == PurchaseState.PENDING -> "Buying"
+    purchaseState == PurchaseState.SUCCESS -> "Bought"
+    purchaseState == PurchaseState.ERROR -> "Retry"
+    else -> "Buy"
 }
 
 @Composable

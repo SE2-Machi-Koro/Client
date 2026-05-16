@@ -17,6 +17,8 @@ data class GameScreenState(
     val purchaseState: PurchaseState,
     // Tracks the one local buy/build request currently waiting for a server GAME_ACTION.
     val pendingPurchaseItemType: String? = null,
+    // Keeps button feedback tied to the specific item that was bought or failed.
+    val purchaseFeedbackItemType: String? = null,
     // Short feedback text shown in the shop for pending, success, or retryable errors.
     val purchaseMessage: String? = null,
     val isRolling: Boolean = false,
@@ -45,6 +47,7 @@ data class GameScreenState(
             myUserId = null,
             purchaseState = PurchaseState.IDLE,
             pendingPurchaseItemType = null,
+            purchaseFeedbackItemType = null,
             purchaseMessage = null,
             isRolling = false,
             gameStatus = null,
