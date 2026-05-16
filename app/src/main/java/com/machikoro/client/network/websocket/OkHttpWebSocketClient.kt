@@ -184,21 +184,22 @@ class OkHttpWebSocketClient(
             return
         }
 
+        val payload = JSONObject()
+            .put("lobbyCode", lobbyCode)
+
+        val enrichedBody = JSONObject()
+            .put("type", "JOIN")
+            .put("sender", WebSocketContract.defaultSender)
+            .put("payload", payload)
+            .toString()
+
         val frameStr = StompFrame(
             command = "SEND",
             headers = mapOf(
                 "destination" to WebSocketContract.joinLobbyDestination,
                 "content-type" to "application/json"
             ),
-            body = """
-            {
-              "type":"JOIN",
-              "sender":"${WebSocketContract.defaultSender}",
-              "payload":{
-                "lobbyCode":"$lobbyCode"
-              }
-            }
-        """.trimIndent()
+            body = enrichedBody
         ).serialize()
 
         if (socket.send(frameStr)) {

@@ -397,7 +397,7 @@ private fun JoinLobbyCodeRow(
                     },
                     singleLine = true,
                     textStyle = TextStyle(
-                        color = Color(0x4D004E7E),
+                        color = TextBlueDark,
                         fontSize = MaterialTheme.typography.bodyMedium.fontSize,
                         fontWeight = FontWeight.Bold
                     ),
