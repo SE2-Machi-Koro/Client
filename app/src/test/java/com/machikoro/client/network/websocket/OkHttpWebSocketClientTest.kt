@@ -2,7 +2,7 @@ package com.machikoro.client.network.websocket
 
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
-import com.machikoro.client.domain.model.shop.PurchaseType
+import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.state.ConnectionStatus
@@ -653,9 +653,6 @@ class OkHttpWebSocketClientTest {
         runCurrent()
         assertEquals(null, client.lobbyCode.value)
     }
-    private fun connectedFrame(): String =
-        "CONNECTED\nversion:1.2\n\n\u0000"
-
     private fun authRejectionErrorFrame(): String =
         "ERROR\nmessage:Authentication failed\n\nAuthentication failed\u0000"
   
@@ -711,6 +708,21 @@ class OkHttpWebSocketClientTest {
             mapOf(CardType.WHEAT_FIELD to 6, CardType.BAKERY to 5),
             client.marketplace.value
         )
+    }
+
+    @Test
+    fun syncMessageBuildsShopItemsFromServerDefinitions() {
+        val client = clientAfterSync()
+        val bakery = client.shopItems.value.first { it.type == "BAKERY" }
+        val trainStation = client.shopItems.value.first { it.type == "TRAIN_STATION" }
+
+        assertEquals(PurchaseType.ESTABLISHMENT, bakery.purchaseType)
+        assertEquals("Bakery", bakery.displayName)
+        assertEquals(1, bakery.cost)
+        assertTrue(bakery.isAvailable)
+        assertEquals(PurchaseType.LANDMARK, trainStation.purchaseType)
+        assertEquals("Train Station", trainStation.displayName)
+        assertEquals(4, trainStation.cost)
     }
 
     @Test
@@ -840,7 +852,11 @@ class OkHttpWebSocketClientTest {
                 """"playerLandmarks":{"11":[{"playerId":11,"landmarkType":"TRAIN_STATION","isBuilt":true},""" +
                 """{"playerId":11,"landmarkType":"SHOPPING_MALL","isBuilt":false}],""" +
                 """"22":[{"playerId":22,"landmarkType":"TRAIN_STATION","isBuilt":false}]},""" +
-                """"marketplace":{"WHEAT_FIELD":6,"BAKERY":5},"turnOrder":[11,22]}}}"""
+                """"marketplace":{"WHEAT_FIELD":6,"BAKERY":5},""" +
+                """"cardDefinitions":[{"cardType":"BAKERY","cost":1,"income":1,"color":"GREEN",""" +
+                """"establishmentType":"BREAD","paymentSource":"BANK","activationNumbers":[2,3]}],""" +
+                """"landmarkDefinitions":[{"landmarkType":"TRAIN_STATION","cost":4}],""" +
+                """"turnOrder":[11,22]}}}"""
     }
 
     private fun newClient(

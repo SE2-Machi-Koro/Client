@@ -2,7 +2,7 @@ package com.machikoro.client.ui.game
 
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
-import com.machikoro.client.domain.model.shop.PurchaseType
+import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.enums.GameStatus

@@ -3,7 +3,7 @@ package com.machikoro.client.ui.game
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.machikoro.client.domain.model.shop.PurchaseType
+import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PurchaseState
@@ -79,6 +79,11 @@ class GameScreenViewModel(
             }
         }
         viewModelScope.launch {
+            webSocketClient.shopItems.collect { shopItems ->
+                mutableState.update { it.copy(shopItems = shopItems) }
+            }
+        }
+        viewModelScope.launch {
             sessionStateHolder.session.collect { session ->
                 mutableState.update { it.copy(myUserId = session?.userId) }
             }
@@ -95,8 +100,8 @@ class GameScreenViewModel(
     fun purchase(itemType: String) {
         val current = mutableState.value
         val gameId = current.gameId ?: return
-        // Item type is the server enum name (for example BAKERY or TRAIN_STATION).
-        val item = ShopCatalog.defaultItems.firstOrNull { it.type == itemType && it.isAvailable } ?: return
+        val availableItems = current.shopItems.ifEmpty { ShopCatalog.defaultItems }
+        val item = availableItems.firstOrNull { it.type == itemType && it.isAvailable } ?: return
         if (!current.isBuyingPhase || current.purchaseState != PurchaseState.IDLE) return
         if (!current.isActivePlayer) return
 

@@ -41,11 +41,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-  import com.machikoro.client.R
+import com.machikoro.client.R
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.shop.ShopItem
-import com.machikoro.client.domain.model.shop.ShopItemColor
+import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.LandmarkType
@@ -88,10 +88,9 @@ fun GameScreen(
         }
 
         if (state.isBuyingPhase) {
-            // Shop uses a local catalog until the backend exposes marketplace supply.
             BuyingPhaseShop(
                 state = state,
-                items = ShopCatalog.defaultItems,
+                items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
                 onPurchaseClick = onPurchaseClick,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -704,12 +703,10 @@ private fun GameScreenBuyOrBuildPreview() {
             state = GameScreenState(
                 gameId = 1,
                 gamePhase = GamePhase.BUY_OR_BUILD,
-                players = previewPlayers(),
-                purchaseState = PurchaseState.IDLE,
-                diceResult = listOf(5),
                 connectionStatus = ConnectionStatus.CONNECTED,
                 players = previewPlayers(),
                 diceResult = listOf(8),
+                purchaseState = PurchaseState.IDLE,
                 myUserId = 1,
                 activePlayerId = 1,
                 roundNumber = 4,

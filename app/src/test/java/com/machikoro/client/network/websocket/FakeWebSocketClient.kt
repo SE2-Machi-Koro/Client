@@ -2,11 +2,12 @@ package com.machikoro.client.network.websocket
 
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
-import com.machikoro.client.domain.model.shop.PurchaseType
+import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
+import com.machikoro.client.domain.model.shop.ShopItem
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +51,9 @@ class FakeWebSocketClient : WebSocketClient {
     override val marketplace: StateFlow<Map<CardType, Int>>
         get() = mutableMarketplace
 
+    override val shopItems: StateFlow<List<ShopItem>>
+        get() = mutableShopItems
+
     override val authRejections: SharedFlow<Unit>
         get() = mutableAuthRejections
 
@@ -66,6 +70,7 @@ class FakeWebSocketClient : WebSocketClient {
     private val mutablePlayerLandmarks =
         MutableStateFlow<Map<Int, List<PlayerLandmarkState>>>(emptyMap())
     private val mutableMarketplace = MutableStateFlow<Map<CardType, Int>>(emptyMap())
+    private val mutableShopItems = MutableStateFlow<List<ShopItem>>(emptyList())
     private val mutableAuthRejections = MutableSharedFlow<Unit>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -160,6 +165,10 @@ class FakeWebSocketClient : WebSocketClient {
 
     fun emitMarketplace(marketplace: Map<CardType, Int>) {
         mutableMarketplace.value = marketplace
+    }
+
+    fun emitShopItems(shopItems: List<ShopItem>) {
+        mutableShopItems.value = shopItems
     }
 
     fun emitAuthRejection() {
