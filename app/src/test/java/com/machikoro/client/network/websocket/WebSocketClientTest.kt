@@ -29,6 +29,7 @@ class DummyWebSocketClient : WebSocketClient {
     override fun connect() {}
     override fun disconnect() {}
     override fun sendCreateLobby() {}
+    override fun sendJoinLobby(lobbyCode: String) = Unit
     override fun clearLobbyCode() {}
     override fun sendGameStart() {}
     override fun rollDice(diceCount: Int) {}

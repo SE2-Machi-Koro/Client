@@ -568,6 +568,7 @@ class OkHttpWebSocketClientTest {
         assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
     }
 
+        
     @Test
     fun malformedPurchasePayloadDoesNotEmitPurchaseSuccessEvent() = runTest {
         val factory = FakeWebSocketFactory()
@@ -588,6 +589,38 @@ class OkHttpWebSocketClientTest {
 
         assertTrue(purchaseEvents.isEmpty())
         assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
+                     
+     }
+  
+  
+      @Test  
+      fun sendJoinLobbySendsStompFrameToJoinLobbyDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        
+        client.sendJoinLobby("ABC1234")
+        
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND\n") &&
+                        it.contains("destination:${WebSocketContract.joinLobbyDestination}") &&
+                        it.contains("\"type\":\"JOIN\"") &&
+                        it.contains("\"lobbyCode\":\"ABC1234\"")
+            }
+        )
+    }
+
+    @Test
+    fun sendJoinLobbyWithoutConnectionIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.sendJoinLobby("ABC1234")
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
     }
 
     @Test

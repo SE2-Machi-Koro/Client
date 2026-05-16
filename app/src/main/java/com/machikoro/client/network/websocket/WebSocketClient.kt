@@ -48,8 +48,8 @@ interface WebSocketClient {
 
     fun connect()
     fun disconnect()
-
     fun sendCreateLobby()
+    fun sendJoinLobby(lobbyCode: String)     // Sends a request to join an existing lobby by lobby code.
     fun clearLobbyCode()
     fun sendGameStart()
 

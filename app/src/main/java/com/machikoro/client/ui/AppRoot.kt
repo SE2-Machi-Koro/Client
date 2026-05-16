@@ -34,6 +34,8 @@ fun AppRoot(
     loginDialogState: LoginDialogState,
     logoutState: LogoutState,
     lobbyCode: String?,
+    joinLobbyCode: String = "",
+    showJoinLobbyInput: Boolean = false,
     loggedInAs: String?,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
@@ -43,6 +45,9 @@ fun AppRoot(
     onLoginPasswordChange: (String) -> Unit,
     onLoginSubmit: () -> Unit,
     onCreateLobbyClick: () -> Unit,
+    onJoinLobbyClick: () -> Unit = {},
+    onJoinLobbyCodeChange: (String) -> Unit = {},
+    onJoinLobbySubmit: () -> Unit = {},
     onLoginDialogReset: () -> Unit,
     onLogoutSubmit: () -> Unit,
     onReadyToggle: () -> Unit = {},
@@ -51,7 +56,6 @@ fun AppRoot(
     onRollDice: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
-    isLobbyHost: Boolean = false,
     showLobbyScreen: Boolean = false,
     onGoToLobbyClick: () -> Unit = {},
 ) {
@@ -105,6 +109,92 @@ fun AppRoot(
         composable(AppRoute.Home.route) {
             HomeScreen(
                 lobbyCode = lobbyCode,
+                onCreateLobbyClick = onCreateLobbyClick,
+                onGoToLobbyClick = onGoToLobbyClick,
+                onLogoutClick = onLogoutSubmit,
+            )
+        }
+
+        composable(AppRoute.Lobby.route) {
+            LobbyScreen(
+                state = lobbyScreenState,
+                lobbyCode = lobbyCode,
+                onReadyToggle = onReadyToggle,
+                onStartGame = onStartGame,
+                onLeaveLobby = onLeaveLobby,
+            )
+        }
+
+        composable(AppRoute.Game.route) {
+            GameScreen(
+                state = gameScreenState,
+                onRollDice = onRollDice,
+                onPurchaseClick = onPurchaseClick,
+            )
+        }
+
+        composable(AppRoute.Winner.route) {
+            GameOverOneWinner(
+                winnerName = resolveWinnerName(gameScreenState),
+                roundsNumber = gameScreenState.roundNumber ?: 0,
+            )
+        }
+
+    val navController = rememberNavController()
+
+    // Keep the current state-based screen priority while hosting screens in one NavHost.
+    // TODO(#68,#69): Move route decisions into ViewModel navigation state/events.
+    val targetRoute = when {
+        gameScreenState.gameStatus == GameStatus.FINISHED -> AppRoute.Winner
+        gameScreenState.gamePhase != GamePhase.NONE -> AppRoute.Game
+        showLobbyScreen -> AppRoute.Lobby
+        loggedInAs != null -> AppRoute.Home
+        else -> AppRoute.Main
+    }
+
+    LaunchedEffect(targetRoute) {
+        if (navController.currentDestination?.route != targetRoute.route) {
+            navController.navigate(
+                targetRoute.route,
+                navOptions {
+                    launchSingleTop = true
+                    popUpTo(AppRoute.Main.route)
+                }
+            )
+        }
+    }
+
+    NavHost(
+        navController = navController,
+        startDestination = AppRoute.Main.route,
+        modifier = modifier,
+    ) {
+        composable(AppRoute.Main.route) {
+            StartScreen(
+                state = startScreenState,
+                registerDialogState = registerDialogState,
+                loginDialogState = loginDialogState,
+                logoutState = logoutState,
+                onRegisterUsernameChange = onRegisterUsernameChange,
+                onRegisterPasswordChange = onRegisterPasswordChange,
+                onRegisterSubmit = onRegisterSubmit,
+                onRegisterDialogReset = onRegisterDialogReset,
+                onLoginUsernameChange = onLoginUsernameChange,
+                onLoginPasswordChange = onLoginPasswordChange,
+                onLoginSubmit = onLoginSubmit,
+                onLoginDialogReset = onLoginDialogReset,
+                onLogoutSubmit = onLogoutSubmit,
+            )
+        }
+
+        composable(AppRoute.Home.route) {
+            HomeScreen(
+                lobbyCode = lobbyCode,
+                joinLobbyCode = joinLobbyCode,
+                showJoinLobbyInput = showJoinLobbyInput,
+                onJoinLobbyClick = onJoinLobbyClick,
+                onJoinLobbyCodeChange = onJoinLobbyCodeChange,
+                onJoinLobbySubmit = onJoinLobbySubmit,
                 onCreateLobbyClick = onCreateLobbyClick,
                 onGoToLobbyClick = onGoToLobbyClick,
                 onLogoutClick = onLogoutSubmit,
