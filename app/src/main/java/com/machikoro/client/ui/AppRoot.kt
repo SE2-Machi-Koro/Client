@@ -7,7 +7,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navOptions
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.ConnectionStatus
@@ -20,6 +19,7 @@ import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.ui.game.GameScreen
 import com.machikoro.client.ui.home.HomeScreen
 import com.machikoro.client.ui.lobby.LobbyScreen
+import com.machikoro.client.ui.navigation.AppNavigator
 import com.machikoro.client.ui.navigation.AppRoute
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
@@ -62,6 +62,7 @@ fun AppRoot(
 ) {
 
     val navController = rememberNavController()
+    val appNavigator = AppNavigator(navController)
 
     // Keep the current state-based screen priority while hosting screens in one NavHost.
     // TODO(#68,#69): Move route decisions into ViewModel navigation state/events.
@@ -74,15 +75,7 @@ fun AppRoot(
     }
 
     LaunchedEffect(targetRoute) {
-        if (navController.currentDestination?.route != targetRoute.route) {
-            navController.navigate(
-                targetRoute.route,
-                navOptions {
-                    launchSingleTop = true
-                    popUpTo(AppRoute.Main.route)
-                }
-            )
-        }
+        appNavigator.navigateTo(targetRoute)
     }
 
     NavHost(
