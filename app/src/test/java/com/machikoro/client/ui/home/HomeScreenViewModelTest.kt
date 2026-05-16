@@ -2,10 +2,12 @@ package com.machikoro.client.ui.home
 
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
+import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -153,6 +155,8 @@ class HomeScreenViewModelTest {
             MutableStateFlow(emptyMap())
         override val marketplace: StateFlow<Map<CardType, Int>> =
             MutableStateFlow(emptyMap())
+        override val shopItems: StateFlow<List<ShopItem>> =
+            MutableStateFlow(emptyList())
 
         override val authRejections: SharedFlow<Unit> = MutableSharedFlow(
             extraBufferCapacity = 1,
@@ -169,6 +173,12 @@ class HomeScreenViewModelTest {
         override fun rollDice(diceCount: Int) = Unit
         override fun sendGameStart() { sendGameStartCalled = true }
         override fun sendCreateLobby() { sendCreateLobbyCalled = true }
+        override fun sendPurchase(
+            gameId: Int,
+            purchaseType: PurchaseType,
+            cardType: String?,
+            landmarkType: String?
+        ) = Unit
         override fun clearLobbyCode() { mutableLobbyCode.value = null }
     }
 }

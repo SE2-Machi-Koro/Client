@@ -2,10 +2,12 @@ package com.machikoro.client.network.websocket
 
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
+import com.machikoro.client.domain.model.shop.ShopItem
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -31,6 +33,8 @@ interface WebSocketClient {
     val playerLandmarks: StateFlow<Map<Int, List<PlayerLandmarkState>>>
     // Remaining marketplace supply per card type.
     val marketplace: StateFlow<Map<CardType, Int>>
+    // DB-backed shop definitions received from GAME_STARTED or /app/game.sync.
+    val shopItems: StateFlow<List<ShopItem>>
 
     // Fires when the server rejects the STOMP CONNECT for auth reasons (token
     // missing / invalid / server-side cleared). The UI layer is responsible for
@@ -45,5 +49,14 @@ interface WebSocketClient {
     fun sendCreateLobby()
     fun clearLobbyCode()
     fun sendGameStart()
+
+    // Matches Server PR #216 PurchaseRequest: gameId + purchaseType + one target field.
+    fun sendPurchase(
+        gameId: Int,
+        purchaseType: PurchaseType,
+        cardType: String? = null,
+        landmarkType: String? = null
+    )
+
     fun rollDice(diceCount: Int = 1)
 }

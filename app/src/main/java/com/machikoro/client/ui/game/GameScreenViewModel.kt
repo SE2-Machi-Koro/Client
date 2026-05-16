@@ -3,8 +3,11 @@ package com.machikoro.client.ui.game
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.PurchaseType
+import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.model.state.PurchaseState
+import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +26,13 @@ class GameScreenViewModel(
     private val mutableState = MutableStateFlow(GameScreenState.initial())
 
     init {
+        viewModelScope.launch {
+            webSocketClient.activeGameId.collect { gameId ->
+                mutableState.update { current ->
+                    current.copy(gameId = gameId)
+                }
+            }
+        }
         viewModelScope.launch {
             webSocketClient.connectionStatus.collect { connectionStatus ->
                 mutableState.update { it.copy(connectionStatus = connectionStatus) }
@@ -69,6 +79,11 @@ class GameScreenViewModel(
             }
         }
         viewModelScope.launch {
+            webSocketClient.shopItems.collect { shopItems ->
+                mutableState.update { it.copy(shopItems = shopItems) }
+            }
+        }
+        viewModelScope.launch {
             sessionStateHolder.session.collect { session ->
                 mutableState.update { it.copy(myUserId = session?.userId) }
             }
@@ -80,6 +95,29 @@ class GameScreenViewModel(
         if (!mutableState.value.isActivePlayer) return
         mutableState.update { it.copy(isRolling = true) }
         webSocketClient.rollDice(diceCount)
+    }
+
+    fun purchase(itemType: String) {
+        val current = mutableState.value
+        val gameId = current.gameId ?: return
+        val availableItems = current.shopItems.ifEmpty { ShopCatalog.defaultItems }
+        val item = availableItems.firstOrNull { it.type == itemType && it.isAvailable } ?: return
+        if (!current.isBuyingPhase || current.purchaseState != PurchaseState.IDLE) return
+        if (!current.isActivePlayer) return
+
+        mutableState.update { state ->
+            state.copy(purchaseState = PurchaseState.PENDING)
+        }
+        // TODO(#39): wait for backend success/error response before showing final feedback.
+        webSocketClient.sendPurchase(
+            gameId = gameId,
+            purchaseType = item.purchaseType,
+            cardType = item.type.takeIf { item.purchaseType == PurchaseType.ESTABLISHMENT },
+            landmarkType = item.type.takeIf { item.purchaseType == PurchaseType.LANDMARK }
+        )
+        mutableState.update { state ->
+            state.copy(purchaseState = PurchaseState.SUCCESS)
+        }
     }
 
     class Factory(

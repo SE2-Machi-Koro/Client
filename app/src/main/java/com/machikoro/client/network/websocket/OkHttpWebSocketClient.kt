@@ -3,8 +3,11 @@ package com.machikoro.client.network.websocket
 import android.util.Log
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
+import com.machikoro.client.domain.enums.ShopItemColor
+import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
@@ -66,6 +69,9 @@ class OkHttpWebSocketClient(
     override val marketplace: StateFlow<Map<CardType, Int>>
         get() = mutableMarketplace.asStateFlow()
 
+    override val shopItems: StateFlow<List<ShopItem>>
+        get() = mutableShopItems.asStateFlow()
+
     override val authRejections: SharedFlow<Unit>
         get() = mutableAuthRejections.asSharedFlow()
 
@@ -82,6 +88,7 @@ class OkHttpWebSocketClient(
     private val mutablePlayerLandmarks =
         MutableStateFlow<Map<Int, List<PlayerLandmarkState>>>(emptyMap())
     private val mutableMarketplace = MutableStateFlow<Map<CardType, Int>>(emptyMap())
+    private val mutableShopItems = MutableStateFlow<List<ShopItem>>(emptyList())
     private val mutableAuthRejections = MutableSharedFlow<Unit>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -216,6 +223,36 @@ class OkHttpWebSocketClient(
         Log.d(TAG, "Roll dice message sent (diceCount=$diceCount)")
     }
 
+    override fun sendPurchase(
+        gameId: Int,
+        purchaseType: PurchaseType,
+        cardType: String?,
+        landmarkType: String?
+    ) {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "sendPurchase called but no active WebSocket connection")
+            return
+        }
+        // Body is intentionally not wrapped in WebSocketMessage; Spring maps it to PurchaseRequest.
+        socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.purchaseDestination,
+                    "content-type" to "application/json"
+                ),
+                body = purchaseBody(
+                    gameId = gameId,
+                    purchaseType = purchaseType,
+                    cardType = cardType,
+                    landmarkType = landmarkType
+                )
+            ).serialize()
+        )
+        Log.d(TAG, "Purchase message sent for game id: $gameId")
+    }
+
     private val listener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             Log.d(TAG, "WebSocket opened: ${response.code} ${response.message}")
@@ -327,7 +364,6 @@ class OkHttpWebSocketClient(
             Log.d(TAG, "Lobby created with code: $code")
             mutableLobbyCode.value = code
         }
-
         if (gameId != null) {
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
@@ -350,6 +386,7 @@ class OkHttpWebSocketClient(
 
         parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
         mutablePlayers.value = payload.optJSONArray("players").toPlayerCoinStates(payload, game)
+        updateShopItemsFromState(payload)
     }
 
     /**
@@ -386,8 +423,75 @@ class OkHttpWebSocketClient(
         mutablePlayers.value = state.optJSONArray("players").toPlayerCoinStates(state, game)
         mutableActivePlayerId.value = resolveActiveUserId(state, game)
         mutablePlayerLandmarks.value = parsePlayerLandmarks(state.optJSONObject("playerLandmarks"))
-        mutableMarketplace.value = parseMarketplace(state.optJSONObject("marketplace"))
+        val marketplace = parseMarketplace(state.optJSONObject("marketplace"))
+        mutableMarketplace.value = marketplace
+        updateShopItemsFromState(state, marketplace)
     }
+
+    private fun updateShopItemsFromState(
+        state: JSONObject,
+        marketplace: Map<CardType, Int> = parseMarketplace(state.optJSONObject("marketplace"))
+    ) {
+        val cardItems = parseCardDefinitions(state.optJSONArray("cardDefinitions"), marketplace)
+        val landmarkItems = parseLandmarkDefinitions(state.optJSONArray("landmarkDefinitions"))
+        if (cardItems.isNotEmpty() || landmarkItems.isNotEmpty()) {
+            mutableShopItems.value = cardItems + landmarkItems
+        }
+    }
+
+    private fun parseCardDefinitions(
+        array: JSONArray?,
+        marketplace: Map<CardType, Int>
+    ): List<ShopItem> {
+        if (array == null) return emptyList()
+        return (0 until array.length()).mapNotNull { index ->
+            val definition = array.optJSONObject(index) ?: return@mapNotNull null
+            val cardType = runCatching { CardType.valueOf(definition.optString("cardType")) }
+                .getOrNull() ?: return@mapNotNull null
+            ShopItem(
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                type = cardType.name,
+                displayName = cardType.displayName(),
+                cost = definition.optInt("cost"),
+                color = definition.optString("color").toShopItemColor(),
+                establishmentType = definition.optString("establishmentType"),
+                imageKey = "card_${cardType.name.lowercase()}",
+                isAvailable = (marketplace[cardType] ?: 0) > 0
+            )
+        }
+    }
+
+    private fun parseLandmarkDefinitions(array: JSONArray?): List<ShopItem> {
+        if (array == null) return emptyList()
+        return (0 until array.length()).mapNotNull { index ->
+            val definition = array.optJSONObject(index) ?: return@mapNotNull null
+            val landmarkType = runCatching {
+                LandmarkType.valueOf(definition.optString("landmarkType"))
+            }.getOrNull() ?: return@mapNotNull null
+            ShopItem(
+                purchaseType = PurchaseType.LANDMARK,
+                type = landmarkType.name,
+                displayName = landmarkType.displayName(),
+                cost = definition.optInt("cost"),
+                color = ShopItemColor.LANDMARK,
+                establishmentType = "LANDMARK",
+                imageKey = "landmark_${landmarkType.name.lowercase()}",
+                isAvailable = true
+            )
+        }
+    }
+
+    private fun String.toShopItemColor(): ShopItemColor =
+        runCatching { ShopItemColor.valueOf(this) }.getOrDefault(ShopItemColor.BLUE)
+
+    private fun CardType.displayName(): String = name.toDisplayName()
+
+    private fun LandmarkType.displayName(): String = name.toDisplayName()
+
+    private fun String.toDisplayName(): String =
+        lowercase()
+            .split("_")
+            .joinToString(" ") { part -> part.replaceFirstChar { it.titlecase() } }
 
     private fun parseGameStatus(name: String): GameStatus? =
         name.takeIf { it.isNotEmpty() }
@@ -542,6 +646,7 @@ class OkHttpWebSocketClient(
         mutableRoundNumber.value = null
         mutablePlayerLandmarks.value = emptyMap()
         mutableMarketplace.value = emptyMap()
+        mutableShopItems.value = emptyList()
     }
 
     private fun resetLobbyState() {
@@ -613,5 +718,19 @@ class OkHttpWebSocketClient(
         private const val AUTH_REJECTION_BODY = "Authentication failed"
         private const val GAME_START_BODY =
             """{"type":"START","sender":"${WebSocketContract.defaultSender}"}"""
+
+        private fun purchaseBody(
+            gameId: Int,
+            purchaseType: PurchaseType,
+            cardType: String?,
+            landmarkType: String?
+        ): String {
+            val targetField = when (purchaseType) {
+                PurchaseType.ESTABLISHMENT -> ",\"cardType\":\"$cardType\""
+                PurchaseType.LANDMARK -> ",\"landmarkType\":\"$landmarkType\""
+            }
+            // Keep field names aligned with Server PurchaseRequest.kt.
+            return """{"gameId":$gameId,"purchaseType":"${purchaseType.name}"$targetField}"""
+        }
     }
 }

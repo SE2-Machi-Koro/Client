@@ -2,10 +2,12 @@ package com.machikoro.client.network.websocket
 
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
+import com.machikoro.client.domain.model.shop.ShopItem
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +51,9 @@ class FakeWebSocketClient : WebSocketClient {
     override val marketplace: StateFlow<Map<CardType, Int>>
         get() = mutableMarketplace
 
+    override val shopItems: StateFlow<List<ShopItem>>
+        get() = mutableShopItems
+
     override val authRejections: SharedFlow<Unit>
         get() = mutableAuthRejections
 
@@ -65,6 +70,7 @@ class FakeWebSocketClient : WebSocketClient {
     private val mutablePlayerLandmarks =
         MutableStateFlow<Map<Int, List<PlayerLandmarkState>>>(emptyMap())
     private val mutableMarketplace = MutableStateFlow<Map<CardType, Int>>(emptyMap())
+    private val mutableShopItems = MutableStateFlow<List<ShopItem>>(emptyList())
     private val mutableAuthRejections = MutableSharedFlow<Unit>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -86,8 +92,25 @@ class FakeWebSocketClient : WebSocketClient {
     var createLobbySent = false
         private set
 
+    var lastPurchase: PurchaseCall? = null
+        private set
+
     override fun sendCreateLobby() {
         createLobbySent = true
+    }
+
+    override fun sendPurchase(
+        gameId: Int,
+        purchaseType: PurchaseType,
+        cardType: String?,
+        landmarkType: String?
+    ) {
+        lastPurchase = PurchaseCall(
+            gameId = gameId,
+            purchaseType = purchaseType,
+            cardType = cardType,
+            landmarkType = landmarkType
+        )
     }
 
     override fun clearLobbyCode() {
@@ -111,7 +134,7 @@ class FakeWebSocketClient : WebSocketClient {
     fun emitPlayers(players: List<PlayerCoinState>) {
         mutablePlayers.value = players
     }
-
+    
     fun emitDiceResult(dice: List<Int>) {
         mutableDiceResult.value = dice
     }
@@ -144,7 +167,17 @@ class FakeWebSocketClient : WebSocketClient {
         mutableMarketplace.value = marketplace
     }
 
+    fun emitShopItems(shopItems: List<ShopItem>) {
+        mutableShopItems.value = shopItems
+    }
+
     fun emitAuthRejection() {
         mutableAuthRejections.tryEmit(Unit)
     }
+    data class PurchaseCall(
+        val gameId: Int,
+        val purchaseType: PurchaseType,
+        val cardType: String?,
+        val landmarkType: String?
+    )
 }
