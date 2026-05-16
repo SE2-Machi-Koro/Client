@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 
 class GameScreenViewModel(
     private val webSocketClient: WebSocketClient,
-    private val sessionStateHolder: SessionStateHolder, // NEU
+    private val sessionStateHolder: SessionStateHolder,
 ) : ViewModel() {
     val state: StateFlow<GameScreenState>
         get() = mutableState.asStateFlow()
@@ -40,16 +40,34 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.diceResult.collect { diceResult ->
-                mutableState.update { it.copy(diceResult = diceResult) }
+                mutableState.update { it.copy(diceResult = diceResult, isRolling = false) }
             }
         }
-        // NEU: activePlayerId sammeln
         viewModelScope.launch {
             webSocketClient.activePlayerId.collect { activePlayerId ->
                 mutableState.update { it.copy(activePlayerId = activePlayerId) }
             }
         }
-        // NEU: myUserId aus Session
+        viewModelScope.launch {
+            webSocketClient.gameStatus.collect { gameStatus ->
+                mutableState.update { it.copy(gameStatus = gameStatus) }
+            }
+        }
+        viewModelScope.launch {
+            webSocketClient.roundNumber.collect { roundNumber ->
+                mutableState.update { it.copy(roundNumber = roundNumber) }
+            }
+        }
+        viewModelScope.launch {
+            webSocketClient.playerLandmarks.collect { playerLandmarks ->
+                mutableState.update { it.copy(playerLandmarks = playerLandmarks) }
+            }
+        }
+        viewModelScope.launch {
+            webSocketClient.marketplace.collect { marketplace ->
+                mutableState.update { it.copy(marketplace = marketplace) }
+            }
+        }
         viewModelScope.launch {
             sessionStateHolder.session.collect { session ->
                 mutableState.update { it.copy(myUserId = session?.userId) }
@@ -60,6 +78,7 @@ class GameScreenViewModel(
     fun rollDice(diceCount: Int = 1) {
         if (mutableState.value.gamePhase != GamePhase.ROLL_DICE) return
         if (!mutableState.value.isActivePlayer) return
+        mutableState.update { it.copy(isRolling = true) }
         webSocketClient.rollDice(diceCount)
     }
 

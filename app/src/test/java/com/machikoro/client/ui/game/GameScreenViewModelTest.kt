@@ -1,8 +1,12 @@
 package com.machikoro.client.ui.game
 
+import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.GameStatus
+import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
+import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.session.Session
 import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.websocket.FakeWebSocketClient
@@ -13,7 +17,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -171,7 +177,7 @@ class GameScreenViewModelTest {
         val viewModel = viewModel(fakeClient, userId = 42)
 
         fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
-        fakeClient.emitActivePlayerId(42) // gleiche userId → aktiver Spieler
+        fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
 
         viewModel.rollDice(diceCount = 1)
@@ -199,7 +205,7 @@ class GameScreenViewModelTest {
         val viewModel = viewModel(fakeClient, userId = 1)
 
         fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
-        fakeClient.emitActivePlayerId(99) // anderer Spieler ist aktiv
+        fakeClient.emitActivePlayerId(99)
         advanceUntilIdle()
 
         viewModel.rollDice(diceCount = 1)
@@ -238,5 +244,123 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         assertEquals(false, viewModel.state.value.isActivePlayer)
+    }
+
+    @Test
+    fun isRollingIsFalseInInitialState() = runTest {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+        assertFalse(viewModel.state.value.isRolling)
+    }
+
+    @Test
+    fun rollDiceSetsIsRollingToTrue() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+
+        assertTrue(viewModel.state.value.isRolling)
+    }
+
+    @Test
+    fun isRollingIsClearedWhenDiceResultArrives() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+        assertTrue(viewModel.state.value.isRolling)
+
+        fakeClient.emitDiceResult(listOf(4))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isRolling)
+    }
+
+    @Test
+    fun rollDiceDoesNotSetIsRollingWhenPhaseIsNotRollDice() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+
+        assertFalse(viewModel.state.value.isRolling)
+    }
+
+    @Test
+    fun rollDiceDoesNotSetIsRollingWhenNotActivePlayer() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 1)
+
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(99)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+
+        assertFalse(viewModel.state.value.isRolling)
+    }
+
+    @Test
+    fun gameStatusFromClientIsReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        advanceUntilIdle()
+
+        assertEquals(GameStatus.IN_PROGRESS, viewModel.state.value.gameStatus)
+    }
+
+    @Test
+    fun roundNumberFromClientIsReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        fakeClient.emitRoundNumber(4)
+        advanceUntilIdle()
+
+        assertEquals(4, viewModel.state.value.roundNumber)
+    }
+
+    @Test
+    fun playerLandmarksFromClientAreReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        val landmarks = mapOf(
+            1 to listOf(
+                PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
+                PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = false),
+            )
+        )
+
+        fakeClient.emitPlayerLandmarks(landmarks)
+        advanceUntilIdle()
+
+        assertEquals(landmarks, viewModel.state.value.playerLandmarks)
+    }
+
+    @Test
+    fun marketplaceFromClientIsReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        val marketplace = mapOf(CardType.WHEAT_FIELD to 6, CardType.BAKERY to 5)
+
+        fakeClient.emitMarketplace(marketplace)
+        advanceUntilIdle()
+
+        assertEquals(marketplace, viewModel.state.value.marketplace)
     }
 }

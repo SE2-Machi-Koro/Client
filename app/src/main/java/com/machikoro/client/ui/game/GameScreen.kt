@@ -2,6 +2,7 @@ package com.machikoro.client.ui.game
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +22,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,14 +36,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCoinState
+import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
+import kotlinx.coroutines.delay
 
 private const val BANNER_COLOR_ANIMATION_DURATION_MS = 300
+private const val DICE_ANIMATION_INTERVAL_MS = 100L
+private val DICE_FACES = listOf("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")
 
 @Composable
 fun GameScreen(
@@ -49,6 +60,7 @@ fun GameScreen(
     Box(modifier = modifier.fillMaxSize()) {
         CoinDisplay(
             players = state.players,
+            playerLandmarks = state.playerLandmarks,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
@@ -64,6 +76,25 @@ fun GameScreen(
             )
         }
 
+        state.roundNumber?.let { round ->
+            RoundIndicator(
+                round = round,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(12.dp)
+            )
+        }
+
+        if (state.marketplace.isNotEmpty()) {
+            MarketplaceSection(
+                marketplace = state.marketplace,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 12.dp)
+            )
+        }
+
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -71,14 +102,15 @@ fun GameScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            state.diceResult?.let { dice ->
-                DiceResultDisplay(dice = dice)
+            when {
+                state.isRolling -> DiceAnimationDisplay()
+                state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
             }
 
-            // NEU: nur für aktiven Spieler sichtbar
             if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer) {
                 Button(
                     onClick = onRollDice,
+                    enabled = !state.isRolling,
                     modifier = Modifier.semantics {
                         contentDescription = "Würfeln"
                     }
@@ -95,11 +127,37 @@ fun GameScreen(
 }
 
 @Composable
+private fun DiceAnimationDisplay(modifier: Modifier = Modifier) {
+    var currentFaceIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(DICE_ANIMATION_INTERVAL_MS)
+            currentFaceIndex = (0..5).random()
+        }
+    }
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = 4.dp,
+        modifier = modifier.semantics {
+            contentDescription = "Würfelt..."
+        }
+    ) {
+        Text(
+            text = DICE_FACES[currentFaceIndex],
+            style = MaterialTheme.typography.displaySmall,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+        )
+    }
+}
+
+@Composable
 private fun DiceResultDisplay(
     dice: List<Int>,
     modifier: Modifier = Modifier
 ) {
-    val faces = listOf("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")
     val sum = dice.sum()
 
     Surface(
@@ -117,7 +175,7 @@ private fun DiceResultDisplay(
         ) {
             dice.forEach { value ->
                 Text(
-                    text = faces.getOrElse(value - 1) { value.toString() },
+                    text = DICE_FACES.getOrElse(value - 1) { value.toString() },
                     style = MaterialTheme.typography.displaySmall
                 )
             }
@@ -134,17 +192,43 @@ private fun DiceResultDisplay(
 }
 
 @Composable
+private fun RoundIndicator(
+    round: Int,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = RoundedCornerShape(8.dp),
+        tonalElevation = 2.dp,
+        modifier = modifier
+    ) {
+        Text(
+            text = "Round $round",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
 private fun CoinDisplay(
     players: List<PlayerCoinState>,
+    playerLandmarks: Map<Int, List<PlayerLandmarkState>>,
     modifier: Modifier = Modifier
 ) {
     if (players.isEmpty()) return
     LazyRow(
         modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         items(items = players, key = { it.id }) { player ->
-            PlayerCoinBadge(player = player, modifier = Modifier.padding(end = 8.dp))
+            PlayerCoinBadge(
+                player = player,
+                landmarks = playerLandmarks[player.id.toIntOrNull()].orEmpty(),
+                modifier = Modifier.padding(end = 8.dp)
+            )
         }
     }
 }
@@ -152,6 +236,7 @@ private fun CoinDisplay(
 @Composable
 private fun PlayerCoinBadge(
     player: PlayerCoinState,
+    landmarks: List<PlayerLandmarkState>,
     modifier: Modifier = Modifier
 ) {
     val containerColor = when {
@@ -173,25 +258,151 @@ private fun PlayerCoinBadge(
             .widthIn(min = 118.dp, max = 180.dp)
             .semantics { contentDescription = "${player.displayName}: ${player.coins} coins" }
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
-        ) {
-            CoinIcon(modifier = Modifier.padding(end = 8.dp))
-            Column {
-                Text(
-                    text = player.displayName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1
-                )
-                Text(
-                    text = "${player.coins} coins",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1
+        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CoinIcon(modifier = Modifier.padding(end = 8.dp))
+                Column {
+                    Text(
+                        text = player.displayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = "${player.coins} coins",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                }
+            }
+            if (landmarks.isNotEmpty()) {
+                LandmarkRow(
+                    landmarks = landmarks,
+                    modifier = Modifier.padding(top = 6.dp)
                 )
             }
+        }
+    }
+}
+
+/**
+ * Compact built/unbuilt indicator for a player's four landmarks, rendered in a
+ * fixed order so the columns stay stable across players and snapshots.
+ */
+@Composable
+private fun LandmarkRow(
+    landmarks: List<PlayerLandmarkState>,
+    modifier: Modifier = Modifier
+) {
+    val byType = landmarks.associateBy { it.landmarkType }
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        LandmarkType.entries.forEach { type ->
+            val built = byType[type]?.isBuilt == true
+            LandmarkPip(type = type, built = built)
+        }
+    }
+}
+
+@Composable
+private fun LandmarkPip(
+    type: LandmarkType,
+    built: Boolean
+) {
+    val pipColor = if (built) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.outline
+    }
+    val builtLabel = if (built) "built" else "not built"
+    Box(
+        modifier = Modifier
+            .size(14.dp)
+            .background(color = pipColor, shape = RoundedCornerShape(3.dp))
+            .semantics { contentDescription = "${type.toDisplayText()}: $builtLabel" }
+    ) {
+        Text(
+            text = type.name.take(1),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = if (built) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+/**
+ * Marketplace supply rendered from the reconnect snapshot — one chip per card
+ * type still in stock, scrollable horizontally so all 15 types fit on a phone.
+ */
+@Composable
+private fun MarketplaceSection(
+    marketplace: Map<CardType, Int>,
+    modifier: Modifier = Modifier
+) {
+    val entries = CardType.entries.mapNotNull { type ->
+        marketplace[type]?.let { count -> type to count }
+    }
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = 2.dp,
+        modifier = modifier
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = "Marketplace",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(items = entries, key = { it.first }) { (type, count) ->
+                    MarketplaceCardChip(type = type, count = count)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MarketplaceCardChip(
+    type: CardType,
+    count: Int
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(8.dp),
+        tonalElevation = 1.dp,
+        modifier = Modifier
+            .widthIn(min = 96.dp)
+            .semantics { contentDescription = "${type.toDisplayText()}: $count in stock" }
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = type.toDisplayText(),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                maxLines = 2
+            )
+            Text(
+                text = "×$count",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
@@ -215,7 +426,7 @@ private fun CoinIcon(modifier: Modifier = Modifier) {
 }
 
 private fun coinDisplayTopPadding(players: List<PlayerCoinState>) =
-    if (players.isEmpty()) 0.dp else 68.dp
+    if (players.isEmpty()) 0.dp else 92.dp
 
 @Composable
 private fun GamePhaseBanner(
@@ -267,6 +478,23 @@ private fun GameScreenRollDicePreview() {
 
 @Preview(showBackground = true, widthDp = 412, heightDp = 400)
 @Composable
+private fun GameScreenRollingPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gamePhase = GamePhase.ROLL_DICE,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = previewPlayers(),
+                myUserId = 1,
+                activePlayerId = 1,
+                isRolling = true,
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Composable
 private fun GameScreenRollDiceNotActivePreview() {
     ClientTheme {
         GameScreen(
@@ -275,39 +503,27 @@ private fun GameScreenRollDiceNotActivePreview() {
                 connectionStatus = ConnectionStatus.CONNECTED,
                 players = previewPlayers(),
                 myUserId = 1,
-                activePlayerId = 2, // anderer Spieler ist aktiv
+                activePlayerId = 2,
             )
         )
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Preview(showBackground = true, widthDp = 412, heightDp = 600)
 @Composable
-private fun GameScreenWithResultPreview() {
-    ClientTheme {
-        GameScreen(
-            state = GameScreenState(
-                gamePhase = GamePhase.ROLL_DICE,
-                connectionStatus = ConnectionStatus.CONNECTED,
-                players = previewPlayers(),
-                diceResult = listOf(3, 4),
-                myUserId = 1,
-                activePlayerId = 1,
-            )
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
-@Composable
-private fun GameScreenBuyOrBuildPreview() {
+private fun GameScreenReconnectSnapshotPreview() {
     ClientTheme {
         GameScreen(
             state = GameScreenState(
                 gamePhase = GamePhase.BUY_OR_BUILD,
                 connectionStatus = ConnectionStatus.CONNECTED,
                 players = previewPlayers(),
-                diceResult = listOf(5)
+                diceResult = listOf(8),
+                myUserId = 1,
+                activePlayerId = 1,
+                roundNumber = 4,
+                playerLandmarks = previewLandmarks(),
+                marketplace = previewMarketplace(),
             )
         )
     }
@@ -323,20 +539,39 @@ private fun GameScreenNonePreview() {
 
 private fun previewPlayers() = listOf(
     PlayerCoinState(
-        id = "player-1",
+        id = "1",
         displayName = "You",
         coins = 6,
         isCurrentPlayer = true,
         isActivePlayer = true
     ),
     PlayerCoinState(
-        id = "player-2",
+        id = "2",
         displayName = "SoupCube",
         coins = 3
     ),
     PlayerCoinState(
-        id = "player-3",
+        id = "3",
         displayName = "doniliks",
         coins = 0
     )
+)
+
+private fun previewLandmarks() = mapOf(
+    1 to listOf(
+        PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
+        PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = true),
+        PlayerLandmarkState(LandmarkType.AMUSEMENT_PARK, isBuilt = false),
+        PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = false),
+    ),
+    2 to LandmarkType.entries.map { PlayerLandmarkState(it, isBuilt = false) },
+    3 to LandmarkType.entries.map { PlayerLandmarkState(it, isBuilt = false) },
+)
+
+private fun previewMarketplace() = mapOf(
+    CardType.WHEAT_FIELD to 6,
+    CardType.BAKERY to 5,
+    CardType.CAFE to 6,
+    CardType.CONVENIENCE_STORE to 4,
+    CardType.FOREST to 6,
 )
