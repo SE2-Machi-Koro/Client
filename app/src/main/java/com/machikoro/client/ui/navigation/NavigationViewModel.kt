@@ -68,6 +68,15 @@ class NavigationViewModel : ViewModel() {
             return NavigationViewModel() as T
         }
     }
+
+    /**
+     * Clears the lastNavigation cache. Should be called when the NavController
+     * actually changes destination (to allow re-emitting the same navigation
+     * later if needed).
+     */
+    fun clearLastNavigation() {
+        lastNavigation = null
+    }
 }
 
 sealed class NavigationEvent {

@@ -3,6 +3,8 @@ package com.machikoro.client.ui
 import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.navigation.NavController
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -66,6 +68,19 @@ fun AppRoot(
 ) {
     val navController = rememberNavController()
     val appNavigator = remember(navController) { AppNavigator(navController) }
+
+    // Reset NavigationViewModel idempotency cache when the NavController actually
+    // changes destination, so the same navigation can be re-emitted later if
+    // needed.
+    DisposableEffect(navController) {
+        val listener = NavController.OnDestinationChangedListener { _, _, _ ->
+            navigationViewModel.clearLastNavigation()
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose {
+            navController.removeOnDestinationChangedListener(listener)
+        }
+    }
 
     // Delegate state-based route decisions to NavigationViewModel
     LaunchedEffect(
