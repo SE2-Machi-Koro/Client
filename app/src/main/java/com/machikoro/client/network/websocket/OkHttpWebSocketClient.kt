@@ -366,6 +366,8 @@ class OkHttpWebSocketClient(
                 Log.d(TAG, "STOMP connected")
                 mutableConnectionStatus.value = ConnectionStatus.CONNECTED
                 subscribeToPublicTopic()
+                subscribeToErrorsQueue()
+
                 // Subscribe before the JOIN send below: chat.addUser triggers the
                 // server-side reconnect snapshot, and the SUBSCRIBE must be
                 // registered first or the SYNC frame is delivered to nobody.
@@ -408,7 +410,6 @@ class OkHttpWebSocketClient(
                         PurchaseEvent.Failure(frame.body.ifBlank { "Purchase failed" })
                     )
                 }
-                Log.e(TAG, "Join lobby error emitted")
             }
         }
     }
@@ -456,8 +457,14 @@ class OkHttpWebSocketClient(
         val errorCode = payload?.optString("errorCode").orEmpty()
         val message = json.optString("content").ifBlank { "Failed to join lobby" }
 
-        if (errorCode == "INVALID_LOBBY_CODE") {
-            Log.w(TAG, "Lobby join error received: $message")
+        if (
+            errorCode == "INVALID_LOBBY_CODE" ||
+            errorCode == "GAME_NOT_FOUND" ||
+            errorCode == "GAME_STARTED" ||
+            errorCode == "GAME_FINISHED" ||
+            errorCode == "LOBBY_FULL"
+        ) {
+            Log.w(TAG, "Lobby join error received [$errorCode]: $message")
             mutableLobbyJoinErrors.tryEmit(message)
         }
     }
@@ -687,6 +694,18 @@ class OkHttpWebSocketClient(
                 headers = mapOf(
                     "id" to "user-game-sync",
                     "destination" to WebSocketContract.gameSyncQueue
+                )
+            ).serialize()
+        )
+    }
+
+    private fun subscribeToErrorsQueue() {
+        webSocket?.send(
+            StompFrame(
+                command = "SUBSCRIBE",
+                headers = mapOf(
+                    "id" to "user-errors",
+                    "destination" to WebSocketContract.errorsQueue
                 )
             ).serialize()
         )

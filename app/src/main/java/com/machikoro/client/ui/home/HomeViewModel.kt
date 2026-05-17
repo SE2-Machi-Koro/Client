@@ -83,7 +83,7 @@ class HomeViewModel(
         }
     }
 
-    fun setJoinLobbyError() {
+    fun setJoinLobbyError(message: String) {
         mutableJoinLobbyError.value = true
     }
 

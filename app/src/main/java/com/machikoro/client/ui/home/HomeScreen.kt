@@ -101,7 +101,7 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .offset(x = 0.dp, y = 20.dp)
+                .offset(x = 0.dp, y = 40.dp)
                 .background(Color.White.copy(alpha = 0.7f))
         )
 
@@ -113,7 +113,7 @@ fun HomeScreen(
             color = TextBlueDark,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 50.dp),
+                .padding(top = 30.dp),
         )
 
         // === PROFILE SECTION ===
@@ -121,7 +121,7 @@ fun HomeScreen(
         ProfileCard(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 25.dp, end = 30.dp)
+                .padding(top = 20.dp, end = 30.dp)
         )
 
         // Logout affordance in the top-left corner. Issue #106 places the
@@ -132,7 +132,7 @@ fun HomeScreen(
             onClick = onLogoutClick,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(top = 25.dp, start = 30.dp)
+                .padding(top = 20.dp, start = 30.dp)
         )
 
         // === MAIN ACTION BUTTONS ===
@@ -140,7 +140,7 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
-                .padding(top = 50.dp)
+                .offset(y = 20.dp)
                 .height(180.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top        ) {
@@ -152,7 +152,7 @@ fun HomeScreen(
                 // Join lobby card. The code input only appears after clicking the card.
                 Column(
                     modifier = Modifier.width(150.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     HomeCard(
                         iconRes = R.drawable.home_lobby_join_icon,
@@ -212,7 +212,7 @@ fun HomeScreen(
             onSettingsClick = onSettingsClick,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .offset(x = 0.dp, y = 20.dp)
+                .offset(x = 0.dp, y = 40.dp)
         )
     }
 }
@@ -375,7 +375,6 @@ private fun JoinLobbyCodeRow(
     onCodeChange: (String) -> Unit,
     onJoinLobbySubmit: () -> Unit,
     isError: Boolean = false
-
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -389,7 +388,7 @@ private fun JoinLobbyCodeRow(
             colors = CardDefaults.cardColors(containerColor = White),
             border = BorderStroke(
                 width = if (isError) 2.dp else 0.dp,
-                color = if (isError) Color.Red else Color.Transparent
+                color = if (isError) MaterialTheme.colorScheme.error else Color.Transparent
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {

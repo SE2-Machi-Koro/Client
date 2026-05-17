@@ -8,7 +8,7 @@ object WebSocketContract {
     const val queueDestinationPrefix: String = "/queue"
     const val publicTopic: String = "/topic/public"
     const val gameTopicPrefix: String = "/topic/game"
-    const val errorQueue: String = "/queue/errors"
+    const val errorsQueue: String = "/user/queue/errors"
     const val addUserDestination: String = "/app/chat.addUser"
     const val chatSendDestination: String = "/app/chat.send"
     const val rollDiceDestination: String = "/app/game.rollDice"

@@ -11,7 +11,7 @@ class WebSocketContractTest {
         assertEquals("/topic", WebSocketContract.topicDestinationPrefix)
         assertEquals("/queue", WebSocketContract.queueDestinationPrefix)
         assertEquals("/topic/public", WebSocketContract.publicTopic)
-        assertEquals("/queue/errors", WebSocketContract.errorQueue)
+        assertEquals("/user/queue/errors", WebSocketContract.errorsQueue)
         assertEquals("/app/game.purchase", WebSocketContract.purchaseDestination)
     }
 }

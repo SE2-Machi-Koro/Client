@@ -114,9 +114,9 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(Unit) {
-                webSocketClient.lobbyJoinErrors.collect {
-                    Log.e("MainActivity", "Lobby join error received")
-                    homeViewModel.setJoinLobbyError()
+                webSocketClient.lobbyJoinErrors.collect { message ->
+                    Log.e("MainActivity", "Lobby join error received: $message")
+                    homeViewModel.setJoinLobbyError(message)
                 }
             }
 
