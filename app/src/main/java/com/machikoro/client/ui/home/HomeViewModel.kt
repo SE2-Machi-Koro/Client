@@ -8,14 +8,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.network.websocket.WebSocketClient
-import com.machikoro.client.ui.navigation.AppRoute
-import com.machikoro.client.ui.navigation.NavigationViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class HomeViewModel(
     private val webSocketClient: WebSocketClient,
-    private val navigationViewModel: NavigationViewModel
 ) : ViewModel() {
 
     private var createLobbyJob: Job? = null
@@ -48,7 +45,6 @@ class HomeViewModel(
 
             if (status == ConnectionStatus.CONNECTED) {
                 webSocketClient.sendCreateLobby()
-                navigateToLobby()
             }
         }
     }
@@ -68,7 +64,6 @@ class HomeViewModel(
 
         if (webSocketClient.connectionStatus.value == ConnectionStatus.CONNECTED) {
             webSocketClient.sendJoinLobby(code)
-            navigateToLobby(code)
             return
         }
 
@@ -85,7 +80,6 @@ class HomeViewModel(
 
             if (status == ConnectionStatus.CONNECTED) {
                 webSocketClient.sendJoinLobby(code)
-                navigateToLobby(code)
             }
         }
     }
@@ -98,23 +92,15 @@ class HomeViewModel(
         webSocketClient.clearLobbyCode()
     }
 
-    private fun navigateToLobby(lobbyCode: String? = null) {
-        navigationViewModel.navigateTo(
-            AppRoute.Lobby,
-            AppRoute.AppRouteArguments(lobbyCode = lobbyCode)
-        )
-    }
-
     class Factory(
         private val webSocketClient: WebSocketClient,
-        private val navigationViewModel: NavigationViewModel
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(HomeViewModel::class.java)) {
                 "Unknown ViewModel class: ${modelClass.name}"
             }
-            return HomeViewModel(webSocketClient, navigationViewModel) as T
+            return HomeViewModel(webSocketClient) as T
         }
     }
 }
