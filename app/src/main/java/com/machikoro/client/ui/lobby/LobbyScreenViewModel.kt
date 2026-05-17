@@ -7,6 +7,8 @@ import com.machikoro.client.domain.model.state.LobbyStatus
 import com.machikoro.client.domain.model.state.LobbyScreenState
 import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.websocket.WebSocketClient
+import com.machikoro.client.ui.navigation.AppRoute
+import com.machikoro.client.ui.navigation.NavigationViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +18,7 @@ import kotlinx.coroutines.launch
 class LobbyScreenViewModel(
     private val webSocketClient: WebSocketClient,
     private val sessionStateHolder: SessionStateHolder,
+    private val navigationViewModel: NavigationViewModel,
 ) : ViewModel() {
 
     val state: StateFlow<LobbyScreenState>
@@ -105,11 +108,14 @@ class LobbyScreenViewModel(
 
     fun onLeaveLobby() {
         // TODO: notify backend when leave-lobby endpoint/event exists.
+
+        navigationViewModel.navigateTo(AppRoute.Home)
     }
 
     class Factory(
         private val webSocketClient: WebSocketClient,
         private val sessionStateHolder: SessionStateHolder,
+        private val navigationViewModel: NavigationViewModel
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -118,7 +124,8 @@ class LobbyScreenViewModel(
             }
             return LobbyScreenViewModel(
                 webSocketClient = webSocketClient,
-                sessionStateHolder = sessionStateHolder
+                sessionStateHolder = sessionStateHolder,
+                navigationViewModel = navigationViewModel
             ) as T
         }
     }
