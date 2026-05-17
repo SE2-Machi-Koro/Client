@@ -1,5 +1,6 @@
 package com.machikoro.client.ui
 
+import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -24,12 +25,16 @@ import com.machikoro.client.ui.home.HomeScreen
 import com.machikoro.client.ui.lobby.LobbyScreen
 import com.machikoro.client.ui.navigation.AppNavigator
 import com.machikoro.client.ui.navigation.AppRoute
+import com.machikoro.client.ui.navigation.NavigationEvent
+import com.machikoro.client.ui.navigation.NavigationViewModel
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.win.GameOverOneWinner
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun AppRoot(
+    navigationViewModel: NavigationViewModel,
     gameScreenState: GameScreenState,
     startScreenState: StartScreenState,
     lobbyScreenState: LobbyScreenState,
@@ -65,6 +70,7 @@ fun AppRoot(
     val navController = rememberNavController()
     val appNavigator = remember(navController) { AppNavigator(navController) }
 
+    /*
     // Keep the current state-based screen priority while hosting screens in one NavHost.
     // TODO(#68,#69): Move route decisions into ViewModel navigation state/events.
     val targetRoute = when {
@@ -81,6 +87,33 @@ fun AppRoot(
 
     LaunchedEffect(targetRoute, routeArguments) {
         appNavigator.navigateTo(targetRoute, routeArguments)
+    }
+     */
+    // Delegate state-based route decisions to NavigationViewModel
+    LaunchedEffect(
+        gameScreenState,
+        startScreenState,
+        lobbyCode,
+        showLobbyScreen,
+        loggedInAs
+    ) {
+        navigationViewModel.updateNavigationBasedOnState(
+            gameScreenState = gameScreenState,
+            startScreenState = startScreenState,
+            lobbyCode = lobbyCode,
+            showLobbyScreen = showLobbyScreen,
+            loggedInAs = loggedInAs
+        )
+    }
+
+    // Listen to navigation events from ViewModel and apply them
+    LaunchedEffect(navigationViewModel) {
+        navigationViewModel.navigationEvent.collectLatest { event ->
+            when (event) {
+                is NavigationEvent.NavigateTo ->
+                    appNavigator.navigateTo(event.route, event.arguments)
+            }
+        }
     }
 
     NavHost(
@@ -188,6 +221,7 @@ private fun resolveWinnerName(state: GameScreenState): String {
         ?: "the winner"
 }
 
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, widthDp = 917, heightDp = 412)
 @Composable
 private fun AppRootStartScreenPreview() {
@@ -211,10 +245,12 @@ private fun AppRootStartScreenPreview() {
             lobbyCode = null,
             loggedInAs = null,
             onCreateLobbyClick = {},
+            navigationViewModel = NavigationViewModel()
         )
     }
 }
 
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, widthDp = 917, heightDp = 412)
 @Composable
 private fun AppRootGameScreenPreview() {
@@ -238,6 +274,7 @@ private fun AppRootGameScreenPreview() {
             lobbyCode = null,
             loggedInAs = null,
             onCreateLobbyClick = {},
+            navigationViewModel = NavigationViewModel()
         )
     }
 }
