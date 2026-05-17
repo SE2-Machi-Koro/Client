@@ -448,6 +448,38 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun lobbyCreatedMessageUpdatesActiveGameId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"LOBBY_CREATED",
+                "gameId":42,
+                "payload":{
+                    "lobbyCode":"ABC1234",
+                    "gameId":42
+                }
+            }"""
+            )
+        )
+
+        assertEquals(42, client.activeGameId.value)
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SUBSCRIBE\n") &&
+                        it.contains("/topic/game/42")
+            }
+        )
+    }
+
+    @Test
     fun malformedLobbyCreatedMessageDoesNotCrashAndLeavesLobbyCodeNull() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -467,6 +499,46 @@ class OkHttpWebSocketClientTest {
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         factory.simulateText(gameActionFrame("""{"type":"LOBBY_CREATED","sender":"SERVER"}"""))
         assertEquals(null, client.lobbyCode.value)
+    }
+
+    @Test
+    fun clearLobbyCodeResetsLobbyState() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.clearLobbyCode()
+
+        assertNull(client.lobbyCode.value)
+    }
+
+    @Test
+    fun gameStartedMessageUpdatesGameState() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"GAME_STARTED",
+                "gameId":42,
+                "payload":{
+                    "game":{
+                        "id":42,
+                        "lobbyCode":"ABC1234",
+                        "turnPhase":"ROLL_DICE"
+                    },
+                    "players":[]
+                }
+            }"""
+            )
+        )
+
+        assertEquals(42, client.activeGameId.value)
+        assertEquals("ABC1234", client.lobbyCode.value)
     }
 
     @Test
