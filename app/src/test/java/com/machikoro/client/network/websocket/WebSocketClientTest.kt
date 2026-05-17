@@ -3,6 +3,7 @@ package com.machikoro.client.network.websocket
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopItem
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -26,6 +27,10 @@ class DummyWebSocketClient : WebSocketClient {
     override val diceResult: StateFlow<List<Int>?> = MutableStateFlow(null)
     override val activePlayerId: StateFlow<Int?> = MutableStateFlow(null)
     override val authRejections = kotlinx.coroutines.flow.MutableSharedFlow<Unit>()
+    override val lobbyJoinErrors: SharedFlow<String> = MutableSharedFlow(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     override fun connect() {}
     override fun disconnect() {}
     override fun sendCreateLobby() {}

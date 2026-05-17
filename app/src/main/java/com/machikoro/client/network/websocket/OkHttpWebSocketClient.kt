@@ -46,6 +46,9 @@ class OkHttpWebSocketClient(
     override val lobbyCode: StateFlow<String?>
         get() = mutableLobbyCode.asStateFlow()
 
+    override val lobbyJoinErrors: SharedFlow<String>
+        get() = mutableLobbyJoinErrors.asSharedFlow()
+
     override val diceResult: StateFlow<List<Int>?>
         get() = mutableDiceResult.asStateFlow()
 
@@ -83,6 +86,10 @@ class OkHttpWebSocketClient(
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
+    private val mutableLobbyJoinErrors = MutableSharedFlow<String>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
     private val mutableActivePlayerId = MutableStateFlow<Int?>(null)
     private val mutableActiveGameId = MutableStateFlow<Int?>(null)
@@ -359,6 +366,8 @@ class OkHttpWebSocketClient(
                 Log.d(TAG, "STOMP connected")
                 mutableConnectionStatus.value = ConnectionStatus.CONNECTED
                 subscribeToPublicTopic()
+                subscribeToErrorsQueue()
+
                 // Subscribe before the JOIN send below: chat.addUser triggers the
                 // server-side reconnect snapshot, and the SUBSCRIBE must be
                 // registered first or the SYNC frame is delivered to nobody.
@@ -376,6 +385,8 @@ class OkHttpWebSocketClient(
                     return
                 }
                 handleLobbyCreated(json)
+                handleLobbyJoined(json)
+                handleLobbyError(json)
                 handleGameStarted(json)
                 handleSync(json)
                 parseGameAction(json).let { (phase, activePlayerId) ->
@@ -419,6 +430,42 @@ class OkHttpWebSocketClient(
         if (gameId != null) {
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
+        }
+    }
+
+    /**
+     * Handles successful lobby join responses from the backend.
+     */
+    private fun handleLobbyJoined(json: JSONObject) {
+        if (json.optString("type") != LOBBY_JOINED_TYPE) return
+
+        val payload = json.optJSONObject("payload") ?: return
+        val gameId = json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId")
+
+        mutableIsLobbyHost.value = false
+
+        if (gameId != null) {
+            Log.d(TAG, "Joined lobby with gameId: $gameId")
+            mutableActiveGameId.value = gameId
+            subscribeToGameTopic(gameId)
+        }
+    }
+    private fun handleLobbyError(json: JSONObject) {
+        if (json.optString("type") != ERROR_TYPE) return
+
+        val payload = json.optJSONObject("payload")
+        val errorCode = payload?.optString("errorCode").orEmpty()
+        val message = json.optString("content").ifBlank { "Failed to join lobby" }
+
+        if (
+            errorCode == "INVALID_LOBBY_CODE" ||
+            errorCode == "GAME_NOT_FOUND" ||
+            errorCode == "GAME_STARTED" ||
+            errorCode == "GAME_FINISHED" ||
+            errorCode == "LOBBY_FULL"
+        ) {
+            Log.w(TAG, "Lobby join error received [$errorCode]: $message")
+            mutableLobbyJoinErrors.tryEmit(message)
         }
     }
 
@@ -625,7 +672,9 @@ class OkHttpWebSocketClient(
         if (json.optString("type") != ROLL_DICE_TYPE) return null
         val payload = json.optJSONObject("payload") ?: return null
         val resultArray = payload.optJSONArray("result") ?: return null
-        return List(resultArray.length()) { resultArray.getInt(it) }
+        return (0 until resultArray.length()).mapNotNull { index ->
+            runCatching { resultArray.getInt(index) }.getOrNull()
+        }
     }
 
     private fun subscribeToPublicTopic() {
@@ -647,6 +696,18 @@ class OkHttpWebSocketClient(
                 headers = mapOf(
                     "id" to "user-game-sync",
                     "destination" to WebSocketContract.gameSyncQueue
+                )
+            ).serialize()
+        )
+    }
+
+    private fun subscribeToErrorsQueue() {
+        webSocket?.send(
+            StompFrame(
+                command = "SUBSCRIBE",
+                headers = mapOf(
+                    "id" to "user-errors",
+                    "destination" to WebSocketContract.errorsQueue
                 )
             ).serialize()
         )
@@ -700,7 +761,7 @@ class OkHttpWebSocketClient(
     }
 
     private fun isAuthRejection(body: String): Boolean =
-        body == AUTH_REJECTION_BODY
+        body.trim().contains(AUTH_REJECTION_BODY)
 
     private fun resetGameState() {
         mutableGamePhase.value = GamePhase.NONE
@@ -748,6 +809,9 @@ class OkHttpWebSocketClient(
             id = playerId.toString(),
             displayName = resolvedDisplayName,
             coins = optInt("coins"),
+            // The backend currently exposes one active turn player from currentTurnIndex.
+            // Until the UI needs a separate local-player distinction, both flags
+            // intentionally point to the same active player.
             isCurrentPlayer = playerId == currentPlayerId,
             isActivePlayer = playerId == currentPlayerId,
         )
@@ -776,6 +840,8 @@ class OkHttpWebSocketClient(
         private const val AUTH_HEADER = "Authorization"
         private const val BEARER_PREFIX = "Bearer "
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
+        private const val LOBBY_JOINED_TYPE = "LOBBY_JOINED"
+        private const val ERROR_TYPE = "ERROR"
         private const val ROLL_DICE_TYPE = "ROLL_DICE"
         private const val SYNC_TYPE = "SYNC"
         // Frozen contract: matches GENERIC_AUTH_FAILURE on the server's

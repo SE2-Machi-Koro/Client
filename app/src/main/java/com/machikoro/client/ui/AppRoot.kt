@@ -39,6 +39,7 @@ fun AppRoot(
     lobbyCode: String?,
     joinLobbyCode: String = "",
     showJoinLobbyInput: Boolean = false,
+    joinLobbyError: Boolean = false,
     loggedInAs: String?,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
@@ -110,13 +111,15 @@ fun AppRoot(
             HomeScreen(
                 lobbyCode = lobbyCode,
                 joinLobbyCode = joinLobbyCode,
-                showJoinLobbyInput = showJoinLobbyInput,
+                showJoinLobbyInput = showJoinLobbyInput && lobbyCode == null,
                 onJoinLobbyClick = onJoinLobbyClick,
                 onJoinLobbyCodeChange = onJoinLobbyCodeChange,
                 onJoinLobbySubmit = onJoinLobbySubmit,
+                joinLobbyError = joinLobbyError,
                 onCreateLobbyClick = onCreateLobbyClick,
                 onGoToLobbyClick = onGoToLobbyClick,
                 onLogoutClick = onLogoutSubmit,
+                modifier = modifier
             )
         }
 

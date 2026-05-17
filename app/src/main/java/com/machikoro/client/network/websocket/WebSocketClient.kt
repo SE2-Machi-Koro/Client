@@ -18,6 +18,9 @@ interface WebSocketClient {
     val gamePhase: StateFlow<GamePhase>
     val players: StateFlow<List<PlayerCoinState>>
     val lobbyCode: StateFlow<String?>
+
+    // Fires when joining a lobby fails, e.g. because the lobby code is invalid.
+    val lobbyJoinErrors: SharedFlow<String>
     val activeGameId: StateFlow<Int?>
     val isLobbyHost: StateFlow<Boolean>
 

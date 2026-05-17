@@ -1,6 +1,7 @@
 package com.machikoro.client
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -75,7 +76,10 @@ class MainActivity : ComponentActivity() {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
+            val activeGameId by homeViewModel.activeGameId.collectAsState()
+            val isLobbyHost by homeViewModel.isLobbyHost.collectAsState()
             val joinLobbyCode by homeViewModel.joinLobbyCode.collectAsState()
+            val joinLobbyError by homeViewModel.joinLobbyError.collectAsState()
             val lobbyScreenState by lobbyScreenViewModel.state.collectAsState()
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
@@ -99,6 +103,20 @@ class MainActivity : ComponentActivity() {
                     snackbarHostState.showSnackbar(
                         "Sitzung abgelaufen, bitte erneut anmelden"
                     )
+                }
+            }
+
+            LaunchedEffect(activeGameId, isLobbyHost) {
+                if (activeGameId != null && !isLobbyHost) {
+                    showJoinLobbyInput = false
+                    showLobbyScreen = true
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                webSocketClient.lobbyJoinErrors.collect { message ->
+                    Log.e("MainActivity", "Lobby join error received: $message")
+                    homeViewModel.setJoinLobbyError(message)
                 }
             }
 
@@ -134,6 +152,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
                         joinLobbyCode = joinLobbyCode,
+                        joinLobbyError = joinLobbyError,
                         showJoinLobbyInput = showJoinLobbyInput,
                         loggedInAs = startScreenState.loggedInAs,
                         showLobbyScreen = showLobbyScreen,
