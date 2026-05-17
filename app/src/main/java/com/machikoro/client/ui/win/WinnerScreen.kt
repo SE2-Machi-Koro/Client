@@ -13,11 +13,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.R
-import com.machikoro.client.ui.ActionButton
-import com.machikoro.client.ui.AnimatedItem
-import com.machikoro.client.ui.AnimationType
-import com.machikoro.client.ui.Background
-import com.machikoro.client.ui.Header
+import com.machikoro.client.ui.shared.ActionButton
+import com.machikoro.client.ui.shared.AnimatedItem
+import com.machikoro.client.ui.shared.AnimationType
+import com.machikoro.client.ui.shared.Background
+import com.machikoro.client.ui.shared.Header
 import com.machikoro.client.ui.theme.ClientTheme
 
 /*
