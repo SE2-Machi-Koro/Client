@@ -3,6 +3,12 @@ package com.machikoro.client.ui.navigation
 import androidx.navigation.NavHostController
 import androidx.navigation.navOptions
 
+/**
+ * Thin wrapper around NavHostController for app-wide navigation actions.
+ *
+ * AppRoot owns the NavHost, NavigationViewModel decides the target route, and
+ * this class owns the concrete navigate(...) options and duplicate guard.
+ */
 class AppNavigator(
     private val navController: NavHostController,
 ) {
@@ -16,6 +22,8 @@ class AppNavigator(
             route.destination(arguments),
             navOptions {
                 launchSingleTop = true
+                // Keep Main as the graph root while replacing transient screens
+                // such as Home, Lobby, Game, and Winner.
                 popUpTo(AppRoute.Main.route)
             }
         )

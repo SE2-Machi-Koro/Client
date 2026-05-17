@@ -72,6 +72,9 @@ fun AppRoot(
     val appNavigator = remember(navController) { AppNavigator(navController) }
     val navigationUiState by navigationViewModel.uiState.collectAsState()
 
+    // AppRoot owns the NavHost lifecycle, but route decisions are delegated to
+    // NavigationViewModel so navigation state has one source of truth.
+
     // Reset NavigationViewModel idempotency cache when the NavController actually
     // changes destination, so the same navigation can be re-emitted later if
     // needed.

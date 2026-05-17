@@ -16,10 +16,22 @@ import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.StartScreenState
 
+/**
+ * Durable navigation UI state.
+ *
+ * This belongs in a ViewModel instead of MainActivity remember state so route
+ * decisions survive recomposition and configuration changes.
+ */
 data class NavigationUiState(
     val showLobbyScreen: Boolean = false,
 )
 
+/**
+ * Single source for top-level navigation state and route decisions.
+ *
+ * The ViewModel converts app state into NavigationEvent commands while keeping
+ * persistent navigation UI state separate from one-time navigation events.
+ */
 class NavigationViewModel : ViewModel() {
 
     private val mutableUiState = MutableStateFlow(NavigationUiState())
@@ -50,8 +62,10 @@ class NavigationViewModel : ViewModel() {
     }
 
     /**
-     * Updates navigation based on app state changes (game status, login state, lobby state).
-     * This centralizes all state-based routing logic that was previously in AppRoot.
+     * Updates navigation based on app state changes.
+     *
+     * Route priority is Winner > Game > Lobby > Home > Main, matching the
+     * current game flow documented in docs/navigation.md.
      */
     fun updateNavigationBasedOnState(
         gameScreenState: GameScreenState,
@@ -59,7 +73,6 @@ class NavigationViewModel : ViewModel() {
         lobbyCode: String?,
     ) {
         viewModelScope.launch {
-            // Determine target route based on current app state
             val targetRoute = when {
                 gameScreenState.gameStatus == GameStatus.FINISHED -> AppRoute.Winner
                 gameScreenState.gamePhase != GamePhase.NONE -> AppRoute.Game
@@ -98,6 +111,9 @@ class NavigationViewModel : ViewModel() {
 }
 
 sealed class NavigationEvent {
+    /**
+     * One-time command consumed by AppRoot and applied through AppNavigator.
+     */
     data class NavigateTo(
         val route: AppRoute,
         val arguments: AppRoute.AppRouteArguments = AppRoute.AppRouteArguments(),
