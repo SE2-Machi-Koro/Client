@@ -32,8 +32,7 @@ class NavigationViewModel : ViewModel() {
         gameScreenState: GameScreenState,
         startScreenState: StartScreenState,
         lobbyCode: String?,
-        showLobbyScreen: Boolean,
-        loggedInAs: String?
+        showLobbyScreen: Boolean
     ) {
         viewModelScope.launch {
             // Determine target route based on current app state
@@ -41,7 +40,6 @@ class NavigationViewModel : ViewModel() {
                 gameScreenState.gameStatus == GameStatus.FINISHED -> AppRoute.Winner
                 gameScreenState.gamePhase != GamePhase.NONE -> AppRoute.Game
                 showLobbyScreen -> AppRoute.Lobby
-                loggedInAs != null -> AppRoute.Home
                 startScreenState.loggedInAs != null -> AppRoute.Home
                 else -> AppRoute.Main
             }

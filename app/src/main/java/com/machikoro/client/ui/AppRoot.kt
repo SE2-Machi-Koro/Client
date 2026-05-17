@@ -12,8 +12,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.machikoro.client.domain.enums.GamePhase
-import com.machikoro.client.domain.enums.GameStatus
-import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LobbyScreenState
@@ -44,7 +42,6 @@ fun AppRoot(
     lobbyCode: String?,
     joinLobbyCode: String = "",
     showJoinLobbyInput: Boolean = false,
-    loggedInAs: String?,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
     onRegisterSubmit: () -> Unit,
@@ -70,39 +67,18 @@ fun AppRoot(
     val navController = rememberNavController()
     val appNavigator = remember(navController) { AppNavigator(navController) }
 
-    /*
-    // Keep the current state-based screen priority while hosting screens in one NavHost.
-    // TODO(#68,#69): Move route decisions into ViewModel navigation state/events.
-    val targetRoute = when {
-        gameScreenState.gameStatus == GameStatus.FINISHED -> AppRoute.Winner
-        gameScreenState.gamePhase != GamePhase.NONE -> AppRoute.Game
-        showLobbyScreen -> AppRoute.Lobby
-        loggedInAs != null -> AppRoute.Home
-        else -> AppRoute.Main
-    }
-    val routeArguments = AppRoute.AppRouteArguments(
-        lobbyCode = lobbyCode,
-        gameId = gameScreenState.gameId,
-    )
-
-    LaunchedEffect(targetRoute, routeArguments) {
-        appNavigator.navigateTo(targetRoute, routeArguments)
-    }
-     */
     // Delegate state-based route decisions to NavigationViewModel
     LaunchedEffect(
         gameScreenState,
         startScreenState,
         lobbyCode,
-        showLobbyScreen,
-        loggedInAs
+        showLobbyScreen
     ) {
         navigationViewModel.updateNavigationBasedOnState(
             gameScreenState = gameScreenState,
             startScreenState = startScreenState,
             lobbyCode = lobbyCode,
-            showLobbyScreen = showLobbyScreen,
-            loggedInAs = loggedInAs
+            showLobbyScreen = showLobbyScreen
         )
     }
 

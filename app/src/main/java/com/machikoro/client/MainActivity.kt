@@ -141,7 +141,6 @@ class MainActivity : ComponentActivity() {
                         lobbyCode = lobbyCode,
                         joinLobbyCode = joinLobbyCode,
                         showJoinLobbyInput = showJoinLobbyInput,
-                        loggedInAs = startScreenState.loggedInAs,
                         showLobbyScreen = showLobbyScreen,
                         onGoToLobbyClick = {
                             showLobbyScreen = true
