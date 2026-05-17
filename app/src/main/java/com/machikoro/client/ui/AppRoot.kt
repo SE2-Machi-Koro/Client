@@ -2,8 +2,10 @@ package com.machikoro.client.ui
 
 import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavController
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -64,11 +66,14 @@ fun AppRoot(
     onRollDice: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
-    showLobbyScreen: Boolean = false,
     onGoToLobbyClick: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val appNavigator = remember(navController) { AppNavigator(navController) }
+    val navigationUiState by navigationViewModel.uiState.collectAsState()
+
+    // AppRoot owns the NavHost lifecycle, but route decisions are delegated to
+    // NavigationViewModel so navigation state has one source of truth.
 
     // Reset NavigationViewModel idempotency cache when the NavController actually
     // changes destination, so the same navigation can be re-emitted later if
@@ -83,21 +88,6 @@ fun AppRoot(
         }
     }
 
-    // Delegate state-based route decisions to NavigationViewModel
-    LaunchedEffect(
-        gameScreenState,
-        startScreenState,
-        lobbyCode,
-        showLobbyScreen
-    ) {
-        navigationViewModel.updateNavigationBasedOnState(
-            gameScreenState = gameScreenState,
-            startScreenState = startScreenState,
-            lobbyCode = lobbyCode,
-            showLobbyScreen = showLobbyScreen
-        )
-    }
-
     // Listen to navigation events from ViewModel and apply them
     LaunchedEffect(navigationViewModel) {
         navigationViewModel.navigationEvent.collectLatest { event ->
@@ -106,6 +96,20 @@ fun AppRoot(
                     appNavigator.navigateTo(event.route, event.arguments)
             }
         }
+    }
+
+    // Delegate state-based route decisions to NavigationViewModel
+    LaunchedEffect(
+        gameScreenState,
+        startScreenState,
+        lobbyCode,
+        navigationUiState.showLobbyScreen
+    ) {
+        navigationViewModel.updateNavigationBasedOnState(
+            gameScreenState = gameScreenState,
+            startScreenState = startScreenState,
+            lobbyCode = lobbyCode,
+        )
     }
 
     NavHost(

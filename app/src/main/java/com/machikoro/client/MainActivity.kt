@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
         LogoutViewModel.Factory(authApi, SessionManager)
     }
 
-    private val navigationViewModel by viewModels<NavigationViewModel>{
+    private val navigationViewModel by viewModels<NavigationViewModel> {
         NavigationViewModel.Factory()
     }
 
@@ -89,7 +89,6 @@ class MainActivity : ComponentActivity() {
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
-            var showLobbyScreen by remember { mutableStateOf(false) }
             var showJoinLobbyInput by remember { mutableStateOf(false) }
             val snackbarHostState = remember { SnackbarHostState() }
 
@@ -114,7 +113,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(activeGameId, isLobbyHost) {
                 if (activeGameId != null && !isLobbyHost) {
                     showJoinLobbyInput = false
-                    showLobbyScreen = true
+                    navigationViewModel.showLobby()
                 }
             }
 
@@ -150,7 +149,7 @@ class MainActivity : ComponentActivity() {
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
                         onStartGame = homeViewModel::startGame,
                         onLeaveLobby = {
-                            showLobbyScreen = false
+                            navigationViewModel.leaveLobby()
                             lobbyScreenViewModel.onLeaveLobby()
                             homeViewModel.clearLobbyCode()
                         },
@@ -160,9 +159,8 @@ class MainActivity : ComponentActivity() {
                         joinLobbyCode = joinLobbyCode,
                         joinLobbyError = joinLobbyError,
                         showJoinLobbyInput = showJoinLobbyInput,
-                        showLobbyScreen = showLobbyScreen,
                         onGoToLobbyClick = {
-                            showLobbyScreen = true
+                            navigationViewModel.showLobby()
                         },
                         onCreateLobbyClick = {
                             showJoinLobbyInput = false

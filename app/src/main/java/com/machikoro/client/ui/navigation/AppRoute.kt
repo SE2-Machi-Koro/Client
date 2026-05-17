@@ -3,7 +3,12 @@ package com.machikoro.client.ui.navigation
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
-// Central route definitions for the top-level app navigation graph.
+/**
+ * Central route definitions for the top-level app navigation graph.
+ *
+ * Route strings and argument names should live here so callers do not assemble
+ * hardcoded destinations across the UI layer.
+ */
 sealed class AppRoute(val route: String) {
     data object Main : AppRoute("main")
     data object Home : AppRoute("home")
@@ -30,8 +35,16 @@ sealed class AppRoute(val route: String) {
 
     data object Winner : AppRoute("winner")
 
+    /**
+     * Builds the concrete destination used by NavController.navigate(...).
+     * Routes without arguments return their route unchanged.
+     */
     open fun destination(arguments: AppRouteArguments = AppRouteArguments()): String = route
 
+    /**
+     * Optional top-level route arguments. Only the destination that understands
+     * an argument consumes it; carrying both keeps navigation events uniform.
+     */
     data class AppRouteArguments(
         val lobbyCode: String? = null,
         val gameId: Int? = null,
