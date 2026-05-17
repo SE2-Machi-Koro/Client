@@ -219,7 +219,6 @@ private fun AppRootStartScreenPreview() {
             onLoginDialogReset = {},
             onLogoutSubmit = {},
             lobbyCode = null,
-            loggedInAs = null,
             onCreateLobbyClick = {},
             navigationViewModel = NavigationViewModel()
         )
@@ -248,7 +247,6 @@ private fun AppRootGameScreenPreview() {
             onLoginDialogReset = {},
             onLogoutSubmit = {},
             lobbyCode = null,
-            loggedInAs = null,
             onCreateLobbyClick = {},
             navigationViewModel = NavigationViewModel()
         )
