@@ -35,13 +35,6 @@ import com.machikoro.client.ui.theme.CardPurpleText
 import com.machikoro.client.ui.theme.CardRedBackground
 import com.machikoro.client.ui.theme.CardRedText
 
-
-//TODO: later card render here, for now just a placeholder
-@Composable
-fun Card() {
-
-}
-
 /*
 This file contains the PlayerProfileCard composable, which displays a player's profile information
  in a stylized card format. The card's appearance (background color, text color, and image)
