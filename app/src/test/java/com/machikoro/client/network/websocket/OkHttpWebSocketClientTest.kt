@@ -448,6 +448,132 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun lobbyJoinErrorWithoutContentUsesFallbackMessage() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+
+        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            StompFrame(
+                command = "MESSAGE",
+                headers = mapOf(
+                    "destination" to WebSocketContract.errorsQueue,
+                    "content-type" to "application/json"
+                ),
+                body = """{"type":"ERROR","sender":"SERVER","payload":{"errorCode":"LOBBY_FULL"}}"""
+            ).serialize()
+        )
+
+        runCurrent()
+
+        assertEquals(listOf("Failed to join lobby"), errors)
+    }
+
+    @Test
+    fun allLobbyJoinErrorCodesEmitLobbyJoinError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+
+        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        listOf(
+            "INVALID_LOBBY_CODE",
+            "GAME_NOT_FOUND",
+            "GAME_STARTED",
+            "GAME_FINISHED",
+            "LOBBY_FULL",
+        ).forEach { errorCode ->
+            factory.simulateText(
+                StompFrame(
+                    command = "MESSAGE",
+                    headers = mapOf(
+                        "destination" to WebSocketContract.errorsQueue,
+                        "content-type" to "application/json"
+                    ),
+                    body = """{"type":"ERROR","sender":"SERVER","content":"Could not join lobby","payload":{"errorCode":"$errorCode"}}"""
+                ).serialize()
+            )
+            runCurrent()
+        }
+
+        assertEquals(5, errors.size)
+    }
+
+    @Test
+    fun nonLobbyJoinErrorCodeDoesNotEmitLobbyJoinError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+
+        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            StompFrame(
+                command = "MESSAGE",
+                headers = mapOf(
+                    "destination" to WebSocketContract.errorsQueue,
+                    "content-type" to "application/json"
+                ),
+                body = """{"type":"ERROR","sender":"SERVER","content":"Other error","payload":{"errorCode":"SOMETHING_ELSE"}}"""
+            ).serialize()
+        )
+
+        runCurrent()
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun lobbyCreatedMessageUpdatesActiveGameId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"LOBBY_CREATED",
+                "gameId":42,
+                "payload":{
+                    "lobbyCode":"ABC1234",
+                    "gameId":42
+                }
+            }"""
+            )
+        )
+
+        assertEquals(42, client.activeGameId.value)
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SUBSCRIBE\n") &&
+                        it.contains("/topic/game/42")
+            }
+        )
+    }
+
+    @Test
     fun malformedLobbyCreatedMessageDoesNotCrashAndLeavesLobbyCodeNull() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -470,6 +596,58 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun disconnectWithoutActiveSocketAndNoSessionResetsLobbyState() {
+        val factory = FakeWebSocketFactory()
+        val sessionHolder = FakeSessionStateHolder(initial = null)
+        val client = newClient(factory, sessionStateHolder = sessionHolder)
+
+        client.disconnect()
+
+        assertNull(client.lobbyCode.value)
+        assertEquals(0, factory.createCount)
+    }
+
+    @Test
+    fun clearLobbyCodeResetsLobbyState() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.clearLobbyCode()
+
+        assertNull(client.lobbyCode.value)
+    }
+
+    @Test
+    fun gameStartedMessageUpdatesGameState() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"GAME_STARTED",
+                "gameId":42,
+                "payload":{
+                    "game":{
+                        "id":42,
+                        "lobbyCode":"ABC1234",
+                        "turnPhase":"ROLL_DICE"
+                    },
+                    "players":[]
+                }
+            }"""
+            )
+        )
+
+        assertEquals(42, client.activeGameId.value)
+        assertEquals("ABC1234", client.lobbyCode.value)
+    }
+
+    @Test
     fun rollDiceSendsStompFrameToRollDiceDestination() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -481,6 +659,17 @@ class OkHttpWebSocketClientTest {
             it.startsWith("SEND\n") && it.contains("destination:/app/game.rollDice") && it.contains("\"diceCount\":1")
         })
     }
+
+    @Test
+    fun rollDiceWithoutConnectionIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.rollDice(diceCount = 1)
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
 
     @Test
     fun sendPurchaseEstablishmentSendsServerAlignedPayload() {
@@ -544,29 +733,154 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
-    fun gameActionWithPurchasePayloadEmitsPurchaseSuccessEvent() = runTest {
+    fun lobbyJoinedMessageUpdatesActiveGameIdAndClearsHostFlag() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-        val purchaseEvents = mutableListOf<PurchaseEvent>()
-        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_JOINED","sender":"SERVER","gameId":42,"payload":{"gameId":42}}"""
+            )
+        )
+
+        assertEquals(42, client.activeGameId.value)
+        assertFalse(client.isLobbyHost.value)
+    }
+
+    @Test
+    fun invalidLobbyCodeErrorEmitsLobbyJoinError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+
+        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
         runCurrent()
 
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
+
         factory.simulateText(
             gameActionFrame(
-                """{"type":"GAME_ACTION","payload":{"turnPhase":"BUY_OR_BUILD","purchaseType":"ESTABLISHMENT","cardType":"BAKERY"}}"""
+                """{"type":"ERROR","sender":"SERVER","content":"Lobby code is invalid","payload":{"errorCode":"INVALID_LOBBY_CODE"}}"""
             )
         )
+
+        runCurrent()
+
+        assertEquals(listOf("Lobby code is invalid"), errors)
+    }
+
+    @Test
+    fun sendJoinLobbySendsStompFrameToJoinLobbyDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.sendJoinLobby("ABC1234")
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND\n") &&
+                        it.contains("destination:${WebSocketContract.joinLobbyDestination}") &&
+                        it.contains("\"type\":\"JOIN\"") &&
+                        it.contains("\"lobbyCode\":\"ABC1234\"")
+            }
+        )
+    }
+
+    @Test
+    fun connectedFrameSubscribesToErrorsQueue() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SUBSCRIBE\n") &&
+                        it.contains("destination:${WebSocketContract.errorsQueue}")
+            }
+        )
+    }
+
+    @Test
+    fun gameStartedLobbyErrorEmitsLobbyJoinError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+
+        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            StompFrame(
+                command = "MESSAGE",
+                headers = mapOf(
+                    "destination" to WebSocketContract.errorsQueue,
+                    "content-type" to "application/json"
+                ),
+                body = """{"type":"ERROR","sender":"SERVER","content":"Could not join lobby","payload":{"errorCode":"GAME_STARTED"}}"""
+            ).serialize()
+        )
+
+        runCurrent()
+
+        assertEquals(listOf("Could not join lobby"), errors)
+    }
+
+    /*
+    @Test
+    fun lobbyJoinRelatedErrorCodesEmitLobbyJoinError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+
+        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        listOf("GAME_NOT_FOUND", "GAME_STARTED", "GAME_FINISHED", "LOBBY_FULL").forEach { errorCode ->
+            factory.simulateText(
+                StompFrame(
+                    command = "MESSAGE",
+                    headers = mapOf(
+                        "destination" to WebSocketContract.errorsQueue,
+                        "content-type" to "application/json"
+                    ),
+                    body = """{"type":"ERROR","sender":"SERVER","content":"Could not join lobby","payload":{"errorCode":"$errorCode"}}"""
+                ).serialize()
+            )
+        }
+
         runCurrent()
 
         assertEquals(
-            listOf(PurchaseEvent.Success(PurchaseType.ESTABLISHMENT, "BAKERY")),
-            purchaseEvents
+            listOf(
+                "Could not join lobby",
+                "Could not join lobby",
+                "Could not join lobby",
+                "Could not join lobby"
+            ),
+            errors
         )
-        assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
-    }
+    }*/
 
         
     @Test
@@ -589,28 +903,32 @@ class OkHttpWebSocketClientTest {
 
         assertTrue(purchaseEvents.isEmpty())
         assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
-                     
      }
-  
-  
-      @Test  
-      fun sendJoinLobbySendsStompFrameToJoinLobbyDestination() {
+
+    @Test
+    fun gameActionWithPurchasePayloadEmitsPurchaseSuccessEvent() = runTest {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
+
+        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
-        
-        client.sendJoinLobby("ABC1234")
-        
-        assertTrue(
-            factory.socket.sentMessages.any {
-                it.startsWith("SEND\n") &&
-                        it.contains("destination:${WebSocketContract.joinLobbyDestination}") &&
-                        it.contains("\"type\":\"JOIN\"") &&
-                        it.contains("\"lobbyCode\":\"ABC1234\"")
-            }
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_ACTION","payload":{"turnPhase":"BUY_OR_BUILD","purchaseType":"ESTABLISHMENT","cardType":"BAKERY"}}"""
+            )
         )
+        runCurrent()
+
+        assertEquals(
+            listOf(PurchaseEvent.Success(PurchaseType.ESTABLISHMENT, "BAKERY")),
+            purchaseEvents
+        )
+        assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
     }
 
     @Test
