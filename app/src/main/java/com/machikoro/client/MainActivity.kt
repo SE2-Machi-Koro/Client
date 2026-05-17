@@ -82,7 +82,6 @@ class MainActivity : ComponentActivity() {
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
             val activeGameId by homeViewModel.activeGameId.collectAsState()
-            val isLobbyHost by homeViewModel.isLobbyHost.collectAsState()
             val joinLobbyCode by homeViewModel.joinLobbyCode.collectAsState()
             val joinLobbyError by homeViewModel.joinLobbyError.collectAsState()
             val lobbyScreenState by lobbyScreenViewModel.state.collectAsState()
@@ -111,8 +110,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect(activeGameId, isLobbyHost) {
-                if (activeGameId != null && !isLobbyHost) {
+            LaunchedEffect(activeGameId) {
+                if (activeGameId != null) {
                     showJoinLobbyInput = false
                     showLobbyScreen = true
                 }

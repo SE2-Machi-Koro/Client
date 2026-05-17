@@ -431,6 +431,10 @@ class OkHttpWebSocketClient(
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
         }
+        // Host must join their own lobby to become a player in the roster
+        if (mutableIsLobbyHost.value && code.isNotBlank()) {
+            sendJoinLobby(code)
+        }
     }
 
     /**
@@ -442,12 +446,23 @@ class OkHttpWebSocketClient(
         val payload = json.optJSONObject("payload") ?: return
         val gameId = json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId")
 
-        mutableIsLobbyHost.value = false
-
         if (gameId != null) {
             Log.d(TAG, "Joined lobby with gameId: $gameId")
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
+            // Re-register session with gameId so the server can identify the host when startGame is called
+            if (mutableIsLobbyHost.value) {
+                sendJoinMessage()
+            }
+        }
+
+        // Add player to lobby list; username is now included in the server response
+        val username = payload.optString("username").takeIf { it.isNotBlank() } ?: return
+        val playerId = payload.optIntOrNull("playerId")?.toString() ?: return
+        val coins = payload.optInt("coins", 3)
+        val newPlayer = PlayerCoinState(id = playerId, displayName = username, coins = coins)
+        if (mutablePlayers.value.none { it.id == playerId }) {
+            mutablePlayers.value += newPlayer
         }
     }
     private fun handleLobbyError(json: JSONObject) {
@@ -741,6 +756,12 @@ class OkHttpWebSocketClient(
     }
 
     private fun sendJoinMessage() {
+        val gameId = mutableActiveGameId.value
+        val body = if (gameId != null) {
+            """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}","gameId":$gameId}"""
+        } else {
+            """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}"}"""
+        }
         webSocket?.send(
             StompFrame(
                 command = "SEND",
@@ -748,7 +769,7 @@ class OkHttpWebSocketClient(
                     "destination" to WebSocketContract.addUserDestination,
                     "content-type" to "application/json"
                 ),
-                body = """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}"}"""
+                body = body
             ).serialize()
         )
     }
@@ -780,6 +801,7 @@ class OkHttpWebSocketClient(
         mutableLobbyCode.value = null
         mutableActiveGameId.value = null
         mutableIsLobbyHost.value = false
+        mutablePlayers.value = emptyList()
     }
 
     private fun parseTurnPhase(phaseName: String): GamePhase? =
