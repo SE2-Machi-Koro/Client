@@ -15,6 +15,7 @@ import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.domain.model.state.toDisplayText
+import com.machikoro.client.ui.navigation.NavigationViewModel
 import com.machikoro.client.ui.theme.ClientTheme
 import org.junit.Rule
 import org.junit.Test
@@ -37,9 +38,12 @@ class AppRootTest {
 
     @Test
     fun showsStartScreenWhenGamePhaseIsNone() {
+        val navigationViewModel = NavigationViewModel()
+
         composeTestRule.setContent {
             ClientTheme {
                 AppRoot(
+                    navigationViewModel = navigationViewModel,
                     gameScreenState = GameScreenState.initial(),
                     startScreenState = StartScreenState.placeholder(),
                     registerDialogState = RegisterDialogState(),
@@ -56,7 +60,6 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
-                    loggedInAs = null,
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
                     showLobbyScreen = false,
@@ -73,9 +76,12 @@ class AppRootTest {
 
     @Test
     fun showsGameScreenWhenGamePhaseIsNotNone() {
+        val navigationViewModel = NavigationViewModel()
+
         composeTestRule.setContent {
             ClientTheme {
                 AppRoot(
+                    navigationViewModel = navigationViewModel,
                     gameScreenState = GameScreenState.initial()
                         .copy(gamePhase = GamePhase.ROLL_DICE),
                     startScreenState = StartScreenState.placeholder(),
@@ -93,7 +99,6 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
-                    loggedInAs = null,
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
                     showLobbyScreen = false,
@@ -135,10 +140,12 @@ class AppRootTest {
         // true — only then do they navigate into LobbyScreen. The reverse
         // direction is also exercised so a future regression that pins the
         // routing one-way (e.g. via an absorbing state) is caught.
+        val navigationViewModel = NavigationViewModel()
         var showLobbyScreen by mutableStateOf(false)
         composeTestRule.setContent {
             ClientTheme {
                 AppRoot(
+                    navigationViewModel = navigationViewModel,
                     gameScreenState = GameScreenState.initial(),
                     startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
                     registerDialogState = RegisterDialogState(),
@@ -155,7 +162,6 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = "ABC1234",
-                    loggedInAs = "alice",
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
                     showLobbyScreen = showLobbyScreen,
@@ -179,9 +185,12 @@ class AppRootTest {
     }
 
     private fun setAppRoot(loggedInAs: String?) {
+        val navigationViewModel = NavigationViewModel()
+
         composeTestRule.setContent {
             ClientTheme {
                 AppRoot(
+                    navigationViewModel = navigationViewModel,
                     gameScreenState = GameScreenState.initial(),
                     startScreenState = StartScreenState.placeholder().copy(loggedInAs = loggedInAs),
                     registerDialogState = RegisterDialogState(),
@@ -198,7 +207,6 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
-                    loggedInAs = loggedInAs,
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
                     showLobbyScreen = false,
@@ -212,10 +220,12 @@ class AppRootTest {
 
     @Test
     fun swapsScreenWhenGamePhaseTransitions() {
+        val navigationViewModel = NavigationViewModel()
         var phase by mutableStateOf(GamePhase.NONE)
         composeTestRule.setContent {
             ClientTheme {
                 AppRoot(
+                    navigationViewModel = navigationViewModel,
                     gameScreenState = GameScreenState.initial().copy(gamePhase = phase),
                     startScreenState = StartScreenState.placeholder(),
                     registerDialogState = RegisterDialogState(),
@@ -232,7 +242,6 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
-                    loggedInAs = null,
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
                     showLobbyScreen = false,
@@ -256,9 +265,12 @@ class AppRootTest {
 
     @Test
     fun showsHomeScreenWhenLoggedInUserHasLobbyActions() {
+        val navigationViewModel = NavigationViewModel()
+
         composeTestRule.setContent {
             ClientTheme {
                 AppRoot(
+                    navigationViewModel = navigationViewModel,
                     gameScreenState = GameScreenState.initial(),
                     startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
                     registerDialogState = RegisterDialogState(),
@@ -275,7 +287,6 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
-                    loggedInAs = "alice",
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
                     showLobbyScreen = false,
@@ -292,9 +303,12 @@ class AppRootTest {
 
     @Test
     fun showsWinnerScreenWhenGameStatusIsFinished() {
+        val navigationViewModel = NavigationViewModel()
+
         composeTestRule.setContent {
             ClientTheme {
                 AppRoot(
+                    navigationViewModel = navigationViewModel,
                     gameScreenState = GameScreenState.initial().copy(
                         gameStatus = GameStatus.FINISHED,
                         roundNumber = 5,
@@ -314,7 +328,6 @@ class AppRootTest {
                     onLogoutSubmit = {},
                     lobbyScreenState = LobbyScreenState.placeholder(),
                     lobbyCode = null,
-                    loggedInAs = "alice",
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
                     showLobbyScreen = false,

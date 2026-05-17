@@ -45,7 +45,6 @@ fun AppRoot(
     joinLobbyCode: String = "",
     showJoinLobbyInput: Boolean = false,
     joinLobbyError: Boolean = false,
-    loggedInAs: String?,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
     onRegisterSubmit: () -> Unit,
