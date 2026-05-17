@@ -607,6 +607,92 @@ class OkHttpWebSocketClientTest {
         )
     }
 
+    @Test
+    fun connectedFrameSubscribesToErrorsQueue() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SUBSCRIBE\n") &&
+                        it.contains("destination:${WebSocketContract.errorsQueue}")
+            }
+        )
+    }
+
+    @Test
+    fun gameStartedLobbyErrorEmitsLobbyJoinError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+
+        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            StompFrame(
+                command = "MESSAGE",
+                headers = mapOf(
+                    "destination" to WebSocketContract.errorsQueue,
+                    "content-type" to "application/json"
+                ),
+                body = """{"type":"ERROR","sender":"SERVER","content":"Could not join lobby","payload":{"errorCode":"GAME_STARTED"}}"""
+            ).serialize()
+        )
+
+        runCurrent()
+
+        assertEquals(listOf("Could not join lobby"), errors)
+    }
+
+    /*
+    @Test
+    fun lobbyJoinRelatedErrorCodesEmitLobbyJoinError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+
+        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        listOf("GAME_NOT_FOUND", "GAME_STARTED", "GAME_FINISHED", "LOBBY_FULL").forEach { errorCode ->
+            factory.simulateText(
+                StompFrame(
+                    command = "MESSAGE",
+                    headers = mapOf(
+                        "destination" to WebSocketContract.errorsQueue,
+                        "content-type" to "application/json"
+                    ),
+                    body = """{"type":"ERROR","sender":"SERVER","content":"Could not join lobby","payload":{"errorCode":"$errorCode"}}"""
+                ).serialize()
+            )
+        }
+
+        runCurrent()
+
+        assertEquals(
+            listOf(
+                "Could not join lobby",
+                "Could not join lobby",
+                "Could not join lobby",
+                "Could not join lobby"
+            ),
+            errors
+        )
+    }*/
+
         
     @Test
     fun malformedPurchasePayloadDoesNotEmitPurchaseSuccessEvent() = runTest {
@@ -628,7 +714,6 @@ class OkHttpWebSocketClientTest {
 
         assertTrue(purchaseEvents.isEmpty())
         assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
-                     
      }
 
     @Test
