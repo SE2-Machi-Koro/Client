@@ -672,7 +672,9 @@ class OkHttpWebSocketClient(
         if (json.optString("type") != ROLL_DICE_TYPE) return null
         val payload = json.optJSONObject("payload") ?: return null
         val resultArray = payload.optJSONArray("result") ?: return null
-        return List(resultArray.length()) { resultArray.getInt(it) }
+        return (0 until resultArray.length()).mapNotNull { index ->
+            runCatching { resultArray.getInt(index) }.getOrNull()
+        }
     }
 
     private fun subscribeToPublicTopic() {
@@ -759,7 +761,7 @@ class OkHttpWebSocketClient(
     }
 
     private fun isAuthRejection(body: String): Boolean =
-        body == AUTH_REJECTION_BODY
+        body.trim().contains(AUTH_REJECTION_BODY)
 
     private fun resetGameState() {
         mutableGamePhase.value = GamePhase.NONE
@@ -807,6 +809,9 @@ class OkHttpWebSocketClient(
             id = playerId.toString(),
             displayName = resolvedDisplayName,
             coins = optInt("coins"),
+            // The backend currently exposes one active turn player from currentTurnIndex.
+            // Until the UI needs a separate local-player distinction, both flags
+            // intentionally point to the same active player.
             isCurrentPlayer = playerId == currentPlayerId,
             isActivePlayer = playerId == currentPlayerId,
         )
