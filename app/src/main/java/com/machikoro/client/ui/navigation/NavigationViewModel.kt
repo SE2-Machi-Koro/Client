@@ -16,11 +16,17 @@ class NavigationViewModel : ViewModel() {
 
     private val _navigationEvent = MutableSharedFlow<NavigationEvent>(extraBufferCapacity = 1)
     val navigationEvent: SharedFlow<NavigationEvent> = _navigationEvent.asSharedFlow()
+    // Track last emitted navigation to avoid emitting duplicate navigation events
+    // which can cause unnecessary navigation attempts and UI churn.
+    private var lastNavigation: Pair<AppRoute, AppRoute.AppRouteArguments>? = null
 
     fun navigateTo(
         route: AppRoute,
         arguments: AppRoute.AppRouteArguments = AppRoute.AppRouteArguments(),
     ) {
+        val next = route to arguments
+        if (lastNavigation == next) return
+        lastNavigation = next
         _navigationEvent.tryEmit(NavigationEvent.NavigateTo(route, arguments))
     }
 
