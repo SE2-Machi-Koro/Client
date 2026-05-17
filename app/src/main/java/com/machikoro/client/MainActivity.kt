@@ -28,6 +28,7 @@ import com.machikoro.client.ui.AppRoot
 import com.machikoro.client.ui.game.GameScreenViewModel
 import com.machikoro.client.ui.home.HomeViewModel
 import com.machikoro.client.ui.lobby.LobbyScreenViewModel
+import com.machikoro.client.ui.navigation.NavigationViewModel
 import com.machikoro.client.ui.start.LoginDialogViewModel
 import com.machikoro.client.ui.start.LogoutViewModel
 import com.machikoro.client.ui.start.RegisterDialogViewModel
@@ -65,6 +66,10 @@ class MainActivity : ComponentActivity() {
     }
     private val logoutViewModel by viewModels<LogoutViewModel> {
         LogoutViewModel.Factory(authApi, SessionManager)
+    }
+
+    private val navigationViewModel by viewModels<NavigationViewModel>{
+        NavigationViewModel.Factory()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -126,6 +131,7 @@ class MainActivity : ComponentActivity() {
                     snackbarHost = { SnackbarHost(snackbarHostState) },
                 ) { innerPadding ->
                     AppRoot(
+                        navigationViewModel = navigationViewModel,
                         gameScreenState = gameScreenState,
                         startScreenState = startScreenState,
                         lobbyScreenState = lobbyScreenState,
@@ -154,7 +160,6 @@ class MainActivity : ComponentActivity() {
                         joinLobbyCode = joinLobbyCode,
                         joinLobbyError = joinLobbyError,
                         showJoinLobbyInput = showJoinLobbyInput,
-                        loggedInAs = startScreenState.loggedInAs,
                         showLobbyScreen = showLobbyScreen,
                         onGoToLobbyClick = {
                             showLobbyScreen = true

@@ -1,7 +1,10 @@
 package com.machikoro.client.ui
 
+import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.navigation.NavController
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -11,8 +14,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.machikoro.client.domain.enums.GamePhase
-import com.machikoro.client.domain.enums.GameStatus
-import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LobbyScreenState
@@ -24,12 +25,16 @@ import com.machikoro.client.ui.home.HomeScreen
 import com.machikoro.client.ui.lobby.LobbyScreen
 import com.machikoro.client.ui.navigation.AppNavigator
 import com.machikoro.client.ui.navigation.AppRoute
+import com.machikoro.client.ui.navigation.NavigationEvent
+import com.machikoro.client.ui.navigation.NavigationViewModel
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.win.GameOverOneWinner
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun AppRoot(
+    navigationViewModel: NavigationViewModel,
     gameScreenState: GameScreenState,
     startScreenState: StartScreenState,
     lobbyScreenState: LobbyScreenState,
@@ -40,7 +45,6 @@ fun AppRoot(
     joinLobbyCode: String = "",
     showJoinLobbyInput: Boolean = false,
     joinLobbyError: Boolean = false,
-    loggedInAs: String?,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
     onRegisterSubmit: () -> Unit,
@@ -66,22 +70,42 @@ fun AppRoot(
     val navController = rememberNavController()
     val appNavigator = remember(navController) { AppNavigator(navController) }
 
-    // Keep the current state-based screen priority while hosting screens in one NavHost.
-    // TODO(#68,#69): Move route decisions into ViewModel navigation state/events.
-    val targetRoute = when {
-        gameScreenState.gameStatus == GameStatus.FINISHED -> AppRoute.Winner
-        gameScreenState.gamePhase != GamePhase.NONE -> AppRoute.Game
-        showLobbyScreen -> AppRoute.Lobby
-        loggedInAs != null -> AppRoute.Home
-        else -> AppRoute.Main
+    // Reset NavigationViewModel idempotency cache when the NavController actually
+    // changes destination, so the same navigation can be re-emitted later if
+    // needed.
+    DisposableEffect(navController) {
+        val listener = NavController.OnDestinationChangedListener { _, _, _ ->
+            navigationViewModel.clearLastNavigation()
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose {
+            navController.removeOnDestinationChangedListener(listener)
+        }
     }
-    val routeArguments = AppRoute.AppRouteArguments(
-        lobbyCode = lobbyCode,
-        gameId = gameScreenState.gameId,
-    )
 
-    LaunchedEffect(targetRoute, routeArguments) {
-        appNavigator.navigateTo(targetRoute, routeArguments)
+    // Delegate state-based route decisions to NavigationViewModel
+    LaunchedEffect(
+        gameScreenState,
+        startScreenState,
+        lobbyCode,
+        showLobbyScreen
+    ) {
+        navigationViewModel.updateNavigationBasedOnState(
+            gameScreenState = gameScreenState,
+            startScreenState = startScreenState,
+            lobbyCode = lobbyCode,
+            showLobbyScreen = showLobbyScreen
+        )
+    }
+
+    // Listen to navigation events from ViewModel and apply them
+    LaunchedEffect(navigationViewModel) {
+        navigationViewModel.navigationEvent.collectLatest { event ->
+            when (event) {
+                is NavigationEvent.NavigateTo ->
+                    appNavigator.navigateTo(event.route, event.arguments)
+            }
+        }
     }
 
     NavHost(
@@ -191,6 +215,7 @@ private fun resolveWinnerName(state: GameScreenState): String {
         ?: "the winner"
 }
 
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, widthDp = 917, heightDp = 412)
 @Composable
 private fun AppRootStartScreenPreview() {
@@ -212,12 +237,13 @@ private fun AppRootStartScreenPreview() {
             onLoginDialogReset = {},
             onLogoutSubmit = {},
             lobbyCode = null,
-            loggedInAs = null,
             onCreateLobbyClick = {},
+            navigationViewModel = NavigationViewModel()
         )
     }
 }
 
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, widthDp = 917, heightDp = 412)
 @Composable
 private fun AppRootGameScreenPreview() {
@@ -239,8 +265,8 @@ private fun AppRootGameScreenPreview() {
             onLoginDialogReset = {},
             onLogoutSubmit = {},
             lobbyCode = null,
-            loggedInAs = null,
             onCreateLobbyClick = {},
+            navigationViewModel = NavigationViewModel()
         )
     }
 }
