@@ -62,7 +62,6 @@ class AppRootTest {
                     lobbyCode = null,
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
-                    showLobbyScreen = false,
                     onReadyToggle = {},
                     onStartGame = {},
                     onLeaveLobby = {},
@@ -101,7 +100,6 @@ class AppRootTest {
                     lobbyCode = null,
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
-                    showLobbyScreen = false,
                     onReadyToggle = {},
                     onStartGame = {},
                     onLeaveLobby = {},
@@ -135,13 +133,7 @@ class AppRootTest {
 
     @Test
     fun routesAuthenticatedUserToLobbyWhenShowLobbyScreenFlipsTrue() {
-        // Pins the contract for #51: while authenticated, the user stays on
-        // HomeScreen until the confirm/check icon flips `showLobbyScreen` to
-        // true — only then do they navigate into LobbyScreen. The reverse
-        // direction is also exercised so a future regression that pins the
-        // routing one-way (e.g. via an absorbing state) is caught.
         val navigationViewModel = NavigationViewModel()
-        var showLobbyScreen by mutableStateOf(false)
         composeTestRule.setContent {
             ClientTheme {
                 AppRoot(
@@ -164,7 +156,6 @@ class AppRootTest {
                     lobbyCode = "ABC1234",
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
-                    showLobbyScreen = showLobbyScreen,
                     onReadyToggle = {},
                     onStartGame = {},
                     onLeaveLobby = {},
@@ -175,11 +166,13 @@ class AppRootTest {
         composeTestRule.onNodeWithText(HOME_SCREEN_LOBBY_CARD).assertIsDisplayed()
         composeTestRule.onNodeWithText(LOBBY_SCREEN_PLAYER_LIST).assertDoesNotExist()
 
-        showLobbyScreen = true
+        navigationViewModel.showLobby()
+        composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText(LOBBY_SCREEN_PLAYER_LIST).assertIsDisplayed()
         composeTestRule.onNodeWithText(HOME_SCREEN_LOBBY_CARD).assertDoesNotExist()
 
-        showLobbyScreen = false
+        navigationViewModel.leaveLobby()
+        composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText(HOME_SCREEN_LOBBY_CARD).assertIsDisplayed()
         composeTestRule.onNodeWithText(LOBBY_SCREEN_PLAYER_LIST).assertDoesNotExist()
     }
@@ -209,7 +202,6 @@ class AppRootTest {
                     lobbyCode = null,
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
-                    showLobbyScreen = false,
                     onReadyToggle = {},
                     onStartGame = {},
                     onLeaveLobby = {},
@@ -244,7 +236,6 @@ class AppRootTest {
                     lobbyCode = null,
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
-                    showLobbyScreen = false,
                     onReadyToggle = {},
                     onStartGame = {},
                     onLeaveLobby = {},
@@ -289,7 +280,6 @@ class AppRootTest {
                     lobbyCode = null,
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
-                    showLobbyScreen = false,
                     onReadyToggle = {},
                     onStartGame = {},
                     onLeaveLobby = {},
@@ -330,7 +320,6 @@ class AppRootTest {
                     lobbyCode = null,
                     onCreateLobbyClick = {},
                     onGoToLobbyClick = {},
-                    showLobbyScreen = false,
                     onReadyToggle = {},
                     onStartGame = {},
                     onLeaveLobby = {},
