@@ -448,6 +448,35 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun lobbyJoinErrorWithoutContentUsesFallbackMessage() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+
+        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            StompFrame(
+                command = "MESSAGE",
+                headers = mapOf(
+                    "destination" to WebSocketContract.errorsQueue,
+                    "content-type" to "application/json"
+                ),
+                body = """{"type":"ERROR","sender":"SERVER","payload":{"errorCode":"LOBBY_FULL"}}"""
+            ).serialize()
+        )
+
+        runCurrent()
+
+        assertEquals(listOf("Failed to join lobby"), errors)
+    }
+
+    @Test
     fun lobbyCreatedMessageUpdatesActiveGameId() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
