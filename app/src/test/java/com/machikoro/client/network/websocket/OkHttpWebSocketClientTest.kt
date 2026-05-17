@@ -502,6 +502,18 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun disconnectWithoutActiveSocketAndNoSessionResetsLobbyState() {
+        val factory = FakeWebSocketFactory()
+        val sessionHolder = FakeSessionStateHolder(initial = null)
+        val client = newClient(factory, sessionStateHolder = sessionHolder)
+
+        client.disconnect()
+
+        assertNull(client.lobbyCode.value)
+        assertEquals(0, factory.createCount)
+    }
+
+    @Test
     fun clearLobbyCodeResetsLobbyState() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -553,6 +565,17 @@ class OkHttpWebSocketClientTest {
             it.startsWith("SEND\n") && it.contains("destination:/app/game.rollDice") && it.contains("\"diceCount\":1")
         })
     }
+
+    @Test
+    fun rollDiceWithoutConnectionIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.rollDice(diceCount = 1)
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
 
     @Test
     fun sendPurchaseEstablishmentSendsServerAlignedPayload() {
