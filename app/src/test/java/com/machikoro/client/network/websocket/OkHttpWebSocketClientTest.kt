@@ -477,6 +477,71 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun allLobbyJoinErrorCodesEmitLobbyJoinError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+
+        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        listOf(
+            "INVALID_LOBBY_CODE",
+            "GAME_NOT_FOUND",
+            "GAME_STARTED",
+            "GAME_FINISHED",
+            "LOBBY_FULL",
+        ).forEach { errorCode ->
+            factory.simulateText(
+                StompFrame(
+                    command = "MESSAGE",
+                    headers = mapOf(
+                        "destination" to WebSocketContract.errorsQueue,
+                        "content-type" to "application/json"
+                    ),
+                    body = """{"type":"ERROR","sender":"SERVER","content":"Could not join lobby","payload":{"errorCode":"$errorCode"}}"""
+                ).serialize()
+            )
+            runCurrent()
+        }
+
+        assertEquals(5, errors.size)
+    }
+
+    @Test
+    fun nonLobbyJoinErrorCodeDoesNotEmitLobbyJoinError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+
+        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            StompFrame(
+                command = "MESSAGE",
+                headers = mapOf(
+                    "destination" to WebSocketContract.errorsQueue,
+                    "content-type" to "application/json"
+                ),
+                body = """{"type":"ERROR","sender":"SERVER","content":"Other error","payload":{"errorCode":"SOMETHING_ELSE"}}"""
+            ).serialize()
+        )
+
+        runCurrent()
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
     fun lobbyCreatedMessageUpdatesActiveGameId() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
