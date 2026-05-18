@@ -12,7 +12,10 @@ import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.session.Session
 import com.machikoro.client.domain.session.SessionStateHolder
 import java.io.IOException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -1428,6 +1431,116 @@ class OkHttpWebSocketClientTest {
         assertTrue(client.playerLandmarks.value.isEmpty())
     }
 
+    // ── auto-reconnect (#166) ────────────────────────────────────────────────
+
+    @Test
+    fun unexpectedFailureTriggersAutomaticReconnect() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        assertEquals(1, factory.createCount)
+
+        factory.simulateFailure(IOException("backend container restarted"))
+        runCurrent()
+
+        assertEquals(2, factory.createCount)
+    }
+
+    @Test
+    fun unexpectedCloseTriggersAutomaticReconnect() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateClosed()
+        runCurrent()
+
+        assertEquals(2, factory.createCount)
+    }
+
+    @Test
+    fun clientInitiatedDisconnectDoesNotReconnect() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.disconnect()
+        factory.simulateClosed()
+        runCurrent()
+
+        assertEquals(1, factory.createCount)
+    }
+
+    @Test
+    fun authRejectionDoesNotReconnect() = runTest {
+        val factory = FakeWebSocketFactory()
+        val sessionHolder = FakeSessionStateHolder(DEFAULT_SESSION)
+        val client = newClient(
+            factory,
+            sessionStateHolder = sessionHolder,
+            reconnectScope = backgroundScope,
+        )
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(
+            StompFrame(command = "ERROR", body = "Authentication failed").serialize()
+        )
+        factory.simulateClosed()
+        runCurrent()
+
+        assertEquals(1, factory.createCount)
+        assertNull(sessionHolder.session.value)
+    }
+
+    @Test
+    fun reconnectKeepsRetryingWhileBackendStaysDown() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateFailure(IOException("down"))
+        runCurrent()
+        assertEquals(2, factory.createCount)
+
+        factory.simulateFailure(IOException("still down"))
+        runCurrent()
+        assertEquals(3, factory.createCount)
+    }
+
+    @Test
+    fun reconnectReSubscribesToGameSyncQueueAndReTriggersSnapshot() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateFailure(IOException("backend container restarted"))
+        runCurrent()
+        factory.simulateOpen()
+        factory.socket.sentMessages.clear()
+        factory.simulateText(connectedFrame())
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SUBSCRIBE") && it.contains("destination:/user/queue/game-sync")
+            }
+        )
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND") && it.contains("destination:/app/chat.addUser")
+            }
+        )
+    }
+
     /** Connects a client and feeds it one realistic SYNC snapshot frame. */
     private fun clientAfterSync(): OkHttpWebSocketClient {
         val factory = FakeWebSocketFactory()
@@ -1527,9 +1640,13 @@ class OkHttpWebSocketClientTest {
     private fun newClient(
         factory: FakeWebSocketFactory,
         sessionStateHolder: SessionStateHolder = FakeSessionStateHolder(DEFAULT_SESSION),
+        reconnectScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+        reconnectDelaysMs: List<Long> = listOf(0L),
     ) = OkHttpWebSocketClient(
         websocketUrl = "ws://10.0.2.2:8080/ws",
         sessionStateHolder = sessionStateHolder,
         webSocketFactory = factory,
+        reconnectScope = reconnectScope,
+        reconnectDelaysMs = reconnectDelaysMs,
     )
 }
