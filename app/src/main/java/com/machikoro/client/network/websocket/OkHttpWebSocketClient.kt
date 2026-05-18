@@ -666,14 +666,6 @@ class OkHttpWebSocketClient(
         return result
     }
 
-    private fun parseGameAction(json: JSONObject): Pair<GamePhase?, Int?> {
-        if (json.optString("type") != GAME_ACTION_TYPE) return Pair(null, null)
-        val payload = json.optJSONObject("payload") ?: return Pair(null, null)
-        val phase = payload.optString("turnPhase").takeIf { it.isNotEmpty() }?.let { parseTurnPhase(it) }
-        val activePlayerId = if (payload.has("activePlayerId") && !payload.isNull("activePlayerId")) payload.optInt("activePlayerId") else null
-        return Pair(phase, activePlayerId)
-    }
-
     private fun parsePurchaseSuccess(json: JSONObject): PurchaseEvent.Success? {
         if (json.optString("type") != GAME_ACTION_TYPE) return null
         val payload = json.optJSONObject("payload") ?: return null

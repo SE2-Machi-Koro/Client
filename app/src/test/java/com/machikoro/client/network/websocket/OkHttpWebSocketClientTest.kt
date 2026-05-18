@@ -740,6 +740,55 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun gameActionWithPlayerPayloadUpdatesActivePlayerMarkerAndUserId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"turnPhase":"ROLL_DICE"},"players":[{"id":10,"userId":99,"username":"Alice"},{"id":20,"userId":88,"username":"Bob"}],"activePlayerId":10}}"""
+            )
+        )
+
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_ACTION","payload":{"turnPhase":"BUY_OR_BUILD","activePlayerId":20,"players":[{"id":20,"userId":88,"username":"Bob"}]}}"""
+            )
+        )
+
+        assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
+        assertEquals(88, client.activePlayerId.value)
+        assertFalse(client.players.value.first { it.id == "10" }.isActivePlayer)
+        assertTrue(client.players.value.first { it.id == "20" }.isActivePlayer)
+    }
+
+    @Test
+    fun gameActionWithoutPlayersUsesCachedPlayerUserMapping() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"turnPhase":"ROLL_DICE"},"players":[{"id":10,"userId":99,"username":"Alice"},{"id":20,"userId":88,"username":"Bob"}],"activePlayerId":10}}"""
+            )
+        )
+
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_ACTION","payload":{"turnPhase":"END_TURN","activePlayerId":20}}"""
+            )
+        )
+
+        assertEquals(GamePhase.END_TURN, client.gamePhase.value)
+        assertEquals(88, client.activePlayerId.value)
+        assertTrue(client.players.value.first { it.id == "20" }.isActivePlayer)
+    }
+
+    @Test
     fun rollDiceSendsStompFrameToRollDiceDestination() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
