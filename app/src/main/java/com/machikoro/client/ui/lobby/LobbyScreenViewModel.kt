@@ -1,11 +1,14 @@
 package com.machikoro.client.ui.lobby
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.machikoro.client.domain.model.state.LobbyStatus
 import com.machikoro.client.domain.model.state.LobbyScreenState
 import com.machikoro.client.domain.session.SessionStateHolder
+import com.machikoro.client.network.debug.DebugApi
+import com.machikoro.client.network.debug.FillLobbyRequest
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +19,7 @@ import kotlinx.coroutines.launch
 class LobbyScreenViewModel(
     private val webSocketClient: WebSocketClient,
     private val sessionStateHolder: SessionStateHolder,
+    private val debugApi: DebugApi,
 ) : ViewModel() {
 
     val state: StateFlow<LobbyScreenState>
@@ -27,11 +31,15 @@ class LobbyScreenViewModel(
         )
     )
 
+    // Tracks the current lobby code so fillWithDummies() can use it without a parameter
+    private var currentLobbyCode: String? = null
+
     init {
         observeSession()
         observePlayers()
         observeConnectionStatus()
         observeIsLobbyHost()
+        observeLobbyCode()
     }
 
     private fun observeSession() {
@@ -107,9 +115,31 @@ class LobbyScreenViewModel(
         // TODO: notify backend when leave-lobby endpoint/event exists.
     }
 
+    // Calls the debug endpoint to fill remaining lobby slots with dummy players
+    fun fillWithDummies() {
+        val code = currentLobbyCode ?: return
+        viewModelScope.launch {
+            try {
+                debugApi.fillLobby(FillLobbyRequest(lobbyCode = code))
+                Log.d("LobbyScreenViewModel", "fillWithDummies succeeded for lobby $code")
+            } catch (e: Exception) {
+                Log.e("LobbyScreenViewModel", "fillWithDummies failed: ${e.message}")
+            }
+        }
+    }
+
+    private fun observeLobbyCode() {
+        viewModelScope.launch {
+            webSocketClient.lobbyCode.collect { code ->
+                currentLobbyCode = code
+            }
+        }
+    }
+
     class Factory(
         private val webSocketClient: WebSocketClient,
         private val sessionStateHolder: SessionStateHolder,
+        private val debugApi: DebugApi,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -118,7 +148,8 @@ class LobbyScreenViewModel(
             }
             return LobbyScreenViewModel(
                 webSocketClient = webSocketClient,
-                sessionStateHolder = sessionStateHolder
+                sessionStateHolder = sessionStateHolder,
+                debugApi = debugApi,
             ) as T
         }
     }

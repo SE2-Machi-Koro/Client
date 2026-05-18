@@ -53,6 +53,7 @@ fun LobbyScreen(
     onReadyToggle: () -> Unit = {},
     onStartGame: () -> Unit = {},
     onLeaveLobby: () -> Unit = {},
+    onFillWithDummies: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     LobbyScreen(
@@ -67,6 +68,7 @@ fun LobbyScreen(
         onReadyToggle = onReadyToggle,
         onStartGame = onStartGame,
         onLeaveLobby = onLeaveLobby,
+        onFillWithDummies = onFillWithDummies,
         modifier = modifier
     )
 }
@@ -83,6 +85,7 @@ fun LobbyScreen(
     onReadyToggle: () -> Unit = {},
     onStartGame: () -> Unit = {},
     onLeaveLobby: () -> Unit = {},
+    onFillWithDummies: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val startEnabled = isHost && playerNames.size >= 2
@@ -200,6 +203,21 @@ fun LobbyScreen(
                 )
             ) {
                 Text("Start Game", color = TextWhite, style =  MaterialTheme.typography.labelLarge)
+            }
+
+            // Debug helper: fill remaining slots so the host can start without real players
+            if (isHost && playerNames.size < maxPlayers) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onFillWithDummies,
+                    modifier = Modifier
+                        .width(320.dp)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBlueGrey)
+                ) {
+                    Text("[Debug] Fill with dummies", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
+                }
             }
         }
 
