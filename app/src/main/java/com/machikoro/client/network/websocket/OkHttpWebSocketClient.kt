@@ -14,13 +14,19 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.session.SessionStateHolder
 import java.net.URI
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
@@ -33,6 +39,8 @@ class OkHttpWebSocketClient(
     private val websocketUrl: String,
     private val sessionStateHolder: SessionStateHolder,
     private val webSocketFactory: WebSocketFactory = OkHttpWebSocketFactory(),
+    private val reconnectScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    private val reconnectDelaysMs: List<Long> = RECONNECT_DELAYS_MS,
 ) : WebSocketClient {
     override val connectionStatus: StateFlow<ConnectionStatus>
         get() = mutableConnectionStatus.asStateFlow()
@@ -114,8 +122,21 @@ class OkHttpWebSocketClient(
     private var webSocket: WebSocket? = null
     private var subscribedGameId: Int? = null
 
+    // Auto-reconnect state. `intentionalDisconnect` is set whenever the client
+    // tears the connection down itself (disconnect() or an auth rejection) so
+    // the listener can tell a deliberate close apart from an unexpected drop.
+    @Volatile
+    private var intentionalDisconnect = false
+    private var reconnectJob: Job? = null
+    private var reconnectAttempt = 0
+
+    init {
+        require(reconnectDelaysMs.isNotEmpty()) { "reconnectDelaysMs must not be empty" }
+    }
+
     override fun connect() {
         synchronized(this) {
+            intentionalDisconnect = false
             if (webSocket != null) return
             if (sessionStateHolder.session.value == null) {
                 Log.d(TAG, "Skipping WS connect — no session token")
@@ -136,6 +157,8 @@ class OkHttpWebSocketClient(
     }
 
     override fun disconnect() {
+        intentionalDisconnect = true
+        cancelReconnect()
         val currentSocket = synchronized(this) {
             val socket = webSocket
             webSocket = null
@@ -349,6 +372,7 @@ class OkHttpWebSocketClient(
             clearSocket()
             mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
             resetGameState()
+            scheduleReconnect()
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -357,6 +381,7 @@ class OkHttpWebSocketClient(
             clearSocket()
             mutableConnectionStatus.value = ConnectionStatus.ERROR
             resetGameState()
+            scheduleReconnect()
         }
     }
 
@@ -364,6 +389,8 @@ class OkHttpWebSocketClient(
         when (frame.command) {
             "CONNECTED" -> {
                 Log.d(TAG, "STOMP connected")
+                // A live STOMP session: drop any pending retry and reset backoff.
+                cancelReconnect()
                 mutableConnectionStatus.value = ConnectionStatus.CONNECTED
                 subscribeToPublicTopic()
                 subscribeToErrorsQueue()
@@ -399,6 +426,8 @@ class OkHttpWebSocketClient(
             "ERROR" -> {
                 Log.e(TAG, "STOMP error frame received: ${frame.body}")
                 if (isAuthRejection(frame.body)) {
+                    // An auth rejection is terminal — do not auto-reconnect.
+                    intentionalDisconnect = true
                     mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
                     resetGameState()
                     sessionStateHolder.signOut()
@@ -794,6 +823,43 @@ class OkHttpWebSocketClient(
         }
     }
 
+    /**
+     * Schedules an automatic reconnect after an unexpected drop (network blip
+     * or backend container restart). No-op when the client closed the
+     * connection itself (disconnect() / auth rejection) or when there is no
+     * session to reconnect with. Uses exponential backoff so a backend restart
+     * is ridden out without hammering the server; a successful STOMP CONNECT
+     * resets the backoff. The CONNECTED handler re-subscribes to the game-sync
+     * queue and re-sends the JOIN, so reconnect-snapshot recovery is triggered
+     * automatically once the connection is back.
+     */
+    private fun scheduleReconnect() {
+        synchronized(this) {
+            if (intentionalDisconnect) return
+            if (sessionStateHolder.session.value == null) return
+            val attempt = reconnectAttempt
+            reconnectAttempt = attempt + 1
+            val delayMs = reconnectDelaysMs.getOrElse(attempt) { reconnectDelaysMs.last() }
+            reconnectJob?.cancel()
+            reconnectJob = reconnectScope.launch {
+                delay(delayMs)
+                if (!intentionalDisconnect && sessionStateHolder.session.value != null) {
+                    Log.d(TAG, "Auto-reconnect attempt ${attempt + 1}")
+                    connect()
+                }
+            }
+        }
+    }
+
+    /** Cancels any pending reconnect and resets the backoff counter. */
+    private fun cancelReconnect() {
+        synchronized(this) {
+            reconnectJob?.cancel()
+            reconnectJob = null
+            reconnectAttempt = 0
+        }
+    }
+
     private fun isAuthRejection(body: String): Boolean =
         body.trim().contains(AUTH_REJECTION_BODY)
 
@@ -870,6 +936,10 @@ class OkHttpWebSocketClient(
     companion object {
         private const val NORMAL_CLOSURE_STATUS = 1000
         private const val TAG = "OkHttpWebSocketClient"
+        // Exponential backoff for auto-reconnect; the final value repeats once
+        // the list is exhausted. Long enough to ride out a backend container
+        // restart without hammering the server.
+        private val RECONNECT_DELAYS_MS = listOf(1_000L, 2_000L, 4_000L, 8_000L, 16_000L)
         private const val GAME_ACTION_TYPE = "GAME_ACTION"
         private const val GAME_STARTED_TYPE = "GAME_STARTED"
         private const val AUTH_HEADER = "Authorization"
