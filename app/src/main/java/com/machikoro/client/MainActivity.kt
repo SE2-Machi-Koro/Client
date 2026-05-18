@@ -23,6 +23,7 @@ import com.machikoro.client.config.AppConfig
 import com.machikoro.client.domain.session.DataStoreSessionStorage
 import com.machikoro.client.domain.session.SessionManager
 import com.machikoro.client.network.auth.AuthApiFactory
+import com.machikoro.client.network.debug.DebugApiFactory
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.AppRoot
 import com.machikoro.client.ui.game.GameScreenViewModel
@@ -46,17 +47,20 @@ class MainActivity : ComponentActivity() {
     private val authApi by lazy {
         AuthApiFactory.create(AppConfig.backendBaseUrl)
     }
+    private val debugApi by lazy {
+        DebugApiFactory.create(AppConfig.backendBaseUrl)
+    }
     private val startScreenViewModel by viewModels<StartScreenViewModel> {
         StartScreenViewModel.Factory(webSocketClient, SessionManager)
     }
     private val gameScreenViewModel by viewModels<GameScreenViewModel> {
-        GameScreenViewModel.Factory(webSocketClient, SessionManager) // NEU
+        GameScreenViewModel.Factory(webSocketClient, SessionManager)
     }
     private val homeViewModel by viewModels<HomeViewModel> {
         HomeViewModel.Factory(webSocketClient)
     }
     private val lobbyScreenViewModel by viewModels<LobbyScreenViewModel> {
-        LobbyScreenViewModel.Factory(webSocketClient, SessionManager)
+        LobbyScreenViewModel.Factory(webSocketClient, SessionManager, debugApi)
     }
     private val registerDialogViewModel by viewModels<RegisterDialogViewModel> {
         RegisterDialogViewModel.Factory(authApi)
@@ -82,7 +86,6 @@ class MainActivity : ComponentActivity() {
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
             val activeGameId by homeViewModel.activeGameId.collectAsState()
-            val isLobbyHost by homeViewModel.isLobbyHost.collectAsState()
             val joinLobbyCode by homeViewModel.joinLobbyCode.collectAsState()
             val joinLobbyError by homeViewModel.joinLobbyError.collectAsState()
             val lobbyScreenState by lobbyScreenViewModel.state.collectAsState()
@@ -110,8 +113,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect(activeGameId, isLobbyHost) {
-                if (activeGameId != null && !isLobbyHost) {
+            LaunchedEffect(activeGameId) {
+                if (activeGameId != null) {
                     showJoinLobbyInput = false
                     navigationViewModel.showLobby()
                 }
@@ -148,6 +151,8 @@ class MainActivity : ComponentActivity() {
                         onLogoutSubmit = logoutViewModel::submit,
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
                         onStartGame = homeViewModel::startGame,
+                        onFillWithDummies = lobbyScreenViewModel::fillWithDummies,
+                        onResetLobby = lobbyScreenViewModel::resetLobby,
                         onLeaveLobby = {
                             navigationViewModel.leaveLobby()
                             lobbyScreenViewModel.onLeaveLobby()

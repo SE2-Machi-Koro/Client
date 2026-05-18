@@ -431,6 +431,22 @@ class OkHttpWebSocketClient(
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
         }
+        // Add host immediately so they appear in the list before LOBBY_JOINED arrives
+        sessionStateHolder.session.value?.username?.let { username ->
+            if (mutablePlayers.value.none { it.displayName == username }) {
+                val hostId = (payload.optIntOrNull("playerId") ?: payload.optIntOrNull("id"))
+                    ?.toString() ?: "host-$username"
+                mutablePlayers.value += PlayerCoinState(
+                    id = hostId,
+                    displayName = username,
+                    coins = payload.optInt("coins", 3)
+                )
+            }
+        }
+        // Host must join their own lobby to become a player in the roster
+        if (mutableIsLobbyHost.value && code.isNotBlank()) {
+            sendJoinLobby(code)
+        }
     }
 
     /**
@@ -442,13 +458,25 @@ class OkHttpWebSocketClient(
         val payload = json.optJSONObject("payload") ?: return
         val gameId = json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId")
 
-        mutableIsLobbyHost.value = false
-
         if (gameId != null) {
             Log.d(TAG, "Joined lobby with gameId: $gameId")
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
+            // Re-register session with gameId so the server can identify the host when startGame is called
+            if (mutableIsLobbyHost.value) {
+                sendJoinMessage()
+            }
         }
+
+        // Add player to lobby list; username is now included in the server response
+        val username = payload.optString("username").takeIf { it.isNotBlank() } ?: return
+        // Try both "playerId" and "id" since the server may use either field name
+        val playerId = (payload.optIntOrNull("playerId") ?: payload.optIntOrNull("id"))?.toString() ?: return
+        val coins = payload.optInt("coins", 3)
+        val newPlayer = PlayerCoinState(id = playerId, displayName = username, coins = coins)
+        // Replace any existing entry with same id or name (e.g., temp host entry) then add
+        mutablePlayers.value = mutablePlayers.value
+            .filter { it.id != playerId && it.displayName != username } + newPlayer
     }
     private fun handleLobbyError(json: JSONObject) {
         if (json.optString("type") != ERROR_TYPE) return
@@ -741,6 +769,12 @@ class OkHttpWebSocketClient(
     }
 
     private fun sendJoinMessage() {
+        val gameId = mutableActiveGameId.value
+        val body = if (gameId != null) {
+            """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}","gameId":$gameId}"""
+        } else {
+            """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}"}"""
+        }
         webSocket?.send(
             StompFrame(
                 command = "SEND",
@@ -748,7 +782,7 @@ class OkHttpWebSocketClient(
                     "destination" to WebSocketContract.addUserDestination,
                     "content-type" to "application/json"
                 ),
-                body = """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}"}"""
+                body = body
             ).serialize()
         )
     }
@@ -780,6 +814,7 @@ class OkHttpWebSocketClient(
         mutableLobbyCode.value = null
         mutableActiveGameId.value = null
         mutableIsLobbyHost.value = false
+        mutablePlayers.value = emptyList()
     }
 
     private fun parseTurnPhase(phaseName: String): GamePhase? =

@@ -63,6 +63,8 @@ fun AppRoot(
     onReadyToggle: () -> Unit = {},
     onStartGame: () -> Unit = {},
     onLeaveLobby: () -> Unit = {},
+    onFillWithDummies: () -> Unit = {},
+    onResetLobby: () -> Unit = {},
     onRollDice: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -170,6 +172,8 @@ fun AppRoot(
                 onReadyToggle = onReadyToggle,
                 onStartGame = onStartGame,
                 onLeaveLobby = onLeaveLobby,
+                onFillWithDummies = onFillWithDummies,
+                onResetLobby = onResetLobby,
             )
         }
 

@@ -1,5 +1,6 @@
 package com.machikoro.client.ui.lobby
 
+import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -53,7 +54,9 @@ fun LobbyScreen(
     onReadyToggle: () -> Unit = {},
     onStartGame: () -> Unit = {},
     onLeaveLobby: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onFillWithDummies: () -> Unit = {},
+    onResetLobby: () -> Unit = {},
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     LobbyScreen(
         playerNames = state.playerList,
@@ -67,6 +70,8 @@ fun LobbyScreen(
         onReadyToggle = onReadyToggle,
         onStartGame = onStartGame,
         onLeaveLobby = onLeaveLobby,
+        onFillWithDummies = onFillWithDummies,
+        onResetLobby = onResetLobby,
         modifier = modifier
     )
 }
@@ -83,6 +88,8 @@ fun LobbyScreen(
     onReadyToggle: () -> Unit = {},
     onStartGame: () -> Unit = {},
     onLeaveLobby: () -> Unit = {},
+    onFillWithDummies: () -> Unit = {},
+    onResetLobby: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val startEnabled = isHost && playerNames.size >= 2
@@ -200,6 +207,36 @@ fun LobbyScreen(
                 )
             ) {
                 Text("Start Game", color = TextWhite, style =  MaterialTheme.typography.labelLarge)
+            }
+
+            // Debug helper: fill remaining slots so the host can start without real players
+            if (isHost && playerNames.size < maxPlayers) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onFillWithDummies,
+                    modifier = Modifier
+                        .width(320.dp)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBlueGrey)
+                ) {
+                    Text("[Debug] Fill with dummies", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+
+            // Debug helper: remove all non-host players so the host can start fresh
+            if (isHost && playerNames.size > 1) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Button(
+                    onClick = onResetLobby,
+                    modifier = Modifier
+                        .width(320.dp)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBlueGrey)
+                ) {
+                    Text("[Debug] Reset lobby", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
+                }
             }
         }
 

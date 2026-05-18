@@ -200,6 +200,10 @@ class FakeWebSocketClient : WebSocketClient {
     fun emitAuthRejection() {
         mutableAuthRejections.tryEmit(Unit)
     }
+
+    fun emitLobbyCode(code: String?) {
+        mutableLobbyCode.value = code
+    }
     data class PurchaseCall(
         val gameId: Int,
         val purchaseType: PurchaseType,
