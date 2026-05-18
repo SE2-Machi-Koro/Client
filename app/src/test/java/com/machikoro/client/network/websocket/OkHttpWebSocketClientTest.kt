@@ -654,6 +654,11 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},"players":[]}}"""
+            )
+        )
         client.rollDice(diceCount = 1)
         assertTrue(factory.socket.sentMessages.any {
             it.startsWith("SEND\n") && it.contains("destination:/app/game.rollDice") && it.contains("\"diceCount\":1")
@@ -941,6 +946,7 @@ class OkHttpWebSocketClientTest {
         assertTrue(factory.socket.sentMessages.isEmpty())
     }
 
+
     @Test
     fun rollDiceWithTwoDiceSendsDiceCountTwo() {
         val factory = FakeWebSocketFactory()
@@ -948,6 +954,11 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},"players":[]}}"""
+            )
+        )
         client.rollDice(diceCount = 2)
         assertTrue(factory.socket.sentMessages.any { it.contains("\"diceCount\":2") })
     }
