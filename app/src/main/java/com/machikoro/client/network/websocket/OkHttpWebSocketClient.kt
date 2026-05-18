@@ -98,7 +98,6 @@ class OkHttpWebSocketClient(
     private val mutableRoundNumber = MutableStateFlow<Int?>(null)
     private val mutablePlayerLandmarks =
         MutableStateFlow<Map<Int, List<PlayerLandmarkState>>>(emptyMap())
-    private val marketplaceMapping = mutableMapOf<Int, Int>() // Internes PlayerID -> UserID Mapping
     private val mutableMarketplace = MutableStateFlow<Map<CardType, Int>>(emptyMap())
     private val mutableShopItems = MutableStateFlow<List<ShopItem>>(emptyList())
     private val mutablePurchaseEvents = MutableSharedFlow<PurchaseEvent>(
@@ -114,6 +113,9 @@ class OkHttpWebSocketClient(
     @Volatile
     private var webSocket: WebSocket? = null
     private var subscribedGameId: Int? = null
+
+    // Internes Mapping technische PlayerID -> Account UserID
+    private val technicalToUserMapping = mutableMapOf<Int, Int>()
 
     override fun connect() {
         synchronized(this) {
@@ -264,7 +266,7 @@ class OkHttpWebSocketClient(
             return
         }
 
-        // MODIFIZIERT: Suche technischen aktiven Spieler in der Liste
+        // DEINE LOGIK: Suche technischen aktiven Spieler
         val activePlayer = mutablePlayers.value.firstOrNull { it.isActivePlayer }
         val playerId = activePlayer?.id?.toIntOrNull()
 
@@ -394,19 +396,25 @@ class OkHttpWebSocketClient(
                 handleGameStarted(json)
                 handleSync(json)
 
-                // MODIFIZIERT: GAME_ACTION Mapping
-                parseGameAction(json).let { (phase, technicalId) ->
-                    phase?.let { mutableGamePhase.value = it }
+                // DEINE LOGIK: GAME_ACTION Normalisierung
+                if (json.optString("type") == GAME_ACTION_TYPE) {
+                    val payload = json.optJSONObject("payload")
+                    payload?.optString("turnPhase")?.let {
+                        parseTurnPhase(it)?.let { phase -> mutableGamePhase.value = phase }
+                    }
+
+                    val technicalId = payload?.optIntOrNull("activePlayerId")
                     if (technicalId != null) {
-                        // Markierung in Spielerliste setzen (technisch)
+                        // Markierung in Spielerliste (technisch)
                         mutablePlayers.value = mutablePlayers.value.map {
                             it.copy(isActivePlayer = it.id == technicalId.toString())
                         }
                         // UI Normalisierung auf User-ID
-                        mutableActivePlayerId.value = findUserIdByPlayerId(json.optJSONObject("payload")?.optJSONArray("players"), technicalId)
-                            ?: marketplaceMapping[technicalId]
+                        mutableActivePlayerId.value = findUserIdByPlayerId(payload.optJSONArray("players"), technicalId)
+                            ?: technicalToUserMapping[technicalId]
                     }
                 }
+
                 parsePurchaseSuccess(json)?.let { mutablePurchaseEvents.tryEmit(it) }
                 parseDiceResult(json)?.let { mutableDiceResult.value = it }
             }
@@ -508,17 +516,17 @@ class OkHttpWebSocketClient(
 
         parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
 
-        // MODIFIZIERT: Trennung PlayerID vs UserID
+        // DEINE LOGIK: Trennung PlayerID vs UserID
         val playersArray = payload.optJSONArray("players")
         val technicalActiveId = payload.optIntOrNull("activePlayerId")
 
-        // Mapping für spätere GAME_ACTION Nachrichten aktualisieren
+        // Mapping aktualisieren
         updateInternalMapping(playersArray)
 
-        // Spielerliste setzen & internen Marker via technischer ID setzen
+        // Spielerliste setzen & technischen Marker setzen
         mutablePlayers.value = playersArray.toPlayerCoinStates(technicalActiveId)
 
-        // UI Normalisierung: User ID exponieren
+        // UI Normalisierung: User ID für den Flow
         if (technicalActiveId != null) {
             mutableActivePlayerId.value = findUserIdByPlayerId(playersArray, technicalActiveId)
         }
@@ -547,7 +555,7 @@ class OkHttpWebSocketClient(
         game.optIntOrNull("roundNumber")?.let { mutableRoundNumber.value = it }
         game.optIntOrNull("lastDiceRoll")?.let { mutableDiceResult.value = listOf(it) }
 
-        // MODIFIZIERT: Mapping & technische Marker setzen
+        // DEINE LOGIK: Mapping & technische Marker
         val playersArray = state.optJSONArray("players")
         updateInternalMapping(playersArray)
 
@@ -563,7 +571,7 @@ class OkHttpWebSocketClient(
         updateShopItemsFromState(state, marketplace)
     }
 
-    // --- NEUE HILFSMETHODEN FÜR NORMALISIERUNG ---
+    // --- DEINE NEUEN HILFSMETHODEN ---
 
     private fun updateInternalMapping(array: JSONArray?) {
         if (array == null) return
@@ -571,7 +579,7 @@ class OkHttpWebSocketClient(
             val p = array.optJSONObject(i) ?: continue
             val pId = p.optIntOrNull("id")
             val uId = p.optIntOrNull("userId")
-            if (pId != null && uId != null) marketplaceMapping[pId] = uId
+            if (pId != null && uId != null) technicalToUserMapping[pId] = uId
         }
     }
 
@@ -591,7 +599,7 @@ class OkHttpWebSocketClient(
         return turnOrder.optInt(currentTurnIndex)
     }
 
-    // --- RESTLICHE METHODEN UNVERÄNDERT ---
+    // --- RESTLICHE METHODEN ---
 
     private fun updateShopItemsFromState(
         state: JSONObject,
@@ -703,13 +711,13 @@ class OkHttpWebSocketClient(
     private fun resetGameState() {
         mutableGamePhase.value = GamePhase.NONE; mutablePlayers.value = emptyList(); mutableDiceResult.value = null; mutableActivePlayerId.value = null
         mutableLobbyCode.value = null; mutableGameStatus.value = null; mutableRoundNumber.value = null; mutablePlayerLandmarks.value = emptyMap()
-        mutableMarketplace.value = emptyMap(); mutableShopItems.value = emptyList(); marketplaceMapping.clear()
+        mutableMarketplace.value = emptyMap(); mutableShopItems.value = emptyList(); technicalToUserMapping.clear()
     }
 
     private fun resetLobbyState() { mutableLobbyCode.value = null; mutableActiveGameId.value = null; mutableIsLobbyHost.value = false; mutablePlayers.value = emptyList() }
     private fun parseTurnPhase(name: String): GamePhase? = name.takeIf { it.isNotEmpty() }?.let { runCatching { GamePhase.valueOf(it) }.getOrNull() }
 
-    // MODIFIZIERT: Akzeptiert technische ID direkt
+    // MODIFIZIERT: Marker-Setzung via technischer ID
     private fun JSONArray?.toPlayerCoinStates(technicalActiveId: Int?): List<PlayerCoinState> {
         if (this == null) return emptyList()
         return List(length()) { index -> getJSONObject(index).toPlayerCoinState(technicalActiveId) }
@@ -731,7 +739,8 @@ class OkHttpWebSocketClient(
 
     private fun websocketHostHeader(): String {
         val uri = URI(websocketUrl)
-        return if (uri.port == -1 || uri.port == (if (uri.scheme == "wss") 443 else 80)) uri.host else "${uri.host}:${uri.port}"
+        val port = uri.port
+        return if (port == -1 || port == (if (uri.scheme == "wss") 443 else 80)) uri.host else "${uri.host}:$port"
     }
 
     companion object {
@@ -747,9 +756,19 @@ class OkHttpWebSocketClient(
         private const val ROLL_DICE_TYPE = "ROLL_DICE"
         private const val SYNC_TYPE = "SYNC"
         private const val AUTH_REJECTION_BODY = "Authentication failed"
-        private fun purchaseBody(gameId: Int, pt: PurchaseType, ct: String?, lt: String?): String {
-            val field = when (pt) { PurchaseType.ESTABLISHMENT -> ",\"cardType\":\"$ct\""; PurchaseType.LANDMARK -> ",\"landmarkType\":\"$lt\"" }
-            return """{"gameId":$gameId,"purchaseType":"${pt.name}"$field}"""
+
+        // FIXED: Parameter-Namen an Aufrufstelle angepasst
+        private fun purchaseBody(
+            gameId: Int,
+            purchaseType: PurchaseType,
+            cardType: String?,
+            landmarkType: String?
+        ): String {
+            val field = when (purchaseType) {
+                PurchaseType.ESTABLISHMENT -> ",\"cardType\":\"$cardType\""
+                PurchaseType.LANDMARK -> ",\"landmarkType\":\"$landmarkType\""
+            }
+            return """{"gameId":$gameId,"purchaseType":"${purchaseType.name}"$field}"""
         }
     }
 }
