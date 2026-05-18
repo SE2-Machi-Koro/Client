@@ -13,14 +13,13 @@ import com.machikoro.client.domain.session.Session
 import com.machikoro.client.domain.session.SessionStateHolder
 import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import okhttp3.Protocol
@@ -1640,7 +1639,11 @@ class OkHttpWebSocketClientTest {
     private fun newClient(
         factory: FakeWebSocketFactory,
         sessionStateHolder: SessionStateHolder = FakeSessionStateHolder(DEFAULT_SESSION),
-        reconnectScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+        // Inert by default: a StandardTestDispatcher whose scheduler is never
+        // advanced, so an auto-reconnect scheduled by a close/failure stays
+        // queued and does not race assertions in tests that don't drive it.
+        // Reconnect tests pass backgroundScope explicitly and drive it.
+        reconnectScope: CoroutineScope = CoroutineScope(StandardTestDispatcher()),
         reconnectDelaysMs: List<Long> = listOf(0L),
     ) = OkHttpWebSocketClient(
         websocketUrl = "ws://10.0.2.2:8080/ws",
