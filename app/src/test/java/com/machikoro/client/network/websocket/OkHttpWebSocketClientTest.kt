@@ -634,6 +634,7 @@ class OkHttpWebSocketClientTest {
                 "type":"GAME_STARTED",
                 "gameId":42,
                 "payload":{
+                    "activePlayerId":1,
                     "game":{
                         "id":42,
                         "lobbyCode":"ABC1234",
@@ -647,6 +648,7 @@ class OkHttpWebSocketClientTest {
 
         assertEquals(42, client.activeGameId.value)
         assertEquals("ABC1234", client.lobbyCode.value)
+        assertEquals(1, client.activePlayerId.value)
     }
 
     @Test
@@ -656,9 +658,13 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameStartedFrame(gameId = 7, activePlayerId = 1))
         client.rollDice(diceCount = 1)
         assertTrue(factory.socket.sentMessages.any {
-            it.startsWith("SEND\n") && it.contains("destination:/app/game.rollDice") && it.contains("\"diceCount\":1")
+            it.startsWith("SEND\n") &&
+                it.contains("destination:/app/game.rollDice") &&
+                it.contains("\"gameId\":7") &&
+                it.contains("\"diceCount\":1")
         })
     }
 
@@ -950,6 +956,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameStartedFrame(gameId = 7, activePlayerId = 1))
         client.rollDice(diceCount = 2)
         assertTrue(factory.socket.sentMessages.any { it.contains("\"diceCount\":2") })
     }
@@ -1568,6 +1575,11 @@ class OkHttpWebSocketClientTest {
 
     private fun gameActionFrame(body: String): String =
         "MESSAGE\ndestination:/topic/public\ncontent-type:application/json\n\n$body\u0000"
+
+    private fun gameStartedFrame(gameId: Int, activePlayerId: Int): String =
+        gameActionFrame(
+            """{"type":"GAME_STARTED","gameId":$gameId,"payload":{"activePlayerId":$activePlayerId,"game":{"id":$gameId,"lobbyCode":"ABC1234","turnPhase":"ROLL_DICE"},"players":[]}}"""
+        )
 
     private class FakeWebSocketFactory : WebSocketFactory {
         lateinit var listener: WebSocketListener

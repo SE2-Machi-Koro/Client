@@ -287,6 +287,19 @@ class OkHttpWebSocketClient(
             Log.w(TAG, "rollDice called but no active WebSocket connection")
             return
         }
+        val gameId = mutableActiveGameId.value
+        if (gameId == null) {
+            Log.w(TAG, "rollDice called but no active game id")
+            return
+        }
+        val payload = JSONObject()
+            .put("gameId", gameId)
+            .put("diceCount", diceCount)
+        val body = JSONObject()
+            .put("type", ROLL_DICE_TYPE)
+            .put("gameId", gameId)
+            .put("payload", payload)
+            .toString()
         socket.send(
             StompFrame(
                 command = "SEND",
@@ -294,10 +307,10 @@ class OkHttpWebSocketClient(
                     "destination" to WebSocketContract.rollDiceDestination,
                     "content-type" to "application/json"
                 ),
-                body = """{"type":"ROLL_DICE","payload":{"diceCount":$diceCount}}"""
+                body = body
             ).serialize()
         )
-        Log.d(TAG, "Roll dice message sent (diceCount=$diceCount)")
+        Log.d(TAG, "Roll dice message sent (gameId=$gameId, diceCount=$diceCount)")
     }
 
     override fun sendPurchase(
@@ -535,6 +548,7 @@ class OkHttpWebSocketClient(
 
         mutableActiveGameId.value = gameId
         subscribeToGameTopic(gameId)
+        payload.optIntOrNull("activePlayerId")?.let { mutableActivePlayerId.value = it }
 
         game.optString("lobbyCode")
             .takeIf { it.isNotBlank() }
