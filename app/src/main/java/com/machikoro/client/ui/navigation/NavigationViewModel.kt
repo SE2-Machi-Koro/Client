@@ -82,8 +82,9 @@ class NavigationViewModel(
     /**
      * Updates navigation based on app state changes.
      *
-     * Route priority is Winner > Game > Lobby > Home > Main, matching the
-     * current game flow documented in docs/navigation.md.
+     * Unauthenticated users always return to Main. For authenticated users,
+     * route priority is Winner > Game > Lobby > Home, matching the current
+     * game flow documented in docs/navigation.md.
      */
     fun updateNavigationBasedOnState(
         gameScreenState: GameScreenState,
@@ -91,12 +92,13 @@ class NavigationViewModel(
         lobbyCode: String?,
     ) {
         viewModelScope.launch {
+            val loggedIn = startScreenState.loggedInAs != null
             val targetRoute = when {
+                !loggedIn -> AppRoute.Main
                 gameScreenState.gameStatus == GameStatus.FINISHED -> AppRoute.Winner
                 gameScreenState.gamePhase != GamePhase.NONE -> AppRoute.Game
                 uiState.value.showLobbyScreen -> AppRoute.Lobby
-                startScreenState.loggedInAs != null -> AppRoute.Home
-                else -> AppRoute.Main
+                else -> AppRoute.Home
             }
 
             val routeArguments = AppRoute.AppRouteArguments(
