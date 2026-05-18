@@ -107,6 +107,9 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 webSocketClient.authRejections.collect {
+                    SessionManager.signOut()
+                    navigationViewModel.leaveLobby()
+                    homeViewModel.clearLobbyCode()
                     snackbarHostState.showSnackbar(
                         "Sitzung abgelaufen, bitte erneut anmelden"
                     )
