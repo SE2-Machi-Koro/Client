@@ -653,7 +653,6 @@ class OkHttpWebSocketClientTest {
             }"""
             )
         )
-        // Muss 7 sein (da findUserIdByPlayerId 7 in der Liste findet)
         assertEquals(7, client.activePlayerId.value)
     }
 
@@ -664,12 +663,10 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
-        // Setze initial 99
         factory.simulateText(
             gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE","activePlayerId":99,"players":[{"id":99,"userId":99,"username":"X"}]}}""")
         )
         assertEquals(99, client.activePlayerId.value)
-        // Sende GAME_STARTED ohne activePlayerId
         factory.simulateText(
             gameActionFrame(
                 """{
@@ -692,7 +689,6 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        // Spieler hinzufügen, damit activePlayerId auflösbar ist
         factory.simulateText(
             gameActionFrame(
                 """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},"players":[{"id":1,"userId":1,"username":"A"}],"activePlayerId":1}}"""
@@ -836,7 +832,6 @@ class OkHttpWebSocketClientTest {
 
         val initialCount = factory.socket.sentMessages.size
         client.rollDice(1)
-        // Erwartetes Verhalten nach Refactor: Nichts senden (Abort), da "host-admin" kein Int ist
         assertEquals(initialCount, factory.socket.sentMessages.size)
     }
 
@@ -1230,6 +1225,7 @@ class OkHttpWebSocketClientTest {
     @Test
     fun syncMessageResolvesActivePlayerUserIdFromTurnOrder() {
         val client = clientAfterSync()
+        // Snapshot Body: index 0 -> playerId 11 -> userId 1
         assertEquals(1, client.activePlayerId.value)
     }
 
@@ -1379,12 +1375,15 @@ class OkHttpWebSocketClientTest {
         const val SYNC_SNAPSHOT_BODY =
             """{"type":"SYNC","sender":"server","gameId":7,"payload":{"targetUserId":1,""" +
                     """"state":{"game":{"id":7,"status":"IN_PROGRESS","turnPhase":"BUY_OR_BUILD",""" +
-                    """"lastDiceRoll":8,"roundNumber":3,"currentTurnIndex":1},""" +
+                    """"lastDiceRoll":8,"roundNumber":3,"currentTurnIndex":0},""" +
                     """"players":[{"id":11,"userId":1,"coins":10},{"id":22,"userId":2,"coins":7}],""" +
-                    """"playerLandmarks":{"11":[], "22":[]},""" +
-                    """"marketplace":{},""" +
-                    """"cardDefinitions":[],""" +
-                    """"landmarkDefinitions":[],""" +
+                    """"playerLandmarks":{"11":[{"playerId":11,"landmarkType":"TRAIN_STATION","isBuilt":true},""" +
+                    """{"playerId":11,"landmarkType":"SHOPPING_MALL","isBuilt":false}],""" +
+                    """"22":[{"playerId":22,"landmarkType":"TRAIN_STATION","isBuilt":false}]},""" +
+                    """"marketplace":{"WHEAT_FIELD":6,"BAKERY":5},""" +
+                    """"cardDefinitions":[{"cardType":"BAKERY","cost":1,"color":"GREEN",""" +
+                    """"establishmentType":"BREAD","paymentSource":"BANK","activationNumbers":[2,3]}],""" +
+                    """"landmarkDefinitions":[{"landmarkType":"TRAIN_STATION","cost":4}],""" +
                     """"turnOrder":[11,22]}}}"""
     }
 
