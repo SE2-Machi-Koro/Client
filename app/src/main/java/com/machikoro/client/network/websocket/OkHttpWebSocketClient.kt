@@ -431,6 +431,18 @@ class OkHttpWebSocketClient(
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
         }
+        // Add host immediately so they appear in the list before LOBBY_JOINED arrives
+        sessionStateHolder.session.value?.username?.let { username ->
+            if (mutablePlayers.value.none { it.displayName == username }) {
+                val hostId = (payload.optIntOrNull("playerId") ?: payload.optIntOrNull("id"))
+                    ?.toString() ?: "host-$username"
+                mutablePlayers.value += PlayerCoinState(
+                    id = hostId,
+                    displayName = username,
+                    coins = payload.optInt("coins", 3)
+                )
+            }
+        }
         // Host must join their own lobby to become a player in the roster
         if (mutableIsLobbyHost.value && code.isNotBlank()) {
             sendJoinLobby(code)
@@ -458,12 +470,13 @@ class OkHttpWebSocketClient(
 
         // Add player to lobby list; username is now included in the server response
         val username = payload.optString("username").takeIf { it.isNotBlank() } ?: return
-        val playerId = payload.optIntOrNull("playerId")?.toString() ?: return
+        // Try both "playerId" and "id" since the server may use either field name
+        val playerId = (payload.optIntOrNull("playerId") ?: payload.optIntOrNull("id"))?.toString() ?: return
         val coins = payload.optInt("coins", 3)
         val newPlayer = PlayerCoinState(id = playerId, displayName = username, coins = coins)
-        if (mutablePlayers.value.none { it.id == playerId }) {
-            mutablePlayers.value += newPlayer
-        }
+        // Replace any existing entry with same id or name (e.g., temp host entry) then add
+        mutablePlayers.value = mutablePlayers.value
+            .filter { it.id != playerId && it.displayName != username } + newPlayer
     }
     private fun handleLobbyError(json: JSONObject) {
         if (json.optString("type") != ERROR_TYPE) return
