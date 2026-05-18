@@ -787,15 +787,16 @@ class OkHttpWebSocketClientTest {
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
 
-        // Simuliere einen Spielstart mit GameID 42
-        // Wir setzen turnOrder und players so, dass Spieler 7 aktiv ist
+        // WICHTIG: Die gameId muss auf oberster Ebene UND im Payload stehen,
+        // damit handleGameStarted sie korrekt extrahiert.
         val gameStartedPayload = """{
             "type":"GAME_STARTED",
             "gameId":42,
             "payload":{
                 "game":{
                     "id":42,
-                    "currentTurnIndex": 0
+                    "currentTurnIndex": 0,
+                    "turnPhase": "ROLL_DICE"
                 },
                 "turnOrder": [7],
                 "players": [
@@ -809,8 +810,7 @@ class OkHttpWebSocketClientTest {
         client.rollDice(diceCount = 1)
 
         val sentMessage = factory.socket.sentMessages.last()
-        // Prüft, ob die extrahierte ID 7 im JSON-Body an den Server geschickt wird
-        assertTrue(sentMessage.contains("\"playerId\":7"))
+        assertTrue("Sollte playerId 7 enthalten. Nachricht war: $sentMessage", sentMessage.contains("\"playerId\":7"))
     }
 
     @Test
@@ -821,26 +821,24 @@ class OkHttpWebSocketClientTest {
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
 
-        // Simuliere einen Zustand, in dem ein Spieler eine String-ID hat (z.B. "host-admin")
-        // Da .toIntOrNull() fehlschlägt, muss der ?: 0 Fallback greifen
+        // Hier wurde die gameId: 42 hinzugefügt, damit rollDice nicht abbricht
         val lobbyCreatedPayload = """{
             "type":"LOBBY_CREATED",
+            "gameId": 42,
             "payload":{
                 "lobbyCode":"ABC",
-                "playerId":"host-admin"
+                "playerId":"host-admin",
+                "gameId": 42
             }
         }"""
         factory.simulateText(gameActionFrame(lobbyCreatedPayload))
 
-        // Wir müssen sicherstellen, dass dieser Spieler in der Liste als aktiv markiert ist
-        // (In deinem Code wird bei LOBBY_CREATED der Host automatisch als aktiv/current in die Liste gepackt)
-
         client.rollDice(diceCount = 1)
 
         val sentMessage = factory.socket.sentMessages.last()
-        assertTrue(sentMessage.contains("\"playerId\":0"))
+        // Da "host-admin" nicht in ein Int gewandelt werden kann, greift der Fallback auf 0
+        assertTrue("Sollte playerId 0 enthalten. Nachricht war: $sentMessage", sentMessage.contains("\"playerId\":0"))
     }
-
     @Test
     fun parseDiceResultHandlesMalformedResultArray() {
         val factory = FakeWebSocketFactory()
