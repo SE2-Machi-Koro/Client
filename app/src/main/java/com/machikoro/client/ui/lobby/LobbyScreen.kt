@@ -1,5 +1,6 @@
 package com.machikoro.client.ui.lobby
 
+import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -54,7 +55,8 @@ fun LobbyScreen(
     onStartGame: () -> Unit = {},
     onLeaveLobby: () -> Unit = {},
     onFillWithDummies: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onResetLobby: () -> Unit = {},
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     LobbyScreen(
         playerNames = state.playerList,
@@ -69,6 +71,7 @@ fun LobbyScreen(
         onStartGame = onStartGame,
         onLeaveLobby = onLeaveLobby,
         onFillWithDummies = onFillWithDummies,
+        onResetLobby = onResetLobby,
         modifier = modifier
     )
 }
@@ -86,6 +89,7 @@ fun LobbyScreen(
     onStartGame: () -> Unit = {},
     onLeaveLobby: () -> Unit = {},
     onFillWithDummies: () -> Unit = {},
+    onResetLobby: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val startEnabled = isHost && playerNames.size >= 2
@@ -217,6 +221,21 @@ fun LobbyScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = ButtonBlueGrey)
                 ) {
                     Text("[Debug] Fill with dummies", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+
+            // Debug helper: remove all non-host players so the host can start fresh
+            if (isHost && playerNames.size > 1) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Button(
+                    onClick = onResetLobby,
+                    modifier = Modifier
+                        .width(320.dp)
+                        .height(44.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBlueGrey)
+                ) {
+                    Text("[Debug] Reset lobby", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
