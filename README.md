@@ -41,11 +41,21 @@ The project follows a modularized directory structure within `app/src/main/java/
 │   ├── game/         # Game board and active gameplay UI
 │   ├── home/         # Home screen UI and logic
 │   ├── lobby/        # Lobby screen UI and multiplayer setup
+│   ├── navigation/   # Top-level routes, navigator, and navigation ViewModel
 │   ├── start/        # Entry screens, login/register, and PDF viewer
 │   └── theme/        # Material 3 colors, typography, and theme definitions
 ├── network/
 │   └── websocket/    # STOMP protocol, WebSocket client, and contract constants
 └── MainActivity.kt   # Single activity entry point
+```
+
+## 🧭 Navigation
+
+The app uses a single top-level Compose `NavHost` with centralized routes,
+argument builders, an `AppNavigator` wrapper, and `NavigationViewModel`-driven
+state/events. See [docs/navigation.md](docs/navigation.md) for the full
+navigation flow and the implementation map for issue #29.
+
 ## 📰 Notable Features
 
 - **In-App PDF Viewer**: The app includes a built-in PDF viewer (`PdfViewerScreen`) for displaying documents such as game rules directly within the UI. This feature supports smooth navigation, page controls, and adapts to both portrait and landscape orientations.
@@ -53,8 +63,6 @@ The project follows a modularized directory structure within `app/src/main/java/
 - **WebSocket Contract Centralization**: All WebSocket/STOMP endpoint paths and protocol constants are defined in a single contract file (`WebSocketContract.kt`). This ensures consistency and simplifies updates to backend communication endpoints.
 
 - **Dedicated Home & Lobby Screens**: The UI layer contains specialized screens for Home (`HomeScreen.kt`) and Lobby (`LobbyScreen.kt`), providing a clear separation of concerns and supporting scalable UI development for different game phases.
-
-```
 
 ## 🏁 Getting Started
 

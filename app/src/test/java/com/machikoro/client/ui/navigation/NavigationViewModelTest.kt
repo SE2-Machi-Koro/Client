@@ -13,6 +13,8 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -30,7 +32,6 @@ class NavigationViewModelTest {
             gameScreenState = GameScreenState.initial(),
             startScreenState = StartScreenState.placeholder(),
             lobbyCode = null,
-            showLobbyScreen = false,
         )
         advanceUntilIdle()
 
@@ -46,7 +47,6 @@ class NavigationViewModelTest {
             gameScreenState = GameScreenState.initial(),
             startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
             lobbyCode = null,
-            showLobbyScreen = false,
         )
         advanceUntilIdle()
 
@@ -58,11 +58,11 @@ class NavigationViewModelTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
+        viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial(),
             startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
             lobbyCode = "ABC1234",
-            showLobbyScreen = true,
         )
         advanceUntilIdle()
 
@@ -80,6 +80,7 @@ class NavigationViewModelTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
+        viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial().copy(
                 gamePhase = GamePhase.ROLL_DICE,
@@ -87,7 +88,6 @@ class NavigationViewModelTest {
             ),
             startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
             lobbyCode = "ABC1234",
-            showLobbyScreen = true,
         )
         advanceUntilIdle()
 
@@ -108,6 +108,7 @@ class NavigationViewModelTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
+        viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial().copy(
                 gameStatus = GameStatus.FINISHED,
@@ -116,7 +117,6 @@ class NavigationViewModelTest {
             ),
             startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
             lobbyCode = "ABC1234",
-            showLobbyScreen = true,
         )
         advanceUntilIdle()
 
@@ -145,6 +145,24 @@ class NavigationViewModelTest {
     }
 
     @Test
+    fun failedEmissionClearsLastNavigation() = runTest {
+        // Use a rendezvous channel that is closed to force send() to fail and
+        // ensure the ViewModel clears its lastNavigation reservation.
+        val failingChannel = kotlinx.coroutines.channels.Channel<NavigationEvent>(kotlinx.coroutines.channels.Channel.RENDEZVOUS)
+        val viewModel = NavigationViewModel(failingChannel)
+
+        // Close the channel before attempting to navigate so send() will throw.
+        failingChannel.close()
+
+        viewModel.navigateTo(AppRoute.Home)
+        advanceUntilIdle()
+
+        // lastNavigation should have been cleared by the error handler in
+        // navigateTo so subsequent navigation attempts aren't poisoned.
+        assertEquals(null, viewModel.lastNavigation)
+    }
+
+    @Test
     fun clearingLastNavigationAllowsSameRouteToBeEmittedLater() = runTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
@@ -161,6 +179,19 @@ class NavigationViewModelTest {
             ),
             events,
         )
+    }
+
+    @Test
+    fun lobbyVisibilityIsOwnedByNavigationState() {
+        val viewModel = NavigationViewModel()
+
+        assertFalse(viewModel.uiState.value.showLobbyScreen)
+
+        viewModel.showLobby()
+        assertTrue(viewModel.uiState.value.showLobbyScreen)
+
+        viewModel.leaveLobby()
+        assertFalse(viewModel.uiState.value.showLobbyScreen)
     }
 
     private fun TestScope.collectNavigationEvents(
