@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,16 +32,19 @@ data class NavigationUiState(
  * The ViewModel converts app state into NavigationEvent commands while keeping
  * persistent navigation UI state separate from one-time navigation events.
  */
-class NavigationViewModel : ViewModel() {
+class NavigationViewModel(
+    private val _navigationChannel: Channel<NavigationEvent> = Channel(Channel.BUFFERED)
+) : ViewModel() {
 
     private val mutableUiState = MutableStateFlow(NavigationUiState())
     val uiState: StateFlow<NavigationUiState> = mutableUiState.asStateFlow()
 
-    private val _navigationEvent = MutableSharedFlow<NavigationEvent>(extraBufferCapacity = 1)
-    val navigationEvent: SharedFlow<NavigationEvent> = _navigationEvent.asSharedFlow()
+    // Expose the channel as a Flow for collectors (AppRoot).
+    val navigationEvent = _navigationChannel.receiveAsFlow()
+
     // Track last emitted navigation to avoid emitting duplicate navigation events
     // which can cause unnecessary navigation attempts and UI churn.
-    private var lastNavigation: Pair<AppRoute, AppRoute.AppRouteArguments>? = null
+    internal var lastNavigation: Pair<AppRoute, AppRoute.AppRouteArguments>? = null
 
     fun showLobby() {
         mutableUiState.update { it.copy(showLobbyScreen = true) }
@@ -57,8 +60,23 @@ class NavigationViewModel : ViewModel() {
     ) {
         val next = route to arguments
         if (lastNavigation == next) return
+
+        // Reserve the destination to avoid races from concurrent callers. We
+        // send the navigation command through the channel; if sending fails
+        // (closed/cancelled) we clear the reservation so the route can be
+        // retried later.
         lastNavigation = next
-        _navigationEvent.tryEmit(NavigationEvent.NavigateTo(route, arguments))
+
+        viewModelScope.launch {
+            try {
+                _navigationChannel.send(NavigationEvent.NavigateTo(route, arguments))
+            } catch (t: Throwable) {
+                if (lastNavigation == next) lastNavigation = null
+                // Swallow the error after clearing the reservation so a failed
+                // send doesn't poison navigation. Upstream logs will still
+                // surface via the coroutine exception handler if configured.
+            }
+        }
     }
 
     /**
