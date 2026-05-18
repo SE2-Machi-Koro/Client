@@ -76,6 +76,56 @@ class NavigationViewModelTest {
     }
 
     @Test
+    fun unauthenticatedStateNavigatesToMainEvenWhenLobbyWasShown() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.showLobby()
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial(),
+            startScreenState = StartScreenState.placeholder(),
+            lobbyCode = "ABC1234",
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            NavigationEvent.NavigateTo(
+                route = AppRoute.Main,
+                arguments = AppRoute.AppRouteArguments(lobbyCode = "ABC1234"),
+            ),
+            events.single(),
+        )
+    }
+
+    @Test
+    fun unauthenticatedStateNavigatesToMainEvenWhenGameStateIsStale() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial().copy(
+                gameStatus = GameStatus.FINISHED,
+                gamePhase = GamePhase.ROLL_DICE,
+                gameId = 42,
+            ),
+            startScreenState = StartScreenState.placeholder(),
+            lobbyCode = "ABC1234",
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            NavigationEvent.NavigateTo(
+                route = AppRoute.Main,
+                arguments = AppRoute.AppRouteArguments(
+                    lobbyCode = "ABC1234",
+                    gameId = 42,
+                ),
+            ),
+            events.single(),
+        )
+    }
+
+    @Test
     fun activeGameNavigatesToGameWithGameId() = runTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
