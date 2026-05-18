@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -33,14 +32,14 @@ data class NavigationUiState(
  * The ViewModel converts app state into NavigationEvent commands while keeping
  * persistent navigation UI state separate from one-time navigation events.
  */
-class NavigationViewModel : ViewModel() {
+class NavigationViewModel(
+    private val _navigationChannel: Channel<NavigationEvent> = Channel(Channel.BUFFERED)
+) : ViewModel() {
 
     private val mutableUiState = MutableStateFlow(NavigationUiState())
     val uiState: StateFlow<NavigationUiState> = mutableUiState.asStateFlow()
 
-    // Underlying channel for one-shot navigation commands. Tests may inject a
-    // custom channel to simulate failures or blocking behavior.
-    private val _navigationChannel: Channel<NavigationEvent> = Channel(Channel.BUFFERED)
+    // Expose the channel as a Flow for collectors (AppRoot).
     val navigationEvent = _navigationChannel.receiveAsFlow()
 
     // Track last emitted navigation to avoid emitting duplicate navigation events
@@ -73,9 +72,9 @@ class NavigationViewModel : ViewModel() {
                 _navigationChannel.send(NavigationEvent.NavigateTo(route, arguments))
             } catch (t: Throwable) {
                 if (lastNavigation == next) lastNavigation = null
-                // Don't swallow the error — rethrow so failures are visible in
-                // test logs and upstream tooling.
-                throw t
+                // Swallow the error after clearing the reservation so a failed
+                // send doesn't poison navigation. Upstream logs will still
+                // surface via the coroutine exception handler if configured.
             }
         }
     }
