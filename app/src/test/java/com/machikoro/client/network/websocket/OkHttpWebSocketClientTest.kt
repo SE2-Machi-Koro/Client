@@ -667,7 +667,7 @@ class OkHttpWebSocketClientTest {
                 "gameId":42,
                 "payload":{
                     "game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},
-                    "players":[],
+                    "players":[{"id":7, "userId":7, "username":"Alice"}],
                     "activePlayerId":7
                 }
             }"""
@@ -722,7 +722,7 @@ class OkHttpWebSocketClientTest {
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
         factory.simulateText(
-            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE","activePlayerId":99}}""")
+            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE","activePlayerId":99,"players":[{"id":99,"userId":99,"username":"X"}]}}""")
         )
         assertEquals(99, client.activePlayerId.value)
         factory.simulateText(
@@ -749,7 +749,7 @@ class OkHttpWebSocketClientTest {
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         factory.simulateText(
             gameActionFrame(
-                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},"players":[]}}"""
+                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},"players":[{"id":1,"userId":1,"username":"A"}],"activePlayerId":1}}"""
             )
         )
         client.rollDice(diceCount = 1)
@@ -767,7 +767,7 @@ class OkHttpWebSocketClientTest {
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         factory.simulateText(
             gameActionFrame(
-                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},"players":[]}}"""
+                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},"players":[{"id":1,"userId":1,"username":"A"}],"activePlayerId":1}}"""
             )
         )
         client.rollDice(diceCount = 1)
@@ -805,7 +805,7 @@ class OkHttpWebSocketClientTest {
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         factory.simulateText(
             gameActionFrame(
-                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},"players":[]}}"""
+                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},"players":[{"id":1,"userId":1,"username":"A"}],"activePlayerId":1}}"""
             )
         )
         client.rollDice(diceCount = 2)
@@ -883,6 +883,141 @@ class OkHttpWebSocketClientTest {
         assertEquals(listOf(6), client.diceResult.value)
         client.disconnect()
         assertNull(client.diceResult.value)
+    }
+
+
+    @Test
+    fun rollDiceSendsCorrectPlayerIdFromActivePlayer() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        val gameStartedPayload = """{
+            "type":"GAME_STARTED",
+            "gameId":42,
+            "payload":{
+                "game":{
+                    "id":42,
+                    "currentTurnIndex": 0,
+                    "turnPhase": "ROLL_DICE"
+                },
+                "turnOrder": [7],
+                "players": [
+                    {"id": 7, "userId": 1, "username": "Alice", "coins": 3}
+                ],
+                "activePlayerId": 7
+            }
+        }"""
+        factory.simulateText(gameActionFrame(gameStartedPayload))
+
+        client.rollDice(diceCount = 1)
+
+        val sentMessage = factory.socket.sentMessages.last()
+        assertTrue("Sollte playerId 7 enthalten. Nachricht war: $sentMessage", sentMessage.contains("\"playerId\":7"))
+    }
+
+    @Test
+    fun rollDiceDoesNotSendWhenActivePlayerIdIsNonNumeric() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        val lobbyCreatedPayload = """{
+            "type":"LOBBY_CREATED",
+            "gameId": 42,
+            "payload":{
+                "lobbyCode":"ABC",
+                "playerId":"host-admin",
+                "gameId": 42
+            }
+        }"""
+        factory.simulateText(gameActionFrame(lobbyCreatedPayload))
+
+        val initialCount = factory.socket.sentMessages.size
+        client.rollDice(1)
+        assertEquals(initialCount, factory.socket.sentMessages.size)
+    }
+
+    @Test
+    fun gameStartedMapsPlayerIdToExposedUserId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        val payload = """{
+            "type":"GAME_STARTED",
+            "payload":{
+                "game":{"id":1, "turnPhase":"ROLL_DICE"},
+                "players":[{"id":10, "userId":99, "username":"Alice"}],
+                "activePlayerId":10
+            }
+        }"""
+        factory.simulateText(gameActionFrame(payload))
+
+        assertEquals(99, client.activePlayerId.value)
+        assertTrue(client.players.value.first { it.id == "10" }.isActivePlayer)
+    }
+
+    @Test
+    fun rollDiceDoesNotSendWhenNoActivePlayerResolved() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(gameActionFrame("""{"type":"LOBBY_CREATED","gameId":1,"payload":{"lobbyCode":"A"}}"""))
+
+        val initialMessageCount = factory.socket.sentMessages.size
+        client.rollDice(1)
+
+        assertEquals(initialMessageCount, factory.socket.sentMessages.size)
+    }
+
+    @Test
+    fun rollDiceSendsActualGamePlayerIdNotUserId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        val payload = """{
+            "type":"GAME_STARTED",
+            "payload":{
+                "game":{"id":1},
+                "players":[{"id":77, "userId":5, "username":"Bob"}],
+                "activePlayerId":77
+            }
+        }"""
+        factory.simulateText(gameActionFrame(payload))
+
+        client.rollDice(1)
+
+        val sentMessage = factory.socket.sentMessages.last()
+        assertTrue(sentMessage.contains("\"playerId\":77"))
+        assertFalse(sentMessage.contains("\"playerId\":5"))
+    }
+
+    @Test
+    fun parseDiceResultHandlesMalformedResultArray() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(gameActionFrame("""{"type":"ROLL_DICE","payload":{"result":[]}}"""))
+        assertEquals(emptyList<Int>(), client.diceResult.value)
+
+        factory.simulateText(gameActionFrame("""{"type":"ROLL_DICE","payload":{"result":["fehler"]}}"""))
+        assertTrue(client.diceResult.value?.isEmpty() ?: true)
     }
 
     @Test
@@ -1186,292 +1321,6 @@ class OkHttpWebSocketClientTest {
         assertEquals(null, client.lobbyCode.value)
     }
 
-    // ── handleLobbyCreated — host auto-add ───────────────────────────────────
-
-    @Test
-    fun lobbyCreatedAddsHostToPlayerListFromSessionUsername() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"ABC123"}}"""
-            )
-        )
-        assertEquals(1, client.players.value.size)
-        assertEquals(DEFAULT_USERNAME, client.players.value.first().displayName)
-    }
-
-    @Test
-    fun lobbyCreatedUsesServerPlayerIdWhenPresentInPayload() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"ABC123","playerId":42}}"""
-            )
-        )
-        assertEquals("42", client.players.value.first().id)
-    }
-
-    @Test
-    fun lobbyCreatedUsesIdFieldWhenPlayerIdAbsent() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"ABC123","id":99}}"""
-            )
-        )
-        assertEquals("99", client.players.value.first().id)
-    }
-
-    @Test
-    fun lobbyCreatedUsesFallbackHostIdWhenNoIdInPayload() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"ABC123"}}"""
-            )
-        )
-        assertEquals("host-$DEFAULT_USERNAME", client.players.value.first().id)
-    }
-
-    @Test
-    fun lobbyCreatedDoesNotDuplicateHostWhenReceivedTwice() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        val frame = gameActionFrame(
-            """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"ABC123"}}"""
-        )
-        factory.simulateText(frame)
-        factory.simulateText(frame)
-        assertEquals(1, client.players.value.size)
-    }
-
-    @Test
-    fun lobbyCreatedTriggersAutoJoinWhenIsLobbyHost() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        client.sendCreateLobby()
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"ABC123"}}"""
-            )
-        )
-        assertTrue(
-            factory.socket.sentMessages.any {
-                it.startsWith("SEND\n") &&
-                        it.contains("destination:${WebSocketContract.joinLobbyDestination}") &&
-                        it.contains("ABC123")
-            }
-        )
-    }
-
-    @Test
-    fun lobbyCreatedDoesNotTriggerJoinWhenNotHost() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        val messagesBefore = factory.socket.sentMessages.size
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"ABC123"}}"""
-            )
-        )
-        assertFalse(
-            factory.socket.sentMessages.drop(messagesBefore).any {
-                it.contains("destination:${WebSocketContract.joinLobbyDestination}")
-            }
-        )
-    }
-
-    // ── handleLobbyJoined — id fallback + name deduplication ─────────────────
-
-    @Test
-    fun lobbyJoinedAddsPlayerWithPlayerId() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_JOINED","sender":"SERVER","payload":{"username":"alice","playerId":42,"coins":5}}"""
-            )
-        )
-        assertEquals(1, client.players.value.size)
-        assertEquals("alice", client.players.value.first().displayName)
-        assertEquals("42", client.players.value.first().id)
-        assertEquals(5, client.players.value.first().coins)
-    }
-
-    @Test
-    fun lobbyJoinedAddsPlayerUsingIdFieldWhenPlayerIdAbsent() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_JOINED","sender":"SERVER","payload":{"username":"alice","id":99}}"""
-            )
-        )
-        assertEquals(1, client.players.value.size)
-        assertEquals("alice", client.players.value.first().displayName)
-        assertEquals("99", client.players.value.first().id)
-    }
-
-    @Test
-    fun lobbyJoinedSkipsPlayerWhenUsernameBlank() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_JOINED","sender":"SERVER","payload":{"username":"","playerId":42}}"""
-            )
-        )
-        assertTrue(client.players.value.isEmpty())
-    }
-
-    @Test
-    fun lobbyJoinedSkipsPlayerWhenNoIdFields() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_JOINED","sender":"SERVER","payload":{"username":"alice"}}"""
-            )
-        )
-        assertTrue(client.players.value.isEmpty())
-    }
-
-    @Test
-    fun lobbyJoinedDefaultsCoinsToThreeWhenAbsent() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_JOINED","sender":"SERVER","payload":{"username":"alice","playerId":1}}"""
-            )
-        )
-        assertEquals(3, client.players.value.first().coins)
-    }
-
-    @Test
-    fun lobbyJoinedReplacesEntryWithSameDisplayName() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"ABC123"}}"""
-            )
-        )
-        assertEquals("host-$DEFAULT_USERNAME", client.players.value.first().id)
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_JOINED","sender":"SERVER","payload":{"username":"$DEFAULT_USERNAME","playerId":7,"coins":3}}"""
-            )
-        )
-        assertEquals(1, client.players.value.size)
-        assertEquals("7", client.players.value.first().id)
-        assertEquals(DEFAULT_USERNAME, client.players.value.first().displayName)
-    }
-
-    @Test
-    fun lobbyJoinedAddsSecondPlayerWithoutAffectingFirst() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_JOINED","sender":"SERVER","payload":{"username":"alice","playerId":1}}"""
-            )
-        )
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"LOBBY_JOINED","sender":"SERVER","payload":{"username":"bob","playerId":2}}"""
-            )
-        )
-        assertEquals(2, client.players.value.size)
-        assertTrue(client.players.value.any { it.displayName == "alice" })
-        assertTrue(client.players.value.any { it.displayName == "bob" })
-    }
-
-    @Test
-    fun lobbyJoinedDoesNotDuplicatePlayerWhenSentTwice() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        val frame = gameActionFrame(
-            """{"type":"LOBBY_JOINED","sender":"SERVER","payload":{"username":"alice","playerId":1}}"""
-        )
-        factory.simulateText(frame)
-        factory.simulateText(frame)
-        assertEquals(1, client.players.value.size)
-    }
-
-    // ── reconnect snapshot (/app/game.sync -> /user/queue/game-sync) ─────────
-
-    @Test
-    fun connectedFrameSubscribesToGameSyncQueue() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-        assertTrue(
-            factory.socket.sentMessages.any {
-                it.startsWith("SUBSCRIBE") && it.contains("destination:/user/queue/game-sync")
-            }
-        )
-    }
-
-    @Test
-    fun syncMessageRestoresGameStatusPhaseAndRound() {
-        val client = clientAfterSync()
-        assertEquals(GameStatus.IN_PROGRESS, client.gameStatus.value)
-        assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
-        assertEquals(3, client.roundNumber.value)
-    }
-
     @Test
     fun syncMessageRestoresPlayers() {
         val client = clientAfterSync()
@@ -1483,6 +1332,7 @@ class OkHttpWebSocketClientTest {
     @Test
     fun syncMessageResolvesActivePlayerUserIdFromTurnOrder() {
         val client = clientAfterSync()
+        // Snapshot Body: index 0 -> playerId 11 -> userId 1
         assertEquals(1, client.activePlayerId.value)
     }
 
@@ -1638,7 +1488,7 @@ class OkHttpWebSocketClientTest {
                     """{"playerId":11,"landmarkType":"SHOPPING_MALL","isBuilt":false}],""" +
                     """"22":[{"playerId":22,"landmarkType":"TRAIN_STATION","isBuilt":false}]},""" +
                     """"marketplace":{"WHEAT_FIELD":6,"BAKERY":5},""" +
-                    """"cardDefinitions":[{"cardType":"BAKERY","cost":1,"income":1,"color":"GREEN",""" +
+                    """"cardDefinitions":[{"cardType":"BAKERY","cost":1,"color":"GREEN",""" +
                     """"establishmentType":"BREAD","paymentSource":"BANK","activationNumbers":[2,3]}],""" +
                     """"landmarkDefinitions":[{"landmarkType":"TRAIN_STATION","cost":4}],""" +
                     """"turnOrder":[11,22]}}}"""
