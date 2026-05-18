@@ -324,6 +324,26 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun sendGameStartIncludesGameIdAndLobbyCodeWhenKnown() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_CREATED","gameId":42,"payload":{"lobbyCode":"ABC123","gameId":42}}"""
+            )
+        )
+
+        client.sendGameStart()
+
+        val startFrame = factory.socket.sentMessages.last { it.contains("destination:/app/game.start") }
+        assertTrue(startFrame.contains("\"gameId\":42"))
+        assertTrue(startFrame.contains("\"lobbyCode\":\"ABC123\""))
+    }
+
+    @Test
     fun connectWithNoSessionDoesNotOpenSocketAndDoesNotTransitionStatus() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory, sessionStateHolder = FakeSessionStateHolder(initial = null))
@@ -657,6 +677,44 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun gameStartedMessageUsesGameIdFromNestedGameWhenTopLevelGameIdIsMissing() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"GAME_STARTED",
+                "payload":{
+                    "game":{"id":77,"lobbyCode":"ROOM77","turnPhase":"BUY_OR_BUILD"},
+                    "players":[]
+                }
+            }"""
+            )
+        )
+
+        assertEquals(77, client.activeGameId.value)
+        assertEquals("ROOM77", client.lobbyCode.value)
+        assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
+    }
+
+    @Test
+    fun malformedGameStartedPayloadIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(gameActionFrame("""{"type":"GAME_STARTED","payload":{"players":[]}}"""))
+
+        assertNull(client.activeGameId.value)
+        assertNull(client.activePlayerId.value)
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+    }
+
+    @Test
     fun gameStartedMessageWithoutActivePlayerIdDoesNotOverwriteExistingValue() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -752,6 +810,55 @@ class OkHttpWebSocketClientTest {
         )
         client.rollDice(diceCount = 2)
         assertTrue(factory.socket.sentMessages.any { it.contains("\"diceCount\":2") })
+    }
+
+    @Test
+    fun rollDiceUsesActivePlayerIdFromStartedGamePlayers() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"GAME_STARTED",
+                "gameId":42,
+                "payload":{
+                    "game":{"id":42,"turnPhase":"ROLL_DICE","currentTurnIndex":1},
+                    "turnOrder":[11,22],
+                    "players":[
+                        {"id":11,"username":"alice","coins":3},
+                        {"id":22,"username":"bob","coins":4}
+                    ]
+                }
+            }"""
+            )
+        )
+
+        client.rollDice(diceCount = 1)
+
+        val rollFrame = factory.socket.sentMessages.last { it.contains("destination:/app/game.rollDice") }
+        assertTrue(rollFrame.contains("\"playerId\":22"))
+    }
+
+    @Test
+    fun rollDiceFallsBackToZeroWhenActivePlayerIdIsNotNumeric() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_CREATED","gameId":42,"payload":{"lobbyCode":"ABC123"}}"""
+            )
+        )
+
+        client.rollDice(diceCount = 1)
+
+        val rollFrame = factory.socket.sentMessages.last { it.contains("destination:/app/game.rollDice") }
+        assertTrue(rollFrame.contains("\"playerId\":0"))
     }
 
     @Test
