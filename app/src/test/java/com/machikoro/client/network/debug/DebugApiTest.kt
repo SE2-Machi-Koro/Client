@@ -12,8 +12,13 @@ class DebugApiTest {
 
     @Test
     fun fillLobbyMethodExistsOnInterface() {
-        // Verify fillLobby is declared on the interface
         val method = DebugApi::class.java.methods.find { it.name == "fillLobby" }
+        assertNotNull(method)
+    }
+
+    @Test
+    fun resetLobbyMethodExistsOnInterface() {
+        val method = DebugApi::class.java.methods.find { it.name == "resetLobby" }
         assertNotNull(method)
     }
 }
