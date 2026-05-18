@@ -9,6 +9,7 @@ import com.machikoro.client.domain.model.state.LobbyScreenState
 import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.debug.DebugApi
 import com.machikoro.client.network.debug.FillLobbyRequest
+import com.machikoro.client.network.debug.ResetLobbyRequest
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -116,14 +117,27 @@ class LobbyScreenViewModel(
     }
 
     // Calls the debug endpoint to fill remaining lobby slots with dummy players
-    fun fillWithDummies() {
+    fun fillWithDummies(count: Int? = null) {
         val code = currentLobbyCode ?: return
         viewModelScope.launch {
             try {
-                debugApi.fillLobby(FillLobbyRequest(lobbyCode = code))
+                debugApi.fillLobby(FillLobbyRequest(lobbyCode = code, count = count))
                 Log.d("LobbyScreenViewModel", "fillWithDummies succeeded for lobby $code")
             } catch (e: Exception) {
                 Log.e("LobbyScreenViewModel", "fillWithDummies failed: ${e.message}")
+            }
+        }
+    }
+
+    // Calls the debug endpoint to remove all non-host players from the lobby
+    fun resetLobby() {
+        val code = currentLobbyCode ?: return
+        viewModelScope.launch {
+            try {
+                debugApi.resetLobby(ResetLobbyRequest(lobbyCode = code))
+                Log.d("LobbyScreenViewModel", "resetLobby succeeded for lobby $code")
+            } catch (e: Exception) {
+                Log.e("LobbyScreenViewModel", "resetLobby failed: ${e.message}")
             }
         }
     }

@@ -7,6 +7,7 @@ import com.machikoro.client.domain.session.Session
 import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.debug.DebugApi
 import com.machikoro.client.network.debug.FillLobbyRequest
+import com.machikoro.client.network.debug.ResetLobbyRequest
 import com.machikoro.client.network.websocket.FakeWebSocketClient
 import com.machikoro.client.ui.start.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -157,7 +158,7 @@ class LobbyScreenViewModelTest {
         viewModel.fillWithDummies()
         advanceUntilIdle()
         assertEquals(1, fakeDebugApi.fillLobbyCallCount)
-        assertEquals("ABC123", fakeDebugApi.lastRequest?.lobbyCode)
+        assertEquals("ABC123", fakeDebugApi.lastFillRequest?.lobbyCode)
     }
 
     @Test
@@ -194,18 +195,88 @@ class LobbyScreenViewModelTest {
         advanceUntilIdle()
         viewModel.fillWithDummies()
         advanceUntilIdle()
-        assertEquals("SECOND", fakeDebugApi.lastRequest?.lobbyCode)
+        assertEquals("SECOND", fakeDebugApi.lastFillRequest?.lobbyCode)
+    }
+
+    @Test
+    fun fillWithDummies_passesCountToApi() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val fakeDebugApi = FakeDebugApi()
+        val viewModel = LobbyScreenViewModel(fakeClient, FakeSessionStateHolder(), fakeDebugApi)
+        fakeClient.emitLobbyCode("ABC123")
+        advanceUntilIdle()
+        viewModel.fillWithDummies(count = 2)
+        advanceUntilIdle()
+        assertEquals(2, fakeDebugApi.lastFillRequest?.count)
+    }
+
+    @Test
+    fun fillWithDummies_sendsNullCountWhenNotSpecified() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val fakeDebugApi = FakeDebugApi()
+        val viewModel = LobbyScreenViewModel(fakeClient, FakeSessionStateHolder(), fakeDebugApi)
+        fakeClient.emitLobbyCode("ABC123")
+        advanceUntilIdle()
+        viewModel.fillWithDummies()
+        advanceUntilIdle()
+        assertEquals(null, fakeDebugApi.lastFillRequest?.count)
+    }
+
+    @Test
+    fun resetLobby_callsApiWithCurrentLobbyCode() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val fakeDebugApi = FakeDebugApi()
+        val viewModel = LobbyScreenViewModel(fakeClient, FakeSessionStateHolder(), fakeDebugApi)
+        fakeClient.emitLobbyCode("ABC123")
+        advanceUntilIdle()
+        viewModel.resetLobby()
+        advanceUntilIdle()
+        assertEquals(1, fakeDebugApi.resetLobbyCallCount)
+        assertEquals("ABC123", fakeDebugApi.lastResetRequest?.lobbyCode)
+    }
+
+    @Test
+    fun resetLobby_doesNothingWhenNoLobbyCode() = runTest {
+        val fakeDebugApi = FakeDebugApi()
+        val viewModel = LobbyScreenViewModel(FakeWebSocketClient(), FakeSessionStateHolder(), fakeDebugApi)
+        advanceUntilIdle()
+        viewModel.resetLobby()
+        advanceUntilIdle()
+        assertEquals(0, fakeDebugApi.resetLobbyCallCount)
+    }
+
+    @Test
+    fun resetLobby_handlesApiErrorGracefully() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val fakeDebugApi = FakeDebugApi(shouldThrow = true)
+        val viewModel = LobbyScreenViewModel(fakeClient, FakeSessionStateHolder(), fakeDebugApi)
+        fakeClient.emitLobbyCode("ABC123")
+        advanceUntilIdle()
+        viewModel.resetLobby()
+        advanceUntilIdle()
+        assertEquals(1, fakeDebugApi.resetLobbyCallCount)
     }
 
     private class FakeDebugApi(private val shouldThrow: Boolean = false) : DebugApi {
         var fillLobbyCallCount = 0
             private set
-        var lastRequest: FillLobbyRequest? = null
+        var lastFillRequest: FillLobbyRequest? = null
+            private set
+        var resetLobbyCallCount = 0
+            private set
+        var lastResetRequest: ResetLobbyRequest? = null
             private set
 
         override suspend fun fillLobby(body: FillLobbyRequest): Response<Unit> {
             fillLobbyCallCount++
-            lastRequest = body
+            lastFillRequest = body
+            if (shouldThrow) throw RuntimeException("Simulated network error")
+            return Response.success(Unit)
+        }
+
+        override suspend fun resetLobby(body: ResetLobbyRequest): Response<Unit> {
+            resetLobbyCallCount++
+            lastResetRequest = body
             if (shouldThrow) throw RuntimeException("Simulated network error")
             return Response.success(Unit)
         }

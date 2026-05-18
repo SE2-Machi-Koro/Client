@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
         StartScreenViewModel.Factory(webSocketClient, SessionManager)
     }
     private val gameScreenViewModel by viewModels<GameScreenViewModel> {
-        GameScreenViewModel.Factory(webSocketClient, SessionManager) // NEU
+        GameScreenViewModel.Factory(webSocketClient, SessionManager)
     }
     private val homeViewModel by viewModels<HomeViewModel> {
         HomeViewModel.Factory(webSocketClient)
@@ -152,6 +152,7 @@ class MainActivity : ComponentActivity() {
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
                         onStartGame = homeViewModel::startGame,
                         onFillWithDummies = lobbyScreenViewModel::fillWithDummies,
+                        onResetLobby = lobbyScreenViewModel::resetLobby,
                         onLeaveLobby = {
                             navigationViewModel.leaveLobby()
                             lobbyScreenViewModel.onLeaveLobby()
