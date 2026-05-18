@@ -145,6 +145,24 @@ class NavigationViewModelTest {
     }
 
     @Test
+    fun failedEmissionClearsLastNavigation() = runTest {
+        // Use a rendezvous channel that is closed to force send() to fail and
+        // ensure the ViewModel clears its lastNavigation reservation.
+        val failingChannel = kotlinx.coroutines.channels.Channel<NavigationEvent>(kotlinx.coroutines.channels.Channel.RENDEZVOUS)
+        val viewModel = NavigationViewModel(failingChannel)
+
+        // Close the channel before attempting to navigate so send() will throw.
+        failingChannel.close()
+
+        viewModel.navigateTo(AppRoute.Home)
+        advanceUntilIdle()
+
+        // lastNavigation should have been cleared by the error handler in
+        // navigateTo so subsequent navigation attempts aren't poisoned.
+        assertEquals(null, viewModel.lastNavigation)
+    }
+
+    @Test
     fun clearingLastNavigationAllowsSameRouteToBeEmittedLater() = runTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)

@@ -4,8 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,11 +38,14 @@ class NavigationViewModel : ViewModel() {
     private val mutableUiState = MutableStateFlow(NavigationUiState())
     val uiState: StateFlow<NavigationUiState> = mutableUiState.asStateFlow()
 
-    private val _navigationEvent = MutableSharedFlow<NavigationEvent>(extraBufferCapacity = 1)
-    val navigationEvent: SharedFlow<NavigationEvent> = _navigationEvent.asSharedFlow()
+    // Underlying channel for one-shot navigation commands. Tests may inject a
+    // custom channel to simulate failures or blocking behavior.
+    private val _navigationChannel: Channel<NavigationEvent> = Channel(Channel.BUFFERED)
+    val navigationEvent = _navigationChannel.receiveAsFlow()
+
     // Track last emitted navigation to avoid emitting duplicate navigation events
     // which can cause unnecessary navigation attempts and UI churn.
-    private var lastNavigation: Pair<AppRoute, AppRoute.AppRouteArguments>? = null
+    internal var lastNavigation: Pair<AppRoute, AppRoute.AppRouteArguments>? = null
 
     fun showLobby() {
         mutableUiState.update { it.copy(showLobbyScreen = true) }
@@ -58,19 +62,19 @@ class NavigationViewModel : ViewModel() {
         val next = route to arguments
         if (lastNavigation == next) return
 
-        // Reserve the destination to prevent duplicate navigations from racing
-        // callers. We use a suspending emit below which will not drop events the
-        // way tryEmit can; if emission fails (cancellation / error) we clear
-        // the cache so we don't permanently poison navigation for this route.
+        // Reserve the destination to avoid races from concurrent callers. We
+        // send the navigation command through the channel; if sending fails
+        // (closed/cancelled) we clear the reservation so the route can be
+        // retried later.
         lastNavigation = next
 
         viewModelScope.launch {
             try {
-                _navigationEvent.emit(NavigationEvent.NavigateTo(route, arguments))
+                _navigationChannel.send(NavigationEvent.NavigateTo(route, arguments))
             } catch (t: Throwable) {
-                // If emit failed for any reason (including cancellation), clear
-                // the reservation so subsequent calls can retry.
                 if (lastNavigation == next) lastNavigation = null
+                // Don't swallow the error — rethrow so failures are visible in
+                // test logs and upstream tooling.
                 throw t
             }
         }
