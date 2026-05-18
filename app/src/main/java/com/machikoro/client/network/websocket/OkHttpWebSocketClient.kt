@@ -264,6 +264,11 @@ class OkHttpWebSocketClient(
             Log.w(TAG, "rollDice called but no active WebSocket connection")
             return
         }
+        val gameId = mutableActiveGameId.value
+        if (gameId == null) {
+            Log.w(TAG, "rollDice called but no active game id")
+            return
+        }
         socket.send(
             StompFrame(
                 command = "SEND",
@@ -271,10 +276,10 @@ class OkHttpWebSocketClient(
                     "destination" to WebSocketContract.rollDiceDestination,
                     "content-type" to "application/json"
                 ),
-                body = """{"type":"ROLL_DICE","payload":{"diceCount":$diceCount}}"""
+                body = """{"gameId":$gameId,"playerId":0,"diceCount":$diceCount}"""
             ).serialize()
         )
-        Log.d(TAG, "Roll dice message sent (diceCount=$diceCount)")
+        Log.d(TAG, "Roll dice message sent (diceCount=$diceCount, gameId=$gameId)")
     }
 
     override fun sendPurchase(
@@ -288,7 +293,6 @@ class OkHttpWebSocketClient(
             Log.w(TAG, "sendPurchase called but no active WebSocket connection")
             return
         }
-        // Body is intentionally not wrapped in WebSocketMessage; Spring maps it to PurchaseRequest.
         socket.send(
             StompFrame(
                 command = "SEND",
@@ -367,10 +371,6 @@ class OkHttpWebSocketClient(
                 mutableConnectionStatus.value = ConnectionStatus.CONNECTED
                 subscribeToPublicTopic()
                 subscribeToErrorsQueue()
-
-                // Subscribe before the JOIN send below: chat.addUser triggers the
-                // server-side reconnect snapshot, and the SUBSCRIBE must be
-                // registered first or the SYNC frame is delivered to nobody.
                 subscribeToSyncQueue()
                 mutableActiveGameId.value?.let(::subscribeToGameTopic)
                 sendJoinMessage()
@@ -404,8 +404,6 @@ class OkHttpWebSocketClient(
                     sessionStateHolder.signOut()
                     mutableAuthRejections.tryEmit(Unit)
                 } else {
-                    // Purchase validation failures arrive as regular STOMP ERROR frames.
-                    // Surface them to the shop without marking the transport itself as failed.
                     mutablePurchaseEvents.tryEmit(
                         PurchaseEvent.Failure(frame.body.ifBlank { "Purchase failed" })
                     )
@@ -431,7 +429,6 @@ class OkHttpWebSocketClient(
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
         }
-        // Add host immediately so they appear in the list before LOBBY_JOINED arrives
         sessionStateHolder.session.value?.username?.let { username ->
             if (mutablePlayers.value.none { it.displayName == username }) {
                 val hostId = (payload.optIntOrNull("playerId") ?: payload.optIntOrNull("id"))
@@ -443,7 +440,6 @@ class OkHttpWebSocketClient(
                 )
             }
         }
-        // Host must join their own lobby to become a player in the roster
         if (mutableIsLobbyHost.value && code.isNotBlank()) {
             sendJoinLobby(code)
         }
@@ -462,22 +458,19 @@ class OkHttpWebSocketClient(
             Log.d(TAG, "Joined lobby with gameId: $gameId")
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
-            // Re-register session with gameId so the server can identify the host when startGame is called
             if (mutableIsLobbyHost.value) {
                 sendJoinMessage()
             }
         }
 
-        // Add player to lobby list; username is now included in the server response
         val username = payload.optString("username").takeIf { it.isNotBlank() } ?: return
-        // Try both "playerId" and "id" since the server may use either field name
         val playerId = (payload.optIntOrNull("playerId") ?: payload.optIntOrNull("id"))?.toString() ?: return
         val coins = payload.optInt("coins", 3)
         val newPlayer = PlayerCoinState(id = playerId, displayName = username, coins = coins)
-        // Replace any existing entry with same id or name (e.g., temp host entry) then add
         mutablePlayers.value = mutablePlayers.value
             .filter { it.id != playerId && it.displayName != username } + newPlayer
     }
+
     private fun handleLobbyError(json: JSONObject) {
         if (json.optString("type") != ERROR_TYPE) return
 
@@ -513,6 +506,11 @@ class OkHttpWebSocketClient(
 
         parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
         mutablePlayers.value = payload.optJSONArray("players").toPlayerCoinStates(payload, game)
+
+        // Read activePlayerId from GAME_STARTED payload so the client knows
+        // whose turn it is immediately without waiting for the follow-up GAME_ACTION.
+        payload.optIntOrNull("activePlayerId")?.let { mutableActivePlayerId.value = it }
+
         updateShopItemsFromState(payload)
     }
 
@@ -542,9 +540,6 @@ class OkHttpWebSocketClient(
         parseGameStatus(game.optString("status"))?.let { mutableGameStatus.value = it }
         parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
         game.optIntOrNull("roundNumber")?.let { mutableRoundNumber.value = it }
-        // The snapshot persists only the dice total (lastDiceRoll), not the
-        // individual dice — surface it as a single-element list so the game
-        // screen can show the last roll on reconnect.
         game.optIntOrNull("lastDiceRoll")?.let { mutableDiceResult.value = listOf(it) }
 
         mutablePlayers.value = state.optJSONArray("players").toPlayerCoinStates(state, game)
@@ -682,7 +677,6 @@ class OkHttpWebSocketClient(
     private fun parsePurchaseSuccess(json: JSONObject): PurchaseEvent.Success? {
         if (json.optString("type") != GAME_ACTION_TYPE) return null
         val payload = json.optJSONObject("payload") ?: return null
-        // Server broadcasts the bought target in GAME_ACTION after PurchaseService accepts it.
         val purchaseType = runCatching {
             PurchaseType.valueOf(payload.optString("purchaseType"))
         }.getOrNull() ?: return null
@@ -844,9 +838,6 @@ class OkHttpWebSocketClient(
             id = playerId.toString(),
             displayName = resolvedDisplayName,
             coins = optInt("coins"),
-            // The backend currently exposes one active turn player from currentTurnIndex.
-            // Until the UI needs a separate local-player distinction, both flags
-            // intentionally point to the same active player.
             isCurrentPlayer = playerId == currentPlayerId,
             isActivePlayer = playerId == currentPlayerId,
         )
@@ -879,9 +870,6 @@ class OkHttpWebSocketClient(
         private const val ERROR_TYPE = "ERROR"
         private const val ROLL_DICE_TYPE = "ROLL_DICE"
         private const val SYNC_TYPE = "SYNC"
-        // Frozen contract: matches GENERIC_AUTH_FAILURE on the server's
-        // StompAuthChannelInterceptor. If the server message changes, this
-        // client will silently fall through to the generic ERROR handling.
         private const val AUTH_REJECTION_BODY = "Authentication failed"
         private const val GAME_START_BODY =
             """{"type":"START","sender":"${WebSocketContract.defaultSender}"}"""
@@ -896,7 +884,6 @@ class OkHttpWebSocketClient(
                 PurchaseType.ESTABLISHMENT -> ",\"cardType\":\"$cardType\""
                 PurchaseType.LANDMARK -> ",\"landmarkType\":\"$landmarkType\""
             }
-            // Keep field names aligned with Server PurchaseRequest.kt.
             return """{"gameId":$gameId,"purchaseType":"${purchaseType.name}"$targetField}"""
         }
     }
