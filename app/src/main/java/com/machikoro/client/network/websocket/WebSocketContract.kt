@@ -21,5 +21,7 @@ object WebSocketContract {
     // Per-user reconnect snapshot queue. The server resolves /user/** to the
     // authenticated principal, so each client only sees its own snapshot.
     const val gameSyncQueue: String = "/user/queue/game-sync"
+    // Prefix for session-scoped lobby queue; append STOMP session ID to get the full destination
+    const val lobbyQueuePrefix: String = "/queue/lobby-user"
     const val defaultSender: String = "android-client"
 }

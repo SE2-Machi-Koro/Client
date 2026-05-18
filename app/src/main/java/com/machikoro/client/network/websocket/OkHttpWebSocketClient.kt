@@ -121,6 +121,8 @@ class OkHttpWebSocketClient(
     @Volatile
     private var webSocket: WebSocket? = null
     private var subscribedGameId: Int? = null
+    @Volatile
+    private var stompSessionId: String? = null
 
     // Auto-reconnect state. `intentionalDisconnect` is set whenever the client
     // tears the connection down itself (disconnect() or an auth rejection) so
@@ -412,6 +414,13 @@ class OkHttpWebSocketClient(
                 // server-side reconnect snapshot, and the SUBSCRIBE must be
                 // registered first or the SYNC frame is delivered to nobody.
                 subscribeToSyncQueue()
+
+                // Session-scoped queue for LOBBY_CREATED and lobby errors (scoped to this connection only)
+                frame.headers["session"]?.also { sid ->
+                    stompSessionId = sid
+                    subscribeToLobbyQueue(sid)
+                }
+
                 mutableActiveGameId.value?.let(::subscribeToGameTopic)
                 sendJoinMessage()
             }
@@ -426,6 +435,7 @@ class OkHttpWebSocketClient(
                 }
                 handleLobbyCreated(json)
                 handleLobbyJoined(json)
+                handleLobbyRoster(json)
                 handleLobbyError(json)
                 handleGameStarted(json)
                 handleSync(json)
@@ -520,6 +530,26 @@ class OkHttpWebSocketClient(
         mutablePlayers.value = mutablePlayers.value
             .filter { it.id != playerId && it.displayName != username } + newPlayer
     }
+    /**
+     * Handles LOBBY_ROSTER sent only to the joining player after a successful join.
+     * Replaces the full player list so the joiner sees everyone already in the lobby.
+     */
+    private fun handleLobbyRoster(json: JSONObject) {
+        if (json.optString("type") != LOBBY_ROSTER_TYPE) return
+        val players = json.optJSONArray("payload") ?: return
+        mutablePlayers.value = (0 until players.length()).mapNotNull { index ->
+            val entry = players.optJSONObject(index) ?: return@mapNotNull null
+            val username = entry.optString("username").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val playerId = entry.optIntOrNull("playerId")?.toString() ?: return@mapNotNull null
+            PlayerCoinState(
+                id = playerId,
+                displayName = username,
+                coins = entry.optInt("coins", 3),
+            )
+        }
+        Log.d(TAG, "Lobby roster received: ${mutablePlayers.value.size} players")
+    }
+
     private fun handleLobbyError(json: JSONObject) {
         if (json.optString("type") != ERROR_TYPE) return
 
@@ -784,6 +814,18 @@ class OkHttpWebSocketClient(
         )
     }
 
+    private fun subscribeToLobbyQueue(sessionId: String) {
+        webSocket?.send(
+            StompFrame(
+                command = "SUBSCRIBE",
+                headers = mapOf(
+                    "id" to "lobby-queue",
+                    "destination" to "${WebSocketContract.lobbyQueuePrefix}$sessionId"
+                )
+            ).serialize()
+        )
+    }
+
     private fun subscribeToGameTopic(gameId: Int) {
         if (subscribedGameId == gameId) return
 
@@ -834,6 +876,7 @@ class OkHttpWebSocketClient(
         synchronized(this) {
             webSocket = null
             subscribedGameId = null
+            stompSessionId = null
         }
     }
 
@@ -960,6 +1003,7 @@ class OkHttpWebSocketClient(
         private const val BEARER_PREFIX = "Bearer "
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
         private const val LOBBY_JOINED_TYPE = "LOBBY_JOINED"
+        private const val LOBBY_ROSTER_TYPE = "LOBBY_ROSTER"
         private const val ERROR_TYPE = "ERROR"
         private const val ROLL_DICE_TYPE = "ROLL_DICE"
         private const val SYNC_TYPE = "SYNC"
