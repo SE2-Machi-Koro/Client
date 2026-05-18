@@ -3,7 +3,6 @@ package com.machikoro.client.network.websocket
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.PurchaseType
-import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.state.ConnectionStatus
@@ -821,21 +820,12 @@ class OkHttpWebSocketClientTest {
         factory.simulateText(connectedFrame())
         factory.simulateText(
             gameActionFrame(
-                """{
-                "type":"GAME_STARTED",
-                "gameId":42,
-                "payload":{
-                    "game":{"id":42,"turnPhase":"ROLL_DICE","currentTurnIndex":1},
-                    "turnOrder":[11,22],
-                    "players":[
-                        {"id":11,"username":"alice","coins":3},
-                        {"id":22,"username":"bob","coins":4}
-                    ]
-                }
-            }"""
+                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"turnPhase":"ROLL_DICE"},"players":[{"id":11,"username":"alice","coins":3},{"id":22,"username":"bob","coins":4}],"activePlayerId":22}}"""
             )
         )
 
+        assertEquals(42, client.activeGameId.value)
+        assertTrue(client.players.value.any { it.id == "22" && it.isActivePlayer })
         client.rollDice(diceCount = 1)
 
         val rollFrame = factory.socket.sentMessages.last { it.contains("destination:/app/game.rollDice") }
@@ -843,7 +833,7 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
-    fun rollDiceFallsBackToZeroWhenActivePlayerIdIsNotNumeric() {
+    fun rollDiceWithoutResolvedActivePlayerIdIsIgnored() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
         client.connect()
@@ -855,10 +845,10 @@ class OkHttpWebSocketClientTest {
             )
         )
 
+        val messagesBefore = factory.socket.sentMessages.size
         client.rollDice(diceCount = 1)
 
-        val rollFrame = factory.socket.sentMessages.last { it.contains("destination:/app/game.rollDice") }
-        assertTrue(rollFrame.contains("\"playerId\":0"))
+        assertEquals(messagesBefore, factory.socket.sentMessages.size)
     }
 
     @Test
