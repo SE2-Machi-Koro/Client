@@ -98,6 +98,7 @@ class OkHttpWebSocketClient(
     private val mutableRoundNumber = MutableStateFlow<Int?>(null)
     private val mutablePlayerLandmarks =
         MutableStateFlow<Map<Int, List<PlayerLandmarkState>>>(emptyMap())
+    private val marketplaceMapping = mutableMapOf<Int, Int>() // Internes PlayerID -> UserID Mapping
     private val mutableMarketplace = MutableStateFlow<Map<CardType, Int>>(emptyMap())
     private val mutableShopItems = MutableStateFlow<List<ShopItem>>(emptyList())
     private val mutablePurchaseEvents = MutableSharedFlow<PurchaseEvent>(
@@ -185,13 +186,6 @@ class OkHttpWebSocketClient(
         }
     }
 
-    /**
-     * Sends a join-lobby request to the backend.
-     *
-     * The backend expects the lobby code inside the payload and resolves the
-     * authenticated user from the STOMP session, so the sender field is not used
-     * for identity.
-     */
     override fun sendJoinLobby(lobbyCode: String) {
         val socket = synchronized(this) { webSocket }
         if (socket == null) {
@@ -269,9 +263,16 @@ class OkHttpWebSocketClient(
             Log.w(TAG, "rollDice called but no active game id")
             return
         }
-        val playerId = mutablePlayers.value
-            .firstOrNull { it.isActivePlayer }
-            ?.id?.toIntOrNull() ?: 0
+
+        // MODIFIZIERT: Suche technischen aktiven Spieler in der Liste
+        val activePlayer = mutablePlayers.value.firstOrNull { it.isActivePlayer }
+        val playerId = activePlayer?.id?.toIntOrNull()
+
+        if (playerId == null) {
+            Log.w(TAG, "rollDice: No resolved active technical player ID. Aborting request.")
+            return
+        }
+
         socket.send(
             StompFrame(
                 command = "SEND",
@@ -392,9 +393,19 @@ class OkHttpWebSocketClient(
                 handleLobbyError(json)
                 handleGameStarted(json)
                 handleSync(json)
-                parseGameAction(json).let { (phase, activePlayerId) ->
+
+                // MODIFIZIERT: GAME_ACTION Mapping
+                parseGameAction(json).let { (phase, technicalId) ->
                     phase?.let { mutableGamePhase.value = it }
-                    activePlayerId?.let { mutableActivePlayerId.value = it }
+                    if (technicalId != null) {
+                        // Markierung in Spielerliste setzen (technisch)
+                        mutablePlayers.value = mutablePlayers.value.map {
+                            it.copy(isActivePlayer = it.id == technicalId.toString())
+                        }
+                        // UI Normalisierung auf User-ID
+                        mutableActivePlayerId.value = findUserIdByPlayerId(json.optJSONObject("payload")?.optJSONArray("players"), technicalId)
+                            ?: marketplaceMapping[technicalId]
+                    }
                 }
                 parsePurchaseSuccess(json)?.let { mutablePurchaseEvents.tryEmit(it) }
                 parseDiceResult(json)?.let { mutableDiceResult.value = it }
@@ -415,9 +426,6 @@ class OkHttpWebSocketClient(
         }
     }
 
-    /**
-     * Handles lobby creation responses from the backend.
-     */
     private fun handleLobbyCreated(json: JSONObject) {
         if (json.optString("type") != LOBBY_CREATED_TYPE) return
         val payload = json.optJSONObject("payload") ?: return
@@ -448,9 +456,6 @@ class OkHttpWebSocketClient(
         }
     }
 
-    /**
-     * Handles successful lobby join responses from the backend.
-     */
     private fun handleLobbyJoined(json: JSONObject) {
         if (json.optString("type") != LOBBY_JOINED_TYPE) return
 
@@ -481,13 +486,7 @@ class OkHttpWebSocketClient(
         val errorCode = payload?.optString("errorCode").orEmpty()
         val message = json.optString("content").ifBlank { "Failed to join lobby" }
 
-        if (
-            errorCode == "INVALID_LOBBY_CODE" ||
-            errorCode == "GAME_NOT_FOUND" ||
-            errorCode == "GAME_STARTED" ||
-            errorCode == "GAME_FINISHED" ||
-            errorCode == "LOBBY_FULL"
-        ) {
+        if (errorCode in listOf("INVALID_LOBBY_CODE", "GAME_NOT_FOUND", "GAME_STARTED", "GAME_FINISHED", "LOBBY_FULL")) {
             Log.w(TAG, "Lobby join error received [$errorCode]: $message")
             mutableLobbyJoinErrors.tryEmit(message)
         }
@@ -508,22 +507,25 @@ class OkHttpWebSocketClient(
             ?.let { mutableLobbyCode.value = it }
 
         parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
-        mutablePlayers.value = payload.optJSONArray("players").toPlayerCoinStates(payload, game)
 
-        // Read activePlayerId from GAME_STARTED payload so the client knows
-        // whose turn it is immediately without waiting for the follow-up GAME_ACTION.
-        payload.optIntOrNull("activePlayerId")?.let { mutableActivePlayerId.value = it }
+        // MODIFIZIERT: Trennung PlayerID vs UserID
+        val playersArray = payload.optJSONArray("players")
+        val technicalActiveId = payload.optIntOrNull("activePlayerId")
+
+        // Mapping für spätere GAME_ACTION Nachrichten aktualisieren
+        updateInternalMapping(playersArray)
+
+        // Spielerliste setzen & internen Marker via technischer ID setzen
+        mutablePlayers.value = playersArray.toPlayerCoinStates(technicalActiveId)
+
+        // UI Normalisierung: User ID exponieren
+        if (technicalActiveId != null) {
+            mutableActivePlayerId.value = findUserIdByPlayerId(playersArray, technicalActiveId)
+        }
 
         updateShopItemsFromState(payload)
     }
 
-    /**
-     * Handles the reconnect snapshot pushed to `/user/queue/game-sync`.
-     *
-     * The SYNC message wraps a full `GameStateDto` under `payload.state`; this
-     * restores every flow the game screen renders so a reconnecting client
-     * reconstructs the board in a single round-trip — no follow-up queries.
-     */
     private fun handleSync(json: JSONObject) {
         if (json.optString("type") != SYNC_TYPE) return
         val payload = json.optJSONObject("payload") ?: return
@@ -545,13 +547,51 @@ class OkHttpWebSocketClient(
         game.optIntOrNull("roundNumber")?.let { mutableRoundNumber.value = it }
         game.optIntOrNull("lastDiceRoll")?.let { mutableDiceResult.value = listOf(it) }
 
-        mutablePlayers.value = state.optJSONArray("players").toPlayerCoinStates(state, game)
+        // MODIFIZIERT: Mapping & technische Marker setzen
+        val playersArray = state.optJSONArray("players")
+        updateInternalMapping(playersArray)
+
+        val technicalActiveId = getTechnicalActiveIdFromSync(state, game)
+        mutablePlayers.value = playersArray.toPlayerCoinStates(technicalActiveId)
+
+        // UI Normalisierung
         mutableActivePlayerId.value = resolveActiveUserId(state, game)
+
         mutablePlayerLandmarks.value = parsePlayerLandmarks(state.optJSONObject("playerLandmarks"))
         val marketplace = parseMarketplace(state.optJSONObject("marketplace"))
         mutableMarketplace.value = marketplace
         updateShopItemsFromState(state, marketplace)
     }
+
+    // --- NEUE HILFSMETHODEN FÜR NORMALISIERUNG ---
+
+    private fun updateInternalMapping(array: JSONArray?) {
+        if (array == null) return
+        for (i in 0 until array.length()) {
+            val p = array.optJSONObject(i) ?: continue
+            val pId = p.optIntOrNull("id")
+            val uId = p.optIntOrNull("userId")
+            if (pId != null && uId != null) marketplaceMapping[pId] = uId
+        }
+    }
+
+    private fun findUserIdByPlayerId(players: JSONArray?, playerId: Int): Int? {
+        if (players == null) return null
+        for (i in 0 until players.length()) {
+            val player = players.optJSONObject(i) ?: continue
+            if (player.optInt("id") == playerId) return player.optIntOrNull("userId")
+        }
+        return null
+    }
+
+    private fun getTechnicalActiveIdFromSync(state: JSONObject, game: JSONObject): Int? {
+        val currentTurnIndex = game.optIntOrNull("currentTurnIndex") ?: return null
+        val turnOrder = state.optJSONArray("turnOrder") ?: return null
+        if (currentTurnIndex !in 0 until turnOrder.length()) return null
+        return turnOrder.optInt(currentTurnIndex)
+    }
+
+    // --- RESTLICHE METHODEN UNVERÄNDERT ---
 
     private fun updateShopItemsFromState(
         state: JSONObject,
@@ -564,25 +604,12 @@ class OkHttpWebSocketClient(
         }
     }
 
-    private fun parseCardDefinitions(
-        array: JSONArray?,
-        marketplace: Map<CardType, Int>
-    ): List<ShopItem> {
+    private fun parseCardDefinitions(array: JSONArray?, marketplace: Map<CardType, Int>): List<ShopItem> {
         if (array == null) return emptyList()
         return (0 until array.length()).mapNotNull { index ->
             val definition = array.optJSONObject(index) ?: return@mapNotNull null
-            val cardType = runCatching { CardType.valueOf(definition.optString("cardType")) }
-                .getOrNull() ?: return@mapNotNull null
-            ShopItem(
-                purchaseType = PurchaseType.ESTABLISHMENT,
-                type = cardType.name,
-                displayName = cardType.displayName(),
-                cost = definition.optInt("cost"),
-                color = definition.optString("color").toShopItemColor(),
-                establishmentType = definition.optString("establishmentType"),
-                imageKey = "card_${cardType.name.lowercase()}",
-                isAvailable = (marketplace[cardType] ?: 0) > 0
-            )
+            val cardType = runCatching { CardType.valueOf(definition.optString("cardType")) }.getOrNull() ?: return@mapNotNull null
+            ShopItem(PurchaseType.ESTABLISHMENT, cardType.name, cardType.displayName(), definition.optInt("cost"), definition.optString("color").toShopItemColor(), definition.optString("establishmentType"), "card_${cardType.name.lowercase()}", (marketplace[cardType] ?: 0) > 0)
         }
     }
 
@@ -590,55 +617,20 @@ class OkHttpWebSocketClient(
         if (array == null) return emptyList()
         return (0 until array.length()).mapNotNull { index ->
             val definition = array.optJSONObject(index) ?: return@mapNotNull null
-            val landmarkType = runCatching {
-                LandmarkType.valueOf(definition.optString("landmarkType"))
-            }.getOrNull() ?: return@mapNotNull null
-            ShopItem(
-                purchaseType = PurchaseType.LANDMARK,
-                type = landmarkType.name,
-                displayName = landmarkType.displayName(),
-                cost = definition.optInt("cost"),
-                color = ShopItemColor.LANDMARK,
-                establishmentType = "LANDMARK",
-                imageKey = "landmark_${landmarkType.name.lowercase()}",
-                isAvailable = true
-            )
+            val landmarkType = runCatching { LandmarkType.valueOf(definition.optString("landmarkType")) }.getOrNull() ?: return@mapNotNull null
+            ShopItem(PurchaseType.LANDMARK, landmarkType.name, landmarkType.displayName(), definition.optInt("cost"), ShopItemColor.LANDMARK, "LANDMARK", "landmark_${landmarkType.name.lowercase()}", true)
         }
     }
 
-    private fun String.toShopItemColor(): ShopItemColor =
-        runCatching { ShopItemColor.valueOf(this) }.getOrDefault(ShopItemColor.BLUE)
-
+    private fun String.toShopItemColor(): ShopItemColor = runCatching { ShopItemColor.valueOf(this) }.getOrDefault(ShopItemColor.BLUE)
     private fun CardType.displayName(): String = name.toDisplayName()
-
     private fun LandmarkType.displayName(): String = name.toDisplayName()
+    private fun String.toDisplayName(): String = lowercase().split("_").joinToString(" ") { it.replaceFirstChar { c -> c.titlecase() } }
+    private fun parseGameStatus(name: String): GameStatus? = name.takeIf { it.isNotEmpty() }?.let { runCatching { GameStatus.valueOf(it) }.getOrNull() }
 
-    private fun String.toDisplayName(): String =
-        lowercase()
-            .split("_")
-            .joinToString(" ") { part -> part.replaceFirstChar { it.titlecase() } }
-
-    private fun parseGameStatus(name: String): GameStatus? =
-        name.takeIf { it.isNotEmpty() }
-            ?.let { runCatching { GameStatus.valueOf(it) }.getOrNull() }
-
-    /**
-     * Resolves the active player's **userId** (not playerId) from the snapshot:
-     * turnOrder holds playerIds, currentTurnIndex points into it, and the
-     * matching player row carries the userId that [activePlayerId] is compared
-     * against (`myUserId == activePlayerId`).
-     */
     private fun resolveActiveUserId(state: JSONObject, game: JSONObject): Int? {
-        val currentTurnIndex = game.optIntOrNull("currentTurnIndex") ?: return null
-        val turnOrder = state.optJSONArray("turnOrder") ?: return null
-        if (currentTurnIndex !in 0 until turnOrder.length()) return null
-        val activePlayerId = turnOrder.optInt(currentTurnIndex)
-        val players = state.optJSONArray("players") ?: return null
-        for (i in 0 until players.length()) {
-            val player = players.optJSONObject(i) ?: continue
-            if (player.optInt("id") == activePlayerId) return player.optIntOrNull("userId")
-        }
-        return null
+        val techId = getTechnicalActiveIdFromSync(state, game) ?: return null
+        return findUserIdByPlayerId(state.optJSONArray("players"), techId)
     }
 
     private fun parsePlayerLandmarks(obj: JSONObject?): Map<Int, List<PlayerLandmarkState>> {
@@ -649,8 +641,7 @@ class OkHttpWebSocketClient(
             val array = obj.optJSONArray(key) ?: continue
             result[playerId] = (0 until array.length()).mapNotNull { index ->
                 val entry = array.optJSONObject(index) ?: return@mapNotNull null
-                val type = runCatching { LandmarkType.valueOf(entry.optString("landmarkType")) }
-                    .getOrNull() ?: return@mapNotNull null
+                val type = runCatching { LandmarkType.valueOf(entry.optString("landmarkType")) }.getOrNull() ?: return@mapNotNull null
                 PlayerLandmarkState(landmarkType = type, isBuilt = entry.optBoolean("isBuilt"))
             }
         }
@@ -670,195 +661,77 @@ class OkHttpWebSocketClient(
     private fun parseGameAction(json: JSONObject): Pair<GamePhase?, Int?> {
         if (json.optString("type") != GAME_ACTION_TYPE) return Pair(null, null)
         val payload = json.optJSONObject("payload") ?: return Pair(null, null)
-        val phaseName = payload.optString("turnPhase").takeIf { it.isNotEmpty() }
-        val phase = phaseName?.let { parseTurnPhase(it) }
-        val activePlayerId = if (payload.has("activePlayerId") && !payload.isNull("activePlayerId"))
-            payload.optInt("activePlayerId") else null
+        val phase = payload.optString("turnPhase").takeIf { it.isNotEmpty() }?.let { parseTurnPhase(it) }
+        val activePlayerId = if (payload.has("activePlayerId") && !payload.isNull("activePlayerId")) payload.optInt("activePlayerId") else null
         return Pair(phase, activePlayerId)
     }
 
     private fun parsePurchaseSuccess(json: JSONObject): PurchaseEvent.Success? {
         if (json.optString("type") != GAME_ACTION_TYPE) return null
         val payload = json.optJSONObject("payload") ?: return null
-        val purchaseType = runCatching {
-            PurchaseType.valueOf(payload.optString("purchaseType"))
-        }.getOrNull() ?: return null
-        val itemType = when (purchaseType) {
-            PurchaseType.ESTABLISHMENT -> payload.optString("cardType")
-            PurchaseType.LANDMARK -> payload.optString("landmarkType")
-        }.takeIf { it.isNotBlank() } ?: return null
+        val purchaseType = runCatching { PurchaseType.valueOf(payload.optString("purchaseType")) }.getOrNull() ?: return null
+        val itemType = when (purchaseType) { PurchaseType.ESTABLISHMENT -> payload.optString("cardType"); PurchaseType.LANDMARK -> payload.optString("landmarkType") }.takeIf { it.isNotBlank() } ?: return null
         return PurchaseEvent.Success(purchaseType = purchaseType, itemType = itemType)
     }
 
-    /**
-     * Parses incoming ROLL_DICE results from the server.
-     */
     private fun parseDiceResult(json: JSONObject): List<Int>? {
         if (json.optString("type") != ROLL_DICE_TYPE) return null
-        val payload = json.optJSONObject("payload") ?: return null
-        val resultArray = payload.optJSONArray("result") ?: return null
-        return (0 until resultArray.length()).mapNotNull { index ->
-            runCatching { resultArray.getInt(index) }.getOrNull()
-        }
+        val resultArray = json.optJSONObject("payload")?.optJSONArray("result") ?: return null
+        return (0 until resultArray.length()).mapNotNull { index -> runCatching { resultArray.getInt(index) }.getOrNull() }
     }
 
-    private fun subscribeToPublicTopic() {
-        webSocket?.send(
-            StompFrame(
-                command = "SUBSCRIBE",
-                headers = mapOf(
-                    "id" to "public-topic",
-                    "destination" to WebSocketContract.publicTopic
-                )
-            ).serialize()
-        )
-    }
-
-    private fun subscribeToSyncQueue() {
-        webSocket?.send(
-            StompFrame(
-                command = "SUBSCRIBE",
-                headers = mapOf(
-                    "id" to "user-game-sync",
-                    "destination" to WebSocketContract.gameSyncQueue
-                )
-            ).serialize()
-        )
-    }
-
-    private fun subscribeToErrorsQueue() {
-        webSocket?.send(
-            StompFrame(
-                command = "SUBSCRIBE",
-                headers = mapOf(
-                    "id" to "user-errors",
-                    "destination" to WebSocketContract.errorsQueue
-                )
-            ).serialize()
-        )
-    }
+    private fun subscribeToPublicTopic() = webSocket?.send(StompFrame("SUBSCRIBE", mapOf("id" to "public-topic", "destination" to WebSocketContract.publicTopic)).serialize())
+    private fun subscribeToSyncQueue() = webSocket?.send(StompFrame("SUBSCRIBE", mapOf("id" to "user-game-sync", "destination" to WebSocketContract.gameSyncQueue)).serialize())
+    private fun subscribeToErrorsQueue() = webSocket?.send(StompFrame("SUBSCRIBE", mapOf("id" to "user-errors", "destination" to WebSocketContract.errorsQueue)).serialize())
 
     private fun subscribeToGameTopic(gameId: Int) {
         if (subscribedGameId == gameId) return
-
         val socket = webSocket ?: return
-
-        subscribedGameId?.let { oldId ->
-            socket.send(
-                StompFrame(
-                    command = "UNSUBSCRIBE",
-                    headers = mapOf("id" to "game-topic-$oldId")
-                ).serialize()
-            )
-        }
-
-        val subscribeFrame = StompFrame(
-            command = "SUBSCRIBE",
-            headers = mapOf(
-                "id" to "game-topic-$gameId",
-                "destination" to "${WebSocketContract.gameTopicPrefix}/$gameId"
-            )
-        ).serialize()
-
-        if (socket.send(subscribeFrame)) {
-            subscribedGameId = gameId
-        }
+        subscribedGameId?.let { old -> socket.send(StompFrame("UNSUBSCRIBE", mapOf("id" to "game-topic-$old")).serialize()) }
+        if (socket.send(StompFrame("SUBSCRIBE", mapOf("id" to "game-topic-$gameId", "destination" to "${WebSocketContract.gameTopicPrefix}/$gameId")).serialize())) subscribedGameId = gameId
     }
 
     private fun sendJoinMessage() {
         val gameId = mutableActiveGameId.value
-        val body = if (gameId != null) {
-            """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}","gameId":$gameId}"""
-        } else {
-            """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}"}"""
-        }
-        webSocket?.send(
-            StompFrame(
-                command = "SEND",
-                headers = mapOf(
-                    "destination" to WebSocketContract.addUserDestination,
-                    "content-type" to "application/json"
-                ),
-                body = body
-            ).serialize()
-        )
+        val body = if (gameId != null) """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}","gameId":$gameId}""" else """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}"}"""
+        webSocket?.send(StompFrame("SEND", mapOf("destination" to WebSocketContract.addUserDestination, "content-type" to "application/json"), body).serialize())
     }
 
-    private fun clearSocket() {
-        synchronized(this) {
-            webSocket = null
-            subscribedGameId = null
-        }
-    }
-
-    private fun isAuthRejection(body: String): Boolean =
-        body.trim().contains(AUTH_REJECTION_BODY)
+    private fun clearSocket() { synchronized(this) { webSocket = null; subscribedGameId = null } }
+    private fun isAuthRejection(body: String): Boolean = body.trim().contains(AUTH_REJECTION_BODY)
 
     private fun resetGameState() {
-        mutableGamePhase.value = GamePhase.NONE
-        mutablePlayers.value = emptyList()
-        mutableDiceResult.value = null
-        mutableActivePlayerId.value = null
-        mutableLobbyCode.value = null
-        mutableGameStatus.value = null
-        mutableRoundNumber.value = null
-        mutablePlayerLandmarks.value = emptyMap()
-        mutableMarketplace.value = emptyMap()
-        mutableShopItems.value = emptyList()
+        mutableGamePhase.value = GamePhase.NONE; mutablePlayers.value = emptyList(); mutableDiceResult.value = null; mutableActivePlayerId.value = null
+        mutableLobbyCode.value = null; mutableGameStatus.value = null; mutableRoundNumber.value = null; mutablePlayerLandmarks.value = emptyMap()
+        mutableMarketplace.value = emptyMap(); mutableShopItems.value = emptyList(); marketplaceMapping.clear()
     }
 
-    private fun resetLobbyState() {
-        mutableLobbyCode.value = null
-        mutableActiveGameId.value = null
-        mutableIsLobbyHost.value = false
-        mutablePlayers.value = emptyList()
-    }
+    private fun resetLobbyState() { mutableLobbyCode.value = null; mutableActiveGameId.value = null; mutableIsLobbyHost.value = false; mutablePlayers.value = emptyList() }
+    private fun parseTurnPhase(name: String): GamePhase? = name.takeIf { it.isNotEmpty() }?.let { runCatching { GamePhase.valueOf(it) }.getOrNull() }
 
-    private fun parseTurnPhase(phaseName: String): GamePhase? =
-        phaseName.takeIf { it.isNotEmpty() }?.let { runCatching { GamePhase.valueOf(it) }.getOrNull() }
-
-    private fun JSONArray?.toPlayerCoinStates(payload: JSONObject, game: JSONObject): List<PlayerCoinState> {
+    // MODIFIZIERT: Akzeptiert technische ID direkt
+    private fun JSONArray?.toPlayerCoinStates(technicalActiveId: Int?): List<PlayerCoinState> {
         if (this == null) return emptyList()
-
-        val currentTurnIndex = game.optIntOrNull("currentTurnIndex")
-        val currentPlayerId = payload.optJSONArray("turnOrder")
-            ?.takeIf { currentTurnIndex != null && currentTurnIndex in 0 until it.length() }
-            ?.let { turnOrder -> currentTurnIndex?.let(turnOrder::optInt) }
-
-        return List(length()) { index ->
-            getJSONObject(index).toPlayerCoinState(currentPlayerId)
-        }
+        return List(length()) { index -> getJSONObject(index).toPlayerCoinState(technicalActiveId) }
     }
 
-    private fun JSONObject.toPlayerCoinState(currentPlayerId: Int?): PlayerCoinState {
+    private fun JSONObject.toPlayerCoinState(technicalActiveId: Int?): PlayerCoinState {
         val playerId = optInt("id")
-        val resolvedDisplayName =
-            optString("username").takeIf { it.isNotBlank() }
-                ?: optString("name").takeIf { it.isNotBlank() }
-                ?: optString("displayName").takeIf { it.isNotBlank() }
-                ?: "Player $playerId"
+        val resolvedDisplayName = optString("username").takeIf { it.isNotBlank() } ?: optString("name").takeIf { it.isNotBlank() } ?: optString("displayName").takeIf { it.isNotBlank() } ?: "Player $playerId"
         return PlayerCoinState(
             id = playerId.toString(),
             displayName = resolvedDisplayName,
             coins = optInt("coins"),
-            isCurrentPlayer = playerId == currentPlayerId,
-            isActivePlayer = playerId == currentPlayerId,
+            isCurrentPlayer = playerId == technicalActiveId,
+            isActivePlayer = playerId == technicalActiveId,
         )
     }
 
-    private fun JSONObject.optIntOrNull(key: String): Int? =
-        if (has(key) && !isNull(key)) optInt(key) else null
+    private fun JSONObject.optIntOrNull(key: String): Int? = if (has(key) && !isNull(key)) optInt(key) else null
 
     private fun websocketHostHeader(): String {
         val uri = URI(websocketUrl)
-        val port = uri.port
-        return if (port == -1 || port == defaultPort(uri.scheme.orEmpty())) uri.host
-        else "${uri.host}:$port"
-    }
-
-    private fun defaultPort(scheme: String): Int = when (scheme) {
-        "wss", "https" -> 443
-        else -> 80
+        return if (uri.port == -1 || uri.port == (if (uri.scheme == "wss") 443 else 80)) uri.host else "${uri.host}:${uri.port}"
     }
 
     companion object {
@@ -874,20 +747,9 @@ class OkHttpWebSocketClient(
         private const val ROLL_DICE_TYPE = "ROLL_DICE"
         private const val SYNC_TYPE = "SYNC"
         private const val AUTH_REJECTION_BODY = "Authentication failed"
-        private const val GAME_START_BODY =
-            """{"type":"START","sender":"${WebSocketContract.defaultSender}"}"""
-
-        private fun purchaseBody(
-            gameId: Int,
-            purchaseType: PurchaseType,
-            cardType: String?,
-            landmarkType: String?
-        ): String {
-            val targetField = when (purchaseType) {
-                PurchaseType.ESTABLISHMENT -> ",\"cardType\":\"$cardType\""
-                PurchaseType.LANDMARK -> ",\"landmarkType\":\"$landmarkType\""
-            }
-            return """{"gameId":$gameId,"purchaseType":"${purchaseType.name}"$targetField}"""
+        private fun purchaseBody(gameId: Int, pt: PurchaseType, ct: String?, lt: String?): String {
+            val field = when (pt) { PurchaseType.ESTABLISHMENT -> ",\"cardType\":\"$ct\""; PurchaseType.LANDMARK -> ",\"landmarkType\":\"$lt\"" }
+            return """{"gameId":$gameId,"purchaseType":"${pt.name}"$field}"""
         }
     }
 }

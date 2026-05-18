@@ -778,6 +778,80 @@ class OkHttpWebSocketClientTest {
         assertNull(client.diceResult.value)
     }
 
+    // ── NEUE TESTFÄLLE FÜR ID-NORMALISIERUNG & SICHERES WÜRFELN ──────────────
+
+    @Test
+    fun gameStartedMapsPlayerIdToExposedUserId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        // Backend sendet activePlayerId=10 (technische ID).
+        // Dieser Spieler hat im Payload die userId=99.
+        val payload = """{
+            "type":"GAME_STARTED",
+            "payload":{
+                "game":{"id":1, "turnPhase":"ROLL_DICE"},
+                "players":[{"id":10, "userId":99, "username":"Alice"}],
+                "activePlayerId":10
+            }
+        }"""
+        factory.simulateText(gameActionFrame(payload))
+
+        // UI-Flow (activePlayerId) muss die normalisierte User ID sehen
+        assertEquals(99, client.activePlayerId.value)
+        // Interne Liste muss den Spieler als aktiv markiert haben (via ID 10)
+        assertTrue(client.players.value.first { it.id == "10" }.isActivePlayer)
+    }
+
+    @Test
+    fun rollDiceDoesNotSendWhenNoActivePlayerResolved() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        // Wir setzen Spiel-ID, aber KEINE Spieler (also keine aktive Player ID auflösbar)
+        factory.simulateText(gameActionFrame("""{"type":"LOBBY_CREATED","gameId":1,"payload":{"lobbyCode":"A"}}"""))
+
+        val initialMessageCount = factory.socket.sentMessages.size
+        client.rollDice(1)
+
+        // Es darf nichts gesendet worden sein
+        assertEquals(initialMessageCount, factory.socket.sentMessages.size)
+    }
+
+    @Test
+    fun rollDiceSendsActualGamePlayerIdNotUserId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        // Spieler mit technischer ID 77 und User-ID 5
+        val payload = """{
+            "type":"GAME_STARTED",
+            "payload":{
+                "game":{"id":1},
+                "players":[{"id":77, "userId":5, "username":"Bob"}],
+                "activePlayerId":77
+            }
+        }"""
+        factory.simulateText(gameActionFrame(payload))
+
+        client.rollDice(1)
+
+        val sentMessage = factory.socket.sentMessages.last()
+        // Muss Player-ID 77 im Body haben, nicht die Account-User-ID 5
+        assertTrue(sentMessage.contains("\"playerId\":77"))
+        assertFalse(sentMessage.contains("\"playerId\":5"))
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     @Test
     fun rollDiceSendsCorrectPlayerIdFromActivePlayer() {
@@ -800,7 +874,7 @@ class OkHttpWebSocketClientTest {
                 },
                 "turnOrder": [7],
                 "players": [
-                    {"id": 7, "username": "Alice", "coins": 3}
+                    {"id": 7, "userId": 1, "username": "Alice", "coins": 3}
                 ],
                 "activePlayerId": 7
             }
@@ -833,11 +907,13 @@ class OkHttpWebSocketClientTest {
         }"""
         factory.simulateText(gameActionFrame(lobbyCreatedPayload))
 
-        client.rollDice(diceCount = 1)
-
-        val sentMessage = factory.socket.sentMessages.last()
-        // Da "host-admin" nicht in ein Int gewandelt werden kann, greift der Fallback auf 0
-        assertTrue("Sollte playerId 0 enthalten. Nachricht war: $sentMessage", sentMessage.contains("\"playerId\":0"))
+        // Da "host-admin" in der Liste steht, aber toIntOrNull fehlschlägt,
+        // wird in der neuen Version rollDice gar nicht erst senden (Safety Abfrage).
+        // Wenn man das alte Verhalten (Senden von 0) testen wollte, müsste die Abfrage anders sein.
+        // Mit deiner neuen Anforderung sendet er nichts.
+        val initialCount = factory.socket.sentMessages.size
+        client.rollDice(1)
+        assertEquals(initialCount, factory.socket.sentMessages.size)
     }
     @Test
     fun parseDiceResultHandlesMalformedResultArray() {
