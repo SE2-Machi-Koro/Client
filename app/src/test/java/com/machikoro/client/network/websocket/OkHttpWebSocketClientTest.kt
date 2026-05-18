@@ -319,10 +319,7 @@ class OkHttpWebSocketClientTest {
     fun sendGameStartWithoutConnectionIsIgnored() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
-        // No connect() call — should not throw
         client.sendGameStart()
-
         assertTrue(factory.socket.sentMessages.isEmpty())
     }
 
@@ -337,16 +334,9 @@ class OkHttpWebSocketClientTest {
 
     @Test
     fun disconnectWhenNeverConnectedIsNoOpAndDoesNotTransitionStatus() {
-        // Important for the LaunchedEffect in MainActivity: on cold start with no
-        // session, the initial collect emission is null and triggers disconnect().
-        // If disconnect() flipped status from IDLE to DISCONNECTED, the start
-        // screen would render "Connection status: disconnected" before the user
-        // has tried to connect.
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.disconnect()
-
         assertEquals(ConnectionStatus.IDLE, client.connectionStatus.value)
         assertEquals(0, factory.createCount)
     }
@@ -363,9 +353,6 @@ class OkHttpWebSocketClientTest {
 
     @Test
     fun connectFrameUsesCurrentSessionTokenAtHandshakeTime() {
-        // Locks down "read token at onOpen, not at connect()" — if we ever capture
-        // the token at connect() time, mid-flight session changes would send the
-        // wrong header.
         val factory = FakeWebSocketFactory()
         val sessionHolder = FakeSessionStateHolder(initial = Session("stale-token", "alice", DEFAULT_USER_ID))
         val client = newClient(factory, sessionStateHolder = sessionHolder)
@@ -386,12 +373,11 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory, sessionStateHolder = sessionHolder)
 
         client.connect()
-        sessionHolder.signOut()  // user logs out before WS handshake completes
+        sessionHolder.signOut()
         factory.simulateOpen()
 
         assertTrue(factory.socket.closed)
         assertFalse(factory.socket.sentMessages.any { it.startsWith("CONNECT\n") })
-        // Belt-and-braces — there should be no Authorization header in any frame.
         assertFalse(factory.socket.sentMessages.any { it.contains("Authorization") })
     }
 
@@ -648,6 +634,55 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun gameStartedMessageSetsActivePlayerId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"GAME_STARTED",
+                "gameId":42,
+                "payload":{
+                    "game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},
+                    "players":[],
+                    "activePlayerId":7
+                }
+            }"""
+            )
+        )
+        assertEquals(7, client.activePlayerId.value)
+    }
+
+    @Test
+    fun gameStartedMessageWithoutActivePlayerIdDoesNotOverwriteExistingValue() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_ACTION","payload":{"turnPhase":"ROLL_DICE","activePlayerId":99}}""")
+        )
+        assertEquals(99, client.activePlayerId.value)
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"GAME_STARTED",
+                "gameId":42,
+                "payload":{
+                    "game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},
+                    "players":[]
+                }
+            }"""
+            )
+        )
+        assertEquals(99, client.activePlayerId.value)
+    }
+
+    @Test
     fun rollDiceSendsStompFrameToRollDiceDestination() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -666,15 +701,82 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun rollDiceSendsGameIdInBody() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},"players":[]}}"""
+            )
+        )
+        client.rollDice(diceCount = 1)
+        assertTrue(factory.socket.sentMessages.any {
+            it.contains("\"gameId\":42") && it.contains("destination:/app/game.rollDice")
+        })
+    }
+
+    @Test
+    fun rollDiceWithoutActiveGameIdIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        val messagesBefore = factory.socket.sentMessages.size
+        client.rollDice(diceCount = 1)
+        assertEquals(messagesBefore, factory.socket.sentMessages.size)
+    }
+
+    @Test
     fun rollDiceWithoutConnectionIsIgnored() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.rollDice(diceCount = 1)
-
         assertTrue(factory.socket.sentMessages.isEmpty())
     }
 
+    @Test
+    fun rollDiceWithTwoDiceSendsDiceCountTwo() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},"players":[]}}"""
+            )
+        )
+        client.rollDice(diceCount = 2)
+        assertTrue(factory.socket.sentMessages.any { it.contains("\"diceCount\":2") })
+    }
+
+    @Test
+    fun rollDiceMessageFromServerUpdatesDiceResult() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameActionFrame("""{"type":"ROLL_DICE","payload":{"playerId":"p1","result":[3,5],"timestamp":123}}"""))
+        assertEquals(listOf(3, 5), client.diceResult.value)
+    }
+
+    @Test
+    fun disconnectResetsDiceResultToNull() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameActionFrame("""{"type":"ROLL_DICE","payload":{"playerId":"p1","result":[6],"timestamp":1}}"""))
+        assertEquals(listOf(6), client.diceResult.value)
+        client.disconnect()
+        assertNull(client.diceResult.value)
+    }
 
     @Test
     fun sendPurchaseEstablishmentSendsServerAlignedPayload() {
@@ -847,47 +949,6 @@ class OkHttpWebSocketClientTest {
         assertEquals(listOf("Could not join lobby"), errors)
     }
 
-    /*
-    @Test
-    fun lobbyJoinRelatedErrorCodesEmitLobbyJoinError() = runTest {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        val errors = mutableListOf<String>()
-
-        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
-        runCurrent()
-
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText(connectedFrame())
-
-        listOf("GAME_NOT_FOUND", "GAME_STARTED", "GAME_FINISHED", "LOBBY_FULL").forEach { errorCode ->
-            factory.simulateText(
-                StompFrame(
-                    command = "MESSAGE",
-                    headers = mapOf(
-                        "destination" to WebSocketContract.errorsQueue,
-                        "content-type" to "application/json"
-                    ),
-                    body = """{"type":"ERROR","sender":"SERVER","content":"Could not join lobby","payload":{"errorCode":"$errorCode"}}"""
-                ).serialize()
-            )
-        }
-
-        runCurrent()
-
-        assertEquals(
-            listOf(
-                "Could not join lobby",
-                "Could not join lobby",
-                "Could not join lobby",
-                "Could not join lobby"
-            ),
-            errors
-        )
-    }*/
-
-        
     @Test
     fun malformedPurchasePayloadDoesNotEmitPurchaseSuccessEvent() = runTest {
         val factory = FakeWebSocketFactory()
@@ -908,7 +969,7 @@ class OkHttpWebSocketClientTest {
 
         assertTrue(purchaseEvents.isEmpty())
         assertEquals(GamePhase.BUY_OR_BUILD, client.gamePhase.value)
-     }
+    }
 
     @Test
     fun gameActionWithPurchasePayloadEmitsPurchaseSuccessEvent() = runTest {
@@ -940,51 +1001,8 @@ class OkHttpWebSocketClientTest {
     fun sendJoinLobbyWithoutConnectionIsIgnored() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-
         client.sendJoinLobby("ABC1234")
-
         assertTrue(factory.socket.sentMessages.isEmpty())
-    }
-
-
-    @Test
-    fun rollDiceWithTwoDiceSendsDiceCountTwo() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(
-            gameActionFrame(
-                """{"type":"GAME_STARTED","gameId":42,"payload":{"game":{"id":42,"lobbyCode":"ABC","turnPhase":"ROLL_DICE"},"players":[]}}"""
-            )
-        )
-        client.rollDice(diceCount = 2)
-        assertTrue(factory.socket.sentMessages.any { it.contains("\"diceCount\":2") })
-    }
-
-    @Test
-    fun rollDiceMessageFromServerUpdatesDiceResult() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(gameActionFrame("""{"type":"ROLL_DICE","payload":{"playerId":"p1","result":[3,5],"timestamp":123}}"""))
-        assertEquals(listOf(3, 5), client.diceResult.value)
-    }
-
-    @Test
-    fun disconnectResetsDiceResultToNull() {
-        val factory = FakeWebSocketFactory()
-        val client = newClient(factory)
-        client.connect()
-        factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(gameActionFrame("""{"type":"ROLL_DICE","payload":{"playerId":"p1","result":[6],"timestamp":1}}"""))
-        assertEquals(listOf(6), client.diceResult.value)
-        client.disconnect()
-        assertNull(client.diceResult.value)
     }
 
     @Test
@@ -1003,9 +1021,6 @@ class OkHttpWebSocketClientTest {
 
         assertEquals(1, rejections.size)
         assertEquals(ConnectionStatus.DISCONNECTED, client.connectionStatus.value)
-        // Sign-out is performed by the WS client itself so the policy survives
-        // activity destruction (rotation / process death) — it must not depend
-        // on a Compose collector being attached.
         assertEquals(null, sessionHolder.session.value)
     }
 
@@ -1030,9 +1045,6 @@ class OkHttpWebSocketClientTest {
 
     @Test
     fun disconnectClearsLobbyCode() {
-        // Regression: a stale lobby code must not persist across a sign-out/
-        // sign-in cycle within the same app session. Same contract applies to
-        // the auth-rejection path which also funnels through resetGameState().
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
 
@@ -1066,9 +1078,7 @@ class OkHttpWebSocketClientTest {
         runCurrent()
         assertEquals(null, client.lobbyCode.value)
     }
-    private fun authRejectionErrorFrame(): String =
-        "ERROR\nmessage:Authentication failed\n\nAuthentication failed\u0000"
-  
+
     // ── handleLobbyCreated — host auto-add ───────────────────────────────────
 
     @Test
@@ -1154,7 +1164,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
-        client.sendCreateLobby() // sets isLobbyHost = true
+        client.sendCreateLobby()
         factory.simulateText(
             gameActionFrame(
                 """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"ABC123"}}"""
@@ -1273,7 +1283,6 @@ class OkHttpWebSocketClientTest {
 
     @Test
     fun lobbyJoinedReplacesEntryWithSameDisplayName() {
-        // LOBBY_CREATED adds host with temp id; LOBBY_JOINED must replace — not duplicate
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
         client.connect()
@@ -1366,7 +1375,6 @@ class OkHttpWebSocketClientTest {
 
     @Test
     fun syncMessageResolvesActivePlayerUserIdFromTurnOrder() {
-        // turnOrder[currentTurnIndex=0] = playerId 11, whose userId is 1.
         val client = clientAfterSync()
         assertEquals(1, client.activePlayerId.value)
     }
@@ -1439,7 +1447,6 @@ class OkHttpWebSocketClientTest {
         assertTrue(client.playerLandmarks.value.isEmpty())
     }
 
-    /** Connects a client and feeds it one realistic SYNC snapshot frame. */
     private fun clientAfterSync(): OkHttpWebSocketClient {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -1450,11 +1457,9 @@ class OkHttpWebSocketClientTest {
         return client
     }
 
-    /** A bare STOMP CONNECTED frame, correctly NUL-terminated by serialize(). */
     private fun connectedFrame(): String =
         StompFrame(command = "CONNECTED", headers = mapOf("version" to "1.2")).serialize()
 
-    /** A MESSAGE frame on the per-user game-sync queue carrying [body]. */
     private fun syncFrame(body: String): String =
         StompFrame(
             command = "MESSAGE",
@@ -1517,22 +1522,19 @@ class OkHttpWebSocketClientTest {
         const val DEFAULT_USER_ID = 1
         val DEFAULT_SESSION = Session(DEFAULT_TOKEN, DEFAULT_USERNAME, DEFAULT_USER_ID)
 
-        // A full /app/game.sync snapshot: game IN_PROGRESS / BUY_OR_BUILD,
-        // round 3, last roll 8; player 11 (userId 1) is active with one
-        // landmark built; marketplace has WHEAT_FIELD x6 and BAKERY x5.
         const val SYNC_SNAPSHOT_BODY =
             """{"type":"SYNC","sender":"server","gameId":7,"payload":{"targetUserId":1,""" +
-                """"state":{"game":{"id":7,"status":"IN_PROGRESS","turnPhase":"BUY_OR_BUILD",""" +
-                """"lastDiceRoll":8,"roundNumber":3,"currentTurnIndex":0},""" +
-                """"players":[{"id":11,"userId":1,"coins":10},{"id":22,"userId":2,"coins":7}],""" +
-                """"playerLandmarks":{"11":[{"playerId":11,"landmarkType":"TRAIN_STATION","isBuilt":true},""" +
-                """{"playerId":11,"landmarkType":"SHOPPING_MALL","isBuilt":false}],""" +
-                """"22":[{"playerId":22,"landmarkType":"TRAIN_STATION","isBuilt":false}]},""" +
-                """"marketplace":{"WHEAT_FIELD":6,"BAKERY":5},""" +
-                """"cardDefinitions":[{"cardType":"BAKERY","cost":1,"income":1,"color":"GREEN",""" +
-                """"establishmentType":"BREAD","paymentSource":"BANK","activationNumbers":[2,3]}],""" +
-                """"landmarkDefinitions":[{"landmarkType":"TRAIN_STATION","cost":4}],""" +
-                """"turnOrder":[11,22]}}}"""
+                    """"state":{"game":{"id":7,"status":"IN_PROGRESS","turnPhase":"BUY_OR_BUILD",""" +
+                    """"lastDiceRoll":8,"roundNumber":3,"currentTurnIndex":0},""" +
+                    """"players":[{"id":11,"userId":1,"coins":10},{"id":22,"userId":2,"coins":7}],""" +
+                    """"playerLandmarks":{"11":[{"playerId":11,"landmarkType":"TRAIN_STATION","isBuilt":true},""" +
+                    """{"playerId":11,"landmarkType":"SHOPPING_MALL","isBuilt":false}],""" +
+                    """"22":[{"playerId":22,"landmarkType":"TRAIN_STATION","isBuilt":false}]},""" +
+                    """"marketplace":{"WHEAT_FIELD":6,"BAKERY":5},""" +
+                    """"cardDefinitions":[{"cardType":"BAKERY","cost":1,"income":1,"color":"GREEN",""" +
+                    """"establishmentType":"BREAD","paymentSource":"BANK","activationNumbers":[2,3]}],""" +
+                    """"landmarkDefinitions":[{"landmarkType":"TRAIN_STATION","cost":4}],""" +
+                    """"turnOrder":[11,22]}}}"""
     }
 
     private fun newClient(
