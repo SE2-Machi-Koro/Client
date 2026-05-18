@@ -28,6 +28,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -634,6 +635,7 @@ class OkHttpWebSocketClientTest {
                 "type":"GAME_STARTED",
                 "gameId":42,
                 "payload":{
+                    "activePlayerId":1,
                     "game":{
                         "id":42,
                         "lobbyCode":"ABC1234",
@@ -647,6 +649,7 @@ class OkHttpWebSocketClientTest {
 
         assertEquals(42, client.activeGameId.value)
         assertEquals("ABC1234", client.lobbyCode.value)
+        assertEquals(1, client.activePlayerId.value)
     }
 
     @Test
@@ -656,10 +659,45 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameStartedFrame(gameId = 7, activePlayerId = 1))
         client.rollDice(diceCount = 1)
         assertTrue(factory.socket.sentMessages.any {
-            it.startsWith("SEND\n") && it.contains("destination:/app/game.rollDice") && it.contains("\"diceCount\":1")
+            it.startsWith("SEND\n") &&
+                it.contains("destination:/app/game.rollDice") &&
+                it.contains("\"gameId\":7") &&
+                it.contains("\"diceCount\":1")
         })
+    }
+
+    @Test
+    fun rollDiceIncludesGameIdInTopLevelAndPayload() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7, activePlayerId = 1))
+
+        client.rollDice(diceCount = 2)
+
+        val body = JSONObject(factory.socket.rollDiceFrames().last().body)
+        assertEquals("ROLL_DICE", body.getString("type"))
+        assertEquals(7, body.getInt("gameId"))
+        assertEquals(7, body.getJSONObject("payload").getInt("gameId"))
+        assertEquals(2, body.getJSONObject("payload").getInt("diceCount"))
+    }
+
+    @Test
+    fun rollDiceWithoutActiveGameIdIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.rollDice(diceCount = 1)
+
+        assertTrue(factory.socket.rollDiceFrames().isEmpty())
     }
 
     @Test
@@ -950,6 +988,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText(gameStartedFrame(gameId = 7, activePlayerId = 1))
         client.rollDice(diceCount = 2)
         assertTrue(factory.socket.sentMessages.any { it.contains("\"diceCount\":2") })
     }
@@ -1568,6 +1607,15 @@ class OkHttpWebSocketClientTest {
 
     private fun gameActionFrame(body: String): String =
         "MESSAGE\ndestination:/topic/public\ncontent-type:application/json\n\n$body\u0000"
+
+    private fun gameStartedFrame(gameId: Int, activePlayerId: Int): String =
+        gameActionFrame(
+            """{"type":"GAME_STARTED","gameId":$gameId,"payload":{"activePlayerId":$activePlayerId,"game":{"id":$gameId,"lobbyCode":"ABC1234","turnPhase":"ROLL_DICE"},"players":[]}}"""
+        )
+
+    private fun FakeWebSocket.rollDiceFrames(): List<StompFrame> =
+        sentMessages.flatMap { parseFrames(StringBuilder(it)) }
+            .filter { it.headers["destination"] == WebSocketContract.rollDiceDestination }
 
     private class FakeWebSocketFactory : WebSocketFactory {
         lateinit var listener: WebSocketListener
