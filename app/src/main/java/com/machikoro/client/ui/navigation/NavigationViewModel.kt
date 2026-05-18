@@ -57,8 +57,23 @@ class NavigationViewModel : ViewModel() {
     ) {
         val next = route to arguments
         if (lastNavigation == next) return
+
+        // Reserve the destination to prevent duplicate navigations from racing
+        // callers. We use a suspending emit below which will not drop events the
+        // way tryEmit can; if emission fails (cancellation / error) we clear
+        // the cache so we don't permanently poison navigation for this route.
         lastNavigation = next
-        _navigationEvent.tryEmit(NavigationEvent.NavigateTo(route, arguments))
+
+        viewModelScope.launch {
+            try {
+                _navigationEvent.emit(NavigationEvent.NavigateTo(route, arguments))
+            } catch (t: Throwable) {
+                // If emit failed for any reason (including cancellation), clear
+                // the reservation so subsequent calls can retry.
+                if (lastNavigation == next) lastNavigation = null
+                throw t
+            }
+        }
     }
 
     /**
