@@ -68,4 +68,8 @@ interface WebSocketClient {
     )
 
     fun rollDice(diceCount: Int = 1)
+
+    // Resets all in-memory game/lobby state without touching the connection.
+    // Call after a server-side purge so the UI reflects the cleared DB immediately.
+    fun clearGameState()
 }

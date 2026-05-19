@@ -959,6 +959,11 @@ class OkHttpWebSocketClient(
     private fun isAuthRejection(body: String): Boolean =
         body.trim().contains(AUTH_REJECTION_BODY)
 
+    override fun clearGameState() {
+        resetGameState()
+        resetLobbyState()
+    }
+
     private fun resetGameState() {
         mutableGamePhase.value = GamePhase.NONE
         mutablePlayers.value = emptyList()

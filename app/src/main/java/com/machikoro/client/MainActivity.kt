@@ -190,7 +190,11 @@ class MainActivity : ComponentActivity() {
                             navigationViewModel.resumeGame(activeGameId)
                         },
                         onPurgeClick = {
-                            lifecycleScope.launch { debugApi.purge() }
+                            lifecycleScope.launch {
+                                debugApi.purge()
+                                webSocketClient.clearGameState()
+                                navigationViewModel.leaveLobby()
+                            }
                         },
                         onPurchaseClick = gameScreenViewModel::purchase,
                         onJoinLobbyClick = {
