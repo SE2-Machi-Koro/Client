@@ -162,6 +162,10 @@ class MainActivity : ComponentActivity() {
                         onLogoutSubmit = {
                             logoutViewModel.submit()
                             navigationViewModel.onUserLoggedOut()
+                            // FIX: Clear lobby/game state on logout so stale activeGameId
+                            // is not sent in the JOIN message on the next login, which
+                            // caused the server to block lobby creation.
+                            homeViewModel.clearLobbyCode()
                         },
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
                         onStartGame = homeViewModel::startGame,
@@ -208,7 +212,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        // Only disconnect when no session is active. Disconnecting while a
+        // FIX: Only disconnect when no session is active. Disconnecting while a
         // user is logged in caused the WebSocket to tear down and reconnect on
         // every navigation event (e.g. Home → Lobby), which created multiple
         // concurrent connections and caused LOBBY_CREATED responses to arrive
