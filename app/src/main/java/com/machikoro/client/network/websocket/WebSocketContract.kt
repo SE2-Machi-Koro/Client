@@ -22,7 +22,7 @@ object WebSocketContract {
     // Per-user reconnect snapshot queue. The server resolves /user/** to the
     // authenticated principal, so each client only sees its own snapshot.
     const val gameSyncQueue: String = "/user/queue/game-sync"
-    // Broker-side lobby queue prefix — append STOMP session ID to get the full destination
-    const val lobbyQueuePrefix: String = "/queue/lobby-user"
+    // User-scoped lobby queue — Spring maps this to /queue/lobby-user{sessionId} on the broker side
+    const val lobbyQueue: String = "/user/queue/lobby"
     const val defaultSender: String = "android-client"
 }

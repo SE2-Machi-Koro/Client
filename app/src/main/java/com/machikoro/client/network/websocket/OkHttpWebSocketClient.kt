@@ -128,9 +128,6 @@ class OkHttpWebSocketClient(
     @Volatile
     private var webSocket: WebSocket? = null
     private var subscribedGameId: Int? = null
-    // STOMP session ID sent by the broker in the CONNECTED frame header "session"
-    @Volatile
-    private var stompSessionId: String? = null
 
     // Auto-reconnect state. `intentionalDisconnect` is set whenever the client
     // tears the connection down itself (disconnect() or an auth rejection) so
@@ -448,8 +445,9 @@ class OkHttpWebSocketClient(
                 // registered first or the SYNC frame is delivered to nobody.
                 subscribeToSyncQueue()
 
-                stompSessionId = frame.headers["session"]
-                subscribeToLobbyQueue(stompSessionId)
+                // User-scoped lobby queue — Spring resolves /user/queue/lobby to the session-scoped
+                // destination automatically, same as game-sync. No raw session ID needed.
+                subscribeToLobbyQueue()
 
                 mutableActiveGameId.value?.let(::subscribeToGameTopic)
                 sendJoinMessage()
@@ -868,14 +866,13 @@ class OkHttpWebSocketClient(
         )
     }
 
-    private fun subscribeToLobbyQueue(sessionId: String?) {
-        if (sessionId == null) return
+    private fun subscribeToLobbyQueue() {
         webSocket?.send(
             StompFrame(
                 command = "SUBSCRIBE",
                 headers = mapOf(
                     "id" to "lobby-queue",
-                    "destination" to "${WebSocketContract.lobbyQueuePrefix}$sessionId"
+                    "destination" to WebSocketContract.lobbyQueue
                 )
             ).serialize()
         )
@@ -928,7 +925,6 @@ class OkHttpWebSocketClient(
     }
 
     private fun clearSocket() {
-        stompSessionId = null
         synchronized(this) {
             webSocket = null
             subscribedGameId = null
