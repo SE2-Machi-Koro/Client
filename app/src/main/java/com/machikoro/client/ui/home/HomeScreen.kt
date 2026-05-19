@@ -59,6 +59,8 @@ fun HomeScreen(
     onSettingsClick: () -> Unit = {},
     onJoinLobbySubmit: () -> Unit = {},
     joinLobbyError: Boolean = false,
+    hasActiveGame: Boolean = false,
+    onResumeGameClick: () -> Unit = {},
     onPurgeClick: () -> Unit = {},
     onLogoutClick: () -> Unit,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
@@ -164,6 +166,7 @@ fun HomeScreen(
                         iconRes = R.drawable.home_lobby_join_icon,
                         text = "Join Lobby",
                         isPrimary = false,
+                        enabled = !hasActiveGame,
                         onClick = onJoinLobbyClick
                     )
 
@@ -188,15 +191,17 @@ fun HomeScreen(
                         iconRes = R.drawable.home_lobby_create_icon,
                         text = "Create Lobby",
                         isPrimary = true,
+                        enabled = !hasActiveGame,
                         onClick = onCreateLobbyClick
                     )
                 }
 
                 HomeCard(
-                    iconRes = R.drawable.home_lobby_public_icon,
-                    text = "Public Lobbys",
+                    iconRes = R.drawable.home_lobby_join_icon,
+                    text = "Resume Game",
                     isPrimary = false,
-                    onClick = onPublicLobbiesClick
+                    enabled = hasActiveGame,
+                    onClick = onResumeGameClick
                 )
             }
         }
@@ -244,7 +249,8 @@ private fun HomeCard(
     iconRes: Int,
     text: String,
     isPrimary: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    enabled: Boolean = true,
 ) {
     // The primary card is highlighted with dark blue.
     val backgroundColor = if (isPrimary) ButtonBlueDark else ButtonBlueLight
@@ -253,6 +259,7 @@ private fun HomeCard(
     // Button is used as a card because it is already clickable and supports elevation.
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier
             .width(160.dp)
             .height(140.dp),

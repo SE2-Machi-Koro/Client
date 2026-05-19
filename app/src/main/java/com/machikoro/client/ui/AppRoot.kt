@@ -67,6 +67,9 @@ fun AppRoot(
     onResetLobby: () -> Unit = {},
     onRollDice: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
+    onLeaveGame: () -> Unit = {},
+    hasActiveGame: Boolean = false,
+    onResumeGameClick: () -> Unit = {},
     onPurgeClick: () -> Unit = {},
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
 ) {
@@ -146,6 +149,8 @@ fun AppRoot(
                 onJoinLobbySubmit = onJoinLobbySubmit,
                 joinLobbyError = joinLobbyError,
                 onCreateLobbyClick = onCreateLobbyClick,
+                hasActiveGame = hasActiveGame,
+                onResumeGameClick = onResumeGameClick,
                 onPurgeClick = onPurgeClick,
                 onLogoutClick = onLogoutSubmit,
                 modifier = modifier
@@ -192,6 +197,7 @@ fun AppRoot(
                 state = gameScreenState.copy(gameId = routedGameId ?: gameScreenState.gameId),
                 onRollDice = onRollDice,
                 onPurchaseClick = onPurchaseClick,
+                onLeaveGame = onLeaveGame,
             )
         }
 

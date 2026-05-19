@@ -20,15 +20,18 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,8 +70,28 @@ fun GameScreen(
     state: GameScreenState,
     onPurchaseClick: (String) -> Unit = {},
     onRollDice: () -> Unit = {},
+    onLeaveGame: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var showLeaveDialog by remember { mutableStateOf(false) }
+
+    if (showLeaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showLeaveDialog = false },
+            title = { Text("Leave Game?") },
+            text = { Text("The game will keep running. You can resume it from the home screen.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLeaveDialog = false
+                    onLeaveGame()
+                }) { Text("Leave") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeaveDialog = false }) { Text("Stay") }
+            }
+        )
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         CoinDisplay(
             players = state.players,
@@ -145,6 +168,22 @@ fun GameScreen(
                     )
                 }
             }
+        }
+
+        // Leave button drawn last so it sits on top of all other content
+        Button(
+            onClick = { showLeaveDialog = true },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(start = 12.dp, top = 8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            ),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+        ) {
+            Text(text = "Leave", style = MaterialTheme.typography.labelLarge)
         }
     }
 }

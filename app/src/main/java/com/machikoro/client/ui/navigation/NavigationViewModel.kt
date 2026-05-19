@@ -58,6 +58,13 @@ class NavigationViewModel(
     fun leaveLobby() {
         hasBeenInLobby = false
         mutableUiState.update { it.copy(showLobbyScreen = false) }
+        navigateTo(AppRoute.Home)
+    }
+
+    // Navigates directly to Game without going through the lobby flow.
+    fun resumeGame(gameId: Int?) {
+        hasBeenInLobby = true
+        navigateTo(AppRoute.Game, AppRoute.AppRouteArguments(gameId = gameId))
     }
 
     fun navigateTo(

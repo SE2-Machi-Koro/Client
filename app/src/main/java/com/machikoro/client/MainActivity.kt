@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import com.machikoro.client.domain.enums.GamePhase
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -95,6 +96,7 @@ class MainActivity : ComponentActivity() {
             val logoutState by logoutViewModel.state.collectAsState()
             var showJoinLobbyInput by remember { mutableStateOf(false) }
             val snackbarHostState = remember { SnackbarHostState() }
+            val hasActiveGame = activeGameId != null && gameScreenState.gamePhase != GamePhase.NONE
 
             LaunchedEffect(Unit) {
                 SessionManager.session.collect { session ->
@@ -179,6 +181,13 @@ class MainActivity : ComponentActivity() {
                         onCreateLobbyClick = {
                             showJoinLobbyInput = false
                             homeViewModel.createLobby()
+                        },
+                        onLeaveGame = {
+                            navigationViewModel.leaveLobby()
+                        },
+                        hasActiveGame = hasActiveGame,
+                        onResumeGameClick = {
+                            navigationViewModel.resumeGame(activeGameId)
                         },
                         onPurgeClick = {
                             lifecycleScope.launch { debugApi.purge() }
