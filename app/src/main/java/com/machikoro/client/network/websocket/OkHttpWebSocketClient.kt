@@ -128,6 +128,8 @@ class OkHttpWebSocketClient(
     @Volatile
     private var webSocket: WebSocket? = null
     private var subscribedGameId: Int? = null
+    // STOMP session ID assigned by the server on CONNECTED — used for lobby queue subscription
+    private var stompSessionId: String? = null
 
     // Auto-reconnect state. `intentionalDisconnect` is set whenever the client
     // tears the connection down itself (disconnect() or an auth rejection) so
@@ -445,9 +447,10 @@ class OkHttpWebSocketClient(
                 // registered first or the SYNC frame is delivered to nobody.
                 subscribeToSyncQueue()
 
-                // User-scoped lobby queue — Spring resolves /user/queue/lobby to the session-scoped
-                // destination automatically, same as game-sync. No raw session ID needed.
-                subscribeToLobbyQueue()
+                // Use session-scoped destination when server provides session ID; fall back to user-scoped
+                val sessionId = frame.headers["session"]
+                stompSessionId = sessionId
+                subscribeToLobbyQueue(sessionId)
 
                 mutableActiveGameId.value?.let(::subscribeToGameTopic)
                 sendJoinMessage()
@@ -866,13 +869,19 @@ class OkHttpWebSocketClient(
         )
     }
 
-    private fun subscribeToLobbyQueue() {
+    private fun subscribeToLobbyQueue(sessionId: String?) {
+        // Session-scoped destination when server provides session ID; user-scoped otherwise
+        val destination = if (sessionId != null) {
+            "${WebSocketContract.lobbyQueuePrefix}$sessionId"
+        } else {
+            WebSocketContract.lobbyQueue
+        }
         webSocket?.send(
             StompFrame(
                 command = "SUBSCRIBE",
                 headers = mapOf(
                     "id" to "lobby-queue",
-                    "destination" to WebSocketContract.lobbyQueue
+                    "destination" to destination
                 )
             ).serialize()
         )
@@ -928,6 +937,7 @@ class OkHttpWebSocketClient(
         synchronized(this) {
             webSocket = null
             subscribedGameId = null
+            stompSessionId = null
         }
     }
 
