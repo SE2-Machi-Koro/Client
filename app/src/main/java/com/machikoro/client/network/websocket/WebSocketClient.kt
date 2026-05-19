@@ -55,6 +55,7 @@ interface WebSocketClient {
     fun disconnect()
     fun sendCreateLobby()
     fun sendJoinLobby(lobbyCode: String)     // Sends a request to join an existing lobby by lobby code.
+    fun sendLeaveLobby(gameId: Int)          // Notifies the server that this player is leaving the lobby.
     fun clearLobbyCode()
     fun sendGameStart()
 

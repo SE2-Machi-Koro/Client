@@ -113,7 +113,8 @@ class LobbyScreenViewModel(
     }
 
     fun onLeaveLobby() {
-        // TODO: notify backend when leave-lobby endpoint/event exists.
+        val gameId = webSocketClient.activeGameId.value ?: return
+        webSocketClient.sendLeaveLobby(gameId)
     }
 
     // Calls the debug endpoint to fill remaining lobby slots with dummy players

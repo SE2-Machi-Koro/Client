@@ -254,6 +254,31 @@ class OkHttpWebSocketClient(
         }
     }
 
+    override fun sendLeaveLobby(gameId: Int) {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "sendLeaveLobby called but no active WebSocket connection")
+            return
+        }
+        val body = JSONObject()
+            .put("type", "LEAVE")
+            .put("sender", WebSocketContract.defaultSender)
+            .put("payload", JSONObject().put("gameId", gameId))
+            .toString()
+        val sent = socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.leaveLobbyDestination,
+                    "content-type" to "application/json"
+                ),
+                body = body
+            ).serialize()
+        )
+        if (sent) Log.d(TAG, "Leave lobby message sent (gameId=$gameId)")
+        else Log.w(TAG, "sendLeaveLobby: failed to send frame")
+    }
+
     override fun clearLobbyCode() {
         resetLobbyState()
     }
@@ -438,6 +463,7 @@ class OkHttpWebSocketClient(
                 }
                 handleLobbyCreated(json)
                 handleLobbyJoined(json)
+                handleLobbyLeft(json)
                 handleLobbyRoster(json)
                 handleLobbyError(json)
                 handleGameStarted(json)
@@ -535,6 +561,15 @@ class OkHttpWebSocketClient(
 
         mutableLobbyEntered.tryEmit(Unit)
     }
+
+    private fun handleLobbyLeft(json: JSONObject) {
+        if (json.optString("type") != LOBBY_LEFT_TYPE) return
+        val payload = json.optJSONObject("payload") ?: return
+        val playerId = payload.optIntOrNull("playerId")?.toString() ?: return
+        mutablePlayers.value = mutablePlayers.value.filter { it.id != playerId }
+        Log.d(TAG, "Player $playerId left lobby")
+    }
+
     /**
      * Handles LOBBY_ROSTER sent only to the joining player after a successful join.
      * Replaces the full player list so the joiner sees everyone already in the lobby.
@@ -1007,6 +1042,7 @@ class OkHttpWebSocketClient(
         private const val BEARER_PREFIX = "Bearer "
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
         private const val LOBBY_JOINED_TYPE = "LOBBY_JOINED"
+        private const val LOBBY_LEFT_TYPE = "LOBBY_LEFT"
         private const val LOBBY_ROSTER_TYPE = "LOBBY_ROSTER"
         private const val ERROR_TYPE = "ERROR"
         private const val ROLL_DICE_TYPE = "ROLL_DICE"
