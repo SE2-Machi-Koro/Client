@@ -54,6 +54,9 @@ class OkHttpWebSocketClient(
     override val lobbyCode: StateFlow<String?>
         get() = mutableLobbyCode.asStateFlow()
 
+    override val lobbyEntered: SharedFlow<Unit>
+        get() = mutableLobbyEntered.asSharedFlow()
+
     override val lobbyJoinErrors: SharedFlow<String>
         get() = mutableLobbyJoinErrors.asSharedFlow()
 
@@ -94,6 +97,10 @@ class OkHttpWebSocketClient(
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
+    private val mutableLobbyEntered = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     private val mutableLobbyJoinErrors = MutableSharedFlow<String>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -121,8 +128,6 @@ class OkHttpWebSocketClient(
     @Volatile
     private var webSocket: WebSocket? = null
     private var subscribedGameId: Int? = null
-    @Volatile
-    private var stompSessionId: String? = null
 
     // Auto-reconnect state. `intentionalDisconnect` is set whenever the client
     // tears the connection down itself (disconnect() or an auth rejection) so
@@ -415,11 +420,9 @@ class OkHttpWebSocketClient(
                 // registered first or the SYNC frame is delivered to nobody.
                 subscribeToSyncQueue()
 
-                // Session-scoped queue for LOBBY_CREATED and lobby errors (scoped to this connection only)
-                frame.headers["session"]?.also { sid ->
-                    stompSessionId = sid
-                    subscribeToLobbyQueue(sid)
-                }
+                // User-scoped lobby queue — Spring resolves /user/queue/lobby to the session-scoped
+                // destination automatically, same as game-sync. No raw session ID needed.
+                subscribeToLobbyQueue()
 
                 mutableActiveGameId.value?.let(::subscribeToGameTopic)
                 sendJoinMessage()
@@ -529,6 +532,8 @@ class OkHttpWebSocketClient(
         // Replace any existing entry with same id or name (e.g., temp host entry) then add
         mutablePlayers.value = mutablePlayers.value
             .filter { it.id != playerId && it.displayName != username } + newPlayer
+
+        mutableLobbyEntered.tryEmit(Unit)
     }
     /**
      * Handles LOBBY_ROSTER sent only to the joining player after a successful join.
@@ -814,13 +819,13 @@ class OkHttpWebSocketClient(
         )
     }
 
-    private fun subscribeToLobbyQueue(sessionId: String) {
+    private fun subscribeToLobbyQueue() {
         webSocket?.send(
             StompFrame(
                 command = "SUBSCRIBE",
                 headers = mapOf(
                     "id" to "lobby-queue",
-                    "destination" to "${WebSocketContract.lobbyQueuePrefix}$sessionId"
+                    "destination" to WebSocketContract.lobbyQueue
                 )
             ).serialize()
         )
@@ -876,7 +881,6 @@ class OkHttpWebSocketClient(
         synchronized(this) {
             webSocket = null
             subscribedGameId = null
-            stompSessionId = null
         }
     }
 

@@ -120,8 +120,13 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(activeGameId) {
                 if (activeGameId != null) {
                     showJoinLobbyInput = false
-                    // showLobby() is NOT called here: reconnect snapshots also set activeGameId
-                    // and would skip HomeScreen. showLobby() is called from explicit user actions.
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                webSocketClient.lobbyEntered.collect {
+                    // Navigate to LobbyScreen only on fresh lobby entry, not reconnect snapshots
+                    navigationViewModel.showLobby()
                 }
             }
 
@@ -171,9 +176,6 @@ class MainActivity : ComponentActivity() {
                         joinLobbyCode = joinLobbyCode,
                         joinLobbyError = joinLobbyError,
                         showJoinLobbyInput = showJoinLobbyInput,
-                        onGoToLobbyClick = {
-                            navigationViewModel.showLobby()
-                        },
                         onCreateLobbyClick = {
                             showJoinLobbyInput = false
                             homeViewModel.createLobby()
@@ -184,10 +186,7 @@ class MainActivity : ComponentActivity() {
                             showJoinLobbyInput = true
                         },
                         onJoinLobbyCodeChange = homeViewModel::onJoinLobbyCodeChange,
-                        onJoinLobbySubmit = {
-                            homeViewModel.joinLobby()
-                            navigationViewModel.showLobby()
-                        },
+                        onJoinLobbySubmit = homeViewModel::joinLobby,
                     )
                 }
             }

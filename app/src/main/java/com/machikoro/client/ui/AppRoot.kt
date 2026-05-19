@@ -68,7 +68,6 @@ fun AppRoot(
     onRollDice: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
-    onGoToLobbyClick: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val appNavigator = remember(navController) { AppNavigator(navController) }
@@ -139,7 +138,6 @@ fun AppRoot(
 
         composable(AppRoute.Home.route) {
             HomeScreen(
-                lobbyCode = lobbyCode,
                 joinLobbyCode = joinLobbyCode,
                 showJoinLobbyInput = showJoinLobbyInput && lobbyCode == null,
                 onJoinLobbyClick = onJoinLobbyClick,
@@ -147,7 +145,6 @@ fun AppRoot(
                 onJoinLobbySubmit = onJoinLobbySubmit,
                 joinLobbyError = joinLobbyError,
                 onCreateLobbyClick = onCreateLobbyClick,
-                onGoToLobbyClick = onGoToLobbyClick,
                 onLogoutClick = onLogoutSubmit,
                 modifier = modifier
             )

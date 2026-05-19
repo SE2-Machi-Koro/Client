@@ -19,6 +19,8 @@ interface WebSocketClient {
     val players: StateFlow<List<PlayerCoinState>>
     val lobbyCode: StateFlow<String?>
 
+    // Fires once when the user successfully enters a lobby (create or join), NOT on reconnect.
+    val lobbyEntered: SharedFlow<Unit>
     // Fires when joining a lobby fails, e.g. because the lobby code is invalid.
     val lobbyJoinErrors: SharedFlow<String>
     val activeGameId: StateFlow<Int?>
