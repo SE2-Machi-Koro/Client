@@ -120,7 +120,8 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(activeGameId) {
                 if (activeGameId != null) {
                     showJoinLobbyInput = false
-                    navigationViewModel.showLobby()
+                    // showLobby() is NOT called here: reconnect snapshots also set activeGameId
+                    // and would skip HomeScreen. showLobby() is called from explicit user actions.
                 }
             }
 
@@ -128,6 +129,8 @@ class MainActivity : ComponentActivity() {
                 webSocketClient.lobbyJoinErrors.collect { message ->
                     Log.e("MainActivity", "Lobby join error received: $message")
                     homeViewModel.setJoinLobbyError(message)
+                    // Return to HomeScreen so the error is visible
+                    navigationViewModel.leaveLobby()
                 }
             }
 
@@ -181,7 +184,10 @@ class MainActivity : ComponentActivity() {
                             showJoinLobbyInput = true
                         },
                         onJoinLobbyCodeChange = homeViewModel::onJoinLobbyCodeChange,
-                        onJoinLobbySubmit = homeViewModel::joinLobby,
+                        onJoinLobbySubmit = {
+                            homeViewModel.joinLobby()
+                            navigationViewModel.showLobby()
+                        },
                     )
                 }
             }
