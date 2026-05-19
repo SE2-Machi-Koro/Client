@@ -1,9 +1,6 @@
 package com.machikoro.client.ui.home
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.widget.Toast
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -51,8 +48,6 @@ import com.machikoro.client.ui.theme.White
 
 @Composable
 fun HomeScreen(
-    // Latest lobby code received from the server after creating a lobby.
-    lobbyCode: String? = null,
     joinLobbyCode: String = "",
     showJoinLobbyInput: Boolean = false,
     onJoinLobbyCodeChange: (String) -> Unit = {},
@@ -62,11 +57,10 @@ fun HomeScreen(
     onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    onGoToLobbyClick: () -> Unit = {},
     onJoinLobbySubmit: () -> Unit = {},
     joinLobbyError: Boolean = false,
     onLogoutClick: () -> Unit,
-    modifier: Modifier = Modifier
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     // Root container. Box allows placing elements freely with align().
     Box(
@@ -184,15 +178,6 @@ fun HomeScreen(
                         isPrimary = true,
                         onClick = onCreateLobbyClick
                     )
-
-                    lobbyCode?.let { code ->
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        LobbyCodeRow(
-                            code = code,
-                            onGoToLobbyClick = onGoToLobbyClick
-                        )
-                    }
                 }
 
                 HomeCard(
@@ -288,83 +273,6 @@ private fun HomeCard(
                 overflow = TextOverflow.Ellipsis,
                 color = textColor
             )
-        }
-    }
-}
-
-@Composable
-private fun LobbyCodeRow(
-    code: String,
-    onGoToLobbyClick: () -> Unit
-) {
-    val context = LocalContext.current
-
-    fun copyLobbyCodeToClipboard() {
-        val clipboard =
-            context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-
-        val clip = ClipData.newPlainText("Lobby Code", code)
-        clipboard.setPrimaryClip(clip)
-
-        Toast.makeText(context, "Lobby code copied", Toast.LENGTH_SHORT).show()
-    }
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Card(
-            modifier = Modifier
-                .width(110.dp)
-                .height(34.dp),
-            shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = 12.dp, end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = code,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0x4D004E7E),
-                    maxLines = 1
-                )
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                Image(
-                    painter = painterResource(id = R.drawable.home_copy_icon),
-                    contentDescription = "Copy lobby code",
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickable {
-                            copyLobbyCodeToClipboard()
-                        }
-                )
-            }
-        }
-
-        // Allows the player to confirm the created lobby and continue to the lobby screen.
-        Card(
-            modifier = Modifier.size(34.dp).clickable(onClick = onGoToLobbyClick),
-            shape = RoundedCornerShape(6.dp),
-            colors = CardDefaults.cardColors(containerColor = White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.home_check_icon),
-                    contentDescription = "Confirm lobby code",
-                    modifier = Modifier.size(18.dp)
-                )
-            }
         }
     }
 }
@@ -582,19 +490,6 @@ private fun HomeScreenPreview() {
     ClientTheme {
         HomeScreen(
             onLogoutClick = {},
-            onGoToLobbyClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun HomeScreenWithLobbyCodePreview() {
-    ClientTheme {
-        HomeScreen(
-            onLogoutClick = {},
-            onGoToLobbyClick = {},
-            lobbyCode = "AJ25Z39"
         )
     }
 }
@@ -605,7 +500,6 @@ private fun HomeScreenWithJoinLobbyCodePreview() {
     ClientTheme {
         HomeScreen(
             onLogoutClick = {},
-            onGoToLobbyClick = {},
             joinLobbyCode = "AJ25Z39",
             showJoinLobbyInput = true,
             onJoinLobbyCodeChange = {},
