@@ -25,13 +25,32 @@ class HomeViewModel(
     val activeGameId = webSocketClient.activeGameId
     val isLobbyHost = webSocketClient.isLobbyHost
 
+    // FIX: Track whether a createLobby request is already in flight so rapid
+    // taps don't send multiple LOBBY_CREATE frames to the server.
+    private val mutableIsCreatingLobby = MutableStateFlow(false)
+
     fun createLobby() {
+        // FIX: Ignore tap if a lobby creation is already pending or a lobby
+        // code has already been assigned by the server.
+        if (mutableIsCreatingLobby.value) return
+        if (webSocketClient.lobbyCode.value != null) return
+
+        mutableIsCreatingLobby.value = true
+
         if (webSocketClient.connectionStatus.value == ConnectionStatus.CONNECTED) {
             webSocketClient.sendCreateLobby()
+            // Reset flag once the server confirms via lobbyCode flow
+            viewModelScope.launch {
+                webSocketClient.lobbyCode.first { it != null }
+                mutableIsCreatingLobby.value = false
+            }
             return
         }
 
-        if (createLobbyJob?.isActive == true) return
+        if (createLobbyJob?.isActive == true) {
+            mutableIsCreatingLobby.value = false
+            return
+        }
 
         webSocketClient.connect()
 
@@ -44,7 +63,9 @@ class HomeViewModel(
 
             if (status == ConnectionStatus.CONNECTED) {
                 webSocketClient.sendCreateLobby()
+                webSocketClient.lobbyCode.first { it != null }
             }
+            mutableIsCreatingLobby.value = false
         }
     }
 
@@ -52,6 +73,7 @@ class HomeViewModel(
         mutableJoinLobbyError.value = false
         mutableJoinLobbyCode.value = code.trim().uppercase()
     }
+
     /**
      * Sends the entered lobby code once the WebSocket connection is ready.
      * If the socket is not connected yet, the first click starts the connection
@@ -93,6 +115,7 @@ class HomeViewModel(
 
     fun clearLobbyCode() {
         webSocketClient.clearLobbyCode()
+        mutableIsCreatingLobby.value = false
     }
 
     class Factory(
