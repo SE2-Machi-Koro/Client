@@ -232,6 +232,17 @@ class NavigationViewModelTest {
     }
 
     @Test
+    fun leaveLobbyNavigatesToHome() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.leaveLobby()
+        advanceUntilIdle()
+
+        assertEquals(NavigationEvent.NavigateTo(AppRoute.Home), events.single())
+    }
+
+    @Test
     fun lobbyVisibilityIsOwnedByNavigationState() {
         val viewModel = NavigationViewModel()
 

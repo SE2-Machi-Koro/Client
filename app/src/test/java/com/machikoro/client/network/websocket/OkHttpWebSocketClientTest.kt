@@ -1721,6 +1721,67 @@ class OkHttpWebSocketClientTest {
         assertTrue(factory.socket.sentMessages.any { it.contains("destination:/queue/lobby-usersess-2") })
     }
 
+    @Test
+    fun clearGameStateResetsActiveGameIdLobbyCodeAndGamePhase() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_STARTED","gameId":42,"payload":{"activePlayerId":1,"game":{"id":42,"lobbyCode":"ABC123","turnPhase":"ROLL_DICE"},"players":[]}}"""
+            )
+        )
+        assertEquals(42, client.activeGameId.value)
+        assertEquals(GamePhase.ROLL_DICE, client.gamePhase.value)
+        assertEquals("ABC123", client.lobbyCode.value)
+
+        client.clearGameState()
+
+        assertNull(client.activeGameId.value)
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+        assertNull(client.lobbyCode.value)
+    }
+
+    @Test
+    fun gameStartedMessageUsesPlayerUsernamesMapForDisplayNames() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_STARTED","gameId":42,"payload":{"activePlayerId":1,"game":{"id":42,"lobbyCode":"ABC123","turnPhase":"ROLL_DICE"},"players":[{"id":1,"coins":3},{"id":2,"coins":5}],"playerUsernames":{"1":"alice","2":"bob"}}}"""
+            )
+        )
+
+        val players = client.players.value
+        assertEquals(2, players.size)
+        assertEquals("alice", players.first { it.id == "1" }.displayName)
+        assertEquals("bob", players.first { it.id == "2" }.displayName)
+    }
+
+    @Test
+    fun syncMessageUsesPlayerUsernamesMapForDisplayNames() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            syncFrame(
+                """{"type":"SYNC","sender":"server","gameId":7,"payload":{"targetUserId":1,"state":{"game":{"id":7,"status":"IN_PROGRESS","turnPhase":"BUY_OR_BUILD","currentTurnIndex":0},"players":[{"id":11,"userId":1,"coins":10},{"id":22,"userId":2,"coins":7}],"playerUsernames":{"11":"alice","22":"bob"},"playerLandmarks":{},"marketplace":{},"turnOrder":[11,22]}}}"""
+            )
+        )
+
+        val players = client.players.value
+        assertEquals(2, players.size)
+        assertEquals("alice", players.first { it.id == "11" }.displayName)
+        assertEquals("bob", players.first { it.id == "22" }.displayName)
+    }
+
     /** Connects a client and feeds it one realistic SYNC snapshot frame. */
     private fun clientAfterSync(): OkHttpWebSocketClient {
         val factory = FakeWebSocketFactory()

@@ -196,6 +196,7 @@ class HomeScreenViewModelTest {
             joinedLobbyCode = lobbyCode
         }
 
+        override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow()
         override fun connect() { connectCalled = true }
         override fun disconnect() { disconnectCalled = true }
         override fun rollDice(diceCount: Int) = Unit
@@ -208,6 +209,8 @@ class HomeScreenViewModelTest {
             landmarkType: String?
         ) = Unit
         override fun clearLobbyCode() { mutableLobbyCode.value = null }
+        override fun sendLeaveLobby(gameId: Int) {}
+        override fun clearGameState() {}
     }
 }
 
