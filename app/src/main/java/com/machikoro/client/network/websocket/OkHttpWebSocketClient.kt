@@ -625,7 +625,8 @@ class OkHttpWebSocketClient(
             ?.let { mutableLobbyCode.value = it }
 
         parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
-        mutablePlayers.value = payload.optJSONArray("players").toPlayerCoinStates(payload, game)
+        val playerUsernames = parsePlayerUsernames(payload.optJSONObject("playerUsernames"))
+        mutablePlayers.value = payload.optJSONArray("players").toPlayerCoinStates(payload, game, playerUsernames)
         updateShopItemsFromState(payload)
     }
 
@@ -660,7 +661,8 @@ class OkHttpWebSocketClient(
         // screen can show the last roll on reconnect.
         game.optIntOrNull("lastDiceRoll")?.let { mutableDiceResult.value = listOf(it) }
 
-        mutablePlayers.value = state.optJSONArray("players").toPlayerCoinStates(state, game)
+        val playerUsernames = parsePlayerUsernames(state.optJSONObject("playerUsernames"))
+        mutablePlayers.value = state.optJSONArray("players").toPlayerCoinStates(state, game, playerUsernames)
         mutableActivePlayerId.value = resolveActiveUserId(state, game)
         mutablePlayerLandmarks.value = parsePlayerLandmarks(state.optJSONObject("playerLandmarks"))
         val marketplace = parseMarketplace(state.optJSONObject("marketplace"))
@@ -768,6 +770,16 @@ class OkHttpWebSocketClient(
                     .getOrNull() ?: return@mapNotNull null
                 PlayerLandmarkState(landmarkType = type, isBuilt = entry.optBoolean("isBuilt"))
             }
+        }
+        return result
+    }
+
+    private fun parsePlayerUsernames(obj: JSONObject?): Map<Int, String> {
+        if (obj == null) return emptyMap()
+        val result = mutableMapOf<Int, String>()
+        for (key in obj.keys()) {
+            val playerId = key.toIntOrNull() ?: continue
+            result[playerId] = obj.optString(key)
         }
         return result
     }
@@ -987,7 +999,7 @@ class OkHttpWebSocketClient(
     private fun parseTurnPhase(phaseName: String): GamePhase? =
         phaseName.takeIf { it.isNotEmpty() }?.let { runCatching { GamePhase.valueOf(it) }.getOrNull() }
 
-    private fun JSONArray?.toPlayerCoinStates(payload: JSONObject, game: JSONObject): List<PlayerCoinState> {
+    private fun JSONArray?.toPlayerCoinStates(payload: JSONObject, game: JSONObject, playerUsernames: Map<Int, String> = emptyMap()): List<PlayerCoinState> {
         if (this == null) return emptyList()
 
         val currentTurnIndex = game.optIntOrNull("currentTurnIndex")
@@ -996,14 +1008,15 @@ class OkHttpWebSocketClient(
             ?.let { turnOrder -> currentTurnIndex?.let(turnOrder::optInt) }
 
         return List(length()) { index ->
-            getJSONObject(index).toPlayerCoinState(currentPlayerId)
+            getJSONObject(index).toPlayerCoinState(currentPlayerId, playerUsernames)
         }
     }
 
-    private fun JSONObject.toPlayerCoinState(currentPlayerId: Int?): PlayerCoinState {
+    private fun JSONObject.toPlayerCoinState(currentPlayerId: Int?, playerUsernames: Map<Int, String> = emptyMap()): PlayerCoinState {
         val playerId = optInt("id")
         val resolvedDisplayName =
             optString("username").takeIf { it.isNotBlank() }
+                ?: playerUsernames[playerId]
                 ?: optString("name").takeIf { it.isNotBlank() }
                 ?: optString("displayName").takeIf { it.isNotBlank() }
                 ?: "Player $playerId"
