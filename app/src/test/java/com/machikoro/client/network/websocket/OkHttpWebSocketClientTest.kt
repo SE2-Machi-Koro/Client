@@ -1782,6 +1782,367 @@ class OkHttpWebSocketClientTest {
         assertEquals("bob", players.first { it.id == "22" }.displayName)
     }
 
+    // ── sendLeaveLobby ────────────────────────────────────────────────────────
+
+    @Test
+    fun sendLeaveLobbyWithConnectionSendsStompFrameToLeaveLobbyDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        client.sendLeaveLobby(gameId = 5)
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND\n") &&
+                    it.contains("destination:${WebSocketContract.leaveLobbyDestination}") &&
+                    it.contains("\"type\":\"LEAVE\"") &&
+                    it.contains("\"gameId\":5")
+            }
+        )
+    }
+
+    @Test
+    fun sendLeaveLobbyWithoutConnectionIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.sendLeaveLobby(gameId = 5)
+        assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
+    // ── handleLobbyLeft ───────────────────────────────────────────────────────
+
+    @Test
+    fun lobbyLeftMessageRemovesPlayerFromList() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame("""{"type":"LOBBY_JOINED","payload":{"username":"alice","playerId":7,"coins":3}}""")
+        )
+        assertEquals(1, client.players.value.size)
+        factory.simulateText(gameActionFrame("""{"type":"LOBBY_LEFT","payload":{"playerId":7}}"""))
+        assertTrue(client.players.value.isEmpty())
+    }
+
+    @Test
+    fun lobbyLeftWithNoPayloadIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame("""{"type":"LOBBY_JOINED","payload":{"username":"alice","playerId":7,"coins":3}}""")
+        )
+        factory.simulateText(gameActionFrame("""{"type":"LOBBY_LEFT"}"""))
+        assertEquals(1, client.players.value.size)
+    }
+
+    @Test
+    fun lobbyLeftWithMissingPlayerIdIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame("""{"type":"LOBBY_JOINED","payload":{"username":"alice","playerId":7,"coins":3}}""")
+        )
+        factory.simulateText(gameActionFrame("""{"type":"LOBBY_LEFT","payload":{"reason":"left"}}"""))
+        assertEquals(1, client.players.value.size)
+    }
+
+    // ── handleLobbyJoined host branch + lobbyEntered ──────────────────────────
+
+    @Test
+    fun lobbyJoinedWithHostFlagAndGameIdResendsJoinMessageWithGameId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        client.sendCreateLobby() // sets isLobbyHost = true
+        factory.socket.sentMessages.clear()
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_JOINED","gameId":10,"payload":{"username":"alice","playerId":1,"coins":3,"gameId":10}}"""
+            )
+        )
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.contains("destination:${WebSocketContract.addUserDestination}") &&
+                    it.contains("\"gameId\":10")
+            }
+        )
+    }
+
+    @Test
+    fun lobbyJoinedEmitsLobbyEnteredEvent() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val events = mutableListOf<Unit>()
+        client.lobbyEntered.onEach { events += it }.launchIn(backgroundScope)
+        runCurrent()
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame("""{"type":"LOBBY_JOINED","payload":{"username":"alice","playerId":1,"coins":3}}""")
+        )
+        runCurrent()
+        assertEquals(1, events.size)
+    }
+
+    // ── sendGameStart branches ────────────────────────────────────────────────
+
+    @Test
+    fun sendGameStartWithOnlyLobbyCodeSendsLobbyCodeOnly() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        // No gameId in payload: sets lobbyCode only
+        factory.simulateText(
+            gameActionFrame("""{"type":"LOBBY_CREATED","payload":{"lobbyCode":"XYZ"}}""")
+        )
+        assertNull(client.activeGameId.value)
+        assertEquals("XYZ", client.lobbyCode.value)
+        client.sendGameStart()
+        val startFrame = factory.socket.sentMessages.last {
+            it.startsWith("SEND\n") && it.contains("destination:${WebSocketContract.gameStartDestination}")
+        }
+        assertTrue(startFrame.contains("\"lobbyCode\":\"XYZ\""))
+        assertFalse(startFrame.contains("gameId"))
+    }
+
+    @Test
+    fun sendGameStartWithBothGameIdAndLobbyCodeSendsBoth() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 42, activePlayerId = 1))
+        assertEquals(42, client.activeGameId.value)
+        assertTrue(client.lobbyCode.value != null)
+        client.sendGameStart()
+        val startFrame = factory.socket.sentMessages.last {
+            it.startsWith("SEND\n") && it.contains("destination:${WebSocketContract.gameStartDestination}")
+        }
+        assertTrue(startFrame.contains("\"gameId\":42"))
+        assertTrue(startFrame.contains("\"lobbyCode\":\"ABC1234\""))
+    }
+
+    @Test
+    fun sendGameStartWithGameIdOnlySendsGameIdOnly() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        // LOBBY_JOINED sets activeGameId but not lobbyCode
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_JOINED","gameId":10,"payload":{"username":"alice","playerId":1,"coins":3,"gameId":10}}"""
+            )
+        )
+        assertEquals(10, client.activeGameId.value)
+        assertNull(client.lobbyCode.value)
+        client.sendGameStart()
+        val startFrame = factory.socket.sentMessages.last {
+            it.startsWith("SEND\n") && it.contains("destination:${WebSocketContract.gameStartDestination}")
+        }
+        assertTrue(startFrame.contains("\"gameId\":10"))
+        assertFalse(startFrame.contains("lobbyCode"))
+    }
+
+    // ── MESSAGE blank body ────────────────────────────────────────────────────
+
+    @Test
+    fun messageFrameWithBlankBodyIsIgnoredGracefully() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText("MESSAGE\ndestination:/topic/public\n\n  ")
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+        assertTrue(client.players.value.isEmpty())
+    }
+
+    // ── subscribeToGameTopic dedup + UNSUBSCRIBE ──────────────────────────────
+
+    @Test
+    fun subscribingToSameGameTopicTwiceDoesNotSendDuplicateSubscribe() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame("""{"type":"LOBBY_CREATED","gameId":1,"payload":{"lobbyCode":"ABC","gameId":1}}""")
+        )
+        val countAfterFirst = factory.socket.sentMessages.count {
+            it.startsWith("SUBSCRIBE\n") && it.contains("/topic/game/1")
+        }
+        // LOBBY_JOINED with same gameId should not add another SUBSCRIBE
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_JOINED","gameId":1,"payload":{"username":"alice","playerId":5,"coins":3,"gameId":1}}"""
+            )
+        )
+        val countAfterSecond = factory.socket.sentMessages.count {
+            it.startsWith("SUBSCRIBE\n") && it.contains("/topic/game/1")
+        }
+        assertEquals(countAfterFirst, countAfterSecond)
+    }
+
+    @Test
+    fun subscribingToNewGameTopicUnsubscribesOldOne() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame("""{"type":"LOBBY_CREATED","gameId":1,"payload":{"lobbyCode":"AAA","gameId":1}}""")
+        )
+        factory.simulateText(
+            gameActionFrame("""{"type":"LOBBY_CREATED","gameId":2,"payload":{"lobbyCode":"BBB","gameId":2}}""")
+        )
+        assertTrue(factory.socket.sentMessages.any { it.startsWith("UNSUBSCRIBE\n") && it.contains("id:game-topic-1") })
+        assertTrue(factory.socket.sentMessages.any { it.startsWith("SUBSCRIBE\n") && it.contains("/topic/game/2") })
+    }
+
+    // ── websocketHostHeader standard ports ────────────────────────────────────
+
+    @Test
+    fun connectFrameHostHeaderOmitsPortForDefaultWssPort() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "wss://example.com:443/ws",
+            sessionStateHolder = FakeSessionStateHolder(DEFAULT_SESSION),
+            webSocketFactory = factory,
+        )
+        client.connect()
+        factory.simulateOpen()
+        val connectFrame = factory.socket.sentMessages.first { it.startsWith("CONNECT\n") }
+        assertTrue(connectFrame.contains("host:example.com\n"))
+        assertFalse(connectFrame.contains(":443"))
+    }
+
+    @Test
+    fun connectFrameHostHeaderOmitsPortForDefaultWsPort() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://example.com:80/ws",
+            sessionStateHolder = FakeSessionStateHolder(DEFAULT_SESSION),
+            webSocketFactory = factory,
+        )
+        client.connect()
+        factory.simulateOpen()
+        val connectFrame = factory.socket.sentMessages.first { it.startsWith("CONNECT\n") }
+        assertTrue(connectFrame.contains("host:example.com\n"))
+        assertFalse(connectFrame.contains(":80"))
+    }
+
+    @Test
+    fun connectFrameHostHeaderOmitsPortWhenNoPortInUrl() {
+        val factory = FakeWebSocketFactory()
+        val client = OkHttpWebSocketClient(
+            websocketUrl = "ws://example.com/ws",
+            sessionStateHolder = FakeSessionStateHolder(DEFAULT_SESSION),
+            webSocketFactory = factory,
+        )
+        client.connect()
+        factory.simulateOpen()
+        val connectFrame = factory.socket.sentMessages.first { it.startsWith("CONNECT\n") }
+        assertTrue(connectFrame.contains("host:example.com\n"))
+    }
+
+    // ── parseCardDefinitions / parseLandmarkDefinitions unknown types ──────────
+
+    @Test
+    fun parseCardDefinitionsSkipsEntriesWithUnknownCardType() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            syncFrame(
+                """{"type":"SYNC","sender":"server","gameId":1,"payload":{"targetUserId":1,"state":{""" +
+                    """"game":{"id":1,"status":"IN_PROGRESS","turnPhase":"ROLL_DICE","currentTurnIndex":0},""" +
+                    """"players":[],"playerLandmarks":{},"marketplace":{},""" +
+                    """"cardDefinitions":[{"cardType":"INVALID_CARD_TYPE","cost":1}],""" +
+                    """"landmarkDefinitions":[],"turnOrder":[]}}}"""
+            )
+        )
+        assertTrue(client.shopItems.value.isEmpty())
+    }
+
+    @Test
+    fun parseLandmarkDefinitionsSkipsEntriesWithUnknownLandmarkType() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            syncFrame(
+                """{"type":"SYNC","sender":"server","gameId":1,"payload":{"targetUserId":1,"state":{""" +
+                    """"game":{"id":1,"status":"IN_PROGRESS","turnPhase":"ROLL_DICE","currentTurnIndex":0},""" +
+                    """"players":[],"playerLandmarks":{},"marketplace":{},""" +
+                    """"cardDefinitions":[],"landmarkDefinitions":[{"landmarkType":"INVALID_LANDMARK_TYPE","cost":4}],""" +
+                    """"turnOrder":[]}}}"""
+            )
+        )
+        assertTrue(client.shopItems.value.isEmpty())
+    }
+
+    // ── handleGameStarted missing game object ─────────────────────────────────
+
+    @Test
+    fun gameStartedMessageWithMissingGameObjectIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"GAME_STARTED","gameId":42,"payload":{"activePlayerId":1,"players":[]}}"""
+            )
+        )
+        assertNull(client.activeGameId.value)
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+    }
+
+    // ── parseMarketplace unknown card type key ────────────────────────────────
+
+    @Test
+    fun parseMarketplaceSkipsUnknownCardTypeKeys() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            syncFrame(
+                """{"type":"SYNC","sender":"server","gameId":1,"payload":{"targetUserId":1,"state":{""" +
+                    """"game":{"id":1,"status":"IN_PROGRESS","turnPhase":"ROLL_DICE","currentTurnIndex":0},""" +
+                    """"players":[],"playerLandmarks":{},"marketplace":{"UNKNOWN_CARD":3,"BAKERY":5},""" +
+                    """"cardDefinitions":[],"landmarkDefinitions":[],"turnOrder":[]}}}"""
+            )
+        )
+        assertEquals(1, client.marketplace.value.size)
+        assertEquals(5, client.marketplace.value[CardType.BAKERY])
+    }
+
     /** Connects a client and feeds it one realistic SYNC snapshot frame. */
     private fun clientAfterSync(): OkHttpWebSocketClient {
         val factory = FakeWebSocketFactory()
