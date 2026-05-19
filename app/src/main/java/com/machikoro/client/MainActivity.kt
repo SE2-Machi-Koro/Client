@@ -79,7 +79,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SessionManager.attach(DataStoreSessionStorage(applicationContext))
-        lifecycleScope.launch { SessionManager.hydrate() }
+        // Always start unauthenticated so StartScreen is the first screen seen
+        lifecycleScope.launch { SessionManager.signOut() }
         enableEdgeToEdge()
         setContent {
             val startScreenState by startScreenViewModel.state.collectAsState()
