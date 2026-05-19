@@ -180,6 +180,9 @@ class MainActivity : ComponentActivity() {
                             showJoinLobbyInput = false
                             homeViewModel.createLobby()
                         },
+                        onPurgeClick = {
+                            lifecycleScope.launch { debugApi.purge() }
+                        },
                         onPurchaseClick = gameScreenViewModel::purchase,
                         onJoinLobbyClick = {
                             homeViewModel.clearLobbyCode()

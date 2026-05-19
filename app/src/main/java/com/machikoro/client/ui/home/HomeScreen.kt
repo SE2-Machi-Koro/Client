@@ -59,6 +59,7 @@ fun HomeScreen(
     onSettingsClick: () -> Unit = {},
     onJoinLobbySubmit: () -> Unit = {},
     joinLobbyError: Boolean = false,
+    onPurgeClick: () -> Unit = {},
     onLogoutClick: () -> Unit,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
@@ -127,6 +128,17 @@ fun HomeScreen(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(top = 20.dp, start = 30.dp)
+        )
+
+        // Small dev-only button — clears all games/lobbies from the DB
+        Text(
+            text = "⚙ Purge DB",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.Red.copy(alpha = 0.5f),
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = 70.dp, start = 32.dp)
+                .clickable { onPurgeClick() }
         )
 
         // === MAIN ACTION BUTTONS ===

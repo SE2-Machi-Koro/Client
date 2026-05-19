@@ -67,7 +67,8 @@ fun AppRoot(
     onResetLobby: () -> Unit = {},
     onRollDice: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
-    modifier: Modifier = Modifier,
+    onPurgeClick: () -> Unit = {},
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
 ) {
     val navController = rememberNavController()
     val appNavigator = remember(navController) { AppNavigator(navController) }
@@ -145,6 +146,7 @@ fun AppRoot(
                 onJoinLobbySubmit = onJoinLobbySubmit,
                 joinLobbyError = joinLobbyError,
                 onCreateLobbyClick = onCreateLobbyClick,
+                onPurgeClick = onPurgeClick,
                 onLogoutClick = onLogoutSubmit,
                 modifier = modifier
             )
