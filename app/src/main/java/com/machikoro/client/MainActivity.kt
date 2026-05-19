@@ -107,21 +107,16 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 webSocketClient.authRejections.collect {
-                    SessionManager.signOut()
-                    navigationViewModel.leaveLobby()
-                    homeViewModel.clearLobbyCode()
                     snackbarHostState.showSnackbar(
                         "Sitzung abgelaufen, bitte erneut anmelden"
                     )
                 }
             }
 
-            LaunchedEffect(activeGameId) {
-                if (activeGameId != null) {
-                    showJoinLobbyInput = false
-                    navigationViewModel.showLobby()
-                }
-            }
+
+            // The lobby is now shown only via explicit user interaction
+            // (onGoToLobbyClick / onCreateLobbyClick) or after the login callback
+            // sets userHasLoggedIn = true in NavigationViewModel.
 
             LaunchedEffect(Unit) {
                 webSocketClient.lobbyJoinErrors.collect { message ->
@@ -149,9 +144,20 @@ class MainActivity : ComponentActivity() {
                         onRegisterDialogReset = registerDialogViewModel::reset,
                         onLoginUsernameChange = loginDialogViewModel::usernameChanged,
                         onLoginPasswordChange = loginDialogViewModel::passwordChanged,
-                        onLoginSubmit = loginDialogViewModel::submit,
+                        //  onLoginSubmit now also calls onUserLoggedIn() so the
+                        // NavigationViewModel knows an explicit login happened and unlocks
+                        // navigation to Home/Lobby/Game.
+                        onLoginSubmit = {
+                            loginDialogViewModel.submit()
+                            navigationViewModel.onUserLoggedIn()
+                        },
                         onLoginDialogReset = loginDialogViewModel::reset,
-                        onLogoutSubmit = logoutViewModel::submit,
+                        //  onLogoutSubmit resets the login flag so the next
+                        // app start correctly lands on the start screen.
+                        onLogoutSubmit = {
+                            logoutViewModel.submit()
+                            navigationViewModel.onUserLoggedOut()
+                        },
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
                         onStartGame = homeViewModel::startGame,
                         onFillWithDummies = lobbyScreenViewModel::fillWithDummies,
