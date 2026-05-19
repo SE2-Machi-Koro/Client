@@ -176,14 +176,15 @@ fun GameScreen(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .statusBarsPadding()
-                .padding(start = 12.dp, top = 8.dp),
+                .padding(start = 8.dp, top = 6.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
             ),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
         ) {
-            Text(text = "Leave", style = MaterialTheme.typography.labelLarge)
+            Text(text = "Leave", style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -282,7 +283,7 @@ private fun CoinDisplay(
 ) {
     if (players.isEmpty()) return
     LazyRow(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier,
         verticalAlignment = Alignment.Top
     ) {
         items(items = players, key = { it.id }) { player ->
