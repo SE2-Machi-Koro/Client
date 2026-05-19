@@ -17,6 +17,7 @@ import com.machikoro.client.ui.start.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -513,6 +514,62 @@ class GameScreenViewModelTest {
         assertFalse(viewModel.state.value.isRolling)
     }
 
+    // phase change away from ROLL_DICE clears isRolling
+    @Test
+    fun isRollingIsClearedWhenGamePhaseChangesAwayFromRollDice() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+        assertTrue(viewModel.state.value.isRolling)
+
+        // Server advances the phase without sending a diceResult (edge case)
+        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isRolling)
+    }
+
+    //  double-tap while rolling is ignored
+    @Test
+    fun secondRollDiceCallIsIgnoredWhileRollingIsInProgress() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+        val firstCallCount = fakeClient.rollDiceCallCount
+        viewModel.rollDice(diceCount = 1) // second tap while isRolling == true
+
+        assertEquals(firstCallCount, fakeClient.rollDiceCallCount)
+    }
+
+    // timeout resets isRolling when server never replies
+    @Test
+    fun isRollingIsClearedAfterTimeoutWhenServerNeverReplies() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+        assertTrue(viewModel.state.value.isRolling)
+
+        // Advance virtual time past the 10 s timeout without a server response
+        advanceTimeBy(11_000L)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isRolling)
+    }
 
     @Test
     fun gameStatusFromClientIsReflectedInState() = runTest {
