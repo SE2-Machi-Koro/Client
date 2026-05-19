@@ -147,6 +147,10 @@ class LobbyScreenViewModel(
         viewModelScope.launch {
             webSocketClient.lobbyCode.collect { code ->
                 currentLobbyCode = code
+                // Reset ready state whenever entering a new lobby
+                if (code != null) {
+                    mutableState.update { it.copy(isReady = false) }
+                }
             }
         }
     }
