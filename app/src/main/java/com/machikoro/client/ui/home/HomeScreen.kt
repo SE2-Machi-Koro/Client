@@ -214,7 +214,6 @@ fun HomeScreen(
             onSettingsClick = onSettingsClick,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .offset(x = 0.dp, y = 40.dp)
         )
     }
 }
