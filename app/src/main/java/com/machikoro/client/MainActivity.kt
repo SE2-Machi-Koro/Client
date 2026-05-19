@@ -113,7 +113,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-
+            // FIX (Bug 2): Removed the old `LaunchedEffect(activeGameId)` block that
+            // called `navigationViewModel.showLobby()` automatically whenever
+            // activeGameId became non-null. This was the cause of the app jumping
+            // directly into the lobby/game screen on startup when a stale gameId
+            // was present in the WebSocket state.
+            //
             // The lobby is now shown only via explicit user interaction
             // (onGoToLobbyClick / onCreateLobbyClick) or after the login callback
             // sets userHasLoggedIn = true in NavigationViewModel.
@@ -144,7 +149,7 @@ class MainActivity : ComponentActivity() {
                         onRegisterDialogReset = registerDialogViewModel::reset,
                         onLoginUsernameChange = loginDialogViewModel::usernameChanged,
                         onLoginPasswordChange = loginDialogViewModel::passwordChanged,
-                        //  onLoginSubmit now also calls onUserLoggedIn() so the
+                        // FIX (Bug 1): onLoginSubmit now also calls onUserLoggedIn() so the
                         // NavigationViewModel knows an explicit login happened and unlocks
                         // navigation to Home/Lobby/Game.
                         onLoginSubmit = {
@@ -152,7 +157,7 @@ class MainActivity : ComponentActivity() {
                             navigationViewModel.onUserLoggedIn()
                         },
                         onLoginDialogReset = loginDialogViewModel::reset,
-                        //  onLogoutSubmit resets the login flag so the next
+                        // FIX (Bug 1): onLogoutSubmit resets the login flag so the next
                         // app start correctly lands on the start screen.
                         onLogoutSubmit = {
                             logoutViewModel.submit()
@@ -179,6 +184,7 @@ class MainActivity : ComponentActivity() {
                         onCreateLobbyClick = {
                             showJoinLobbyInput = false
                             homeViewModel.createLobby()
+                            navigationViewModel.showLobby()
                         },
                         onPurchaseClick = gameScreenViewModel::purchase,
                         onJoinLobbyClick = {
@@ -186,7 +192,10 @@ class MainActivity : ComponentActivity() {
                             showJoinLobbyInput = true
                         },
                         onJoinLobbyCodeChange = homeViewModel::onJoinLobbyCodeChange,
-                        onJoinLobbySubmit = homeViewModel::joinLobby,
+                        onJoinLobbySubmit = {
+                            homeViewModel.joinLobby()
+                            navigationViewModel.showLobby()
+                        },
                     )
                 }
             }
