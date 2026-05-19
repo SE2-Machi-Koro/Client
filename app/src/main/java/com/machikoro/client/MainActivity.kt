@@ -208,7 +208,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        webSocketClient.disconnect()
+        // Only disconnect when no session is active. Disconnecting while a
+        // user is logged in caused the WebSocket to tear down and reconnect on
+        // every navigation event (e.g. Home → Lobby), which created multiple
+        // concurrent connections and caused LOBBY_CREATED responses to arrive
+        // on a different socket than the one waiting for them.
+        if (SessionManager.session.value == null) {
+            webSocketClient.disconnect()
+        }
         super.onStop()
     }
 }
