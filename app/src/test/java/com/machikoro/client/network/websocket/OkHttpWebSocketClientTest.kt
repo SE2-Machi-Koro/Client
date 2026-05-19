@@ -1579,6 +1579,148 @@ class OkHttpWebSocketClientTest {
         )
     }
 
+    @Test
+    fun connectedFrameWithSessionHeaderSubscribesToLobbyQueue() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\nsession:sess-abc\n\n ")
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SUBSCRIBE") && it.contains("destination:/queue/lobby-usersess-abc")
+            }
+        )
+    }
+
+    @Test
+    fun connectedFrameWithoutSessionHeaderSkipsLobbyQueueSubscription() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        assertFalse(
+            factory.socket.sentMessages.any { it.contains("destination:/queue/lobby-user") }
+        )
+    }
+
+    @Test
+    fun lobbyRosterMessagePopulatesPlayerList() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":[{"playerId":5,"userId":20,"username":"Alice","coins":3},{"playerId":6,"userId":21,"username":"Bob","coins":5}]}"""
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
+        val players = client.players.value
+        assertEquals(2, players.size)
+        assertEquals("5", players[0].id)
+        assertEquals("Alice", players[0].displayName)
+        assertEquals(3, players[0].coins)
+        assertEquals("6", players[1].id)
+        assertEquals("Bob", players[1].displayName)
+        assertEquals(5, players[1].coins)
+    }
+
+    @Test
+    fun lobbyRosterReplacesExistingPlayerList() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        // Seed one player via LOBBY_JOINED
+        factory.simulateText(
+            gameActionFrame("""{"type":"LOBBY_JOINED","gameId":1,"payload":{"playerId":5,"userId":20,"username":"Alice","coins":3,"gameId":1}}""")
+        )
+        assertEquals(1, client.players.value.size)
+        // LOBBY_ROSTER with two players replaces the list entirely
+        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":[{"playerId":5,"userId":20,"username":"Alice","coins":3},{"playerId":7,"userId":22,"username":"Carol","coins":3}]}"""
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
+        val players = client.players.value
+        assertEquals(2, players.size)
+        assertTrue(players.any { it.displayName == "Carol" })
+    }
+
+    @Test
+    fun lobbyRosterWithEmptyArrayClearsPlayerList() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        factory.simulateText(
+            gameActionFrame("""{"type":"LOBBY_JOINED","gameId":1,"payload":{"playerId":5,"userId":20,"username":"Alice","coins":3,"gameId":1}}""")
+        )
+        assertEquals(1, client.players.value.size)
+        val emptyRoster = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":[]}"""
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$emptyRoster ")
+        assertEquals(0, client.players.value.size)
+    }
+
+    @Test
+    fun lobbyRosterSkipsEntriesWithMissingUsername() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        // Second entry has no username field
+        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":[{"playerId":5,"userId":20,"username":"Alice","coins":3},{"playerId":6,"userId":21,"coins":3}]}"""
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
+        val players = client.players.value
+        assertEquals(1, players.size)
+        assertEquals("Alice", players[0].displayName)
+    }
+
+    @Test
+    fun lobbyRosterSkipsEntriesWithMissingPlayerId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        // First entry missing playerId, second is valid
+        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":[{"userId":20,"username":"Alice","coins":3},{"playerId":6,"userId":21,"username":"Bob","coins":3}]}"""
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
+        val players = client.players.value
+        assertEquals(1, players.size)
+        assertEquals("Bob", players[0].displayName)
+    }
+
+    @Test
+    fun lobbyRosterMessageWithNoPayloadFieldIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        // LOBBY_ROSTER with no payload key — handler must silently return
+        val noPayload = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1}"""
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$noPayload ")
+        assertEquals(emptyList<PlayerCoinState>(), client.players.value)
+    }
+
+    @Test
+    fun lobbyRosterSessionIdClearedOnDisconnectAndResubscribedOnReconnect() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(StompFrame(command = "CONNECTED", headers = mapOf("version" to "1.2", "session" to "sess-1")).serialize())
+        assertTrue(factory.socket.sentMessages.any { it.contains("destination:/queue/lobby-usersess-1") })
+
+        // Disconnect clears session ID; reconnect with new session gets new subscription
+        factory.simulateFailure(java.io.IOException("drop"))
+        runCurrent()
+        factory.simulateOpen()
+        factory.socket.sentMessages.clear()
+        factory.simulateText(StompFrame(command = "CONNECTED", headers = mapOf("version" to "1.2", "session" to "sess-2")).serialize())
+        assertTrue(factory.socket.sentMessages.any { it.contains("destination:/queue/lobby-usersess-2") })
+    }
+
     /** Connects a client and feeds it one realistic SYNC snapshot frame. */
     private fun clientAfterSync(): OkHttpWebSocketClient {
         val factory = FakeWebSocketFactory()
