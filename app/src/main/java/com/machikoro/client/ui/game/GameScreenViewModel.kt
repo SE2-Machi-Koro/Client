@@ -5,19 +5,25 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.LandmarkType
+import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PurchaseState
-import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.websocket.WebSocketClient
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+// Maximum time to wait for a dice-result response from the server
+// before forcibly stopping the rolling animation. Prevents the dice UI from
+// spinning forever when the network is slow or the server never replies.
+private const val DICE_ROLL_TIMEOUT_MS = 10_000L
 
 class GameScreenViewModel(
     private val webSocketClient: WebSocketClient,
@@ -46,6 +52,17 @@ class GameScreenViewModel(
                 mutableState.update { state ->
                     state.copy(gamePhase = gamePhase)
                         .resetPurchaseFeedbackIf(gamePhase != GamePhase.BUY_OR_BUILD)
+                        // If the game phase changes away from ROLL_DICE
+                        // while a roll is in progress (e.g. the server advances the
+                        // turn without sending a diceResult), stop the animation so
+                        // the dice do not spin indefinitely.
+                        .let { updated ->
+                            if (state.isRolling && gamePhase != GamePhase.ROLL_DICE) {
+                                updated.copy(isRolling = false)
+                            } else {
+                                updated
+                            }
+                        }
                 }
             }
         }
@@ -56,6 +73,7 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.diceResult.collect { diceResult ->
+                // FIX (Bug 3): Server confirmed the result — always stop rolling.
                 mutableState.update { it.copy(diceResult = diceResult, isRolling = false) }
             }
         }
@@ -110,8 +128,24 @@ class GameScreenViewModel(
     fun rollDice(diceCount: Int = 1) {
         if (mutableState.value.gamePhase != GamePhase.ROLL_DICE) return
         if (!mutableState.value.isActivePlayer) return
+        // Guard against a double-tap or rapid re-roll while the
+        // previous roll is still in flight. isRolling acts as a mutex here.
+        if (mutableState.value.isRolling) return
+
         mutableState.update { it.copy(isRolling = true) }
         webSocketClient.rollDice(diceCount)
+
+        //  Start a timeout coroutine so that if the server never
+        // replies (network error, server bug, message loss), the animation stops
+        // after DICE_ROLL_TIMEOUT_MS and the button becomes pressable again.
+        viewModelScope.launch {
+            delay(DICE_ROLL_TIMEOUT_MS)
+            // Only reset if isRolling is still true — if the server replied in
+            // time this will already be false and the update is a no-op.
+            mutableState.update { current ->
+                if (current.isRolling) current.copy(isRolling = false) else current
+            }
+        }
     }
 
     fun purchase(itemType: String) {
@@ -139,12 +173,12 @@ class GameScreenViewModel(
 
     private fun GameScreenState.canStartPurchase(item: ShopItem): Boolean =
         isBuyingPhase &&
-            isActivePlayer &&
-            purchaseState != PurchaseState.PENDING &&
-            purchaseState != PurchaseState.SUCCESS &&
-            item.isAvailable &&
-            hasEnoughKnownCoinsFor(item) &&
-            !isKnownBuiltLandmark(item)
+                isActivePlayer &&
+                purchaseState != PurchaseState.PENDING &&
+                purchaseState != PurchaseState.SUCCESS &&
+                item.isAvailable &&
+                hasEnoughKnownCoinsFor(item) &&
+                !isKnownBuiltLandmark(item)
 
     private fun GameScreenState.hasEnoughKnownCoinsFor(item: ShopItem): Boolean {
         val activePlayerCoins = players.firstOrNull { it.isActivePlayer }?.coins
