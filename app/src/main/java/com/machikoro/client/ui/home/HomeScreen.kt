@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.machikoro.client.BuildConfig
 import com.machikoro.client.R
 import com.machikoro.client.ui.theme.ButtonBlueDark
 import com.machikoro.client.ui.theme.ButtonBlueLight
@@ -132,16 +133,18 @@ fun HomeScreen(
                 .padding(top = 20.dp, start = 30.dp)
         )
 
-        // Small dev-only button — clears all games/lobbies from the DB
-        Text(
-            text = "⚙ Purge DB",
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.Red.copy(alpha = 0.5f),
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(top = 70.dp, start = 32.dp)
-                .clickable { onPurgeClick() }
-        )
+        // Debug-only button — hidden in release builds
+        if (BuildConfig.DEBUG) {
+            Text(
+                text = "⚙ Purge DB",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Red.copy(alpha = 0.5f),
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 70.dp, start = 32.dp)
+                    .clickable { onPurgeClick() }
+            )
+        }
 
         // === MAIN ACTION BUTTONS ===
         // Three main lobby actions in the center of the screen.

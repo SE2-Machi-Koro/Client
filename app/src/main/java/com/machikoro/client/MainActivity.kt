@@ -80,8 +80,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SessionManager.attach(DataStoreSessionStorage(applicationContext))
-        // Always start unauthenticated so StartScreen is the first screen seen
-        lifecycleScope.launch { SessionManager.signOut() }
+        // Only sign out on a genuine fresh launch, not rotation or process recreation
+        if (savedInstanceState == null) lifecycleScope.launch { SessionManager.signOut() }
         enableEdgeToEdge()
         setContent {
             val startScreenState by startScreenViewModel.state.collectAsState()
@@ -191,9 +191,12 @@ class MainActivity : ComponentActivity() {
                         },
                         onPurgeClick = {
                             lifecycleScope.launch {
-                                debugApi.purge()
-                                webSocketClient.clearGameState()
-                                navigationViewModel.leaveLobby()
+                                // Only clear local state if the server accepted the purge
+                                val response = debugApi.purge()
+                                if (response.isSuccessful) {
+                                    webSocketClient.clearGameState()
+                                    navigationViewModel.leaveLobby()
+                                }
                             }
                         },
                         onPurchaseClick = gameScreenViewModel::purchase,
