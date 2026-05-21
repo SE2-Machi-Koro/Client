@@ -25,6 +25,8 @@ import com.machikoro.client.domain.session.DataStoreSessionStorage
 import com.machikoro.client.domain.session.SessionManager
 import com.machikoro.client.network.auth.AuthApiFactory
 import com.machikoro.client.network.debug.DebugApiFactory
+import com.machikoro.client.network.health.BackendHealthRepository
+import com.machikoro.client.network.health.HealthApiFactory
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.AppRoot
 import com.machikoro.client.ui.game.GameScreenViewModel
@@ -51,8 +53,14 @@ class MainActivity : ComponentActivity() {
     private val debugApi by lazy {
         DebugApiFactory.create(AppConfig.backendBaseUrl)
     }
+    private val healthApi by lazy {
+        HealthApiFactory.create(AppConfig.backendBaseUrl)
+    }
+    private val healthRepository by lazy {
+        BackendHealthRepository(healthApi)
+    }
     private val startScreenViewModel by viewModels<StartScreenViewModel> {
-        StartScreenViewModel.Factory(webSocketClient, SessionManager)
+        StartScreenViewModel.Factory(webSocketClient, SessionManager, healthRepository)
     }
     private val gameScreenViewModel by viewModels<GameScreenViewModel> {
         GameScreenViewModel.Factory(webSocketClient, SessionManager)
