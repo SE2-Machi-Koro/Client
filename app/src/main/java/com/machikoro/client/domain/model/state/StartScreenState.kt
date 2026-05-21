@@ -4,12 +4,14 @@ data class StartScreenState(
     val title: String,
     val connectionStatus: ConnectionStatus,
     val loggedInAs: String? = null,
+    val backendHealth: BackendHealth = BackendHealth.UNKNOWN,
 ) {
     companion object {
         fun placeholder() = StartScreenState(
             title = "Machi Koro Client",
             connectionStatus = ConnectionStatus.IDLE,
             loggedInAs = null,
+            backendHealth = BackendHealth.UNKNOWN,
         )
     }
 }
