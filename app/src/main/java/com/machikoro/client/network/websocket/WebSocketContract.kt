@@ -14,6 +14,7 @@ object WebSocketContract {
     const val rollDiceDestination: String = "/app/game.rollDice"
     const val createLobbyDestination: String = "/app/lobby.create"
     const val joinLobbyDestination = "/app/lobby.join"
+    const val leaveLobbyDestination = "/app/lobby.leave"
     const val gameStartDestination: String = "/app/game.start"
     // Server PR #216 exposes PurchaseRequest at @MessageMapping("/game.purchase").
     const val purchaseDestination: String = "/app/game.purchase"
@@ -21,7 +22,9 @@ object WebSocketContract {
     // Per-user reconnect snapshot queue. The server resolves /user/** to the
     // authenticated principal, so each client only sees its own snapshot.
     const val gameSyncQueue: String = "/user/queue/game-sync"
-    // Prefix for session-scoped lobby queue; append STOMP session ID to get the full destination
+    // Broker-side prefix for lobby subscriptions (Spring appends sessionId)
     const val lobbyQueuePrefix: String = "/queue/lobby-user"
+    // User-scoped lobby queue — Spring maps this to /queue/lobby-user{sessionId} on the broker side
+    const val lobbyQueue: String = "/user/queue/lobby"
     const val defaultSender: String = "android-client"
 }

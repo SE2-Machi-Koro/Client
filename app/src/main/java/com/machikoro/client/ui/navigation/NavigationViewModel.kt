@@ -46,12 +46,25 @@ class NavigationViewModel(
     // which can cause unnecessary navigation attempts and UI churn.
     internal var lastNavigation: Pair<AppRoute, AppRoute.AppRouteArguments>? = null
 
+    // True only after the user explicitly enters a lobby this session.
+    // Prevents reconnect snapshots from auto-navigating to Game right after login.
+    private var hasBeenInLobby = false
+
     fun showLobby() {
+        hasBeenInLobby = true
         mutableUiState.update { it.copy(showLobbyScreen = true) }
     }
 
     fun leaveLobby() {
+        hasBeenInLobby = false
         mutableUiState.update { it.copy(showLobbyScreen = false) }
+        navigateTo(AppRoute.Home)
+    }
+
+    // Navigates directly to Game without going through the lobby flow.
+    fun resumeGame(gameId: Int?) {
+        hasBeenInLobby = true
+        navigateTo(AppRoute.Game, AppRoute.AppRouteArguments(gameId = gameId))
     }
 
     fun navigateTo(
@@ -94,9 +107,13 @@ class NavigationViewModel(
         viewModelScope.launch {
             val loggedIn = startScreenState.loggedInAs != null
             val targetRoute = when {
-                !loggedIn -> AppRoute.Main
+                !loggedIn -> {
+                    hasBeenInLobby = false
+                    AppRoute.Main
+                }
                 gameScreenState.gameStatus == GameStatus.FINISHED -> AppRoute.Winner
-                gameScreenState.gamePhase != GamePhase.NONE -> AppRoute.Game
+                // Gate on hasBeenInLobby: reconnect snapshots alone must not skip HomeScreen.
+                hasBeenInLobby && gameScreenState.gamePhase != GamePhase.NONE -> AppRoute.Game
                 uiState.value.showLobbyScreen -> AppRoute.Lobby
                 else -> AppRoute.Home
             }
