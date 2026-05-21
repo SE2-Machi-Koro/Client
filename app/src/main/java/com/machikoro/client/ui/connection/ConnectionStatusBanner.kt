@@ -20,14 +20,21 @@ fun ConnectionStatusBanner(
     state: ConnectionBannerState,
     modifier: Modifier = Modifier,
 ) {
-    val (background, textColor, label) = when (state) {
-        ConnectionBannerState.Hidden -> return
-        ConnectionBannerState.Disconnected ->
-            Triple(RedLight, RedDark, "Connection lost — reconnecting…")
-        ConnectionBannerState.Reconnected ->
-            Triple(GreenLight, GreenDark, "Reconnected")
+    when (state) {
+        ConnectionBannerState.Hidden -> Unit
+        ConnectionBannerState.Disconnected -> BannerSurface(
+            background = RedLight,
+            textColor = RedDark,
+            label = "Connection lost — reconnecting…",
+            modifier = modifier,
+        )
+        ConnectionBannerState.Reconnected -> BannerSurface(
+            background = GreenLight,
+            textColor = GreenDark,
+            label = "Reconnected",
+            modifier = modifier,
+        )
     }
-    BannerSurface(background = background, textColor = textColor, label = label, modifier = modifier)
 }
 
 @Composable

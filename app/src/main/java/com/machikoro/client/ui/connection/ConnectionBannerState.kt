@@ -1,7 +1,7 @@
 package com.machikoro.client.ui.connection
 
 sealed class ConnectionBannerState {
-    object Hidden : ConnectionBannerState()
-    object Disconnected : ConnectionBannerState()
-    object Reconnected : ConnectionBannerState()
+    data object Hidden : ConnectionBannerState()
+    data object Disconnected : ConnectionBannerState()
+    data object Reconnected : ConnectionBannerState()
 }
