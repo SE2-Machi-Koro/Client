@@ -124,15 +124,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // FIX (Bug 2): Removed the old `LaunchedEffect(activeGameId)` block that
-            // called `navigationViewModel.showLobby()` automatically whenever
-            // activeGameId became non-null. This was the cause of the app jumping
-            // directly into the lobby/game screen on startup when a stale gameId
-            // was present in the WebSocket state.
-            //
-            // The lobby is now shown only via explicit user interaction
-            // (onGoToLobbyClick / onCreateLobbyClick) or after the login callback
-            // sets userHasLoggedIn = true in NavigationViewModel.
             LaunchedEffect(activeGameId) {
                 if (activeGameId != null) {
                     showJoinLobbyInput = false
@@ -174,19 +165,12 @@ class MainActivity : ComponentActivity() {
                         onRegisterDialogReset = registerDialogViewModel::reset,
                         onLoginUsernameChange = loginDialogViewModel::usernameChanged,
                         onLoginPasswordChange = loginDialogViewModel::passwordChanged,
-                        // FIX (Bug 1): onLoginSubmit now also calls onUserLoggedIn() so the
-                        // NavigationViewModel knows an explicit login happened and unlocks
-                        // navigation to Home/Lobby/Game.
                         onLoginSubmit = {
                             loginDialogViewModel.submit()
-                            navigationViewModel.onUserLoggedIn()
                         },
                         onLoginDialogReset = loginDialogViewModel::reset,
-                        // FIX (Bug 1): onLogoutSubmit resets the login flag so the next
-                        // app start correctly lands on the start screen.
                         onLogoutSubmit = {
                             logoutViewModel.submit()
-                            navigationViewModel.onUserLoggedOut()
                             // FIX: Clear lobby/game state on logout so stale activeGameId
                             // is not sent in the JOIN message on the next login, which
                             // caused the server to block lobby creation.
