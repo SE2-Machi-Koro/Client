@@ -734,12 +734,7 @@ class OkHttpWebSocketClient(
         val socket = webSocket ?: return
 
         subscribedGameId?.let { oldId ->
-            socket.send(
-                StompFrame(
-                    command = "UNSUBSCRIBE",
-                    headers = mapOf("id" to "game-topic-$oldId")
-                ).serialize()
-            )
+          unsubscribeFromGameTopic(oldId)
         }
 
         val subscribeFrame = StompFrame(
@@ -752,6 +747,22 @@ class OkHttpWebSocketClient(
 
         if (socket.send(subscribeFrame)) {
             subscribedGameId = gameId
+        }
+    }
+    private fun unsubscribeFromGameTopic(gameId: Int?) {
+        if (subscribedGameId != gameId) return
+
+        val socket = webSocket ?: return
+
+        val unsubscribeFrame = StompFrame(
+            command = "UNSUBSCRIBE",
+            headers = mapOf(
+                "id" to "game-topic-$gameId"
+            )
+        ).serialize()
+
+        if (socket.send(unsubscribeFrame)) {
+            subscribedGameId = null
         }
     }
 
