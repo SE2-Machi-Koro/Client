@@ -2,6 +2,7 @@ package com.machikoro.client.network.debug
 
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.POST
 
 interface DebugApi {
@@ -12,4 +13,8 @@ interface DebugApi {
     // Removes all non-host players from the lobby
     @POST("/debug/reset-lobby")
     suspend fun resetLobby(@Body body: ResetLobbyRequest): Response<Unit>
+
+    // Deletes all games and players — dev only
+    @DELETE("/debug/purge")
+    suspend fun purge(): Response<Unit>
 }

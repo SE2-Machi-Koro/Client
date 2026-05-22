@@ -135,6 +135,22 @@ class FakeWebSocketClient : WebSocketClient {
         lastJoinLobbyCode = lobbyCode
     }
 
+    override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow(extraBufferCapacity = 1)
+
+    var leaveLobbyGameId: Int? = null
+        private set
+
+    override fun sendLeaveLobby(gameId: Int) {
+        leaveLobbyGameId = gameId
+    }
+
+    override fun clearGameState() {
+        mutableLobbyCode.value = null
+        mutableActiveGameId.value = null
+        mutableGamePhase.value = GamePhase.NONE
+        mutablePlayers.value = emptyList()
+    }
+
     override fun clearLobbyCode() {
         mutableLobbyCode.value = null
         mutableActiveGameId.value = null

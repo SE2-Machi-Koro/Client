@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import com.machikoro.client.domain.enums.GamePhase
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -24,6 +25,8 @@ import com.machikoro.client.domain.session.DataStoreSessionStorage
 import com.machikoro.client.domain.session.SessionManager
 import com.machikoro.client.network.auth.AuthApiFactory
 import com.machikoro.client.network.debug.DebugApiFactory
+import com.machikoro.client.network.health.BackendHealthRepository
+import com.machikoro.client.network.health.HealthApiFactory
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.AppRoot
 import com.machikoro.client.ui.game.GameScreenViewModel
@@ -50,8 +53,14 @@ class MainActivity : ComponentActivity() {
     private val debugApi by lazy {
         DebugApiFactory.create(AppConfig.backendBaseUrl)
     }
+    private val healthApi by lazy {
+        HealthApiFactory.create(AppConfig.backendBaseUrl)
+    }
+    private val healthRepository by lazy {
+        BackendHealthRepository(healthApi)
+    }
     private val startScreenViewModel by viewModels<StartScreenViewModel> {
-        StartScreenViewModel.Factory(webSocketClient, SessionManager)
+        StartScreenViewModel.Factory(webSocketClient, SessionManager, healthRepository)
     }
     private val gameScreenViewModel by viewModels<GameScreenViewModel> {
         GameScreenViewModel.Factory(webSocketClient, SessionManager)
@@ -79,7 +88,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SessionManager.attach(DataStoreSessionStorage(applicationContext))
-        lifecycleScope.launch { SessionManager.hydrate() }
+        // Only sign out on a genuine fresh launch, not rotation or process recreation
+        if (savedInstanceState == null) lifecycleScope.launch { SessionManager.signOut() }
         enableEdgeToEdge()
         setContent {
             val startScreenState by startScreenViewModel.state.collectAsState()
@@ -94,6 +104,7 @@ class MainActivity : ComponentActivity() {
             val logoutState by logoutViewModel.state.collectAsState()
             var showJoinLobbyInput by remember { mutableStateOf(false) }
             val snackbarHostState = remember { SnackbarHostState() }
+            val hasActiveGame = activeGameId != null && gameScreenState.gamePhase != GamePhase.NONE
 
             LaunchedEffect(Unit) {
                 SessionManager.session.collect { session ->
@@ -122,11 +133,25 @@ class MainActivity : ComponentActivity() {
             // The lobby is now shown only via explicit user interaction
             // (onGoToLobbyClick / onCreateLobbyClick) or after the login callback
             // sets userHasLoggedIn = true in NavigationViewModel.
+            LaunchedEffect(activeGameId) {
+                if (activeGameId != null) {
+                    showJoinLobbyInput = false
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                webSocketClient.lobbyEntered.collect {
+                    // Navigate to LobbyScreen only on fresh lobby entry, not reconnect snapshots
+                    navigationViewModel.showLobby()
+                }
+            }
 
             LaunchedEffect(Unit) {
                 webSocketClient.lobbyJoinErrors.collect { message ->
                     Log.e("MainActivity", "Lobby join error received: $message")
                     homeViewModel.setJoinLobbyError(message)
+                    // Return to HomeScreen so the error is visible
+                    navigationViewModel.leaveLobby()
                 }
             }
 
@@ -182,13 +207,27 @@ class MainActivity : ComponentActivity() {
                         joinLobbyCode = joinLobbyCode,
                         joinLobbyError = joinLobbyError,
                         showJoinLobbyInput = showJoinLobbyInput,
-                        onGoToLobbyClick = {
-                            navigationViewModel.showLobby()
-                        },
                         onCreateLobbyClick = {
                             showJoinLobbyInput = false
                             homeViewModel.createLobby()
                             navigationViewModel.showLobby()
+                        },
+                        onLeaveGame = {
+                            navigationViewModel.leaveLobby()
+                        },
+                        hasActiveGame = hasActiveGame,
+                        onResumeGameClick = {
+                            navigationViewModel.resumeGame(activeGameId)
+                        },
+                        onPurgeClick = {
+                            lifecycleScope.launch {
+                                // Only clear local state if the server accepted the purge
+                                val response = debugApi.purge()
+                                if (response.isSuccessful) {
+                                    webSocketClient.clearGameState()
+                                    navigationViewModel.leaveLobby()
+                                }
+                            }
                         },
                         onPurchaseClick = gameScreenViewModel::purchase,
                         onJoinLobbyClick = {

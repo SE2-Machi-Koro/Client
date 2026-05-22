@@ -31,6 +31,7 @@ class DummyWebSocketClient : WebSocketClient {
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
+    override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow()
     override fun connect() {}
     override fun disconnect() {}
     override fun sendCreateLobby() {}
@@ -38,6 +39,8 @@ class DummyWebSocketClient : WebSocketClient {
     override fun clearLobbyCode() {}
     override fun sendGameStart() {}
     override fun rollDice(diceCount: Int) {}
+    override fun sendLeaveLobby(gameId: Int) {}
+    override fun clearGameState() {}
     override fun sendPurchase(
         gameId: Int,
         purchaseType: PurchaseType,

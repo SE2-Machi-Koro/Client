@@ -92,7 +92,7 @@ fun LobbyScreen(
     onResetLobby: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val startEnabled = isHost && playerNames.size >= 2
+    val startEnabled = isHost && playerNames.size >= 2 && isReady
 
     Box(
         modifier = modifier

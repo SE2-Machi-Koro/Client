@@ -19,6 +19,8 @@ interface WebSocketClient {
     val players: StateFlow<List<PlayerCoinState>>
     val lobbyCode: StateFlow<String?>
 
+    // Fires once when the user successfully enters a lobby (create or join), NOT on reconnect.
+    val lobbyEntered: SharedFlow<Unit>
     // Fires when joining a lobby fails, e.g. because the lobby code is invalid.
     val lobbyJoinErrors: SharedFlow<String>
     val activeGameId: StateFlow<Int?>
@@ -53,6 +55,7 @@ interface WebSocketClient {
     fun disconnect()
     fun sendCreateLobby()
     fun sendJoinLobby(lobbyCode: String)     // Sends a request to join an existing lobby by lobby code.
+    fun sendLeaveLobby(gameId: Int)          // Notifies the server that this player is leaving the lobby.
     fun clearLobbyCode()
     fun sendGameStart()
 
@@ -65,4 +68,8 @@ interface WebSocketClient {
     )
 
     fun rollDice(diceCount: Int = 1)
+
+    // Resets all in-memory game/lobby state without touching the connection.
+    // Call after a server-side purge so the UI reflects the cleared DB immediately.
+    fun clearGameState()
 }

@@ -246,6 +246,18 @@ class LobbyScreenViewModelTest {
     }
 
     @Test
+    fun isReadyResetsToFalseWhenNewLobbyCodeArrives() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = LobbyScreenViewModel(fakeClient, FakeSessionStateHolder(), FakeDebugApi())
+        viewModel.onReadyToggle()
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.isReady)
+        fakeClient.emitLobbyCode("NEW123")
+        advanceUntilIdle()
+        assertFalse(viewModel.state.value.isReady)
+    }
+
+    @Test
     fun resetLobby_handlesApiErrorGracefully() = runTest {
         val fakeClient = FakeWebSocketClient()
         val fakeDebugApi = FakeDebugApi(shouldThrow = true)
@@ -280,6 +292,8 @@ class LobbyScreenViewModelTest {
             if (shouldThrow) throw RuntimeException("Simulated network error")
             return Response.success(Unit)
         }
+
+        override suspend fun purge(): Response<Unit> = Response.success(Unit)
     }
 
     private class FakeSessionStateHolder : SessionStateHolder {

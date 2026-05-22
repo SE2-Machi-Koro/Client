@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -18,17 +19,11 @@ import com.machikoro.client.domain.model.state.StartScreenState
 /**
  * Durable navigation UI state.
  *
- * [userHasLoggedIn] is set explicitly when the user completes a login action,
- * and is never inferred from session hydration alone. This prevents the app
- * from auto-navigating away from the start screen on cold start when a
- * persisted session is restored in the background.
+ * This belongs in a ViewModel instead of MainActivity remember state so route
+ * decisions survive recomposition and configuration changes.
  */
 data class NavigationUiState(
     val showLobbyScreen: Boolean = false,
-    // FIX (Bug 1 & 2): Tracks whether the user has explicitly logged in during
-    // this app session. False on cold start even if a session is hydrated from
-    // storage, so the start screen is never auto-skipped.
-    val userHasLoggedIn: Boolean = false,
 )
 
 /**
@@ -51,29 +46,25 @@ class NavigationViewModel(
     // which can cause unnecessary navigation attempts and UI churn.
     internal var lastNavigation: Pair<AppRoute, AppRoute.AppRouteArguments>? = null
 
+    // True only after the user explicitly enters a lobby this session.
+    // Prevents reconnect snapshots from auto-navigating to Game right after login.
+    private var hasBeenInLobby = false
+
     fun showLobby() {
+        hasBeenInLobby = true
         mutableUiState.update { it.copy(showLobbyScreen = true) }
     }
 
     fun leaveLobby() {
+        hasBeenInLobby = false
         mutableUiState.update { it.copy(showLobbyScreen = false) }
+        navigateTo(AppRoute.Home)
     }
 
-    /**
-     * FIX (Bug 1 & 2): Called only from the explicit login success callback,
-     * never from a session-hydration observer. This ensures the start screen
-     * stays visible until the user actively logs in.
-     */
-    fun onUserLoggedIn() {
-        mutableUiState.update { it.copy(userHasLoggedIn = true) }
-    }
-
-    /**
-     * Resets the login flag when the user logs out so the next cold start
-     * correctly returns to the start screen.
-     */
-    fun onUserLoggedOut() {
-        mutableUiState.update { it.copy(userHasLoggedIn = false, showLobbyScreen = false) }
+    // Navigates directly to Game without going through the lobby flow.
+    fun resumeGame(gameId: Int?) {
+        hasBeenInLobby = true
+        navigateTo(AppRoute.Game, AppRoute.AppRouteArguments(gameId = gameId))
     }
 
     fun navigateTo(
@@ -104,17 +95,9 @@ class NavigationViewModel(
     /**
      * Updates navigation based on app state changes.
      *
-     * Route priority is Winner > Game > Lobby > Home > Main, matching the
-     * current game flow documented in docs/navigation.md.
-     *
-     * FIX (Bug 1 & 2): Navigation to Home now requires [NavigationUiState.userHasLoggedIn]
-     * to be true. This flag is only set by an explicit user login action
-     * ([onUserLoggedIn]), not by session hydration, so the start screen is
-     * never auto-skipped on app startup.
-     *
-     * Navigation to Game now additionally requires [NavigationUiState.userHasLoggedIn]
-     * so that a stale gamePhase/gameId in the WebSocket state cannot trigger an
-     * automatic jump into the game screen before the user has done anything.
+     * Unauthenticated users always return to Main. For authenticated users,
+     * route priority is Winner > Game > Lobby > Home, matching the current
+     * game flow documented in docs/navigation.md.
      */
     fun updateNavigationBasedOnState(
         gameScreenState: GameScreenState,
@@ -122,28 +105,17 @@ class NavigationViewModel(
         lobbyCode: String?,
     ) {
         viewModelScope.launch {
-            val ui = uiState.value
-
+            val loggedIn = startScreenState.loggedInAs != null
             val targetRoute = when {
-                // Game-over: always navigate to winner screen regardless of login state
-                // (user is already in an active session when this fires).
+                !loggedIn -> {
+                    hasBeenInLobby = false
+                    AppRoute.Main
+                }
                 gameScreenState.gameStatus == GameStatus.FINISHED -> AppRoute.Winner
-
-                // FIX: Only navigate to Game when the user has explicitly logged in
-                // during this session. Prevents stale gamePhase in the WebSocket
-                // state from auto-navigating on app startup.
-                ui.userHasLoggedIn && gameScreenState.gamePhase != GamePhase.NONE -> AppRoute.Game
-
-                // FIX: Only navigate to Lobby when the user has logged in.
-                ui.userHasLoggedIn && ui.showLobbyScreen -> AppRoute.Lobby
-
-                // FIX: Only navigate to Home when the user has explicitly logged in.
-                // Previously `startScreenState.loggedInAs != null` was enough, which
-                // caused auto-navigation whenever a persisted session was hydrated.
-                ui.userHasLoggedIn && startScreenState.loggedInAs != null -> AppRoute.Home
-
-                // Default: stay on (or navigate back to) the start screen.
-                else -> AppRoute.Main
+                // Gate on hasBeenInLobby: reconnect snapshots alone must not skip HomeScreen.
+                hasBeenInLobby && gameScreenState.gamePhase != GamePhase.NONE -> AppRoute.Game
+                uiState.value.showLobbyScreen -> AppRoute.Lobby
+                else -> AppRoute.Home
             }
 
             val routeArguments = AppRoute.AppRouteArguments(

@@ -67,8 +67,11 @@ fun AppRoot(
     onResetLobby: () -> Unit = {},
     onRollDice: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
-    modifier: Modifier = Modifier,
-    onGoToLobbyClick: () -> Unit = {},
+    onLeaveGame: () -> Unit = {},
+    hasActiveGame: Boolean = false,
+    onResumeGameClick: () -> Unit = {},
+    onPurgeClick: () -> Unit = {},
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
 ) {
     val navController = rememberNavController()
     val appNavigator = remember(navController) { AppNavigator(navController) }
@@ -139,7 +142,6 @@ fun AppRoot(
 
         composable(AppRoute.Home.route) {
             HomeScreen(
-                lobbyCode = lobbyCode,
                 joinLobbyCode = joinLobbyCode,
                 showJoinLobbyInput = showJoinLobbyInput && lobbyCode == null,
                 onJoinLobbyClick = onJoinLobbyClick,
@@ -147,7 +149,9 @@ fun AppRoot(
                 onJoinLobbySubmit = onJoinLobbySubmit,
                 joinLobbyError = joinLobbyError,
                 onCreateLobbyClick = onCreateLobbyClick,
-                onGoToLobbyClick = onGoToLobbyClick,
+                hasActiveGame = hasActiveGame,
+                onResumeGameClick = onResumeGameClick,
+                onPurgeClick = onPurgeClick,
                 onLogoutClick = onLogoutSubmit,
                 modifier = modifier
             )
@@ -193,6 +197,7 @@ fun AppRoot(
                 state = gameScreenState.copy(gameId = routedGameId ?: gameScreenState.gameId),
                 onRollDice = onRollDice,
                 onPurchaseClick = onPurchaseClick,
+                onLeaveGame = onLeaveGame,
             )
         }
 
