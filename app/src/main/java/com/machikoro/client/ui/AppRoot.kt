@@ -1,6 +1,8 @@
 package com.machikoro.client.ui
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
@@ -13,6 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.machikoro.client.domain.enums.GamePhase
@@ -22,6 +25,8 @@ import com.machikoro.client.domain.model.state.LobbyScreenState
 import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
+import com.machikoro.client.ui.connection.ConnectionBannerState
+import com.machikoro.client.ui.connection.ConnectionStatusBanner
 import com.machikoro.client.ui.game.GameScreen
 import com.machikoro.client.ui.home.HomeScreen
 import com.machikoro.client.ui.lobby.LobbyScreen
@@ -47,6 +52,7 @@ fun AppRoot(
     joinLobbyCode: String = "",
     showJoinLobbyInput: Boolean = false,
     joinLobbyError: Boolean = false,
+    connectionBannerState: ConnectionBannerState = ConnectionBannerState.Hidden,
     onRegisterUsernameChange: (String) -> Unit,
     onRegisterPasswordChange: (String) -> Unit,
     onRegisterSubmit: () -> Unit,
@@ -76,6 +82,9 @@ fun AppRoot(
     val navController = rememberNavController()
     val appNavigator = remember(navController) { AppNavigator(navController) }
     val navigationUiState by navigationViewModel.uiState.collectAsState()
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route
+    val showConnectionBanner = currentRoute != null && currentRoute != AppRoute.Main.route
 
     // AppRoot owns the NavHost lifecycle, but route decisions are delegated to
     // NavigationViewModel so navigation state has one source of truth.
@@ -117,95 +126,101 @@ fun AppRoot(
         )
     }
 
-    NavHost(
-        navController = navController,
-        startDestination = AppRoute.Main.route,
-        modifier = modifier,
-    ) {
-        composable(AppRoute.Main.route) {
-            StartScreen(
-                state = startScreenState,
-                registerDialogState = registerDialogState,
-                loginDialogState = loginDialogState,
-                logoutState = logoutState,
-                onRegisterUsernameChange = onRegisterUsernameChange,
-                onRegisterPasswordChange = onRegisterPasswordChange,
-                onRegisterSubmit = onRegisterSubmit,
-                onRegisterDialogReset = onRegisterDialogReset,
-                onLoginUsernameChange = onLoginUsernameChange,
-                onLoginPasswordChange = onLoginPasswordChange,
-                onLoginSubmit = onLoginSubmit,
-                onLoginDialogReset = onLoginDialogReset,
-                onLogoutSubmit = onLogoutSubmit,
-            )
+    Column(modifier = modifier) {
+        AnimatedVisibility(
+            visible = showConnectionBanner && connectionBannerState !is ConnectionBannerState.Hidden,
+        ) {
+            ConnectionStatusBanner(state = connectionBannerState)
         }
+        NavHost(
+            navController = navController,
+            startDestination = AppRoute.Main.route,
+        ) {
+            composable(AppRoute.Main.route) {
+                StartScreen(
+                    state = startScreenState,
+                    registerDialogState = registerDialogState,
+                    loginDialogState = loginDialogState,
+                    logoutState = logoutState,
+                    onRegisterUsernameChange = onRegisterUsernameChange,
+                    onRegisterPasswordChange = onRegisterPasswordChange,
+                    onRegisterSubmit = onRegisterSubmit,
+                    onRegisterDialogReset = onRegisterDialogReset,
+                    onLoginUsernameChange = onLoginUsernameChange,
+                    onLoginPasswordChange = onLoginPasswordChange,
+                    onLoginSubmit = onLoginSubmit,
+                    onLoginDialogReset = onLoginDialogReset,
+                    onLogoutSubmit = onLogoutSubmit,
+                )
+            }
 
-        composable(AppRoute.Home.route) {
-            HomeScreen(
-                joinLobbyCode = joinLobbyCode,
-                showJoinLobbyInput = showJoinLobbyInput && lobbyCode == null,
-                onJoinLobbyClick = onJoinLobbyClick,
-                onJoinLobbyCodeChange = onJoinLobbyCodeChange,
-                onJoinLobbySubmit = onJoinLobbySubmit,
-                joinLobbyError = joinLobbyError,
-                onCreateLobbyClick = onCreateLobbyClick,
-                hasActiveGame = hasActiveGame,
-                onResumeGameClick = onResumeGameClick,
-                onPurgeClick = onPurgeClick,
-                onLogoutClick = onLogoutSubmit,
-                modifier = modifier
-            )
-        }
+            composable(AppRoute.Home.route) {
+                HomeScreen(
+                    joinLobbyCode = joinLobbyCode,
+                    showJoinLobbyInput = showJoinLobbyInput && lobbyCode == null,
+                    onJoinLobbyClick = onJoinLobbyClick,
+                    onJoinLobbyCodeChange = onJoinLobbyCodeChange,
+                    onJoinLobbySubmit = onJoinLobbySubmit,
+                    joinLobbyError = joinLobbyError,
+                    onCreateLobbyClick = onCreateLobbyClick,
+                    hasActiveGame = hasActiveGame,
+                    onResumeGameClick = onResumeGameClick,
+                    onPurgeClick = onPurgeClick,
+                    onLogoutClick = onLogoutSubmit,
+                    modifier = modifier,
+                )
+            }
 
-        composable(
-            route = AppRoute.Lobby.route,
-            arguments = listOf(
-                navArgument(AppRoute.Lobby.LOBBY_CODE_ARGUMENT) {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                }
-            ),
-        ) { backStackEntry ->
-            val routedLobbyCode = backStackEntry.arguments
-                ?.getString(AppRoute.Lobby.LOBBY_CODE_ARGUMENT)
-                ?.takeIf { it.isNotBlank() }
-            LobbyScreen(
-                state = lobbyScreenState,
-                lobbyCode = routedLobbyCode ?: lobbyCode,
-                onReadyToggle = onReadyToggle,
-                onStartGame = onStartGame,
-                onLeaveLobby = onLeaveLobby,
-                onFillWithDummies = onFillWithDummies,
-                onResetLobby = onResetLobby,
-            )
-        }
+            composable(
+                route = AppRoute.Lobby.route,
+                arguments = listOf(
+                    navArgument(AppRoute.Lobby.LOBBY_CODE_ARGUMENT) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) { backStackEntry ->
+                val routedLobbyCode = backStackEntry.arguments
+                    ?.getString(AppRoute.Lobby.LOBBY_CODE_ARGUMENT)
+                    ?.takeIf { it.isNotBlank() }
+                LobbyScreen(
+                    state = lobbyScreenState,
+                    lobbyCode = routedLobbyCode ?: lobbyCode,
+                    onReadyToggle = onReadyToggle,
+                    onStartGame = onStartGame,
+                    onLeaveLobby = onLeaveLobby,
+                    onFillWithDummies = onFillWithDummies,
+                    onResetLobby = onResetLobby,
+                )
+            }
 
-        composable(
-            route = AppRoute.Game.route,
-            arguments = listOf(
-                navArgument(AppRoute.Game.GAME_ID_ARGUMENT) {
-                    type = NavType.IntType
-                    defaultValue = AppRoute.Game.MISSING_GAME_ID
-                }
-            ),
-        ) { backStackEntry ->
-            val routedGameId = backStackEntry.arguments
-                ?.getInt(AppRoute.Game.GAME_ID_ARGUMENT)
-                ?.takeIf { it != AppRoute.Game.MISSING_GAME_ID }
-            GameScreen(
-                state = gameScreenState.copy(gameId = routedGameId ?: gameScreenState.gameId),
-                onRollDice = onRollDice,
-                onPurchaseClick = onPurchaseClick,
-                onLeaveGame = onLeaveGame,
-            )
-        }
+            composable(
+                route = AppRoute.Game.route,
+                arguments = listOf(
+                    navArgument(AppRoute.Game.GAME_ID_ARGUMENT) {
+                        type = NavType.IntType
+                        defaultValue = AppRoute.Game.MISSING_GAME_ID
+                    },
+                ),
+            ) { backStackEntry ->
+                val routedGameId = backStackEntry.arguments
+                    ?.getInt(AppRoute.Game.GAME_ID_ARGUMENT)
+                    ?.takeIf { it != AppRoute.Game.MISSING_GAME_ID }
+                GameScreen(
+                    state = gameScreenState.copy(gameId = routedGameId ?: gameScreenState.gameId),
+                    onRollDice = onRollDice,
+                    onPurchaseClick = onPurchaseClick,
+                    onLeaveGame = onLeaveGame,
+                )
+            }
 
-        composable(AppRoute.Winner.route) {
-            GameOverOneWinner(
-                winnerName = resolveWinnerName(gameScreenState),
-                roundsNumber = gameScreenState.roundNumber ?: 0,
-            )
+            composable(AppRoute.Winner.route) {
+                GameOverOneWinner(
+                    winnerName = resolveWinnerName(gameScreenState),
+                    roundsNumber = gameScreenState.roundNumber ?: 0,
+                )
+            }
         }
     }
 }
@@ -251,7 +266,7 @@ private fun AppRootStartScreenPreview() {
             onLogoutSubmit = {},
             lobbyCode = null,
             onCreateLobbyClick = {},
-            navigationViewModel = NavigationViewModel()
+            navigationViewModel = NavigationViewModel(),
         )
     }
 }
@@ -279,7 +294,8 @@ private fun AppRootGameScreenPreview() {
             onLogoutSubmit = {},
             lobbyCode = null,
             onCreateLobbyClick = {},
-            navigationViewModel = NavigationViewModel()
+            connectionBannerState = ConnectionBannerState.Disconnected,
+            navigationViewModel = NavigationViewModel(),
         )
     }
 }
