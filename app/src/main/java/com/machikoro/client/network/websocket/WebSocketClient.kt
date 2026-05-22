@@ -28,6 +28,7 @@ interface WebSocketClient {
     // Null if no dice have been rolled yet in the current turn.
     val diceResult: StateFlow<List<Int>?>
     val activePlayerId: StateFlow<Int?>
+    val winnerId: SharedFlow<Int?>
 
     // Reconnect snapshot fields, populated from the /app/game.sync response.
     // gameStatus is null until the first snapshot arrives.
