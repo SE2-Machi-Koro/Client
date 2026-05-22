@@ -47,6 +47,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.ShopItemColor
@@ -153,7 +154,7 @@ fun GameScreen(
                 state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
             }
 
-            if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer) {
+            if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer  && state.gameStatus == GameStatus.IN_PROGRESS) {
                 Button(
                     onClick = onRollDice,
                     enabled = !state.isRolling,
