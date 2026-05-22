@@ -48,6 +48,8 @@ class OkHttpWebSocketClient(
 
     override val lobbyJoinErrors: SharedFlow<String>
         get() = mutableLobbyJoinErrors.asSharedFlow()
+    override val winnerId: StateFlow<Int?>
+        get() = mutableWinnerId.asStateFlow()
 
     override val diceResult: StateFlow<List<Int>?>
         get() = mutableDiceResult.asStateFlow()
@@ -90,6 +92,8 @@ class OkHttpWebSocketClient(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
+    private val mutableWinnerId = MutableStateFlow<Int?>(null)
+
     private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
     private val mutableActivePlayerId = MutableStateFlow<Int?>(null)
     private val mutableActiveGameId = MutableStateFlow<Int?>(null)
