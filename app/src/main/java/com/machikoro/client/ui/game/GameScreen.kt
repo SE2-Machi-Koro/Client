@@ -499,7 +499,7 @@ private fun BuyingPhaseShop(
     onPurchaseClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Disable buying until both active-player state and a server game id are known.
+    // Disable buying until game is IN_PROGRESS, both active-player state and a server game id are known.
     val canPurchase = state.canCurrentPlayerPurchase() && state.gameId != null
     Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
@@ -613,7 +613,7 @@ private fun ShopItemCard(
     }
 }
 
-private fun GameScreenState.canCurrentPlayerPurchase(): Boolean = isActivePlayer
+private fun GameScreenState.canCurrentPlayerPurchase(): Boolean = isActivePlayer && gameStatus == GameStatus.IN_PROGRESS
 
 private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
     item.isAvailable &&
@@ -621,6 +621,7 @@ private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
         !isKnownBuiltLandmark(item)
 
 private fun GameScreenState.disabledReasonFor(item: ShopItem): String = when {
+    gameStatus != GameStatus.IN_PROGRESS -> "Game not active"
     !isActivePlayer -> "Waiting"
     gameId == null -> "No game"
     !item.isAvailable -> "Unavailable"
