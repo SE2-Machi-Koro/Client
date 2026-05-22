@@ -399,6 +399,7 @@ class OkHttpWebSocketClient(
                 }
                 parsePurchaseSuccess(json)?.let { mutablePurchaseEvents.tryEmit(it) }
                 parseDiceResult(json)?.let { mutableDiceResult.value = it }
+                handleGameEnded(json)
             }
             "ERROR" -> {
                 Log.e(TAG, "STOMP error frame received: ${frame.body}")
@@ -490,6 +491,16 @@ class OkHttpWebSocketClient(
         parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
         mutablePlayers.value = payload.optJSONArray("players").toPlayerCoinStates(payload, game)
         updateShopItemsFromState(payload)
+    }
+    private fun handleGameEnded(json: JSONObject) {
+        if (json.optString("type") != GAME_ENDED_TYPE) return
+
+        val payload = json.optJSONObject("payload") ?: return
+        val winnerId = payload.optIntOrNull("winnerId") ?: return
+
+        mutableWinnerId.value = winnerId
+        unsubscribeFromGameTopic(mutableActiveGameId.value)
+        resetGameState()
     }
 
     /**
@@ -841,6 +852,7 @@ class OkHttpWebSocketClient(
         private const val TAG = "OkHttpWebSocketClient"
         private const val GAME_ACTION_TYPE = "GAME_ACTION"
         private const val GAME_STARTED_TYPE = "GAME_STARTED"
+        private const val GAME_ENDED_TYPE = "GAME_END"
         private const val AUTH_HEADER = "Authorization"
         private const val BEARER_PREFIX = "Bearer "
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
