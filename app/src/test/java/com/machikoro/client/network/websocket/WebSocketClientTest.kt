@@ -42,7 +42,6 @@ class DummyWebSocketClient : WebSocketClient {
     override fun sendGameStart() {}
     override fun rollDice(diceCount: Int) {}
     override fun sendLeaveLobby(gameId: Int) {}
-    override fun clearGameState() {}
     override fun sendPurchase(
         gameId: Int,
         purchaseType: PurchaseType,

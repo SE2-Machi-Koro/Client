@@ -74,7 +74,6 @@ fun AppRoot(
     onRollDice: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
     onBackHome: () -> Unit = {},
-    modifier: Modifier = Modifier,
     onGoToLobbyClick: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     hasActiveGame: Boolean = false,
@@ -218,12 +217,13 @@ fun AppRoot(
                 )
             }
 
-        composable(AppRoute.Winner.route) {
-            GameOverOneWinner(
-                winnerName = resolveWinnerName(gameScreenState),
-                roundsNumber = gameScreenState.roundNumber ?: 0,
-                onBackHome = onBackHome,
-            )
+            composable(AppRoute.Winner.route) {
+                GameOverOneWinner(
+                    winnerName = resolveWinnerName(gameScreenState),
+                    roundsNumber = gameScreenState.roundNumber ?: 0,
+                    onBackHome = onBackHome,
+                )
+            }
         }
     }
 }

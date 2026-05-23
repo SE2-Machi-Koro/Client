@@ -1506,8 +1506,6 @@ class OkHttpWebSocketClientTest {
         assertNull(client.lobbyCode.value)
     }
 
-    /** Connects a client and feeds it one realistic SYNC snapshot frame. */
-    private fun clientAfterSync(): OkHttpWebSocketClient {
     // ── auto-reconnect (#166) ────────────────────────────────────────────────
 
     @Test

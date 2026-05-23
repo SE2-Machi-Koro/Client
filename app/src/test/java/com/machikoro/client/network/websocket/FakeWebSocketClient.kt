@@ -148,13 +148,6 @@ class FakeWebSocketClient : WebSocketClient {
         leaveLobbyGameId = gameId
     }
 
-    override fun clearGameState() {
-        mutableLobbyCode.value = null
-        mutableActiveGameId.value = null
-        mutableGamePhase.value = GamePhase.NONE
-        mutablePlayers.value = emptyList()
-    }
-
     override fun clearLobbyCode() {
         mutableLobbyCode.value = null
         mutableActiveGameId.value = null
