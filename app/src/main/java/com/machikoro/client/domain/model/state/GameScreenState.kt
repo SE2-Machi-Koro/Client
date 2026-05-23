@@ -13,6 +13,7 @@ data class GameScreenState(
     val players: List<PlayerCoinState>,
     val diceResult: List<Int>? = null,
     val activePlayerId: Int? = null,
+    val winnerId: Int? = null,
     val myUserId: Int? = null,
     val purchaseState: PurchaseState,
     // Tracks the one local buy/build request currently waiting for a server GAME_ACTION.
@@ -35,7 +36,7 @@ data class GameScreenState(
     // Keeps UI visibility tied to the existing phase stream from the server.
     val isBuyingPhase: Boolean
         get() = gamePhase == GamePhase.BUY_OR_BUILD
-  
+
     companion object {
         fun initial() = GameScreenState(
             gameId = null,
