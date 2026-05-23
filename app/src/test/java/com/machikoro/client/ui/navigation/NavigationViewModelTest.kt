@@ -114,6 +114,7 @@ class NavigationViewModelTest {
                 gameStatus = GameStatus.FINISHED,
                 gamePhase = GamePhase.ROLL_DICE,
                 gameId = 42,
+                winnerId = 11,
             ),
             startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
             lobbyCode = "ABC1234",
