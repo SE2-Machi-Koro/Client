@@ -54,6 +54,10 @@ class NavigationViewModel(
         mutableUiState.update { it.copy(showLobbyScreen = false) }
     }
 
+    fun returnHome() {
+        mutableUiState.update { it.copy(showLobbyScreen = false) }
+    }
+
     fun navigateTo(
         route: AppRoute,
         arguments: AppRoute.AppRouteArguments = AppRoute.AppRouteArguments(),
