@@ -1,9 +1,6 @@
 package com.machikoro.client.ui.home
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.widget.Toast
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -41,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.machikoro.client.BuildConfig
 import com.machikoro.client.R
 import com.machikoro.client.ui.theme.ButtonBlueDark
 import com.machikoro.client.ui.theme.ButtonBlueLight
@@ -51,8 +49,6 @@ import com.machikoro.client.ui.theme.White
 
 @Composable
 fun HomeScreen(
-    // Latest lobby code received from the server after creating a lobby.
-    lobbyCode: String? = null,
     joinLobbyCode: String = "",
     showJoinLobbyInput: Boolean = false,
     onJoinLobbyCodeChange: (String) -> Unit = {},
@@ -62,11 +58,13 @@ fun HomeScreen(
     onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    onGoToLobbyClick: () -> Unit = {},
     onJoinLobbySubmit: () -> Unit = {},
     joinLobbyError: Boolean = false,
+    hasActiveGame: Boolean = false,
+    onResumeGameClick: () -> Unit = {},
+    onPurgeClick: () -> Unit = {},
     onLogoutClick: () -> Unit,
-    modifier: Modifier = Modifier
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     // Root container. Box allows placing elements freely with align().
     Box(
@@ -135,6 +133,19 @@ fun HomeScreen(
                 .padding(top = 20.dp, start = 30.dp)
         )
 
+        // Debug-only button — hidden in release builds
+        if (BuildConfig.DEBUG) {
+            Text(
+                text = "⚙ Purge DB",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Red.copy(alpha = 0.5f),
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 70.dp, start = 32.dp)
+                    .clickable { onPurgeClick() }
+            )
+        }
+
         // === MAIN ACTION BUTTONS ===
         // Three main lobby actions in the center of the screen.
         Column(
@@ -158,6 +169,7 @@ fun HomeScreen(
                         iconRes = R.drawable.home_lobby_join_icon,
                         text = "Join Lobby",
                         isPrimary = false,
+                        enabled = !hasActiveGame,
                         onClick = onJoinLobbyClick
                     )
 
@@ -182,24 +194,17 @@ fun HomeScreen(
                         iconRes = R.drawable.home_lobby_create_icon,
                         text = "Create Lobby",
                         isPrimary = true,
+                        enabled = !hasActiveGame,
                         onClick = onCreateLobbyClick
                     )
-
-                    lobbyCode?.let { code ->
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        LobbyCodeRow(
-                            code = code,
-                            onGoToLobbyClick = onGoToLobbyClick
-                        )
-                    }
                 }
 
                 HomeCard(
-                    iconRes = R.drawable.home_lobby_public_icon,
-                    text = "Public Lobbys",
+                    iconRes = R.drawable.home_lobby_join_icon,
+                    text = "Resume Game",
                     isPrimary = false,
-                    onClick = onPublicLobbiesClick
+                    enabled = hasActiveGame,
+                    onClick = onResumeGameClick
                 )
             }
         }
@@ -212,7 +217,6 @@ fun HomeScreen(
             onSettingsClick = onSettingsClick,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .offset(x = 0.dp, y = 40.dp)
         )
     }
 }
@@ -247,7 +251,8 @@ private fun HomeCard(
     iconRes: Int,
     text: String,
     isPrimary: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    enabled: Boolean = true,
 ) {
     // The primary card is highlighted with dark blue.
     val backgroundColor = if (isPrimary) ButtonBlueDark else ButtonBlueLight
@@ -256,6 +261,7 @@ private fun HomeCard(
     // Button is used as a card because it is already clickable and supports elevation.
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier
             .width(160.dp)
             .height(140.dp),
@@ -288,83 +294,6 @@ private fun HomeCard(
                 overflow = TextOverflow.Ellipsis,
                 color = textColor
             )
-        }
-    }
-}
-
-@Composable
-private fun LobbyCodeRow(
-    code: String,
-    onGoToLobbyClick: () -> Unit
-) {
-    val context = LocalContext.current
-
-    fun copyLobbyCodeToClipboard() {
-        val clipboard =
-            context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-
-        val clip = ClipData.newPlainText("Lobby Code", code)
-        clipboard.setPrimaryClip(clip)
-
-        Toast.makeText(context, "Lobby code copied", Toast.LENGTH_SHORT).show()
-    }
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Card(
-            modifier = Modifier
-                .width(110.dp)
-                .height(34.dp),
-            shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = 12.dp, end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = code,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0x4D004E7E),
-                    maxLines = 1
-                )
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                Image(
-                    painter = painterResource(id = R.drawable.home_copy_icon),
-                    contentDescription = "Copy lobby code",
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickable {
-                            copyLobbyCodeToClipboard()
-                        }
-                )
-            }
-        }
-
-        // Allows the player to confirm the created lobby and continue to the lobby screen.
-        Card(
-            modifier = Modifier.size(34.dp).clickable(onClick = onGoToLobbyClick),
-            shape = RoundedCornerShape(6.dp),
-            colors = CardDefaults.cardColors(containerColor = White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.home_check_icon),
-                    contentDescription = "Confirm lobby code",
-                    modifier = Modifier.size(18.dp)
-                )
-            }
         }
     }
 }
@@ -582,19 +511,6 @@ private fun HomeScreenPreview() {
     ClientTheme {
         HomeScreen(
             onLogoutClick = {},
-            onGoToLobbyClick = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun HomeScreenWithLobbyCodePreview() {
-    ClientTheme {
-        HomeScreen(
-            onLogoutClick = {},
-            onGoToLobbyClick = {},
-            lobbyCode = "AJ25Z39"
         )
     }
 }
@@ -605,7 +521,6 @@ private fun HomeScreenWithJoinLobbyCodePreview() {
     ClientTheme {
         HomeScreen(
             onLogoutClick = {},
-            onGoToLobbyClick = {},
             joinLobbyCode = "AJ25Z39",
             showJoinLobbyInput = true,
             onJoinLobbyCodeChange = {},

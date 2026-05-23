@@ -1,13 +1,19 @@
 package com.machikoro.client.ui.start
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -20,11 +26,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.R
+import com.machikoro.client.domain.model.state.BackendHealth
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LogoutState
@@ -35,6 +43,12 @@ import com.machikoro.client.ui.theme.ClientTheme
 private val SecondaryActionShape = RoundedCornerShape(8.dp)
 private val SecondaryActionColor = Color(0xFF64B5F6)
 private val SecondaryActionTextColor = Color.Black
+
+private val HealthChipShape = RoundedCornerShape(12.dp)
+private val HealthChipBackground = Color.White.copy(alpha = 0.85f)
+private val HealthUpColor = Color(0xFF4CAF50)
+private val HealthDownColor = Color(0xFFE53935)
+private val HealthUnknownColor = Color(0xFFB0BEC5)
 
 @Composable
 fun StartScreen(
@@ -73,6 +87,12 @@ fun StartScreen(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = 16.dp, end = 16.dp),
+            )
+            BackendHealthChip(
+                health = state.backendHealth,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 16.dp, start = 16.dp),
             )
 
             Column(
@@ -186,6 +206,38 @@ private fun SecondaryActionButton(
     }
 }
 
+@Composable
+private fun BackendHealthChip(
+    health: BackendHealth,
+    modifier: Modifier = Modifier,
+) {
+    val (dotColor, label) = when (health) {
+        BackendHealth.UP -> HealthUpColor to "Connected"
+        BackendHealth.DOWN -> HealthDownColor to "Backend unreachable"
+        BackendHealth.UNKNOWN -> HealthUnknownColor to "Checking…"
+    }
+    Row(
+        modifier = modifier
+            .clip(HealthChipShape)
+            .background(HealthChipBackground)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(dotColor),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = label,
+            color = Color.Black,
+            style = MaterialTheme.typography.labelMedium,
+        )
+    }
+}
+
 @Preview(
     showBackground = true,
     widthDp = 917,
@@ -196,7 +248,8 @@ private fun StartScreenPreview() {
     ClientTheme {
         StartScreen(
             state = StartScreenState.placeholder().copy(
-                connectionStatus = ConnectionStatus.CONNECTED
+                connectionStatus = ConnectionStatus.CONNECTED,
+                backendHealth = BackendHealth.UP,
             ),
             registerDialogState = RegisterDialogState(),
             loginDialogState = LoginDialogState(),
@@ -226,6 +279,7 @@ private fun StartScreenAuthenticatedPreview() {
             state = StartScreenState.placeholder().copy(
                 connectionStatus = ConnectionStatus.CONNECTED,
                 loggedInAs = "alice",
+                backendHealth = BackendHealth.DOWN,
             ),
             registerDialogState = RegisterDialogState(),
             loginDialogState = LoginDialogState(),

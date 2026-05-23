@@ -192,6 +192,7 @@ class GameScreenViewModelTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
 
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
         fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
@@ -206,6 +207,7 @@ class GameScreenViewModelTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
 
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
         fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
@@ -220,6 +222,7 @@ class GameScreenViewModelTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 1)
 
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
         fakeClient.emitActivePlayerId(99)
         advanceUntilIdle()
@@ -268,6 +271,7 @@ class GameScreenViewModelTest {
         val viewModel = viewModel(fakeClient, userId = 42)
 
         fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
         fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
@@ -293,6 +297,7 @@ class GameScreenViewModelTest {
         val viewModel = viewModel(fakeClient, userId = 42)
 
         fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
         fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
@@ -317,6 +322,7 @@ class GameScreenViewModelTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
 
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
         fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
@@ -333,6 +339,7 @@ class GameScreenViewModelTest {
         val viewModel = viewModel(fakeClient, userId = 42)
 
         fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
         fakeClient.emitActivePlayerId(99)
         advanceUntilIdle()
@@ -349,6 +356,7 @@ class GameScreenViewModelTest {
         val viewModel = viewModel(fakeClient, userId = 42)
 
         fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
         fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
@@ -374,6 +382,7 @@ class GameScreenViewModelTest {
         val viewModel = viewModel(fakeClient, userId = 42)
 
         fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
         fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
@@ -399,6 +408,7 @@ class GameScreenViewModelTest {
         val viewModel = viewModel(fakeClient, userId = 42)
 
         fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
         fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
@@ -432,6 +442,7 @@ class GameScreenViewModelTest {
         val viewModel = viewModel(fakeClient, userId = 42)
 
         fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
         fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
@@ -458,6 +469,7 @@ class GameScreenViewModelTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
 
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
         fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
@@ -472,6 +484,7 @@ class GameScreenViewModelTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
 
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
         fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
@@ -490,6 +503,7 @@ class GameScreenViewModelTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
 
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
         fakeClient.emitActivePlayerId(42)
         advanceUntilIdle()
@@ -504,6 +518,7 @@ class GameScreenViewModelTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 1)
 
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
         fakeClient.emitActivePlayerId(99)
         advanceUntilIdle()
@@ -592,5 +607,52 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         assertEquals(marketplace, viewModel.state.value.marketplace)
+    }
+
+    @Test
+    fun rollDiceIsIgnoredWhenGameStatusIsNotInProgress() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.WAITING)  // Not IN_PROGRESS
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+
+        assertNull(fakeClient.lastRolledDiceCount)
+    }
+
+    @Test
+    fun purchaseIsIgnoredWhenGameStatusIsNotInProgress() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.WAITING)  // Not IN_PROGRESS
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+
+        assertNull(fakeClient.lastPurchase)
+        assertEquals(PurchaseState.IDLE, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun rollDiceIsIgnoredWhenGameStatusIsFinished() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.FINISHED)
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+
+        assertNull(fakeClient.lastRolledDiceCount)
     }
 }

@@ -11,6 +11,7 @@ import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -113,6 +114,7 @@ class GameScreenViewModel(
     }
 
     fun rollDice(diceCount: Int = 1) {
+        if (mutableState.value.gameStatus != GameStatus.IN_PROGRESS) return
         if (mutableState.value.gamePhase != GamePhase.ROLL_DICE) return
         if (!mutableState.value.isActivePlayer) return
         mutableState.update { it.copy(isRolling = true) }
@@ -147,6 +149,7 @@ class GameScreenViewModel(
     }
 
     private fun GameScreenState.canStartPurchase(item: ShopItem): Boolean =
+        gameStatus == GameStatus.IN_PROGRESS &&
         isBuyingPhase &&
             isActivePlayer &&
             purchaseState != PurchaseState.PENDING &&

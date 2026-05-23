@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.domain.session.SessionStateHolder
+import com.machikoro.client.network.health.BackendHealthRepository
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +16,7 @@ import kotlinx.coroutines.launch
 class StartScreenViewModel(
     private val webSocketClient: WebSocketClient,
     private val sessionStateHolder: SessionStateHolder,
+    private val healthRepository: BackendHealthRepository,
 ) : ViewModel() {
     val state: StateFlow<StartScreenState>
         get() = mutableState.asStateFlow()
@@ -36,18 +38,30 @@ class StartScreenViewModel(
                 }
             }
         }
-    }
-
-        class Factory(
-            private val webSocketClient: WebSocketClient,
-            private val sessionStateHolder: SessionStateHolder,
-        ) : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                require(modelClass.isAssignableFrom(StartScreenViewModel::class.java)) {
-                    "Unknown ViewModel class: ${modelClass.name}"
+        viewModelScope.launch {
+            healthRepository.observe().collect { health ->
+                mutableState.update { current ->
+                    current.copy(backendHealth = health)
                 }
-                return StartScreenViewModel(webSocketClient, sessionStateHolder) as T
             }
         }
     }
+
+    class Factory(
+        private val webSocketClient: WebSocketClient,
+        private val sessionStateHolder: SessionStateHolder,
+        private val healthRepository: BackendHealthRepository,
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            require(modelClass.isAssignableFrom(StartScreenViewModel::class.java)) {
+                "Unknown ViewModel class: ${modelClass.name}"
+            }
+            return StartScreenViewModel(
+                webSocketClient,
+                sessionStateHolder,
+                healthRepository,
+            ) as T
+        }
+    }
+}

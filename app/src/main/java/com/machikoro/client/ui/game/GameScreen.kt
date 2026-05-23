@@ -20,15 +20,18 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,6 +47,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.ShopItemColor
@@ -67,8 +71,28 @@ fun GameScreen(
     state: GameScreenState,
     onPurchaseClick: (String) -> Unit = {},
     onRollDice: () -> Unit = {},
+    onLeaveGame: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var showLeaveDialog by remember { mutableStateOf(false) }
+
+    if (showLeaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showLeaveDialog = false },
+            title = { Text("Leave Game?") },
+            text = { Text("The game will keep running. You can resume it from the home screen.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLeaveDialog = false
+                    onLeaveGame()
+                }) { Text("Leave") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeaveDialog = false }) { Text("Stay") }
+            }
+        )
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         CoinDisplay(
             players = state.players,
@@ -130,7 +154,7 @@ fun GameScreen(
                 state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
             }
 
-            if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer) {
+            if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer  && state.gameStatus == GameStatus.IN_PROGRESS) {
                 Button(
                     onClick = onRollDice,
                     enabled = !state.isRolling,
@@ -146,6 +170,28 @@ fun GameScreen(
                 }
             }
         }
+
+        // Leave button drawn last so it sits on top of all other content
+        Button(
+            onClick = { showLeaveDialog = true },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(start = 8.dp, top = 6.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            ),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+        ) {
+            Text(text = "Leave", style = MaterialTheme.typography.labelSmall)
+        }
+        //shows a loading indicator when the game is not in progress and the connection status is not disconnected
+        InitializationLoadingOverlay(
+            connectionStatus = state.connectionStatus,
+            gameStatus = state.gameStatus
+        )
     }
 }
 
@@ -243,7 +289,7 @@ private fun CoinDisplay(
 ) {
     if (players.isEmpty()) return
     LazyRow(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier,
         verticalAlignment = Alignment.Top
     ) {
         items(items = players, key = { it.id }) { player ->
@@ -458,7 +504,7 @@ private fun BuyingPhaseShop(
     onPurchaseClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Disable buying until both active-player state and a server game id are known.
+    // Disable buying until game is IN_PROGRESS, both active-player state and a server game id are known.
     val canPurchase = state.canCurrentPlayerPurchase() && state.gameId != null
     Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
@@ -572,7 +618,7 @@ private fun ShopItemCard(
     }
 }
 
-private fun GameScreenState.canCurrentPlayerPurchase(): Boolean = isActivePlayer
+private fun GameScreenState.canCurrentPlayerPurchase(): Boolean = isActivePlayer && gameStatus == GameStatus.IN_PROGRESS
 
 private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
     item.isAvailable &&
@@ -580,6 +626,7 @@ private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
         !isKnownBuiltLandmark(item)
 
 private fun GameScreenState.disabledReasonFor(item: ShopItem): String = when {
+    gameStatus != GameStatus.IN_PROGRESS -> "Game not active"
     !isActivePlayer -> "Waiting"
     gameId == null -> "No game"
     !item.isAvailable -> "Unavailable"
@@ -811,3 +858,56 @@ private fun previewMarketplace() = mapOf(
     CardType.CONVENIENCE_STORE to 4,
     CardType.FOREST to 6,
 )
+
+@Composable
+private fun InitializationLoadingOverlay(
+    connectionStatus: ConnectionStatus,
+    gameStatus: GameStatus?,
+    modifier: Modifier = Modifier
+) {
+    val isInitializing = connectionStatus != ConnectionStatus.CONNECTED || gameStatus != GameStatus.IN_PROGRESS
+
+    if (isInitializing) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.3f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(12.dp),
+                tonalElevation = 4.dp,
+                modifier = Modifier
+                    .widthIn(min = 200.dp, max = 280.dp)
+                    .padding(24.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Initializing Game...",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = when {
+                            connectionStatus == ConnectionStatus.CONNECTING -> "Connecting to server..."
+                            connectionStatus == ConnectionStatus.DISCONNECTED -> "Reconnecting..."
+                            connectionStatus == ConnectionStatus.ERROR -> "Connection error - retrying..."
+                            gameStatus == null -> "Loading game state..."
+                            else -> "Game loading..."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}

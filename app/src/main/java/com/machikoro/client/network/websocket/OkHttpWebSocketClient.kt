@@ -14,13 +14,19 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.session.SessionStateHolder
 import java.net.URI
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
@@ -33,6 +39,8 @@ class OkHttpWebSocketClient(
     private val websocketUrl: String,
     private val sessionStateHolder: SessionStateHolder,
     private val webSocketFactory: WebSocketFactory = OkHttpWebSocketFactory(),
+    private val reconnectScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    private val reconnectDelaysMs: List<Long> = RECONNECT_DELAYS_MS,
 ) : WebSocketClient {
     override val connectionStatus: StateFlow<ConnectionStatus>
         get() = mutableConnectionStatus.asStateFlow()
@@ -45,6 +53,9 @@ class OkHttpWebSocketClient(
 
     override val lobbyCode: StateFlow<String?>
         get() = mutableLobbyCode.asStateFlow()
+
+    override val lobbyEntered: SharedFlow<Unit>
+        get() = mutableLobbyEntered.asSharedFlow()
 
     override val lobbyJoinErrors: SharedFlow<String>
         get() = mutableLobbyJoinErrors.asSharedFlow()
@@ -88,6 +99,10 @@ class OkHttpWebSocketClient(
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
+    private val mutableLobbyEntered = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     private val mutableLobbyJoinErrors = MutableSharedFlow<String>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -117,9 +132,24 @@ class OkHttpWebSocketClient(
     @Volatile
     private var webSocket: WebSocket? = null
     private var subscribedGameId: Int? = null
+    // STOMP session ID assigned by the server on CONNECTED — used for lobby queue subscription
+    private var stompSessionId: String? = null
+
+    // Auto-reconnect state. `intentionalDisconnect` is set whenever the client
+    // tears the connection down itself (disconnect() or an auth rejection) so
+    // the listener can tell a deliberate close apart from an unexpected drop.
+    @Volatile
+    private var intentionalDisconnect = false
+    private var reconnectJob: Job? = null
+    private var reconnectAttempt = 0
+
+    init {
+        require(reconnectDelaysMs.isNotEmpty()) { "reconnectDelaysMs must not be empty" }
+    }
 
     override fun connect() {
         synchronized(this) {
+            intentionalDisconnect = false
             if (webSocket != null) return
             if (sessionStateHolder.session.value == null) {
                 Log.d(TAG, "Skipping WS connect — no session token")
@@ -140,6 +170,8 @@ class OkHttpWebSocketClient(
     }
 
     override fun disconnect() {
+        intentionalDisconnect = true
+        cancelReconnect()
         val currentSocket = synchronized(this) {
             val socket = webSocket
             webSocket = null
@@ -228,6 +260,31 @@ class OkHttpWebSocketClient(
         }
     }
 
+    override fun sendLeaveLobby(gameId: Int) {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "sendLeaveLobby called but no active WebSocket connection")
+            return
+        }
+        val body = JSONObject()
+            .put("type", "LEAVE")
+            .put("sender", WebSocketContract.defaultSender)
+            .put("payload", JSONObject().put("gameId", gameId))
+            .toString()
+        val sent = socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.leaveLobbyDestination,
+                    "content-type" to "application/json"
+                ),
+                body = body
+            ).serialize()
+        )
+        if (sent) Log.d(TAG, "Leave lobby message sent (gameId=$gameId)")
+        else Log.w(TAG, "sendLeaveLobby: failed to send frame")
+    }
+
     override fun clearLobbyCode() {
         resetLobbyState()
     }
@@ -273,6 +330,19 @@ class OkHttpWebSocketClient(
             Log.w(TAG, "rollDice called but no active WebSocket connection")
             return
         }
+        val gameId = mutableActiveGameId.value
+        if (gameId == null) {
+            Log.w(TAG, "rollDice called but no active game id")
+            return
+        }
+        val payload = JSONObject()
+            .put("gameId", gameId)
+            .put("diceCount", diceCount)
+        val body = JSONObject()
+            .put("type", ROLL_DICE_TYPE)
+            .put("gameId", gameId)
+            .put("payload", payload)
+            .toString()
         socket.send(
             StompFrame(
                 command = "SEND",
@@ -280,10 +350,10 @@ class OkHttpWebSocketClient(
                     "destination" to WebSocketContract.rollDiceDestination,
                     "content-type" to "application/json"
                 ),
-                body = """{"type":"ROLL_DICE","payload":{"diceCount":$diceCount}}"""
+                body = body
             ).serialize()
         )
-        Log.d(TAG, "Roll dice message sent (diceCount=$diceCount)")
+        Log.d(TAG, "Roll dice message sent (gameId=$gameId, diceCount=$diceCount)")
     }
 
     override fun sendPurchase(
@@ -358,6 +428,7 @@ class OkHttpWebSocketClient(
             clearSocket()
             mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
             resetGameState()
+            scheduleReconnect()
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -366,6 +437,7 @@ class OkHttpWebSocketClient(
             clearSocket()
             mutableConnectionStatus.value = ConnectionStatus.ERROR
             resetGameState()
+            scheduleReconnect()
         }
     }
 
@@ -373,6 +445,8 @@ class OkHttpWebSocketClient(
         when (frame.command) {
             "CONNECTED" -> {
                 Log.d(TAG, "STOMP connected")
+                // A live STOMP session: drop any pending retry and reset backoff.
+                cancelReconnect()
                 mutableConnectionStatus.value = ConnectionStatus.CONNECTED
                 subscribeToPublicTopic()
                 subscribeToErrorsQueue()
@@ -381,6 +455,12 @@ class OkHttpWebSocketClient(
                 // server-side reconnect snapshot, and the SUBSCRIBE must be
                 // registered first or the SYNC frame is delivered to nobody.
                 subscribeToSyncQueue()
+
+                // Use session-scoped destination when server provides session ID; fall back to user-scoped
+                val sessionId = frame.headers["session"]
+                stompSessionId = sessionId
+                subscribeToLobbyQueue(sessionId)
+
                 mutableActiveGameId.value?.let(::subscribeToGameTopic)
                 sendJoinMessage()
             }
@@ -395,6 +475,8 @@ class OkHttpWebSocketClient(
                 }
                 handleLobbyCreated(json)
                 handleLobbyJoined(json)
+                handleLobbyLeft(json)
+                handleLobbyRoster(json)
                 handleLobbyError(json)
                 handleGameStarted(json)
                 handleSync(json)
@@ -409,6 +491,8 @@ class OkHttpWebSocketClient(
             "ERROR" -> {
                 Log.e(TAG, "STOMP error frame received: ${frame.body}")
                 if (isAuthRejection(frame.body)) {
+                    // An auth rejection is terminal — do not auto-reconnect.
+                    intentionalDisconnect = true
                     mutableConnectionStatus.value = ConnectionStatus.DISCONNECTED
                     resetGameState()
                     sessionStateHolder.signOut()
@@ -441,6 +525,22 @@ class OkHttpWebSocketClient(
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
         }
+        // Add host immediately so they appear in the list before LOBBY_JOINED arrives
+        sessionStateHolder.session.value?.username?.let { username ->
+            if (mutablePlayers.value.none { it.displayName == username }) {
+                val hostId = (payload.optIntOrNull("playerId") ?: payload.optIntOrNull("id"))
+                    ?.toString() ?: "host-$username"
+                mutablePlayers.value += PlayerCoinState(
+                    id = hostId,
+                    displayName = username,
+                    coins = payload.optInt("coins", 3)
+                )
+            }
+        }
+        // Host must join their own lobby to become a player in the roster
+        if (mutableIsLobbyHost.value && code.isNotBlank()) {
+            sendJoinLobby(code)
+        }
     }
 
     /**
@@ -452,14 +552,57 @@ class OkHttpWebSocketClient(
         val payload = json.optJSONObject("payload") ?: return
         val gameId = json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId")
 
-        mutableIsLobbyHost.value = false
-
         if (gameId != null) {
             Log.d(TAG, "Joined lobby with gameId: $gameId")
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
+            // Re-register session with gameId so the server can identify the host when startGame is called
+            if (mutableIsLobbyHost.value) {
+                sendJoinMessage()
+            }
         }
+
+        // Add player to lobby list; username is now included in the server response
+        val username = payload.optString("username").takeIf { it.isNotBlank() } ?: return
+        // Try both "playerId" and "id" since the server may use either field name
+        val playerId = (payload.optIntOrNull("playerId") ?: payload.optIntOrNull("id"))?.toString() ?: return
+        val coins = payload.optInt("coins", 3)
+        val newPlayer = PlayerCoinState(id = playerId, displayName = username, coins = coins)
+        // Replace any existing entry with same id or name (e.g., temp host entry) then add
+        mutablePlayers.value = mutablePlayers.value
+            .filter { it.id != playerId && it.displayName != username } + newPlayer
+
+        mutableLobbyEntered.tryEmit(Unit)
     }
+
+    private fun handleLobbyLeft(json: JSONObject) {
+        if (json.optString("type") != LOBBY_LEFT_TYPE) return
+        val payload = json.optJSONObject("payload") ?: return
+        val playerId = payload.optIntOrNull("playerId")?.toString() ?: return
+        mutablePlayers.value = mutablePlayers.value.filter { it.id != playerId }
+        Log.d(TAG, "Player $playerId left lobby")
+    }
+
+    /**
+     * Handles LOBBY_ROSTER sent only to the joining player after a successful join.
+     * Replaces the full player list so the joiner sees everyone already in the lobby.
+     */
+    private fun handleLobbyRoster(json: JSONObject) {
+        if (json.optString("type") != LOBBY_ROSTER_TYPE) return
+        val players = json.optJSONArray("payload") ?: return
+        mutablePlayers.value = (0 until players.length()).mapNotNull { index ->
+            val entry = players.optJSONObject(index) ?: return@mapNotNull null
+            val username = entry.optString("username").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val playerId = entry.optIntOrNull("playerId")?.toString() ?: return@mapNotNull null
+            PlayerCoinState(
+                id = playerId,
+                displayName = username,
+                coins = entry.optInt("coins", 3),
+            )
+        }
+        Log.d(TAG, "Lobby roster received: ${mutablePlayers.value.size} players")
+    }
+
     private fun handleLobbyError(json: JSONObject) {
         if (json.optString("type") != ERROR_TYPE) return
 
@@ -488,13 +631,15 @@ class OkHttpWebSocketClient(
 
         mutableActiveGameId.value = gameId
         subscribeToGameTopic(gameId)
+        payload.optIntOrNull("activePlayerId")?.let { mutableActivePlayerId.value = it }
 
         game.optString("lobbyCode")
             .takeIf { it.isNotBlank() }
             ?.let { mutableLobbyCode.value = it }
 
         parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
-        mutablePlayers.value = payload.optJSONArray("players").toPlayerCoinStates(payload, game)
+        val playerUsernames = parsePlayerUsernames(payload.optJSONObject("playerUsernames"))
+        mutablePlayers.value = payload.optJSONArray("players").toPlayerCoinStates(payload, game, playerUsernames)
         updateShopItemsFromState(payload)
     }
     private fun handleGameEnded(json: JSONObject) {
@@ -541,7 +686,8 @@ class OkHttpWebSocketClient(
         // screen can show the last roll on reconnect.
         game.optIntOrNull("lastDiceRoll")?.let { mutableDiceResult.value = listOf(it) }
 
-        mutablePlayers.value = state.optJSONArray("players").toPlayerCoinStates(state, game)
+        val playerUsernames = parsePlayerUsernames(state.optJSONObject("playerUsernames"))
+        mutablePlayers.value = state.optJSONArray("players").toPlayerCoinStates(state, game, playerUsernames)
         mutableActivePlayerId.value = resolveActiveUserId(state, game)
         mutablePlayerLandmarks.value = parsePlayerLandmarks(state.optJSONObject("playerLandmarks"))
         val marketplace = parseMarketplace(state.optJSONObject("marketplace"))
@@ -653,6 +799,16 @@ class OkHttpWebSocketClient(
         return result
     }
 
+    private fun parsePlayerUsernames(obj: JSONObject?): Map<Int, String> {
+        if (obj == null) return emptyMap()
+        val result = mutableMapOf<Int, String>()
+        for (key in obj.keys()) {
+            val playerId = key.toIntOrNull() ?: continue
+            result[playerId] = obj.optString(key)
+        }
+        return result
+    }
+
     private fun parseMarketplace(obj: JSONObject?): Map<CardType, Int> {
         if (obj == null) return emptyMap()
         val result = mutableMapOf<CardType, Int>()
@@ -735,6 +891,24 @@ class OkHttpWebSocketClient(
         )
     }
 
+    private fun subscribeToLobbyQueue(sessionId: String?) {
+        // Session-scoped destination when server provides session ID; user-scoped otherwise
+        val destination = if (sessionId != null) {
+            "${WebSocketContract.lobbyQueuePrefix}$sessionId"
+        } else {
+            WebSocketContract.lobbyQueue
+        }
+        webSocket?.send(
+            StompFrame(
+                command = "SUBSCRIBE",
+                headers = mapOf(
+                    "id" to "lobby-queue",
+                    "destination" to destination
+                )
+            ).serialize()
+        )
+    }
+
     private fun subscribeToGameTopic(gameId: Int) {
         if (subscribedGameId == gameId) return
 
@@ -774,6 +948,12 @@ class OkHttpWebSocketClient(
     }
 
     private fun sendJoinMessage() {
+        val gameId = mutableActiveGameId.value
+        val body = if (gameId != null) {
+            """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}","gameId":$gameId}"""
+        } else {
+            """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}"}"""
+        }
         webSocket?.send(
             StompFrame(
                 command = "SEND",
@@ -781,7 +961,7 @@ class OkHttpWebSocketClient(
                     "destination" to WebSocketContract.addUserDestination,
                     "content-type" to "application/json"
                 ),
-                body = """{"type":"JOIN","sender":"${WebSocketContract.defaultSender}"}"""
+                body = body
             ).serialize()
         )
     }
@@ -790,11 +970,54 @@ class OkHttpWebSocketClient(
         synchronized(this) {
             webSocket = null
             subscribedGameId = null
+            stompSessionId = null
+        }
+    }
+
+    /**
+     * Schedules an automatic reconnect after an unexpected drop (network blip
+     * or backend container restart). No-op when the client closed the
+     * connection itself (disconnect() / auth rejection) or when there is no
+     * session to reconnect with. Uses exponential backoff so a backend restart
+     * is ridden out without hammering the server; a successful STOMP CONNECT
+     * resets the backoff. The CONNECTED handler re-subscribes to the game-sync
+     * queue and re-sends the JOIN, so reconnect-snapshot recovery is triggered
+     * automatically once the connection is back.
+     */
+    private fun scheduleReconnect() {
+        synchronized(this) {
+            if (intentionalDisconnect) return
+            if (sessionStateHolder.session.value == null) return
+            val attempt = reconnectAttempt
+            reconnectAttempt = attempt + 1
+            val delayMs = reconnectDelaysMs.getOrElse(attempt) { reconnectDelaysMs.last() }
+            reconnectJob?.cancel()
+            reconnectJob = reconnectScope.launch {
+                delay(delayMs)
+                if (!intentionalDisconnect && sessionStateHolder.session.value != null) {
+                    Log.d(TAG, "Auto-reconnect attempt ${attempt + 1}")
+                    connect()
+                }
+            }
+        }
+    }
+
+    /** Cancels any pending reconnect and resets the backoff counter. */
+    private fun cancelReconnect() {
+        synchronized(this) {
+            reconnectJob?.cancel()
+            reconnectJob = null
+            reconnectAttempt = 0
         }
     }
 
     private fun isAuthRejection(body: String): Boolean =
         body.trim().contains(AUTH_REJECTION_BODY)
+
+    override fun clearGameState() {
+        resetGameState()
+        resetLobbyState()
+    }
 
     private fun resetGameState() {
         mutableGamePhase.value = GamePhase.NONE
@@ -815,12 +1038,13 @@ class OkHttpWebSocketClient(
         mutableLobbyCode.value = null
         mutableActiveGameId.value = null
         mutableIsLobbyHost.value = false
+        mutablePlayers.value = emptyList()
     }
 
     private fun parseTurnPhase(phaseName: String): GamePhase? =
         phaseName.takeIf { it.isNotEmpty() }?.let { runCatching { GamePhase.valueOf(it) }.getOrNull() }
 
-    private fun JSONArray?.toPlayerCoinStates(payload: JSONObject, game: JSONObject): List<PlayerCoinState> {
+    private fun JSONArray?.toPlayerCoinStates(payload: JSONObject, game: JSONObject, playerUsernames: Map<Int, String> = emptyMap()): List<PlayerCoinState> {
         if (this == null) return emptyList()
 
         val currentTurnIndex = game.optIntOrNull("currentTurnIndex")
@@ -829,14 +1053,15 @@ class OkHttpWebSocketClient(
             ?.let { turnOrder -> currentTurnIndex?.let(turnOrder::optInt) }
 
         return List(length()) { index ->
-            getJSONObject(index).toPlayerCoinState(currentPlayerId)
+            getJSONObject(index).toPlayerCoinState(currentPlayerId, playerUsernames)
         }
     }
 
-    private fun JSONObject.toPlayerCoinState(currentPlayerId: Int?): PlayerCoinState {
+    private fun JSONObject.toPlayerCoinState(currentPlayerId: Int?, playerUsernames: Map<Int, String> = emptyMap()): PlayerCoinState {
         val playerId = optInt("id")
         val resolvedDisplayName =
             optString("username").takeIf { it.isNotBlank() }
+                ?: playerUsernames[playerId]
                 ?: optString("name").takeIf { it.isNotBlank() }
                 ?: optString("displayName").takeIf { it.isNotBlank() }
                 ?: "Player $playerId"
@@ -870,6 +1095,10 @@ class OkHttpWebSocketClient(
     companion object {
         private const val NORMAL_CLOSURE_STATUS = 1000
         private const val TAG = "OkHttpWebSocketClient"
+        // Exponential backoff for auto-reconnect; the final value repeats once
+        // the list is exhausted. Long enough to ride out a backend container
+        // restart without hammering the server.
+        private val RECONNECT_DELAYS_MS = listOf(1_000L, 2_000L, 4_000L, 8_000L, 16_000L)
         private const val GAME_ACTION_TYPE = "GAME_ACTION"
         private const val GAME_STARTED_TYPE = "GAME_STARTED"
         private const val GAME_ENDED_TYPE = "GAME_END"
@@ -877,6 +1106,8 @@ class OkHttpWebSocketClient(
         private const val BEARER_PREFIX = "Bearer "
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
         private const val LOBBY_JOINED_TYPE = "LOBBY_JOINED"
+        private const val LOBBY_LEFT_TYPE = "LOBBY_LEFT"
+        private const val LOBBY_ROSTER_TYPE = "LOBBY_ROSTER"
         private const val ERROR_TYPE = "ERROR"
         private const val ROLL_DICE_TYPE = "ROLL_DICE"
         private const val SYNC_TYPE = "SYNC"

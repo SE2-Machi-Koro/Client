@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import com.machikoro.client.domain.enums.GamePhase
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,8 +24,12 @@ import com.machikoro.client.config.AppConfig
 import com.machikoro.client.domain.session.DataStoreSessionStorage
 import com.machikoro.client.domain.session.SessionManager
 import com.machikoro.client.network.auth.AuthApiFactory
+import com.machikoro.client.network.debug.DebugApiFactory
+import com.machikoro.client.network.health.BackendHealthRepository
+import com.machikoro.client.network.health.HealthApiFactory
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.AppRoot
+import com.machikoro.client.ui.connection.ConnectionBannerViewModel
 import com.machikoro.client.ui.game.GameScreenViewModel
 import com.machikoro.client.ui.home.HomeViewModel
 import com.machikoro.client.ui.lobby.LobbyScreenViewModel
@@ -46,17 +51,26 @@ class MainActivity : ComponentActivity() {
     private val authApi by lazy {
         AuthApiFactory.create(AppConfig.backendBaseUrl)
     }
+    private val debugApi by lazy {
+        DebugApiFactory.create(AppConfig.backendBaseUrl)
+    }
+    private val healthApi by lazy {
+        HealthApiFactory.create(AppConfig.backendBaseUrl)
+    }
+    private val healthRepository by lazy {
+        BackendHealthRepository(healthApi)
+    }
     private val startScreenViewModel by viewModels<StartScreenViewModel> {
-        StartScreenViewModel.Factory(webSocketClient, SessionManager)
+        StartScreenViewModel.Factory(webSocketClient, SessionManager, healthRepository)
     }
     private val gameScreenViewModel by viewModels<GameScreenViewModel> {
-        GameScreenViewModel.Factory(webSocketClient, SessionManager) // NEU
+        GameScreenViewModel.Factory(webSocketClient, SessionManager)
     }
     private val homeViewModel by viewModels<HomeViewModel> {
         HomeViewModel.Factory(webSocketClient)
     }
     private val lobbyScreenViewModel by viewModels<LobbyScreenViewModel> {
-        LobbyScreenViewModel.Factory(webSocketClient, SessionManager)
+        LobbyScreenViewModel.Factory(webSocketClient, SessionManager, debugApi)
     }
     private val registerDialogViewModel by viewModels<RegisterDialogViewModel> {
         RegisterDialogViewModel.Factory(authApi)
@@ -72,25 +86,31 @@ class MainActivity : ComponentActivity() {
         NavigationViewModel.Factory()
     }
 
+    private val connectionBannerViewModel by viewModels<ConnectionBannerViewModel> {
+        ConnectionBannerViewModel.Factory(webSocketClient, SessionManager)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SessionManager.attach(DataStoreSessionStorage(applicationContext))
-        lifecycleScope.launch { SessionManager.hydrate() }
+        // Only sign out on a genuine fresh launch, not rotation or process recreation
+        if (savedInstanceState == null) lifecycleScope.launch { SessionManager.signOut() }
         enableEdgeToEdge()
         setContent {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
             val activeGameId by homeViewModel.activeGameId.collectAsState()
-            val isLobbyHost by homeViewModel.isLobbyHost.collectAsState()
             val joinLobbyCode by homeViewModel.joinLobbyCode.collectAsState()
             val joinLobbyError by homeViewModel.joinLobbyError.collectAsState()
             val lobbyScreenState by lobbyScreenViewModel.state.collectAsState()
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
+            val connectionBannerState by connectionBannerViewModel.state.collectAsState()
             var showJoinLobbyInput by remember { mutableStateOf(false) }
             val snackbarHostState = remember { SnackbarHostState() }
+            val hasActiveGame = activeGameId != null && gameScreenState.gamePhase != GamePhase.NONE
 
             LaunchedEffect(Unit) {
                 SessionManager.session.collect { session ->
@@ -104,15 +124,24 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 webSocketClient.authRejections.collect {
+                    SessionManager.signOut()
+                    navigationViewModel.leaveLobby()
+                    homeViewModel.clearLobbyCode()
                     snackbarHostState.showSnackbar(
                         "Sitzung abgelaufen, bitte erneut anmelden"
                     )
                 }
             }
 
-            LaunchedEffect(activeGameId, isLobbyHost) {
-                if (activeGameId != null && !isLobbyHost) {
+            LaunchedEffect(activeGameId) {
+                if (activeGameId != null) {
                     showJoinLobbyInput = false
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                webSocketClient.lobbyEntered.collect {
+                    // Navigate to LobbyScreen only on fresh lobby entry, not reconnect snapshots
                     navigationViewModel.showLobby()
                 }
             }
@@ -121,6 +150,8 @@ class MainActivity : ComponentActivity() {
                 webSocketClient.lobbyJoinErrors.collect { message ->
                     Log.e("MainActivity", "Lobby join error received: $message")
                     homeViewModel.setJoinLobbyError(message)
+                    // Return to HomeScreen so the error is visible
+                    navigationViewModel.leaveLobby()
                 }
             }
 
@@ -137,6 +168,7 @@ class MainActivity : ComponentActivity() {
                         registerDialogState = registerDialogState,
                         loginDialogState = loginDialogState,
                         logoutState = logoutState,
+                        connectionBannerState = connectionBannerState,
                         onRegisterUsernameChange = registerDialogViewModel::usernameChanged,
                         onRegisterPasswordChange = registerDialogViewModel::passwordChanged,
                         onRegisterSubmit = registerDialogViewModel::submit,
@@ -148,6 +180,8 @@ class MainActivity : ComponentActivity() {
                         onLogoutSubmit = logoutViewModel::submit,
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
                         onStartGame = homeViewModel::startGame,
+                        onFillWithDummies = lobbyScreenViewModel::fillWithDummies,
+                        onResetLobby = lobbyScreenViewModel::resetLobby,
                         onLeaveLobby = {
                             navigationViewModel.leaveLobby()
                             lobbyScreenViewModel.onLeaveLobby()
@@ -159,12 +193,26 @@ class MainActivity : ComponentActivity() {
                         joinLobbyCode = joinLobbyCode,
                         joinLobbyError = joinLobbyError,
                         showJoinLobbyInput = showJoinLobbyInput,
-                        onGoToLobbyClick = {
-                            navigationViewModel.showLobby()
-                        },
                         onCreateLobbyClick = {
                             showJoinLobbyInput = false
                             homeViewModel.createLobby()
+                        },
+                        onLeaveGame = {
+                            navigationViewModel.leaveLobby()
+                        },
+                        hasActiveGame = hasActiveGame,
+                        onResumeGameClick = {
+                            navigationViewModel.resumeGame(activeGameId)
+                        },
+                        onPurgeClick = {
+                            lifecycleScope.launch {
+                                // Only clear local state if the server accepted the purge
+                                val response = debugApi.purge()
+                                if (response.isSuccessful) {
+                                    webSocketClient.clearGameState()
+                                    navigationViewModel.leaveLobby()
+                                }
+                            }
                         },
                         onPurchaseClick = gameScreenViewModel::purchase,
                         onBackHome = {
