@@ -167,6 +167,10 @@ class MainActivity : ComponentActivity() {
                             homeViewModel.createLobby()
                         },
                         onPurchaseClick = gameScreenViewModel::purchase,
+                        onBackHome = {
+                            gameScreenViewModel.clearGameState()
+                            navigationViewModel.returnHome()
+                        },
                         onJoinLobbyClick = {
                             homeViewModel.clearLobbyCode()
                             showJoinLobbyInput = true
