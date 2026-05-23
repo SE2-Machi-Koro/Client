@@ -55,6 +55,7 @@ interface WebSocketClient {
     fun sendCreateLobby()
     fun sendJoinLobby(lobbyCode: String)     // Sends a request to join an existing lobby by lobby code.
     fun clearLobbyCode()
+    fun clearGameState()
     fun sendGameStart()
 
     // Matches Server PR #216 PurchaseRequest: gameId + purchaseType + one target field.

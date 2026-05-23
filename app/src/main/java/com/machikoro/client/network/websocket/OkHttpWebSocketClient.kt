@@ -232,6 +232,11 @@ class OkHttpWebSocketClient(
         resetLobbyState()
     }
 
+    override fun clearGameState() {
+        resetGameState()
+        resetLobbyState()
+    }
+
     override fun sendGameStart() {
         val socket = synchronized(this) { webSocket }
         if (socket == null) {
@@ -499,8 +504,10 @@ class OkHttpWebSocketClient(
         val winnerId = payload.optIntOrNull("winnerId") ?: return
 
         mutableWinnerId.value = winnerId
+        payload.optIntOrNull("roundsPlayed")?.let { mutableRoundNumber.value = it }
+        mutableGameStatus.value = GameStatus.FINISHED
+        mutableGamePhase.value = GamePhase.NONE
         unsubscribeFromGameTopic(mutableActiveGameId.value)
-        resetGameState()
     }
 
     /**
