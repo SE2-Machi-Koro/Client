@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -38,14 +35,19 @@ screen or starting a new game, which are also animated
 for visibility.
  */
 @Composable
-fun GameOverOneWinner(winnerName: String, roundsNumber: Int) {
+fun GameOverOneWinner(
+    winnerName: String,
+    roundsNumber: Int,
+    onBackHome: () -> Unit,
+) {
     Box(modifier = Modifier.fillMaxSize())
     {
         Background(R.drawable.game_end)
         //Content
         Column(
             modifier = Modifier
-                .fillMaxSize().padding(12.dp),
+                .fillMaxSize()
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
@@ -100,7 +102,7 @@ fun GameOverOneWinner(winnerName: String, roundsNumber: Int) {
                 delayMillis = 5000,
                 animationType = AnimationType.SlideUp
             ) {
-                ActionButton("Back to home screen", null)
+                ActionButton("Back to home screen", onBackHome)
             }
         }
     }
@@ -111,9 +113,10 @@ fun GameOverOneWinner(winnerName: String, roundsNumber: Int) {
 @Composable
 fun GameOverOnePlayerPreview() {
     ClientTheme {
-        // Dummy data for preview
-        GameOverOneWinner(winnerName = "Alice", roundsNumber = 5)
+        GameOverOneWinner(
+            winnerName = "Alice",
+            roundsNumber = 5,
+            onBackHome = {},
+        )
     }
 }
-
-
