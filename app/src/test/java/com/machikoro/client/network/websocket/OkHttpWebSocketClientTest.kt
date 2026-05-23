@@ -1396,7 +1396,7 @@ class OkHttpWebSocketClientTest {
 
     @Test
     fun syncMessageResolvesActivePlayerUserIdFromTurnOrder() {
-        // turnOrder[currentTurnIndex=0] = playerId 11, whose userId is 1.
+        // Legacy fallback: turnOrder[currentTurnIndex=0] is playerId 11, whose userId is 1.
         val client = clientAfterSync()
         assertEquals(1, client.activePlayerId.value)
     }
