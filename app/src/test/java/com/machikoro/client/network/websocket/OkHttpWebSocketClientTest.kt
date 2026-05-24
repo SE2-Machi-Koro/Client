@@ -2180,6 +2180,57 @@ class OkHttpWebSocketClientTest {
         assertEquals(5, client.marketplace.value[CardType.BAKERY])
     }
 
+    // ── resetGameState ────────────────────────────────────────────────
+    @Test
+    fun transientDisconnectDoesNotClearWinnerOrActiveGameId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        // Seed active game
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"GAME_STARTED",
+                "gameId":42,
+                "payload":{
+                    "activePlayerId":1,
+                    "game":{
+                        "id":42,
+                        "lobbyCode":"ABC123",
+                        "turnPhase":"ROLL_DICE"
+                    },
+                    "players":[]
+                }
+            }"""
+            )
+        )
+
+        // Seed winner state
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"GAME_END",
+                "sender":"server",
+                "payload":{
+                    "winnerId":11,
+                    "roundsPlayed":4
+                }
+            }"""
+            )
+        )
+
+        // Simulate transient disconnect (reconnect path)
+        factory.simulateClosed()
+
+        // Identity should survive reconnect-safe resetGameState()
+        assertEquals(42, client.activeGameId.value)
+        assertEquals(11, client.winnerId.value)
+    }
+
     /** Connects a client and feeds it one realistic SYNC snapshot frame. */
     private fun clientAfterSync(): OkHttpWebSocketClient {
         val factory = FakeWebSocketFactory()
