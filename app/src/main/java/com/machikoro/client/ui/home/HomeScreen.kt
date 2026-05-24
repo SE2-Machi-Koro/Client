@@ -40,8 +40,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.BuildConfig
 import com.machikoro.client.R
+import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ButtonBlueDark
-import com.machikoro.client.ui.theme.ButtonBlueLight
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextWhite
@@ -255,7 +255,7 @@ private fun HomeCard(
     enabled: Boolean = true,
 ) {
     // The primary card is highlighted with dark blue.
-    val backgroundColor = if (isPrimary) ButtonBlueDark else ButtonBlueLight
+    val backgroundColor = if (isPrimary) ButtonBlueDark else ButtonBeigeLight
     val textColor = if (isPrimary) TextWhite else TextBlueDark
 
     // Button is used as a card because it is already clickable and supports elevation.
