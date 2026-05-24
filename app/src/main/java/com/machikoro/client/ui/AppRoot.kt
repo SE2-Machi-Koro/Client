@@ -75,7 +75,6 @@ fun AppRoot(
     onRollDice: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
     onBackHome: () -> Unit = {},
-    onGoToLobbyClick: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     hasActiveGame: Boolean = false,
     onResumeGameClick: () -> Unit = {},
