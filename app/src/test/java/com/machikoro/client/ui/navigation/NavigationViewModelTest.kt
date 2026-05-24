@@ -6,6 +6,7 @@ import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.ui.start.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -254,6 +255,24 @@ class NavigationViewModelTest {
 
         viewModel.leaveLobby()
         assertFalse(viewModel.uiState.value.showLobbyScreen)
+    }
+
+    @Test
+    fun returnHomeHidesLobbyAndNavigatesHome() = runTest {
+        val viewModel = NavigationViewModel()
+
+        viewModel.showLobby()
+        viewModel.returnHome()
+
+        assertFalse(viewModel.uiState.value.showLobbyScreen)
+
+        val navigation =
+            viewModel.navigationEvent.first()
+
+        assertEquals(
+            AppRoute.Home,
+            (navigation as NavigationEvent.NavigateTo).route
+        )
     }
 
     private fun TestScope.collectNavigationEvents(
