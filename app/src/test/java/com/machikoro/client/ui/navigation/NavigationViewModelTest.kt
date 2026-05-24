@@ -60,7 +60,7 @@ class NavigationViewModelTest {
 
         viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
-            gameScreenState = GameScreenState.initial(),
+            gameScreenState = GameScreenState.initial().copy(gameStatus = GameStatus.WAITING),
             startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
             lobbyCode = "ABC1234",
         )
@@ -82,7 +82,7 @@ class NavigationViewModelTest {
 
         viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
-            gameScreenState = GameScreenState.initial(),
+            gameScreenState = GameScreenState.initial().copy(gameStatus = GameStatus.WAITING),
             startScreenState = StartScreenState.placeholder(),
             lobbyCode = "ABC1234",
         )
@@ -134,6 +134,7 @@ class NavigationViewModelTest {
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial().copy(
                 gamePhase = GamePhase.ROLL_DICE,
+                gameStatus = GameStatus.IN_PROGRESS,
                 gameId = 42,
             ),
             startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
