@@ -29,6 +29,7 @@ import com.machikoro.client.network.health.BackendHealthRepository
 import com.machikoro.client.network.health.HealthApiFactory
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.AppRoot
+import com.machikoro.client.ui.connection.ConnectionBannerViewModel
 import com.machikoro.client.ui.game.GameScreenViewModel
 import com.machikoro.client.ui.home.HomeViewModel
 import com.machikoro.client.ui.lobby.LobbyScreenViewModel
@@ -85,6 +86,10 @@ class MainActivity : ComponentActivity() {
         NavigationViewModel.Factory()
     }
 
+    private val connectionBannerViewModel by viewModels<ConnectionBannerViewModel> {
+        ConnectionBannerViewModel.Factory(webSocketClient, SessionManager)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SessionManager.attach(DataStoreSessionStorage(applicationContext))
@@ -102,6 +107,7 @@ class MainActivity : ComponentActivity() {
             val registerDialogState by registerDialogViewModel.state.collectAsState()
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
+            val connectionBannerState by connectionBannerViewModel.state.collectAsState()
             var showJoinLobbyInput by remember { mutableStateOf(false) }
             val snackbarHostState = remember { SnackbarHostState() }
             val hasActiveGame = activeGameId != null && gameScreenState.gamePhase != GamePhase.NONE
@@ -159,6 +165,7 @@ class MainActivity : ComponentActivity() {
                         registerDialogState = registerDialogState,
                         loginDialogState = loginDialogState,
                         logoutState = logoutState,
+                        connectionBannerState = connectionBannerState,
                         onRegisterUsernameChange = registerDialogViewModel::usernameChanged,
                         onRegisterPasswordChange = registerDialogViewModel::passwordChanged,
                         onRegisterSubmit = registerDialogViewModel::submit,
