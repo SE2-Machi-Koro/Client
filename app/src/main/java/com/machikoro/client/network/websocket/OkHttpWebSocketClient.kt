@@ -291,6 +291,8 @@ class OkHttpWebSocketClient(
 
     override fun clearGameState() {
         resetGameState()
+        mutableActiveGameId.value = null
+        mutableWinnerId.value = null
         resetLobbyState()
     }
 
@@ -1020,8 +1022,6 @@ class OkHttpWebSocketClient(
         mutableDiceResult.value = null
         mutableActivePlayerId.value = null
         mutableLobbyCode.value = null
-        mutableActiveGameId.value = null
-        mutableWinnerId.value = null
         mutableGameStatus.value = null
         mutableRoundNumber.value = null
         mutablePlayerLandmarks.value = emptyMap()
