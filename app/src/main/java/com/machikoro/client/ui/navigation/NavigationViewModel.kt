@@ -67,8 +67,11 @@ class NavigationViewModel(
         navigateTo(AppRoute.Game, AppRoute.AppRouteArguments(gameId = gameId))
     }
 
+    // Relies on clearGameState() before calling this so state-based routing
+    // resolves back to Home instead of Winner/Game.
     fun returnHome() {
         mutableUiState.update { it.copy(showLobbyScreen = false) }
+        navigateTo(AppRoute.Home)
     }
 
     fun navigateTo(
