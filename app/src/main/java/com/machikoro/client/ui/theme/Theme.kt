@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryBlueDark,
-    secondary = PrimaryBlueLight,
+    secondary = PrimaryOrange,
     background = BackgroundDefault,
     surface = BackgroundOverlay,
 
