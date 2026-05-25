@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -31,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -43,6 +45,7 @@ import com.machikoro.client.R
 import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ButtonBlueDark
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextWhite
 import com.machikoro.client.ui.theme.White
@@ -54,7 +57,6 @@ fun HomeScreen(
     onJoinLobbyCodeChange: (String) -> Unit = {},
     onJoinLobbyClick: () -> Unit = {},
     onCreateLobbyClick: () -> Unit = {},
-    onPublicLobbiesClick: () -> Unit = {},
     onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
@@ -106,9 +108,9 @@ fun HomeScreen(
         // === HEADER ===
         // Main title.
         Text(
-            text = "MACHI KORO",
+            text = "WELCOME",
             style = MaterialTheme.typography.headlineMedium,
-            color = TextBlueDark,
+            color = PrimaryOrange,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 30.dp),
@@ -200,7 +202,7 @@ fun HomeScreen(
                 }
 
                 HomeCard(
-                    iconRes = R.drawable.home_lobby_join_icon,
+                    iconRes = R.drawable.home_resume_game_icon,
                     text = "Resume Game",
                     isPrimary = false,
                     enabled = hasActiveGame,
@@ -255,7 +257,7 @@ private fun HomeCard(
     enabled: Boolean = true,
 ) {
     // The primary card is highlighted with dark blue.
-    val backgroundColor = if (isPrimary) ButtonBlueDark else ButtonBeigeLight
+    val backgroundColor: Color = if (isPrimary) ButtonBlueDark else ButtonBeigeLight
     val textColor = if (isPrimary) TextWhite else TextBlueDark
 
     // Button is used as a card because it is already clickable and supports elevation.
