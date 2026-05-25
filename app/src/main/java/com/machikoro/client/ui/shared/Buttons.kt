@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,15 +20,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.machikoro.client.ui.theme.ButtonOrange
-import com.machikoro.client.ui.theme.ButtonShadowColor
-import com.machikoro.client.ui.theme.TextOnOrange
+import com.machikoro.client.ui.theme.ButtonColor
+import com.machikoro.client.ui.theme.ButtonTextColor
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.OrangeButtonShadowColor
 
 @Composable
-fun ActionButton(label: String, onClick: (() -> Unit)?) {
+fun ActionButton(
+    label: String,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier
+    ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .wrapContentSize()
     ) {
 
@@ -37,7 +42,7 @@ fun ActionButton(label: String, onClick: (() -> Unit)?) {
                 .matchParentSize()
                 .offset(y = 4.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(ButtonShadowColor)
+                .background(color = OrangeButtonShadowColor)
         )
 
         // Main button
@@ -45,13 +50,14 @@ fun ActionButton(label: String, onClick: (() -> Unit)?) {
             onClick = { onClick?.invoke() },
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = ButtonOrange
+                containerColor = ButtonColor
             ),
 
             ) {
             Text(
                 text = label,
-                color = TextOnOrange,
+                style = MaterialTheme.typography.bodyMedium,
+                color = ButtonTextColor,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold
             )
