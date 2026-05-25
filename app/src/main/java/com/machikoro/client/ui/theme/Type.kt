@@ -16,9 +16,12 @@ import com.machikoro.client.R
 
 // Title Font
 val TitleFont = FontFamily(
+    Font(R.font.lithosbold)
+)
+// Title Font
+val OldTitleFont = FontFamily(
     Font(R.font.jaro)
 )
-
 // Default body font
 val BodyFont = FontFamily(
     Font(R.font.cabin)
