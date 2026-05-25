@@ -82,6 +82,11 @@ class GameScreenViewModel(
             }
         }
         viewModelScope.launch {
+            webSocketClient.playerCards.collect { playerCards ->
+                mutableState.update { it.copy(playerCards = playerCards) }
+            }
+        }
+        viewModelScope.launch {
             webSocketClient.playerLandmarks.collect { playerLandmarks ->
                 mutableState.update { it.copy(playerLandmarks = playerLandmarks) }
             }
