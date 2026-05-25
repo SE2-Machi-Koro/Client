@@ -160,7 +160,7 @@ class WebSocketClientTest {
 
         assertEquals(GameStatus.FINISHED, fixture.client.gameStatus.value)
         assertEquals(202, fixture.client.activePlayerId.value)
-        assertEquals(GamePhase.END_TURN, fixture.client.gamePhase.value)
+        assertEquals(GamePhase.NONE, fixture.client.gamePhase.value)
     }
 
     @Test
