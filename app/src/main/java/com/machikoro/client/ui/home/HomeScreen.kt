@@ -70,7 +70,7 @@ fun HomeScreen(
         modifier = Modifier.fillMaxSize()
     ) {
 
-    Background()
+    Background(R.drawable.game_end)
     // Root container. Box allows placing elements freely with align().
     Box(
         modifier = modifier
