@@ -112,7 +112,7 @@ class NavigationViewModel(
                 gameScreenState.gameStatus == GameStatus.FINISHED -> AppRoute.Winner
                 // Gate on hasBeenInLobby: reconnect snapshots alone must not skip HomeScreen.
                 hasBeenInLobby && gameScreenState.gameStatus == GameStatus.IN_PROGRESS -> AppRoute.Game
-                uiState.value.showLobbyScreen && gameScreenState.gameStatus == GameStatus.WAITING-> AppRoute.Lobby
+                uiState.value.showLobbyScreen && (gameScreenState.gameStatus == GameStatus.WAITING || gameScreenState.gameStatus == null)-> AppRoute.Lobby
                 else -> AppRoute.Home
             }
 
