@@ -2,8 +2,11 @@ package com.machikoro.client.ui.game
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
@@ -43,6 +47,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.domain.enums.CardType
@@ -60,6 +65,9 @@ import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.PanelBorder
+import com.machikoro.client.ui.theme.TextBlueDark
+import com.machikoro.client.ui.theme.White
 import kotlinx.coroutines.delay
 
 private const val BANNER_COLOR_ANIMATION_DURATION_MS = 300
@@ -506,40 +514,120 @@ private fun BuyingPhaseShop(
 ) {
     // Disable buying until game is IN_PROGRESS, both active-player state and a server game id are known.
     val canPurchase = state.canCurrentPlayerPurchase() && state.gameId != null
+    var selectedItemType by remember(items) {
+        mutableStateOf(items.firstOrNull { state.canPurchaseItem(it) }?.type)
+    }
+    val establishments = remember(items) {
+        items
+            .filter { it.purchaseType == PurchaseType.ESTABLISHMENT }
+            .sortedWith(compareBy<ShopItem> { it.cost }.thenBy { it.activationText }.thenBy { it.displayName })
+    }
+    val landmarks = remember(items) {
+        items
+            .filter { it.purchaseType == PurchaseType.LANDMARK }
+            .sortedBy { it.cost }
+    }
+
     Surface(
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        color = White.copy(alpha = 0.96f),
+        contentColor = TextBlueDark,
         shape = RoundedCornerShape(8.dp),
         tonalElevation = 4.dp,
+        border = BorderStroke(2.dp, PanelBorder),
         modifier = modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = if (canPurchase) "Shop" else "Shop - waiting for active player",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ShopHeader(canPurchase = canPurchase)
+            ShopItemSection(
+                title = "Establishments",
+                items = establishments,
+                state = state,
+                canPurchase = canPurchase,
+                selectedItemType = selectedItemType,
+                onSelect = { selectedItemType = it },
+                onPurchaseClick = onPurchaseClick
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            LazyRow(verticalAlignment = Alignment.CenterVertically) {
-                items(
-                    items = items,
-                    key = { it.type }
-                ) { item ->
-                    ShopItemCard(
-                        item = item,
-                        state = state,
-                        canPurchase = canPurchase && state.canPurchaseItem(item),
-                        onPurchaseClick = onPurchaseClick,
-                        modifier = Modifier.padding(end = 10.dp)
-                    )
-                }
-            }
+            ShopItemSection(
+                title = "Landmarks",
+                items = landmarks,
+                state = state,
+                canPurchase = canPurchase,
+                selectedItemType = selectedItemType,
+                onSelect = { selectedItemType = it },
+                onPurchaseClick = onPurchaseClick
+            )
             state.purchaseMessage?.let { message ->
-                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = state.purchaseState.toFeedbackColor()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShopHeader(canPurchase: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = "Shop",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = TextBlueDark
+            )
+            Text(
+                text = if (canPurchase) "Choose one item to build this turn" else "Waiting for the active player",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextBlueDark.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun ShopItemSection(
+    title: String,
+    items: List<ShopItem>,
+    state: GameScreenState,
+    canPurchase: Boolean,
+    selectedItemType: String?,
+    onSelect: (String) -> Unit,
+    onPurchaseClick: (String) -> Unit,
+) {
+    if (items.isEmpty()) return
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            color = TextBlueDark
+        )
+        LazyRow(verticalAlignment = Alignment.Top) {
+            items(
+                items = items,
+                key = { it.type }
+            ) { item ->
+                ShopItemCard(
+                    item = item,
+                    state = state,
+                    canPurchase = canPurchase && state.canPurchaseItem(item),
+                    isSelected = selectedItemType == item.type,
+                    onSelect = onSelect,
+                    onPurchaseClick = onPurchaseClick,
+                    modifier = Modifier.padding(end = 10.dp)
                 )
             }
         }
@@ -551,23 +639,35 @@ private fun ShopItemCard(
     item: ShopItem,
     state: GameScreenState,
     canPurchase: Boolean,
+    isSelected: Boolean,
+    onSelect: (String) -> Unit,
     onPurchaseClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isPurchaseEnabled =
-        canPurchase && (state.purchaseState == PurchaseState.IDLE || state.purchaseState == PurchaseState.ERROR)
+        canPurchase &&
+            isSelected &&
+            (state.purchaseState == PurchaseState.IDLE || state.purchaseState == PurchaseState.ERROR)
+    val borderColor = if (isSelected) MaterialTheme.colorScheme.secondary else PanelBorder
     Surface(
         color = if (canPurchase) item.color.toContainerColor() else MaterialTheme.colorScheme.surfaceVariant,
         contentColor = item.color.toContentColor(),
         shape = RoundedCornerShape(8.dp),
         tonalElevation = 2.dp,
         modifier = modifier
-            .widthIn(min = 140.dp, max = 150.dp)
+            .widthIn(min = 170.dp, max = 178.dp)
             .alpha(if (canPurchase) 1f else 0.72f)
+            .border(2.dp, borderColor, RoundedCornerShape(8.dp))
+            .clickable(enabled = canPurchase) { onSelect(item.type) }
+            .semantics {
+                contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}"
+            }
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(10.dp)
+            modifier = Modifier
+                .padding(10.dp)
+                .defaultMinSize(minHeight = 238.dp)
         ) {
             Image(
                 painter = painterResource(id = ShopImageResolver.drawableFor(item.imageKey)),
@@ -579,19 +679,30 @@ private fun ShopItemCard(
                 text = item.displayName,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center
             )
             Text(
                 text = "${item.cost} coins",
                 style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1
             )
             Text(
-                text = item.establishmentType,
-                style = MaterialTheme.typography.bodyMedium,
+                text = "${item.establishmentType} • ${item.activationText}",
+                style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center
+            )
+            Text(
+                text = item.effectText,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp)
             )
             if (!canPurchase) {
                 Text(
