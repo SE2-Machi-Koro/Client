@@ -39,9 +39,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.R
 import com.machikoro.client.domain.model.state.LobbyScreenState
+import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ButtonBlueDark
-import com.machikoro.client.ui.theme.ButtonBlueGrey
-import com.machikoro.client.ui.theme.ButtonBlueLight
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextWhite
@@ -218,7 +217,7 @@ fun LobbyScreen(
                         .width(320.dp)
                         .height(44.dp),
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBlueGrey)
+                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
                 ) {
                     Text("[Debug] Fill with dummies", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
                 }
@@ -233,7 +232,7 @@ fun LobbyScreen(
                         .width(320.dp)
                         .height(44.dp),
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBlueGrey)
+                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
                 ) {
                     Text("[Debug] Reset lobby", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
                 }
@@ -272,7 +271,7 @@ private fun PlayerSlot(name: String, isHost: Boolean) {
             .width(200.dp)
             .height(36.dp),
         shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = ButtonBlueLight),
+        colors = CardDefaults.cardColors(containerColor = ButtonBeigeLight),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
         Row(
@@ -308,7 +307,7 @@ private fun StatusSlot(text: String) {
             .width(100.dp)
             .height(36.dp),
         shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = ButtonBlueGrey),
+        colors = CardDefaults.cardColors(containerColor = ButtonBeigeLight),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {

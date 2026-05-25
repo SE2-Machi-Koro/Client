@@ -4,33 +4,60 @@ import androidx.compose.material3.ButtonColors
 import androidx.compose.ui.graphics.Color
 
 // Design
-//val PrimaryBlueDark = Color(0xFF004E7E)
-val PrimaryBlueDark = Color(0xFF1E3A5F)
-val PrimaryBlueLight = Color(0xFFB5E1E5)
-val SecondaryBlueGrey = Color(0xFFC4D3DC)
+val PrimaryOrange = Color(0xFFF49E0A)
+val PrimaryOrangeDark = Color(0xFFB06207)
+val PrimaryBeigeLight = Color(0xFFF3E9DA)
+val PrimaryBlueDark = Color(0xFF004E7E)
 val White = Color(0xFFFFFFFF)
 val Black = Color(0xFF000000)
 
 // Background
 val BackgroundDefault = White
-val BackgroundOverlay = Color(0xE5F2FAFF)
+val BackgroundOverlay = Color(0x80FFFFFF)
+
+// Shadows
+val ShadowDarkMedium = Color(0x5C000000)
+val ShadowDarkLight = Color(0x40000000)
 
 // Buttons
+val ButtonBeigeLight: Color = PrimaryBeigeLight
+val ButtonBeigeDark = Color(0xFFBC9C72)
+val ButtonBorderBeige = Color(0xFF7F5E34)
 val ButtonBlueDark = PrimaryBlueDark
-val ButtonBlueLight = PrimaryBlueLight
-val ButtonBlueGrey = SecondaryBlueGrey
+val ButtonOrange = PrimaryOrange
+val ButtonBorderOrange = PrimaryOrangeDark
+val ButtonShadowColor = ShadowDarkMedium
+
+//val PrimaryBlueLight = Color(0xFFB5E1E5) // Old Color - to be deleted after redesigning
+
+
+// Panels
+val PanelBackgroundBeige = PrimaryBeigeLight
+val PanelBackgroundBeigeDark = Color(0xFF8F7365)
+val PanelBackgroundTransparent = Color(0x99F3E9DA)
+val PanelBorder = Color(0xFF7F5E34)
 
 // Text
-val TextBlueDark = PrimaryBlueDark
-val TextBlueLight= PrimaryBlueLight
-val TextWhite = White
+val TextOnLight = PrimaryBlueDark
+val TextOnDark = White
+val TextOnOrange = Color(0xFF5F3A21)
 val TextBlack = Black
+val TextBlueLight= Color(0x94004E7E)
+val TextBlueDark = TextOnLight
+val TextWhite = TextOnDark
+val TextPlaceholder = Color(0x4D004E7E)
+
+// Title
+val TitleOrange = PrimaryOrange
+val TitleStrokeColor = PrimaryOrangeDark
+val TitleBlue = TextBlueDark
+
 
 // Highlight
 val Highlight = Color(0xB2FFF536)
 
 // Card-Blue
-val CardBlueBackground = PrimaryBlueLight
+val CardBlueBackground = Color(0xFFB5E1E5)
 val CardBlueText = PrimaryBlueDark
 val CardBlueIcon = PrimaryBlueDark
 
@@ -64,12 +91,3 @@ val OrangeDark = Color(0xFF7D3A1E)
 
 val LandmarkBackground = OrangeLight
 val LandmarkText = OrangeDark
-
-//Header
-val HeaderStroke = Color(0xFFB06207)
-val HeaderFill = Color(0xFFF49E0A)
-
-// Button
-val ButtonShadowColor = Color(0xFFB97816)
-val ButtonColor = Color(0xFFF4B343)
-val ButtonTextColor = Color(0xFF7A4300)
