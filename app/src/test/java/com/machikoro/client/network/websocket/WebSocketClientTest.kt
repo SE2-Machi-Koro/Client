@@ -331,7 +331,7 @@ class WebSocketClientTest {
                 {"id":22,"gameId":77,"userId":202,"turnOrder":1,"coins":4,"lastSeenAt":null}
               ],
               "playerCards":{
-                "11":[{"playerId":11,"cardType":"WHEAT_FIELD","quantity":1}]
+                "$firstPlayerId":[{"playerId":$firstPlayerId,"cardType":"WHEAT_FIELD","quantity":1}]
               },
               "playerLandmarks":{
                 "22":[{"playerId":22,"landmarkType":"TRAIN_STATION","isBuilt":true}]
@@ -349,7 +349,7 @@ class WebSocketClientTest {
               ],
               "turnOrder":[101,202]$activePlayerField,
               "playerUsernames":{
-                "11":"Alice",
+                "$firstPlayerId":"Alice",
                 "22":"Bob"
               }
             }
