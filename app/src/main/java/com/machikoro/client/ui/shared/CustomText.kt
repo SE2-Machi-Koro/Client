@@ -18,8 +18,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.ui.theme.PrimaryOrangeDark
-import com.machikoro.client.ui.theme.TitleOrange
+import com.machikoro.client.ui.theme.HeaderFill
+import com.machikoro.client.ui.theme.HeaderStroke
 
 @Composable
 fun RegularInfoText(label: String) = (
@@ -45,23 +45,28 @@ fun RegularInfoText(label: String) = (
  */
 
 @Composable
-fun Header(label: String) {
-    Box {
+fun Header(label: String,
+           modifier: Modifier = Modifier,
+           fontSize: Int = 42
+           ) {
+    Box(
+        modifier = modifier
+    ) {
         //Stroke
         Text(
             text = label,
             style = MaterialTheme.typography.headlineLarge.copy(
                 drawStyle = Stroke(width = 12f)
             ),
-            fontSize = 42.sp,
-            color = PrimaryOrangeDark
+            fontSize = fontSize.sp,
+            color = HeaderStroke
         )
 
         Text(
             text = label,
             style = MaterialTheme.typography.headlineLarge,
-            fontSize = 42.sp,
-            color = TitleOrange
+            fontSize = fontSize.sp,
+            color = HeaderFill
         )
     }
 }
