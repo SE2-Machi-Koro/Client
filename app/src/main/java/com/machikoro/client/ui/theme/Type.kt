@@ -1,3 +1,4 @@
+
 package com.machikoro.client.ui.theme
 
 import androidx.compose.material3.Typography
@@ -15,15 +16,10 @@ import com.machikoro.client.R
 
 // Title Font
 val TitleFont = FontFamily(
-    Font(R.font.lithosbold)
+    Font(R.font.jaro)
 )
 
-// Original title font (used in Figma - Plaster)
-val TitleFontPlaster = FontFamily(
-    Font(R.font.plaster)
-)
-
-// Default body font (Cabin)
+// Default body font
 val BodyFont = FontFamily(
     Font(R.font.cabin)
 )
@@ -38,7 +34,7 @@ val Typography = Typography(
     headlineLarge = TextStyle(
         fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
-        fontSize = 68.sp,
+        fontSize = 64.sp,
         letterSpacing = 1.sp
     ),
 
@@ -47,7 +43,7 @@ val Typography = Typography(
         fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
         fontSize = 64.sp,
-        letterSpacing = 2.sp
+        letterSpacing = 1.sp
     ),
 
 
@@ -55,14 +51,15 @@ val Typography = Typography(
     headlineMedium = TextStyle(
         fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
-        fontSize = 50.sp,
+        fontSize = 64.sp,
     ),
 
-    // Section title small(e.g. "Lass uns spielen!")
+    // Section title small(e.g. "LOGIN; REGISTER; PLAYERS; LEAVE LOBBY")
     headlineSmall = TextStyle(
         fontFamily = TitleFont,
         fontWeight = FontWeight.Normal,
-        fontSize = 32.sp,
+        color = TextBlueDark,
+        fontSize = 24.sp,
         letterSpacing = 1.sp
     ),
 
@@ -84,7 +81,7 @@ val Typography = Typography(
 
     // Button text (20sp)
     labelLarge = TextStyle(
-        fontFamily = BodyFont,
+        fontFamily = TitleFont,
         fontWeight = FontWeight.Medium,
         fontSize = 20.sp
     )
