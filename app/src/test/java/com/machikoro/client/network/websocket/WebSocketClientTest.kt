@@ -174,6 +174,17 @@ class WebSocketClientTest {
         assertEquals(mapOf(CardType.WHEAT_FIELD to 0, CardType.BAKERY to 4), fixture.client.marketplace.value)
     }
 
+    @Test
+    fun syncUsesTurnOrderUserIdWhenPlayerDatabaseIdHasSameValue() {
+        val fixture = okHttpClientFixture()
+
+        fixture.deliverMessage(syncMessage(snapshot(includeActivePlayerId = false, firstPlayerId = 202)))
+
+        assertEquals(202, fixture.client.activePlayerId.value)
+        assertFalse(fixture.client.players.value.first { it.id == "202" }.isActivePlayer)
+        assertEquals(true, fixture.client.players.value.first { it.id == "22" }.isActivePlayer)
+    }
+
     private fun okHttpClientFixture(): OkHttpClientFixture {
         val factory = CapturingWebSocketFactory()
         val sessionHolder = object : SessionStateHolder {
@@ -281,7 +292,7 @@ class WebSocketClientTest {
             }
         """.trimIndent()
 
-    private fun syncMessage(): String =
+    private fun syncMessage(state: String = snapshot()): String =
         """
             {
               "type":"SYNC",
@@ -289,13 +300,19 @@ class WebSocketClientTest {
               "gameId":77,
               "payload":{
                 "targetUserId":101,
-                "state":${snapshot(status = "IN_PROGRESS", phase = "BUY_OR_BUILD")}
+                "state":$state
               }
             }
         """.trimIndent()
 
-    private fun snapshot(status: String, phase: String): String =
-        """
+    private fun snapshot(
+        status: String = "IN_PROGRESS",
+        phase: String = "BUY_OR_BUILD",
+        includeActivePlayerId: Boolean = true,
+        firstPlayerId: Int = 11,
+    ): String {
+        val activePlayerField = if (includeActivePlayerId) ",\n              \"activePlayerId\":202" else ""
+        return """
             {
               "game":{
                 "id":77,
@@ -310,11 +327,11 @@ class WebSocketClientTest {
                 "hasPurchasedThisTurn":false
               },
               "players":[
-                {"id":11,"gameId":77,"userId":101,"turnOrder":0,"coins":1,"lastSeenAt":null},
+                {"id":$firstPlayerId,"gameId":77,"userId":101,"turnOrder":0,"coins":1,"lastSeenAt":null},
                 {"id":22,"gameId":77,"userId":202,"turnOrder":1,"coins":4,"lastSeenAt":null}
               ],
               "playerCards":{
-                "11":[{"playerId":11,"cardType":"WHEAT_FIELD","quantity":1}]
+                "$firstPlayerId":[{"playerId":$firstPlayerId,"cardType":"WHEAT_FIELD","quantity":1}]
               },
               "playerLandmarks":{
                 "22":[{"playerId":22,"landmarkType":"TRAIN_STATION","isBuilt":true}]
@@ -330,12 +347,12 @@ class WebSocketClientTest {
               "landmarkDefinitions":[
                 {"landmarkType":"TRAIN_STATION","cost":4}
               ],
-              "turnOrder":[101,202],
-              "activePlayerId":202,
+              "turnOrder":[101,202]$activePlayerField,
               "playerUsernames":{
-                "11":"Alice",
+                "$firstPlayerId":"Alice",
                 "22":"Bob"
               }
             }
         """.trimIndent()
+    }
 }
