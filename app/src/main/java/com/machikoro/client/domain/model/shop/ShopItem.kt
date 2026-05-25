@@ -18,6 +18,8 @@ data class ShopItem(
     val cost: Int,
     val color: ShopItemColor,
     val establishmentType: String,
+    val activationText: String,
+    val effectText: String,
     val imageKey: String,
     val isAvailable: Boolean = true
 )
@@ -39,6 +41,8 @@ object ShopCatalog {
             cost = 1,
             color = ShopItemColor.BLUE,
             establishmentType = "WHEAT",
+            activationText = "1",
+            effectText = "Get 1 coin from the bank on anyone's turn.",
             imageKey = "card_wheat_field"
         ),
         ShopItem(
@@ -48,6 +52,8 @@ object ShopCatalog {
             cost = 1,
             color = ShopItemColor.BLUE,
             establishmentType = "COW",
+            activationText = "2",
+            effectText = "Get 1 coin from the bank on anyone's turn.",
             imageKey = "card_ranch"
         ),
         ShopItem(
@@ -57,6 +63,8 @@ object ShopCatalog {
             cost = 3,
             color = ShopItemColor.BLUE,
             establishmentType = "GEAR",
+            activationText = "5",
+            effectText = "Get 1 coin from the bank on anyone's turn.",
             imageKey = "card_forest"
         ),
         ShopItem(
@@ -66,6 +74,8 @@ object ShopCatalog {
             cost = 6,
             color = ShopItemColor.BLUE,
             establishmentType = "GEAR",
+            activationText = "9",
+            effectText = "Get 5 coins from the bank on anyone's turn.",
             imageKey = "card_mine"
         ),
         ShopItem(
@@ -75,6 +85,8 @@ object ShopCatalog {
             cost = 3,
             color = ShopItemColor.BLUE,
             establishmentType = "WHEAT",
+            activationText = "10",
+            effectText = "Get 3 coins from the bank on anyone's turn.",
             imageKey = "card_apple_orchard"
         ),
         ShopItem(
@@ -84,6 +96,8 @@ object ShopCatalog {
             cost = 1,
             color = ShopItemColor.GREEN,
             establishmentType = "BREAD",
+            activationText = "2-3",
+            effectText = "Get 1 coin from the bank on your turn.",
             imageKey = "card_bakery"
         ),
         ShopItem(
@@ -93,6 +107,8 @@ object ShopCatalog {
             cost = 2,
             color = ShopItemColor.GREEN,
             establishmentType = "BREAD",
+            activationText = "4",
+            effectText = "Get 3 coins from the bank on your turn.",
             imageKey = "card_convenience_store"
         ),
         ShopItem(
@@ -102,6 +118,8 @@ object ShopCatalog {
             cost = 5,
             color = ShopItemColor.GREEN,
             establishmentType = "FACTORY",
+            activationText = "7",
+            effectText = "Get 3 coins from the bank for each cow establishment you own.",
             imageKey = "card_cheese_factory"
         ),
         ShopItem(
@@ -111,6 +129,8 @@ object ShopCatalog {
             cost = 3,
             color = ShopItemColor.GREEN,
             establishmentType = "FACTORY",
+            activationText = "8",
+            effectText = "Get 3 coins from the bank for each gear establishment you own.",
             imageKey = "card_furniture_factory"
         ),
         ShopItem(
@@ -120,6 +140,8 @@ object ShopCatalog {
             cost = 2,
             color = ShopItemColor.GREEN,
             establishmentType = "FRUIT",
+            activationText = "11-12",
+            effectText = "Get 2 coins from the bank for each wheat establishment you own.",
             imageKey = "card_fruit_and_vegetable_market"
         ),
         ShopItem(
@@ -129,6 +151,8 @@ object ShopCatalog {
             cost = 2,
             color = ShopItemColor.RED,
             establishmentType = "CUP",
+            activationText = "3",
+            effectText = "Take 1 coin from the player who rolled the dice.",
             imageKey = "card_cafe"
         ),
         ShopItem(
@@ -138,6 +162,8 @@ object ShopCatalog {
             cost = 3,
             color = ShopItemColor.RED,
             establishmentType = "CUP",
+            activationText = "9-10",
+            effectText = "Take 2 coins from the player who rolled the dice.",
             imageKey = "card_family_restaurant"
         ),
         ShopItem(
@@ -147,6 +173,8 @@ object ShopCatalog {
             cost = 6,
             color = ShopItemColor.PURPLE,
             establishmentType = "MAJOR",
+            activationText = "6",
+            effectText = "Take 2 coins from every opponent on your turn.",
             imageKey = "card_stadium"
         ),
         ShopItem(
@@ -156,6 +184,8 @@ object ShopCatalog {
             cost = 7,
             color = ShopItemColor.PURPLE,
             establishmentType = "MAJOR",
+            activationText = "6",
+            effectText = "Take 5 coins from one opponent on your turn.",
             imageKey = "card_tv_station"
         ),
         ShopItem(
@@ -165,6 +195,8 @@ object ShopCatalog {
             cost = 8,
             color = ShopItemColor.PURPLE,
             establishmentType = "MAJOR",
+            activationText = "6",
+            effectText = "Exchange one non-major establishment with an opponent.",
             imageKey = "card_business_center"
         ),
         ShopItem(
@@ -174,6 +206,8 @@ object ShopCatalog {
             cost = 4,
             color = ShopItemColor.LANDMARK,
             establishmentType = "LANDMARK",
+            activationText = "Permanent",
+            effectText = "You may roll one or two dice.",
             imageKey = "landmark_train_station"
         ),
         ShopItem(
@@ -183,6 +217,8 @@ object ShopCatalog {
             cost = 10,
             color = ShopItemColor.LANDMARK,
             establishmentType = "LANDMARK",
+            activationText = "Permanent",
+            effectText = "Your cup and bread establishments earn 1 extra coin.",
             imageKey = "landmark_shopping_mall"
         ),
         ShopItem(
@@ -192,6 +228,8 @@ object ShopCatalog {
             cost = 16,
             color = ShopItemColor.LANDMARK,
             establishmentType = "LANDMARK",
+            activationText = "Permanent",
+            effectText = "If you roll doubles, take another turn after this one.",
             imageKey = "landmark_amusement_park"
         ),
         ShopItem(
@@ -201,6 +239,8 @@ object ShopCatalog {
             cost = 22,
             color = ShopItemColor.LANDMARK,
             establishmentType = "LANDMARK",
+            activationText = "Permanent",
+            effectText = "Once every turn, you can reroll your dice.",
             imageKey = "landmark_radio_tower"
         )
     )
