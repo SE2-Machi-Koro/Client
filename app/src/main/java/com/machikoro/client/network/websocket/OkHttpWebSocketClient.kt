@@ -8,6 +8,7 @@ import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.model.shop.PurchaseEvent
+import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCardState
@@ -725,6 +726,8 @@ class OkHttpWebSocketClient(
                 cost = definition.optInt("cost"),
                 color = definition.optString("color").toShopItemColor(),
                 establishmentType = definition.optString("establishmentType"),
+                activationText = definition.activationText(cardType),
+                effectText = definition.effectText(cardType),
                 imageKey = "card_${cardType.name.lowercase()}",
                 isAvailable = (marketplace[cardType] ?: 0) > 0
             )
@@ -745,9 +748,41 @@ class OkHttpWebSocketClient(
                 cost = definition.optInt("cost"),
                 color = ShopItemColor.LANDMARK,
                 establishmentType = "LANDMARK",
+                activationText = "Permanent",
+                effectText = definition.effectText(landmarkType),
                 imageKey = "landmark_${landmarkType.name.lowercase()}",
                 isAvailable = true
             )
+        }
+    }
+
+    private fun JSONObject.activationText(cardType: CardType): String =
+        optString("activationText")
+            .ifBlank { optString("activationRange") }
+            .ifBlank { optJSONArray("activationNumbers")?.toRangeText().orEmpty() }
+            .ifBlank { defaultShopItem(cardType.name)?.activationText.orEmpty() }
+
+    private fun JSONObject.effectText(cardType: CardType): String =
+        optString("effectText")
+            .ifBlank { optString("effectDescription") }
+            .ifBlank { optString("description") }
+            .ifBlank { defaultShopItem(cardType.name)?.effectText.orEmpty() }
+
+    private fun JSONObject.effectText(landmarkType: LandmarkType): String =
+        optString("effectText")
+            .ifBlank { optString("effectDescription") }
+            .ifBlank { optString("description") }
+            .ifBlank { defaultShopItem(landmarkType.name)?.effectText.orEmpty() }
+
+    private fun JSONArray.toRangeText(): String {
+        val numbers = (0 until length()).mapNotNull { index ->
+            runCatching { getInt(index) }.getOrNull()
+        }.sorted()
+        if (numbers.isEmpty()) return ""
+        return if (numbers.size == 1) {
+            numbers.first().toString()
+        } else {
+            "${numbers.first()}-${numbers.last()}"
         }
     }
 
@@ -757,6 +792,9 @@ class OkHttpWebSocketClient(
     private fun CardType.displayName(): String = name.toDisplayName()
 
     private fun LandmarkType.displayName(): String = name.toDisplayName()
+
+    private fun defaultShopItem(type: String): ShopItem? =
+        ShopCatalog.defaultItems.firstOrNull { it.type == type }
 
     private fun String.toDisplayName(): String =
         lowercase()
