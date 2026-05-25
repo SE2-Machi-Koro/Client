@@ -1443,7 +1443,7 @@ class OkHttpWebSocketClientTest {
 
     @Test
     fun syncMessageResolvesActivePlayerUserIdFromTurnOrder() {
-        // Legacy fallback: turnOrder[currentTurnIndex=0] is playerId 11, whose userId is 1.
+        // Backend contract: turnOrder[currentTurnIndex=0] is userId 1.
         val client = clientAfterSync()
         assertEquals(1, client.activePlayerId.value)
     }
@@ -1856,7 +1856,7 @@ class OkHttpWebSocketClientTest {
         factory.simulateText(connectedFrame())
         factory.simulateText(
             syncFrame(
-                """{"type":"SYNC","sender":"server","gameId":7,"payload":{"targetUserId":1,"state":{"game":{"id":7,"status":"IN_PROGRESS","turnPhase":"BUY_OR_BUILD","currentTurnIndex":0},"players":[{"id":11,"userId":1,"coins":10},{"id":22,"userId":2,"coins":7}],"playerUsernames":{"11":"alice","22":"bob"},"playerLandmarks":{},"marketplace":{},"turnOrder":[11,22]}}}"""
+                """{"type":"SYNC","sender":"server","gameId":7,"payload":{"targetUserId":1,"state":{"game":{"id":7,"status":"IN_PROGRESS","turnPhase":"BUY_OR_BUILD","currentTurnIndex":0},"players":[{"id":11,"userId":1,"coins":10},{"id":22,"userId":2,"coins":7}],"playerUsernames":{"11":"alice","22":"bob"},"playerLandmarks":{},"marketplace":{},"turnOrder":[1,2]}}}"""
             )
         )
 
@@ -2380,7 +2380,7 @@ class OkHttpWebSocketClientTest {
                 """"cardDefinitions":[{"cardType":"BAKERY","cost":1,"income":1,"color":"GREEN",""" +
                 """"establishmentType":"BREAD","paymentSource":"BANK","activationNumbers":[2,3]}],""" +
                 """"landmarkDefinitions":[{"landmarkType":"TRAIN_STATION","cost":4}],""" +
-                """"turnOrder":[11,22]}}}"""
+                """"turnOrder":[1,2]}}}"""
     }
 
     private fun newClient(

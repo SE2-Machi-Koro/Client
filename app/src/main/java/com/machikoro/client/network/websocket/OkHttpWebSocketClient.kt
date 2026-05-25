@@ -797,11 +797,10 @@ class OkHttpWebSocketClient(
      * `activePlayerId`. Current server snapshots already send `activePlayerId`
      * and `turnOrder` in user-id space, so that value is authoritative.
      *
-     * The fallback below exists for older/incomplete snapshots that only have
-     * `currentTurnIndex` + `turnOrder`: if the turn entry matches a player row
-     * id, convert it to that row's userId; otherwise keep the turn entry as the
-     * userId. This preserves old reconnect payloads without breaking the new
-     * server contract.
+     * When `activePlayerId` is absent, `currentTurnIndex` selects the active
+     * user ID directly from `turnOrder`, as defined by the server contract.
+     * It must not be reinterpreted as a database player ID: those independent
+     * ID spaces can contain the same numeric value.
      */
     private fun resolveActiveUserId(state: JSONObject, game: JSONObject): Int? {
         state.optIntOrNull("activePlayerId")?.let { return it }
@@ -809,15 +808,7 @@ class OkHttpWebSocketClient(
         val currentTurnIndex = game.optIntOrNull("currentTurnIndex") ?: return null
         val turnOrder = state.optJSONArray("turnOrder") ?: return null
         if (currentTurnIndex !in 0 until turnOrder.length()) return null
-        val activeTurnEntry = turnOrder.optInt(currentTurnIndex)
-        val players = state.optJSONArray("players") ?: return activeTurnEntry
-        for (i in 0 until players.length()) {
-            val player = players.optJSONObject(i) ?: continue
-            if (player.optInt("id") == activeTurnEntry) {
-                return player.optIntOrNull("userId") ?: activeTurnEntry
-            }
-        }
-        return activeTurnEntry
+        return turnOrder.optInt(currentTurnIndex)
     }
 
     private fun parsePlayerCards(obj: JSONObject?): Map<Int, List<PlayerCardState>> {
