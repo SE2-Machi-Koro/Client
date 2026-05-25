@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.text.TextStyle
@@ -30,20 +29,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.machikoro.client.BuildConfig
 import com.machikoro.client.R
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.Header
-import com.machikoro.client.ui.theme.ButtonBeigeDark
+import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ButtonBlueDark
 import com.machikoro.client.ui.theme.ClientTheme
@@ -92,10 +89,7 @@ fun HomeScreen(
 
         // === PROFILE SECTION ===
         // User profile card in the top right corner.
-        ProfileCard(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-        )
+        SecondaryActionButton("pass real name", modifier = Modifier.align(Alignment.TopEnd), onClick = null, rightIcon = R.drawable.home_edit_icon)
 
         // Logout affordance in the top-left corner. Issue #106 places the
         // logout action on the authenticated screen; the start screen never
@@ -341,60 +335,6 @@ private fun JoinLobbyCodeRow(
     }
 }
 
-@Composable
-private fun ProfileCard(
-    modifier: Modifier = Modifier,
-    label: String = "my username",
-) {
-        Box(
-            modifier = modifier.wrapContentSize()
-        ) {
-            // Bottom shadow
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .offset(y = 4.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(ButtonBeigeDark)
-            )
-
-            Button(
-                onClick = { "TODO" },
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ButtonBeigeLight,
-                    contentColor = TextBlueDark,
-                    disabledContainerColor = ButtonBeigeLight.copy(alpha = 0.7f),
-                    disabledContentColor = TextBlueDark.copy(alpha = 0.7f)
-                )
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextBlueDark,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Image(
-                    painter = painterResource(id = R.drawable.home_edit_icon),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-    }
-
-
-@Composable
-fun SecondaryActionButton(
-    label: String,
-    onClick: (() -> Unit)?,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true
-) {
-
-}
 
 
 @Composable
