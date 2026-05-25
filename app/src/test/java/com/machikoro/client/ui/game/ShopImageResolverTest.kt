@@ -26,7 +26,7 @@ class ShopImageResolverTest {
     @Test
     fun unknownImageKeyUsesSafeFallback() {
         assertEquals(
-            R.drawable.card_bakery_image,
+            R.drawable.card_bakery,
             ShopImageResolver.drawableFor("missing_card_art")
         )
     }
