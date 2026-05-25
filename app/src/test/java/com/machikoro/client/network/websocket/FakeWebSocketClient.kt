@@ -5,6 +5,7 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.shop.PurchaseEvent
@@ -49,6 +50,9 @@ class FakeWebSocketClient : WebSocketClient {
     override val roundNumber: StateFlow<Int?>
         get() = mutableRoundNumber
 
+    override val playerCards: StateFlow<Map<Int, List<PlayerCardState>>>
+        get() = mutablePlayerCards
+
     override val playerLandmarks: StateFlow<Map<Int, List<PlayerLandmarkState>>>
         get() = mutablePlayerLandmarks
 
@@ -78,6 +82,8 @@ class FakeWebSocketClient : WebSocketClient {
     private val mutableIsLobbyHost = MutableStateFlow(false)
     private val mutableGameStatus = MutableStateFlow<GameStatus?>(null)
     private val mutableRoundNumber = MutableStateFlow<Int?>(null)
+    private val mutablePlayerCards =
+        MutableStateFlow<Map<Int, List<PlayerCardState>>>(emptyMap())
     private val mutablePlayerLandmarks =
         MutableStateFlow<Map<Int, List<PlayerLandmarkState>>>(emptyMap())
     private val mutableMarketplace = MutableStateFlow<Map<CardType, Int>>(emptyMap())
@@ -195,6 +201,10 @@ class FakeWebSocketClient : WebSocketClient {
 
     fun emitRoundNumber(round: Int?) {
         mutableRoundNumber.value = round
+    }
+
+    fun emitPlayerCards(cards: Map<Int, List<PlayerCardState>>) {
+        mutablePlayerCards.value = cards
     }
 
     fun emitPlayerLandmarks(landmarks: Map<Int, List<PlayerLandmarkState>>) {

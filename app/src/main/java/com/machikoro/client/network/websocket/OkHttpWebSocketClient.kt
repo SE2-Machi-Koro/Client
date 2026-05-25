@@ -10,6 +10,7 @@ import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.session.SessionStateHolder
@@ -78,6 +79,9 @@ class OkHttpWebSocketClient(
     override val roundNumber: StateFlow<Int?>
         get() = mutableRoundNumber.asStateFlow()
 
+    override val playerCards: StateFlow<Map<Int, List<PlayerCardState>>>
+        get() = mutablePlayerCards.asStateFlow()
+
     override val playerLandmarks: StateFlow<Map<Int, List<PlayerLandmarkState>>>
         get() = mutablePlayerLandmarks.asStateFlow()
 
@@ -111,6 +115,8 @@ class OkHttpWebSocketClient(
     private val mutableIsLobbyHost = MutableStateFlow(false)
     private val mutableGameStatus = MutableStateFlow<GameStatus?>(null)
     private val mutableRoundNumber = MutableStateFlow<Int?>(null)
+    private val mutablePlayerCards =
+        MutableStateFlow<Map<Int, List<PlayerCardState>>>(emptyMap())
     private val mutablePlayerLandmarks =
         MutableStateFlow<Map<Int, List<PlayerLandmarkState>>>(emptyMap())
     private val mutableMarketplace = MutableStateFlow<Map<CardType, Int>>(emptyMap())
@@ -471,6 +477,7 @@ class OkHttpWebSocketClient(
                 handleLobbyError(json)
                 handleGameStarted(json)
                 handleSync(json)
+                handleAuthoritativeSnapshot(json)
                 parseGameAction(json).let { (phase, activePlayerId) ->
                     phase?.let { mutableGamePhase.value = it }
                     activePlayerId?.let { mutableActivePlayerId.value = it }
@@ -616,6 +623,11 @@ class OkHttpWebSocketClient(
         if (json.optString("type") != GAME_STARTED_TYPE) return
 
         val payload = json.optJSONObject("payload") ?: return
+        if (payload.optJSONObject("game") != null) {
+            applyGameStateSnapshot(payload, json.optIntOrNull("gameId"))
+            return
+        }
+
         val game = payload.optJSONObject("game") ?: return
         val gameId = json.optIntOrNull("gameId") ?: game.optIntOrNull("id") ?: return
 
@@ -644,9 +656,21 @@ class OkHttpWebSocketClient(
         if (json.optString("type") != SYNC_TYPE) return
         val payload = json.optJSONObject("payload") ?: return
         val state = payload.optJSONObject("state") ?: return
+        applyGameStateSnapshot(state, json.optIntOrNull("gameId"))
+    }
+
+    private fun handleAuthoritativeSnapshot(json: JSONObject) {
+        val type = json.optString("type")
+        if (type != GAME_ACTION_TYPE && type != ROLL_DICE_TYPE && type != GAME_END_TYPE) return
+        val payload = json.optJSONObject("payload") ?: return
+        val state = payload.optJSONObject("state") ?: return
+        applyGameStateSnapshot(state, json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId"))
+    }
+
+    private fun applyGameStateSnapshot(state: JSONObject, envelopeGameId: Int? = null) {
         val game = state.optJSONObject("game") ?: return
 
-        val gameId = json.optIntOrNull("gameId") ?: game.optIntOrNull("id")
+        val gameId = envelopeGameId ?: game.optIntOrNull("id")
         if (gameId != null) {
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
@@ -666,7 +690,8 @@ class OkHttpWebSocketClient(
 
         val playerUsernames = parsePlayerUsernames(state.optJSONObject("playerUsernames"))
         mutablePlayers.value = state.optJSONArray("players").toPlayerCoinStates(state, game, playerUsernames)
-        mutableActivePlayerId.value = resolveActiveUserId(state, game)
+        resolveActiveUserId(state, game)?.let { mutableActivePlayerId.value = it }
+        mutablePlayerCards.value = parsePlayerCards(state.optJSONObject("playerCards"))
         mutablePlayerLandmarks.value = parsePlayerLandmarks(state.optJSONObject("playerLandmarks"))
         val marketplace = parseMarketplace(state.optJSONObject("marketplace"))
         mutableMarketplace.value = marketplace
@@ -743,22 +768,48 @@ class OkHttpWebSocketClient(
             ?.let { runCatching { GameStatus.valueOf(it) }.getOrNull() }
 
     /**
-     * Resolves the active player's **userId** (not playerId) from the snapshot:
-     * turnOrder holds playerIds, currentTurnIndex points into it, and the
-     * matching player row carries the userId that [activePlayerId] is compared
-     * against (`myUserId == activePlayerId`).
+     * Resolves the active player's **userId** from the snapshot because the UI
+     * enables turn actions by comparing `GameScreenState.myUserId` with
+     * `activePlayerId`. Current server snapshots already send `activePlayerId`
+     * and `turnOrder` in user-id space, so that value is authoritative.
+     *
+     * The fallback below exists for older/incomplete snapshots that only have
+     * `currentTurnIndex` + `turnOrder`: if the turn entry matches a player row
+     * id, convert it to that row's userId; otherwise keep the turn entry as the
+     * userId. This preserves old reconnect payloads without breaking the new
+     * server contract.
      */
     private fun resolveActiveUserId(state: JSONObject, game: JSONObject): Int? {
+        state.optIntOrNull("activePlayerId")?.let { return it }
+
         val currentTurnIndex = game.optIntOrNull("currentTurnIndex") ?: return null
         val turnOrder = state.optJSONArray("turnOrder") ?: return null
         if (currentTurnIndex !in 0 until turnOrder.length()) return null
-        val activePlayerId = turnOrder.optInt(currentTurnIndex)
-        val players = state.optJSONArray("players") ?: return null
+        val activeTurnEntry = turnOrder.optInt(currentTurnIndex)
+        val players = state.optJSONArray("players") ?: return activeTurnEntry
         for (i in 0 until players.length()) {
             val player = players.optJSONObject(i) ?: continue
-            if (player.optInt("id") == activePlayerId) return player.optIntOrNull("userId")
+            if (player.optInt("id") == activeTurnEntry) {
+                return player.optIntOrNull("userId") ?: activeTurnEntry
+            }
         }
-        return null
+        return activeTurnEntry
+    }
+
+    private fun parsePlayerCards(obj: JSONObject?): Map<Int, List<PlayerCardState>> {
+        if (obj == null) return emptyMap()
+        val result = mutableMapOf<Int, List<PlayerCardState>>()
+        for (key in obj.keys()) {
+            val playerId = key.toIntOrNull() ?: continue
+            val array = obj.optJSONArray(key) ?: continue
+            result[playerId] = (0 until array.length()).mapNotNull { index ->
+                val entry = array.optJSONObject(index) ?: return@mapNotNull null
+                val type = runCatching { CardType.valueOf(entry.optString("cardType")) }
+                    .getOrNull() ?: return@mapNotNull null
+                PlayerCardState(cardType = type, quantity = entry.optInt("quantity"))
+            }
+        }
+        return result
     }
 
     private fun parsePlayerLandmarks(obj: JSONObject?): Map<Int, List<PlayerLandmarkState>> {
@@ -1003,6 +1054,7 @@ class OkHttpWebSocketClient(
         mutableLobbyCode.value = null
         mutableGameStatus.value = null
         mutableRoundNumber.value = null
+        mutablePlayerCards.value = emptyMap()
         mutablePlayerLandmarks.value = emptyMap()
         mutableMarketplace.value = emptyMap()
         mutableShopItems.value = emptyList()
@@ -1021,18 +1073,21 @@ class OkHttpWebSocketClient(
     private fun JSONArray?.toPlayerCoinStates(payload: JSONObject, game: JSONObject, playerUsernames: Map<Int, String> = emptyMap()): List<PlayerCoinState> {
         if (this == null) return emptyList()
 
+        val activeUserId = payload.optIntOrNull("activePlayerId")
         val currentTurnIndex = game.optIntOrNull("currentTurnIndex")
-        val currentPlayerId = payload.optJSONArray("turnOrder")
+        val currentTurnUserId = payload.optJSONArray("turnOrder")
             ?.takeIf { currentTurnIndex != null && currentTurnIndex in 0 until it.length() }
             ?.let { turnOrder -> currentTurnIndex?.let(turnOrder::optInt) }
+        val currentUserId = activeUserId ?: currentTurnUserId
 
         return List(length()) { index ->
-            getJSONObject(index).toPlayerCoinState(currentPlayerId, playerUsernames)
+            getJSONObject(index).toPlayerCoinState(currentUserId, playerUsernames)
         }
     }
 
-    private fun JSONObject.toPlayerCoinState(currentPlayerId: Int?, playerUsernames: Map<Int, String> = emptyMap()): PlayerCoinState {
+    private fun JSONObject.toPlayerCoinState(currentUserId: Int?, playerUsernames: Map<Int, String> = emptyMap()): PlayerCoinState {
         val playerId = optInt("id")
+        val userId = optIntOrNull("userId")
         val resolvedDisplayName =
             optString("username").takeIf { it.isNotBlank() }
                 ?: playerUsernames[playerId]
@@ -1043,11 +1098,8 @@ class OkHttpWebSocketClient(
             id = playerId.toString(),
             displayName = resolvedDisplayName,
             coins = optInt("coins"),
-            // The backend currently exposes one active turn player from currentTurnIndex.
-            // Until the UI needs a separate local-player distinction, both flags
-            // intentionally point to the same active player.
-            isCurrentPlayer = playerId == currentPlayerId,
-            isActivePlayer = playerId == currentPlayerId,
+            isCurrentPlayer = userId != null && userId == currentUserId,
+            isActivePlayer = userId != null && userId == currentUserId,
         )
     }
 
@@ -1074,6 +1126,7 @@ class OkHttpWebSocketClient(
         // restart without hammering the server.
         private val RECONNECT_DELAYS_MS = listOf(1_000L, 2_000L, 4_000L, 8_000L, 16_000L)
         private const val GAME_ACTION_TYPE = "GAME_ACTION"
+        private const val GAME_END_TYPE = "GAME_END"
         private const val GAME_STARTED_TYPE = "GAME_STARTED"
         private const val AUTH_HEADER = "Authorization"
         private const val BEARER_PREFIX = "Bearer "

@@ -11,6 +11,7 @@ import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.session.Session
 import com.machikoro.client.domain.session.SessionStateHolder
@@ -568,6 +569,23 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         assertEquals(landmarks, viewModel.state.value.playerLandmarks)
+    }
+
+    @Test
+    fun playerCardsFromClientAreReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        val cards = mapOf(
+            1 to listOf(
+                PlayerCardState(CardType.WHEAT_FIELD, quantity = 1),
+                PlayerCardState(CardType.BAKERY, quantity = 2),
+            )
+        )
+
+        fakeClient.emitPlayerCards(cards)
+        advanceUntilIdle()
+
+        assertEquals(cards, viewModel.state.value.playerCards)
     }
 
     @Test
