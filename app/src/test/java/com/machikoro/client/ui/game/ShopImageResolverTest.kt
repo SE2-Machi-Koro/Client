@@ -15,9 +15,7 @@ class ShopImageResolverTest {
             val resolved = ShopImageResolver.drawableFor(item.imageKey)
 
             assertNotEquals("Missing drawable id for ${item.imageKey}", 0, resolved)
-            if (item.imageKey != ShopImageResolver.FALLBACK_IMAGE_KEY &&
-                item.imageKey != "card_business_center"
-            ) {
+            if (item.imageKey != ShopImageResolver.FALLBACK_IMAGE_KEY) {
                 assertNotEquals("Unexpected fallback for ${item.imageKey}", fallback, resolved)
             }
         }
@@ -26,7 +24,7 @@ class ShopImageResolverTest {
     @Test
     fun unknownImageKeyUsesSafeFallback() {
         assertEquals(
-            R.drawable.card_bakery_image,
+            R.drawable.card_bakery,
             ShopImageResolver.drawableFor("missing_card_art")
         )
     }

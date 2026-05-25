@@ -487,6 +487,7 @@ class OkHttpWebSocketClient(
                     activePlayerId?.let { mutableActivePlayerId.value = it }
                 }
                 parsePurchaseSuccess(json)?.let { mutablePurchaseEvents.tryEmit(it) }
+                parsePurchaseFailure(json)?.let { mutablePurchaseEvents.tryEmit(it) }
                 parseDiceResult(json)?.let { mutableDiceResult.value = it }
                 handleGameEnded(json)
             }
@@ -500,8 +501,7 @@ class OkHttpWebSocketClient(
                     sessionStateHolder.signOut()
                     mutableAuthRejections.tryEmit(Unit)
                 } else {
-                    // Purchase validation failures arrive as regular STOMP ERROR frames.
-                    // Surface them to the shop without marking the transport itself as failed.
+                    // Preserve legacy STOMP ERROR feedback without marking the transport failed.
                     mutablePurchaseEvents.tryEmit(
                         PurchaseEvent.Failure(frame.body.ifBlank { "Purchase failed" })
                     )
@@ -845,6 +845,15 @@ class OkHttpWebSocketClient(
         return PurchaseEvent.Success(purchaseType = purchaseType, itemType = itemType)
     }
 
+    private fun parsePurchaseFailure(json: JSONObject): PurchaseEvent.Failure? {
+        if (json.optString("type") != ERROR_TYPE) return null
+        val payload = json.optJSONObject("payload") ?: return null
+        if (payload.optString("event") != PURCHASE_FAILED_EVENT) return null
+        return PurchaseEvent.Failure(
+            payload.optString("message").ifBlank { "Purchase failed" }
+        )
+    }
+
     /**
      * Parses incoming ROLL_DICE results from the server.
      */
@@ -1104,6 +1113,7 @@ class OkHttpWebSocketClient(
         private const val LOBBY_LEFT_TYPE = "LOBBY_LEFT"
         private const val LOBBY_ROSTER_TYPE = "LOBBY_ROSTER"
         private const val ERROR_TYPE = "ERROR"
+        private const val PURCHASE_FAILED_EVENT = "PURCHASE_FAILED"
         private const val ROLL_DICE_TYPE = "ROLL_DICE"
         private const val SYNC_TYPE = "SYNC"
         // Frozen contract: matches GENERIC_AUTH_FAILURE on the server's

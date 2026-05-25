@@ -19,9 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.machikoro.client.ui.theme.ButtonColor
+import com.machikoro.client.ui.theme.ButtonOrange
 import com.machikoro.client.ui.theme.ButtonShadowColor
-import com.machikoro.client.ui.theme.ButtonTextColor
+import com.machikoro.client.ui.theme.TextOnOrange
 import com.machikoro.client.ui.theme.ClientTheme
 
 @Composable
@@ -45,13 +45,13 @@ fun ActionButton(label: String, onClick: (() -> Unit)?) {
             onClick = { onClick?.invoke() },
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = ButtonColor
+                containerColor = ButtonOrange
             ),
 
             ) {
             Text(
                 text = label,
-                color = ButtonTextColor,
+                color = TextOnOrange,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold
             )

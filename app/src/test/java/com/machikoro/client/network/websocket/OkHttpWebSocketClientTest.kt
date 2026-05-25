@@ -972,6 +972,53 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun gameTopicPurchaseFailureMessageEmitsPurchaseFailureEvent() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
+
+        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ERROR","sender":"server","payload":{"event":"PURCHASE_FAILED","code":"DUPLICATE_PURPLE_ESTABLISHMENT","message":"Player already owns purple establishment STADIUM","purchaseType":"ESTABLISHMENT","cardType":"STADIUM"},"gameId":42}"""
+            )
+        )
+        runCurrent()
+
+        assertEquals(
+            listOf(PurchaseEvent.Failure("Player already owns purple establishment STADIUM")),
+            purchaseEvents
+        )
+    }
+
+    @Test
+    fun errorMessageWithoutPurchaseFailureEventDoesNotEmitPurchaseFailure() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
+
+        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ERROR","sender":"server","payload":{"event":"SOME_OTHER_FAILURE","message":"Not a purchase rejection"},"gameId":42}"""
+            )
+        )
+        runCurrent()
+
+        assertTrue(purchaseEvents.isEmpty())
+    }
+
+    @Test
     fun sendJoinLobbyWithoutConnectionIsIgnored() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
