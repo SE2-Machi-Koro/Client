@@ -5,6 +5,7 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.shop.ShopItem
@@ -168,6 +169,8 @@ class HomeScreenViewModelTest {
             MutableStateFlow(null)
         override val roundNumber: StateFlow<Int?> =
             MutableStateFlow(null)
+        override val playerCards: StateFlow<Map<Int, List<PlayerCardState>>> =
+            MutableStateFlow(emptyMap())
         override val playerLandmarks: StateFlow<Map<Int, List<PlayerLandmarkState>>> =
             MutableStateFlow(emptyMap())
         override val marketplace: StateFlow<Map<CardType, Int>> =

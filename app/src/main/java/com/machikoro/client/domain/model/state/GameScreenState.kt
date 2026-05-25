@@ -26,6 +26,7 @@ data class GameScreenState(
     // Reconnect snapshot fields (from /app/game.sync).
     val gameStatus: GameStatus? = null,
     val roundNumber: Int? = null,
+    val playerCards: Map<Int, List<PlayerCardState>> = emptyMap(),
     val playerLandmarks: Map<Int, List<PlayerLandmarkState>> = emptyMap(),
     val marketplace: Map<CardType, Int> = emptyMap(),
     val shopItems: List<ShopItem> = emptyList(),
@@ -53,6 +54,7 @@ data class GameScreenState(
             isRolling = false,
             gameStatus = null,
             roundNumber = null,
+            playerCards = emptyMap(),
             playerLandmarks = emptyMap(),
             marketplace = emptyMap(),
             shopItems = emptyList(),

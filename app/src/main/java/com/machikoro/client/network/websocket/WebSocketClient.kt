@@ -5,6 +5,7 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.shop.ShopItem
@@ -36,6 +37,8 @@ interface WebSocketClient {
     // gameStatus is null until the first snapshot arrives.
     val gameStatus: StateFlow<GameStatus?>
     val roundNumber: StateFlow<Int?>
+    // playerId -> that player's owned establishment cards.
+    val playerCards: StateFlow<Map<Int, List<PlayerCardState>>>
     // playerId -> that player's landmarks (built / unbuilt).
     val playerLandmarks: StateFlow<Map<Int, List<PlayerLandmarkState>>>
     // Remaining marketplace supply per card type.
