@@ -20,17 +20,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.machikoro.client.ui.theme.ButtonBeigeDark
+import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ButtonColor
 import com.machikoro.client.ui.theme.ButtonTextColor
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.OrangeButtonShadowColor
+import com.machikoro.client.ui.theme.TextBlueDark
 
 @Composable
 fun ActionButton(
     label: String,
     onClick: (() -> Unit)?,
-    modifier: Modifier = Modifier
-    ) {
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
     Box(
         modifier = modifier
             .wrapContentSize()
@@ -48,6 +52,7 @@ fun ActionButton(
         // Main button
         Button(
             onClick = { onClick?.invoke() },
+            enabled = enabled,
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = ButtonColor
@@ -58,6 +63,49 @@ fun ActionButton(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
                 color = ButtonTextColor,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+    }
+}
+
+@Composable
+fun SecondaryActionButton(
+    label: String,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    Box(
+        modifier = modifier.wrapContentSize()
+    ) {
+
+        // Bottom shadow
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(y = 4.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(ButtonBeigeDark)
+        )
+
+        // Main button
+        Button(
+            onClick = { onClick?.invoke() },
+            enabled = enabled,
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ButtonBeigeLight,
+                contentColor = TextBlueDark,
+                disabledContainerColor = ButtonBeigeLight.copy(alpha = 0.7f),
+                disabledContentColor = TextBlueDark.copy(alpha = 0.7f)
+            )
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextBlueDark,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold
             )
@@ -80,6 +128,7 @@ fun ButtonsPreview() {
             ) {
                 ActionButton("Some text", null)
                 ActionButton("Some text but long", null)
+                SecondaryActionButton("text", null)
             }
         }
     }
