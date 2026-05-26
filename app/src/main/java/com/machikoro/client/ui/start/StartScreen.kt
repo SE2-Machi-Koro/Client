@@ -1,22 +1,17 @@
 package com.machikoro.client.ui.start
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,22 +23,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.machikoro.client.R
 import com.machikoro.client.domain.model.state.BackendHealth
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
+import com.machikoro.client.ui.shared.ActionButton
+import com.machikoro.client.ui.shared.Header
 import com.machikoro.client.ui.shared.MainScreenBackground
+import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ClientTheme
 
-private val SecondaryActionShape = RoundedCornerShape(8.dp)
-private val SecondaryActionColor = Color(0xFF64B5F6)
-private val SecondaryActionTextColor = Color.Black
 
 private val HealthChipShape = RoundedCornerShape(12.dp)
 private val HealthChipBackground = Color.White.copy(alpha = 0.85f)
@@ -78,22 +71,30 @@ fun StartScreen(
         )
     } else {
         Box(
-            modifier = modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize()
         ) {
             MainScreenBackground()
-            TitleHeader()
-            SecondaryActionButton(
-                text = "Rules",
-                onClick = { showPdfViewer.value = true },
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 16.dp, end = 16.dp),
-            )
+            Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(top = 30.dp, start = 30.dp, end = 30.dp)
+            ) {
             BackendHealthChip(
                 health = state.backendHealth,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(top = 16.dp, start = 16.dp),
+            )
+            Header(
+                label = "Machi Koro",
+                modifier = Modifier
+                .align(Alignment.TopCenter),
+                fontSize = 52)
+
+            SecondaryActionButton(
+                label = "Rules",
+                onClick = { showPdfViewer.value = true },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
             )
 
             Column(
@@ -101,10 +102,16 @@ fun StartScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .padding(16.dp),
             ) {
-                SecondaryActionButton(
-                    text = "Register",
+                ActionButton(
+                    label = "Login",
+                    onClick = {
+                        onLoginDialogReset()
+                        showLoginDialog = true
+                    },
+                )
+                ActionButton(
+                    label = "Register",
                     // Reset dialog VM state before opening so the dialog can't
                     // surface leftover values from a previous successful
                     // submission — the route flips to HomeScreen on success
@@ -116,13 +123,7 @@ fun StartScreen(
                         showRegisterDialog = true
                     },
                 )
-                SecondaryActionButton(
-                    text = "Login",
-                    onClick = {
-                        onLoginDialogReset()
-                        showLoginDialog = true
-                    },
-                )
+
             }
 
             if (showRegisterDialog) {
@@ -152,60 +153,9 @@ fun StartScreen(
             }
         }
     }
-}
-
-@Composable
-private fun BoxScope.BackgroundImages() {
-    Image(
-        painter = painterResource(id = R.drawable.background_left),
-        contentDescription = null,
-        modifier = Modifier
-            .align(Alignment.BottomStart)
-            .offset(x = (-20).dp, y = 30.dp)
-    )
-    Image(
-        painter = painterResource(id = R.drawable.background_right),
-        contentDescription = null,
-        modifier = Modifier
-            .align(Alignment.BottomEnd)
-            .offset(x = 15.dp, y = 30.dp)
-    )
-}
-
-@Composable
-private fun BoxScope.TitleHeader() {
-    Text(
-        text = "MACHI KORO",
-        style = MaterialTheme.typography.headlineLarge,
-        color = MaterialTheme.colorScheme.secondary,
-        modifier = Modifier
-            .align(Alignment.TopCenter)
-            .padding(top = 55.dp)
-    )
-}
-@Composable
-private fun SecondaryActionButton(
-    text: String,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-    modifier: Modifier = Modifier,
-) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier,
-        shape = SecondaryActionShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = SecondaryActionColor
-        )
-    ) {
-        Text(
-            text = text,
-            color = SecondaryActionTextColor,
-            style = MaterialTheme.typography.labelLarge
-        )
     }
 }
+
 
 @Composable
 private fun BackendHealthChip(
