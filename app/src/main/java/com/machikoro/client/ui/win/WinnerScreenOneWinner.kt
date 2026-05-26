@@ -4,8 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,57 +35,88 @@ screen or starting a new game, which are also animated
 for visibility.
  */
 @Composable
-fun GameOverOneWinner(winnerName: String, roundsNumber: Int) {
+fun GameOverOneWinner(
+    winnerName: String,
+    roundsNumber: Int,
+    onBackHome: () -> Unit,
+) {
     Box(modifier = Modifier.fillMaxSize())
     {
-      Background(R.drawable.game_end)
+        Background(R.drawable.game_end)
         //Content
         Column(
-            modifier = Modifier.fillMaxSize().padding(all = 12.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
             Header("Congratulations to...")
+
+            Spacer(modifier = Modifier.padding(17.dp))
+
             Row(
-                modifier = Modifier.fillMaxWidth()
-                    .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(40.dp, Alignment.CenterHorizontally),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(
+                    40.dp,
+                    Alignment.CenterHorizontally
+                ),
                 verticalAlignment = Alignment.CenterVertically,
-            )
-            {
-                //Player card
-                AnimatedItem(delayMillis = 500, animationType = AnimationType.Bounce) {
-                    PlayerProfileCard(winnerName, 1)
-                }
-                AnimatedItem(delayMillis = 1000, animationType = AnimationType.Fade) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-                        horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+
+                Box(
+                    contentAlignment = Alignment.TopCenter
+                ) {
+
+                    AnimatedItem(
+                        delayMillis = 500,
+                        animationType = AnimationType.Bounce
                     ) {
-                        //TODO: later add more info here like score, coins, etc
-                        RegularInfoText("won the game in \n$roundsNumber rounds!")
+                        PlayerProfileCard(winnerName, 1)
                     }
+                        AnimatedItem(
+                            delayMillis = 1000, // show crown after all cards are shown
+                            animationType = AnimationType.Bounce
+                        ) {
+                            Box(
+                                modifier = Modifier.offset(y = (-28).dp)
+                            ) {
+                                Crown()
+                            }
+                        }
+                }
+
+                AnimatedItem(
+                    delayMillis = 2000,
+                    animationType = AnimationType.Fade
+                ) {
+                    RegularInfoText(
+                        "won the game in \n$roundsNumber rounds!"
+                    )
                 }
             }
 
-            AnimatedItem(delayMillis = 5000, animationType = AnimationType.SlideUp) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    ActionButton("Back to home screen", null)
-                }
+            Spacer(modifier = Modifier.weight(1f))
+
+            AnimatedItem(
+                delayMillis = 5000,
+                animationType = AnimationType.SlideUp
+            ) {
+                ActionButton("Back to home screen", onBackHome)
             }
         }
     }
 }
 
 
-    @Preview(showBackground = true)
-    @Composable
-    fun GameOverOnePlayerPreview() {
-        ClientTheme {
-            // Dummy data for preview
-            GameOverOneWinner(winnerName = "Alice", roundsNumber = 5)
-        }
+@Preview(showBackground = true)
+@Composable
+fun GameOverOnePlayerPreview() {
+    ClientTheme {
+        GameOverOneWinner(
+            winnerName = "Alice",
+            roundsNumber = 5,
+            onBackHome = {},
+        )
     }
-
-
+}
