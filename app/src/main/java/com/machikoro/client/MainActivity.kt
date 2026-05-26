@@ -185,7 +185,10 @@ class MainActivity : ComponentActivity() {
                         },
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
                         onStartGame = homeViewModel::startGame,
-                        onFillWithDummies = { lobbyScreenViewModel.fillWithDummies() },
+                        onFillWithDummies = {
+                            Log.d("MainActivity", "onFillWithDummies called")
+                            lobbyScreenViewModel.fillWithDummies()
+                        },
                         onResetLobby = lobbyScreenViewModel::resetLobby,
                         onLeaveLobby = {
                             navigationViewModel.leaveLobby()
