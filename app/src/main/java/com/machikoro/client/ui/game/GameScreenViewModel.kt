@@ -3,6 +3,8 @@ package com.machikoro.client.ui.game
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.machikoro.client.domain.cheat.recommendBestBuy
+import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.ShopCatalog
@@ -14,8 +16,12 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.websocket.WebSocketClient
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -28,6 +34,19 @@ class GameScreenViewModel(
         get() = mutableState.asStateFlow()
 
     private val mutableState = MutableStateFlow(GameScreenState.initial())
+
+    /** Insider Trading cheat (#203): the recommended card for this turn, or null when inactive. */
+    val cheatRecommendation: StateFlow<CardType?>
+        get() = mutableCheatRecommendation.asStateFlow()
+    private val mutableCheatRecommendation = MutableStateFlow<CardType?>(null)
+
+    /** One-shot signal each time a shake produces a recommendation (drives the toast). */
+    val cheatActivations: SharedFlow<CardType?>
+        get() = mutableCheatActivations.asSharedFlow()
+    private val mutableCheatActivations = MutableSharedFlow<CardType?>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
 
     init {
         viewModelScope.launch {
@@ -62,6 +81,10 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.activePlayerId.collect { activePlayerId ->
+                // The Insider Trading cheat is valid for one turn only — drop it when the turn rotates.
+                if (mutableState.value.activePlayerId != activePlayerId) {
+                    mutableCheatRecommendation.value = null
+                }
                 mutableState.update { state ->
                     state.copy(activePlayerId = activePlayerId)
                         .resetPurchaseFeedbackIf(state.activePlayerId != activePlayerId)
@@ -75,6 +98,9 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.roundNumber.collect { roundNumber ->
+                if (mutableState.value.roundNumber != roundNumber) {
+                    mutableCheatRecommendation.value = null
+                }
                 mutableState.update { state ->
                     state.copy(roundNumber = roundNumber)
                         .resetPurchaseFeedbackIf(state.roundNumber != roundNumber)
@@ -119,6 +145,21 @@ class GameScreenViewModel(
         if (!mutableState.value.isActivePlayer) return
         mutableState.update { it.copy(isRolling = true) }
         webSocketClient.rollDice(diceCount)
+    }
+
+    /**
+     * Insider Trading cheat (#203). On a shake during the local player's turn,
+     * computes a local best-buy recommendation and emits a one-shot activation
+     * signal for the toast. No-op off-turn or before the game is running; never
+     * contacts the server.
+     */
+    fun onShake() {
+        val current = mutableState.value
+        if (current.gameStatus != GameStatus.IN_PROGRESS || !current.isActivePlayer) return
+        val me = current.players.firstOrNull { it.isCurrentPlayer } ?: return
+        val recommendation = recommendBestBuy(current, me)
+        mutableCheatRecommendation.value = recommendation
+        mutableCheatActivations.tryEmit(recommendation)
     }
 
     fun purchase(itemType: String) {

@@ -2,6 +2,7 @@ package com.machikoro.client
 
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -20,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import com.machikoro.client.config.AppConfig
 import com.machikoro.client.domain.session.DataStoreSessionStorage
@@ -100,6 +102,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
+            val cheatRecommendation by gameScreenViewModel.cheatRecommendation.collectAsState()
+            val context = LocalContext.current
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
             val activeGameId by homeViewModel.activeGameId.collectAsState()
             val joinLobbyCode by homeViewModel.joinLobbyCode.collectAsState()
@@ -156,6 +160,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Insider Trading cheat (#203): brief toast each time a shake activates it.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.cheatActivations.collect {
+                    Toast.makeText(context, "Insider Trading active", Toast.LENGTH_SHORT).show()
+                }
+            }
+
             ClientTheme {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -190,6 +201,8 @@ class MainActivity : ComponentActivity() {
                             homeViewModel.clearLobbyCode()
                         },
                         onRollDice = gameScreenViewModel::rollDice,
+                        cheatRecommendation = cheatRecommendation,
+                        onShake = gameScreenViewModel::onShake,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
                         joinLobbyCode = joinLobbyCode,
