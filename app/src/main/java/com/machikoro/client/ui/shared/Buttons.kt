@@ -43,7 +43,8 @@ fun ActionButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     @DrawableRes leftIcon: Int? = null,
-    @DrawableRes rightIcon: Int? = null
+    @DrawableRes rightIcon: Int? = null,
+    fontSize: Int = 22,
 ) {
     Box(
         modifier = modifier
@@ -84,7 +85,7 @@ fun ActionButton(
                     text = label,
                     style = MaterialTheme.typography.bodyMedium,
                     color = ButtonTextColor,
-                    fontSize = 22.sp,
+                    fontSize = fontSize.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
                 // Right image
@@ -108,8 +109,9 @@ fun SecondaryActionButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     @DrawableRes leftIcon: Int? = null,
-    @DrawableRes rightIcon: Int? = null
-) {
+    @DrawableRes rightIcon: Int? = null,
+    fontSize: Int = 22,
+    ) {
     Box(
         modifier = modifier.wrapContentSize()
     ) {
@@ -151,7 +153,7 @@ fun SecondaryActionButton(
                     text = label,
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextBlueDark,
-                    fontSize = 22.sp,
+                    fontSize = fontSize.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
 
