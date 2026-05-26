@@ -2,7 +2,6 @@ package com.machikoro.client.ui.home
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -30,11 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,10 +36,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.BuildConfig
 import com.machikoro.client.R
+import com.machikoro.client.ui.shared.ActionButton
+import com.machikoro.client.ui.shared.Background
+import com.machikoro.client.ui.shared.Header
+import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ButtonBlueDark
 import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextWhite
 import com.machikoro.client.ui.theme.White
@@ -68,84 +65,65 @@ fun HomeScreen(
     onLogoutClick: () -> Unit,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+
+    Background(R.drawable.home_screen_background)
     // Root container. Box allows placing elements freely with align().
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(White)
+            .padding(top = 30.dp, start = 30.dp, end = 30.dp)
     ) {
-        // === BACKGROUND LAYER ===
-        // Decorative background image on the bottom left.
-        Image(
-            painter = painterResource(id = R.drawable.background_left),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-               .offset(x = 0.dp, y = 53.dp)
-                .blur(3.5.dp)
-        )
-
-        // Decorative background image on the bottom right.
-        Image(
-            painter = painterResource(id = R.drawable.background_right),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .offset(x = 15.dp, y = 53.dp)
-                .blur(3.5.dp)
-        )
-
-        // White transparent overlay for better readability.
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .offset(x = 0.dp, y = 40.dp)
-                .background(Color.White.copy(alpha = 0.7f))
-        )
-
         // === HEADER ===
         // Main title.
-        Text(
-            text = "WELCOME",
-            style = MaterialTheme.typography.headlineMedium,
-            color = PrimaryOrange,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 30.dp),
-        )
+
+            Header("WELCOME",
+                modifier = Modifier
+                .align(Alignment.TopCenter),
+                fontSize = 56
+            )
+
 
         // === PROFILE SECTION ===
         // User profile card in the top right corner.
-        ProfileCard(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 20.dp, end = 30.dp)
-        )
+        SecondaryActionButton(
+            label = "pass real name",
+            modifier = Modifier.align(Alignment.TopEnd),
+            onClick = null,
+            leftIcon = R.drawable.login_user_icon
+            )
 
         // Logout affordance in the top-left corner. Issue #106 places the
         // logout action on the authenticated screen; the start screen never
         // shows it because the routing in AppRoot collapses HomeScreen back to
         // StartScreen the moment the session clears.
-        LogoutButton(
-            onClick = onLogoutClick,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(top = 20.dp, start = 30.dp)
-        )
-
-        // Debug-only button — hidden in release builds
-        if (BuildConfig.DEBUG) {
-            Text(
-                text = "⚙ Purge DB",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.Red.copy(alpha = 0.5f),
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = 70.dp, start = 32.dp)
-                    .clickable { onPurgeClick() }
-            )
+                    .align(Alignment.TopStart),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+
+                ActionButton(
+                    "Logout",
+                    onClick = onLogoutClick
+                )
+
+                if (BuildConfig.DEBUG) {
+                    Text(
+                        text = "⚙ Purge DB",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Red,
+                        modifier = Modifier
+                            .clickable { onPurgeClick() }
+                    )
+                }
+            }
         }
 
         // === MAIN ACTION BUTTONS ===
@@ -156,7 +134,7 @@ fun HomeScreen(
                 .offset(y = 20.dp)
                 .height(180.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top        ) {
+        verticalArrangement = Arrangement.Top) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(60.dp),
                 verticalAlignment = Alignment.Top,
@@ -222,30 +200,6 @@ fun HomeScreen(
         )
     }
 }
-
-@Composable
-private fun LogoutButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Button(
-        onClick = onClick,
-        modifier = modifier.height(40.dp),
-        shape = RoundedCornerShape(10.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = ButtonBlueDark,
-            contentColor = TextWhite,
-        ),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp),
-    ) {
-        Text(
-            text = "Logout",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = TextWhite,
-        )
-    }
 }
 
 @Composable
@@ -270,7 +224,9 @@ private fun HomeCard(
         shape = RoundedCornerShape(10.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = backgroundColor,
-            contentColor = textColor
+            contentColor = textColor,
+            disabledContainerColor = backgroundColor.copy(alpha = 0.5f),
+            disabledContentColor = textColor.copy(alpha = 0.5f)
         ),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp),
         contentPadding = PaddingValues(8.dp)
@@ -383,50 +339,7 @@ private fun JoinLobbyCodeRow(
     }
 }
 
-@Composable
-private fun ProfileCard(
-    modifier: Modifier = Modifier
-) {
-    // Small card showing user avatar, username and edit icon.
-    Card(
-        modifier = modifier
-            .width(150.dp)
-            .height(40.dp),
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-            // User avatar icon.
-            Image(
-                painter = painterResource(id = R.drawable.login_user_icon),
-                contentDescription = null,
-                modifier = Modifier.size(30.dp)
-            )
 
-            // Placeholder username.
-            Text(
-                text = "NN",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = TextBlueDark
-            )
-
-            // Edit icon. Later this can open a name edit dialog.
-            Image(
-                painter = painterResource(id = R.drawable.home_edit_icon),
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
-}
 
 @Composable
 private fun BottomMenuBar(
@@ -441,7 +354,7 @@ private fun BottomMenuBar(
             .width(475.dp)
             .height(50.dp),
         shape = RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp),
-        colors = CardDefaults.cardColors(containerColor = White),
+        colors = CardDefaults.cardColors(containerColor = ButtonBeigeLight),
         elevation = CardDefaults.cardElevation(defaultElevation = 14.dp)
     ) {
         Row(
