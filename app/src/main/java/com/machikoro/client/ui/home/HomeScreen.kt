@@ -3,7 +3,6 @@ package com.machikoro.client.ui.home
 import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -89,7 +88,12 @@ fun HomeScreen(
 
         // === PROFILE SECTION ===
         // User profile card in the top right corner.
-        SecondaryActionButton("pass real name", modifier = Modifier.align(Alignment.TopEnd), onClick = null, rightIcon = R.drawable.home_edit_icon)
+        SecondaryActionButton(
+            label = "pass real name",
+            modifier = Modifier.align(Alignment.TopEnd),
+            onClick = null,
+            leftIcon = R.drawable.login_user_icon
+            )
 
         // Logout affordance in the top-left corner. Issue #106 places the
         // logout action on the authenticated screen; the start screen never
@@ -130,7 +134,7 @@ fun HomeScreen(
                 .offset(y = 20.dp)
                 .height(180.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top        ) {
+        verticalArrangement = Arrangement.Top) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(60.dp),
                 verticalAlignment = Alignment.Top,
