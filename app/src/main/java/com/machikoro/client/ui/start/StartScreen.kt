@@ -109,6 +109,7 @@ fun StartScreen(
                         onLoginDialogReset()
                         showLoginDialog = true
                     },
+                    fontSize = 24
                 )
                 ActionButton(
                     label = "Register",
@@ -122,6 +123,7 @@ fun StartScreen(
                         onRegisterDialogReset()
                         showRegisterDialog = true
                     },
+                    fontSize = 24
                 )
 
             }
