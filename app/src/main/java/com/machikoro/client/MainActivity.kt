@@ -208,15 +208,25 @@ class MainActivity : ComponentActivity() {
                         },
                         onPurgeClick = {
                             lifecycleScope.launch {
-                                // Only clear local state if the server accepted the purge
-                                val response = debugApi.purge()
-                                if (response.isSuccessful) {
-                                    webSocketClient.clearGameState()
-                                    navigationViewModel.leaveLobby()
+                                try {
+                                    val response = debugApi.purge()
+                                    if (response.isSuccessful) {
+                                        webSocketClient.clearGameState()
+                                        navigationViewModel.leaveLobby()
+                                        snackbarHostState.showSnackbar("DB purged")
+                                    } else {
+                                        snackbarHostState.showSnackbar("Purge failed (${response.code()})")
+                                    }
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar("Purge error: ${e.message}")
                                 }
                             }
                         },
                         onPurchaseClick = gameScreenViewModel::purchase,
+                        onBackHome = {
+                            gameScreenViewModel.clearGameState()
+                            navigationViewModel.returnHome()
+                        },
                         onJoinLobbyClick = {
                             homeViewModel.clearLobbyCode()
                             showJoinLobbyInput = true

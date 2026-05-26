@@ -37,6 +37,7 @@ import com.machikoro.client.ui.navigation.NavigationViewModel
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.win.GameOverOneWinner
+import com.machikoro.client.ui.win.resolveWinnerName
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
@@ -73,6 +74,7 @@ fun AppRoot(
     onResetLobby: () -> Unit = {},
     onRollDice: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
+    onBackHome: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     hasActiveGame: Boolean = false,
     onResumeGameClick: () -> Unit = {},
@@ -219,29 +221,13 @@ fun AppRoot(
                 GameOverOneWinner(
                     winnerName = resolveWinnerName(gameScreenState),
                     roundsNumber = gameScreenState.roundNumber ?: 0,
+                    onBackHome = onBackHome,
                 )
             }
         }
     }
 }
 
-/**
- * Derives the winner from the reconnect snapshot: in Machi Koro the game ends
- * when a player has built all four landmarks, so the winner is the player whose
- * landmark list is non-empty and fully built. Falls back to a generic label if
- * the snapshot doesn't pin down a single winner.
- */
-private fun resolveWinnerName(state: GameScreenState): String {
-    val winnerPlayerId = state.playerLandmarks.entries
-        .firstOrNull { (_, landmarks) ->
-            landmarks.isNotEmpty() && landmarks.all { it.isBuilt }
-        }
-        ?.key
-    return state.players
-        .firstOrNull { it.id == winnerPlayerId?.toString() }
-        ?.displayName
-        ?: "the winner"
-}
 
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, widthDp = 917, heightDp = 412)

@@ -32,6 +32,9 @@ class FakeWebSocketClient : WebSocketClient {
     override val lobbyJoinErrors: SharedFlow<String>
         get() = mutableLobbyJoinErrors
 
+    override val winnerId: StateFlow<Int?>
+        get() = mutableWinnerId
+
     override val diceResult: StateFlow<List<Int>?>
         get() = mutableDiceResult
 
@@ -76,6 +79,7 @@ class FakeWebSocketClient : WebSocketClient {
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
+    private val mutableWinnerId = MutableStateFlow<Int?>(null)
     private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
     private val mutableActivePlayerId = MutableStateFlow<Int?>(null)
     private val mutableActiveGameId = MutableStateFlow<Int?>(null)
@@ -150,17 +154,26 @@ class FakeWebSocketClient : WebSocketClient {
         leaveLobbyGameId = gameId
     }
 
-    override fun clearGameState() {
-        mutableLobbyCode.value = null
-        mutableActiveGameId.value = null
-        mutableGamePhase.value = GamePhase.NONE
-        mutablePlayers.value = emptyList()
-    }
-
     override fun clearLobbyCode() {
         mutableLobbyCode.value = null
         mutableActiveGameId.value = null
         mutableIsLobbyHost.value = false
+    }
+
+    override fun clearGameState() {
+        mutableGamePhase.value = GamePhase.NONE
+        mutablePlayers.value = emptyList()
+        mutableLobbyCode.value = null
+        mutableDiceResult.value = null
+        mutableActivePlayerId.value = null
+        mutableActiveGameId.value = null
+        mutableIsLobbyHost.value = false
+        mutableWinnerId.value = null
+        mutableGameStatus.value = null
+        mutableRoundNumber.value = null
+        mutablePlayerLandmarks.value = emptyMap()
+        mutableMarketplace.value = emptyMap()
+        mutableShopItems.value = emptyList()
     }
 
     override fun rollDice(diceCount: Int) {
@@ -197,6 +210,10 @@ class FakeWebSocketClient : WebSocketClient {
 
     fun emitGameStatus(status: GameStatus?) {
         mutableGameStatus.value = status
+    }
+
+    fun emitWinnerId(winnerId: Int?) {
+        mutableWinnerId.value = winnerId
     }
 
     fun emitRoundNumber(round: Int?) {

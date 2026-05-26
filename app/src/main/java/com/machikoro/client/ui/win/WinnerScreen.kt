@@ -4,8 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -36,32 +38,56 @@ fun GameEndScreen(players: List<String>) {
     }
     Box(modifier = Modifier.fillMaxSize())
     {
-       Background(R.drawable.game_end)
+        Background(R.drawable.game_end)
 
         //Content
         Column(
-            modifier = Modifier.fillMaxSize().padding(all = 12.dp),
+            modifier = Modifier
+                .fillMaxSize().padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
             Header("Game Over")
 
+            Spacer(modifier = Modifier.padding(17.dp))
+
             //Player cards
             Row(
-                modifier = Modifier.fillMaxWidth()
-                    .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(
+                    20.dp,
+                    Alignment.CenterHorizontally
+                ),
                 verticalAlignment = Alignment.CenterVertically,
-            )
-            {
+            ) {
                 players.forEachIndexed { i, player ->
-                    AnimatedItem(500 + i * 500, AnimationType.Bounce) {
-                        PlayerProfileCard(player, i + 1)
+                    Box(
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+
+                        AnimatedItem(500 + 500 * i, AnimationType.Bounce) {
+                            PlayerProfileCard(player, i + 1)
+                        }
+                        if(i == 0) {
+                            AnimatedItem(
+                                delayMillis = 500 + 500 * players.size, // show crown after all cards are shown
+                                animationType = AnimationType.Bounce
+                            ) {
+                                Box(
+                                    modifier = Modifier.offset(y = (-28).dp)
+                                ) {
+                                    Crown()
+                                }
+                            }
+                        }
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.weight(1f))
+
             //Action buttons
-            AnimatedItem(delayMillis = 5000, animationType = AnimationType.SlideUp) {
+            AnimatedItem(delayMillis = 1000 + players.size * 1000, animationType = AnimationType.SlideUp) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -79,6 +105,6 @@ fun GameEndScreen(players: List<String>) {
 fun WinScreenPreview() {
     ClientTheme {
         // Dummy data for preview TODO: replace with actual data
-        GameEndScreen(listOf<String>("Name 1", "1", "HsDHDHsssaaassaasasasassaDH", "Name 4"))
+        GameEndScreen(listOf<String>( "HsDHDHsssaaassaasasasassaDH", "Name 4"))
     }
 }
