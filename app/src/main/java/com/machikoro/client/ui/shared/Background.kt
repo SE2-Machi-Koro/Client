@@ -40,7 +40,26 @@ fun Background(
         )
     }
 }
-
+@Composable
+fun MainScreenBackground() {
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Background image
+        Image(
+            painter = painterResource(id = R.drawable.background_wood),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        Image(
+            painter = painterResource(id = R.drawable.city_view),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+    }
+}
 @Preview(showBackground = true)
 @Composable
 fun BackgroundPreview() {

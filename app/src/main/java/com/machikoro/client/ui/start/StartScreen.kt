@@ -38,6 +38,7 @@ import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
+import com.machikoro.client.ui.shared.MainScreenBackground
 import com.machikoro.client.ui.theme.ClientTheme
 
 private val SecondaryActionShape = RoundedCornerShape(8.dp)
@@ -79,7 +80,7 @@ fun StartScreen(
         Box(
             modifier = modifier.fillMaxSize()
         ) {
-            BackgroundImages()
+            MainScreenBackground()
             TitleHeader()
             SecondaryActionButton(
                 text = "Rules",
