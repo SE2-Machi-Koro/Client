@@ -31,6 +31,7 @@ interface WebSocketClient {
     // Null if no dice have been rolled yet in the current turn.
     val diceResult: StateFlow<List<Int>?>
     val activePlayerId: StateFlow<Int?>
+    val winnerId: StateFlow<Int?>
 
     // Reconnect snapshot fields, populated from the /app/game.sync response.
     // gameStatus is null until the first snapshot arrives.
@@ -60,6 +61,7 @@ interface WebSocketClient {
     fun sendJoinLobby(lobbyCode: String)     // Sends a request to join an existing lobby by lobby code.
     fun sendLeaveLobby(gameId: Int)          // Notifies the server that this player is leaving the lobby.
     fun clearLobbyCode()
+    fun clearGameState()
     fun sendGameStart()
 
     // Matches Server PR #216 PurchaseRequest: gameId + purchaseType + one target field.
@@ -71,8 +73,4 @@ interface WebSocketClient {
     )
 
     fun rollDice(diceCount: Int = 1)
-
-    // Resets all in-memory game/lobby state without touching the connection.
-    // Call after a server-side purge so the UI reflects the cleared DB immediately.
-    fun clearGameState()
 }

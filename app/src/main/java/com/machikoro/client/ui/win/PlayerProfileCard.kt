@@ -75,20 +75,6 @@ fun PlayerProfileCard(name: String, place: Int) {
             .padding(top = 14.dp)
         ,
     ) {
-        // Crown
-        if (place == 1) {
-            Image(
-                painter = painterResource(id = R.drawable.lobby_host_icon),
-                contentDescription = null,
-                alpha = 0.7f,
-                modifier = Modifier
-                    .size(40.dp)
-                    .align(Alignment.TopCenter)
-                    .offset(y = (-40).dp) // above card
-                    .zIndex(1f)
-            )
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -129,4 +115,14 @@ fun PlayerProfileCard(name: String, place: Int) {
             )
         }
     }
+}
+
+@Composable
+fun Crown() {
+    Image(
+        painter = painterResource(id = R.drawable.lobby_host_icon),
+        contentDescription = null,
+        modifier = Modifier
+            .size(40.dp)
+    )
 }
