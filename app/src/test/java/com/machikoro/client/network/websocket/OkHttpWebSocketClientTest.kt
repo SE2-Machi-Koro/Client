@@ -972,6 +972,53 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun gameTopicPurchaseFailureMessageEmitsPurchaseFailureEvent() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
+
+        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ERROR","sender":"server","payload":{"event":"PURCHASE_FAILED","code":"DUPLICATE_PURPLE_ESTABLISHMENT","message":"Player already owns purple establishment STADIUM","purchaseType":"ESTABLISHMENT","cardType":"STADIUM"},"gameId":42}"""
+            )
+        )
+        runCurrent()
+
+        assertEquals(
+            listOf(PurchaseEvent.Failure("Player already owns purple establishment STADIUM")),
+            purchaseEvents
+        )
+    }
+
+    @Test
+    fun errorMessageWithoutPurchaseFailureEventDoesNotEmitPurchaseFailure() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
+
+        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ERROR","sender":"server","payload":{"event":"SOME_OTHER_FAILURE","message":"Not a purchase rejection"},"gameId":42}"""
+            )
+        )
+        runCurrent()
+
+        assertTrue(purchaseEvents.isEmpty())
+    }
+
+    @Test
     fun sendJoinLobbyWithoutConnectionIsIgnored() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -1396,7 +1443,7 @@ class OkHttpWebSocketClientTest {
 
     @Test
     fun syncMessageResolvesActivePlayerUserIdFromTurnOrder() {
-        // turnOrder[currentTurnIndex=0] = playerId 11, whose userId is 1.
+        // Backend contract: turnOrder[currentTurnIndex=0] is userId 1.
         val client = clientAfterSync()
         assertEquals(1, client.activePlayerId.value)
     }
@@ -1772,7 +1819,7 @@ class OkHttpWebSocketClientTest {
         factory.simulateText(connectedFrame())
         factory.simulateText(
             syncFrame(
-                """{"type":"SYNC","sender":"server","gameId":7,"payload":{"targetUserId":1,"state":{"game":{"id":7,"status":"IN_PROGRESS","turnPhase":"BUY_OR_BUILD","currentTurnIndex":0},"players":[{"id":11,"userId":1,"coins":10},{"id":22,"userId":2,"coins":7}],"playerUsernames":{"11":"alice","22":"bob"},"playerLandmarks":{},"marketplace":{},"turnOrder":[11,22]}}}"""
+                """{"type":"SYNC","sender":"server","gameId":7,"payload":{"targetUserId":1,"state":{"game":{"id":7,"status":"IN_PROGRESS","turnPhase":"BUY_OR_BUILD","currentTurnIndex":0},"players":[{"id":11,"userId":1,"coins":10},{"id":22,"userId":2,"coins":7}],"playerUsernames":{"11":"alice","22":"bob"},"playerLandmarks":{},"marketplace":{},"turnOrder":[1,2]}}}"""
             )
         )
 
@@ -2245,7 +2292,7 @@ class OkHttpWebSocketClientTest {
                 """"cardDefinitions":[{"cardType":"BAKERY","cost":1,"income":1,"color":"GREEN",""" +
                 """"establishmentType":"BREAD","paymentSource":"BANK","activationNumbers":[2,3]}],""" +
                 """"landmarkDefinitions":[{"landmarkType":"TRAIN_STATION","cost":4}],""" +
-                """"turnOrder":[11,22]}}}"""
+                """"turnOrder":[1,2]}}}"""
     }
 
     private fun newClient(
