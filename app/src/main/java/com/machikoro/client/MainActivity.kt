@@ -223,6 +223,10 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onPurchaseClick = gameScreenViewModel::purchase,
+                        onBackHome = {
+                            gameScreenViewModel.clearGameState()
+                            navigationViewModel.returnHome()
+                        },
                         onJoinLobbyClick = {
                             homeViewModel.clearLobbyCode()
                             showJoinLobbyInput = true
