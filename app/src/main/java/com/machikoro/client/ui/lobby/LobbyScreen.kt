@@ -45,6 +45,7 @@ import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextWhite
 import com.machikoro.client.ui.theme.White
+import android.util.Log
 
 @Composable
 fun LobbyScreen(
@@ -208,36 +209,22 @@ fun LobbyScreen(
                 Text("Start Game", color = TextWhite, style =  MaterialTheme.typography.labelLarge)
             }
 
-            // Debug helper: fill remaining slots so the host can start without real players
-            if (isHost && playerNames.size < maxPlayers) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = onFillWithDummies,
-                    modifier = Modifier
-                        .width(320.dp)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
-                ) {
-                    Text("[Debug] Fill with dummies", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
-                }
+            Button(
+                onClick = onStartGame,
+                enabled = startEnabled,
+                modifier = Modifier
+                    .width(320.dp)
+                    .height(52.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ButtonBlueDark,
+                    disabledContainerColor = ButtonBlueDark.copy(alpha = 0.65f)
+                )
+            ) {
+                Text("Start Game", color = TextWhite, style = MaterialTheme.typography.labelLarge)
             }
 
-            // Debug helper: remove all non-host players so the host can start fresh
-            if (isHost && playerNames.size > 1) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Button(
-                    onClick = onResetLobby,
-                    modifier = Modifier
-                        .width(320.dp)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
-                ) {
-                    Text("[Debug] Reset lobby", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
-                }
-            }
-        }
+// Debug helper: fill remaining slots so the host can start wit
 
         ReadyToggle(
             isReady = isReady,
