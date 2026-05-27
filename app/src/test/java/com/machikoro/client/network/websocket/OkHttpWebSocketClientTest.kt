@@ -1493,6 +1493,24 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun gameEndMessageMarksGameFinishedAndKeepsWinnerId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_END","sender":"server","payload":{"winnerId":11,"roundsPlayed":4}}""")
+        )
+
+        assertEquals(GameStatus.FINISHED, client.gameStatus.value)
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+        assertEquals(11, client.winnerId.value)
+        assertEquals(4, client.roundNumber.value)
+    }
+
+    @Test
     fun malformedSyncMessageDoesNotCrashAndLeavesSnapshotEmpty() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -1514,6 +1532,25 @@ class OkHttpWebSocketClientTest {
         assertNull(client.roundNumber.value)
         assertTrue(client.marketplace.value.isEmpty())
         assertTrue(client.playerLandmarks.value.isEmpty())
+    }
+
+    @Test
+    fun clearGameStateResetsFinishedGameData() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_END","sender":"server","payload":{"winnerId":11,"roundsPlayed":4}}""")
+        )
+
+        client.clearGameState()
+
+        assertNull(client.gameStatus.value)
+        assertNull(client.winnerId.value)
+        assertNull(client.activeGameId.value)
+        assertNull(client.lobbyCode.value)
     }
 
     // ── auto-reconnect (#166) ────────────────────────────────────────────────
@@ -2188,6 +2225,57 @@ class OkHttpWebSocketClientTest {
         )
         assertEquals(1, client.marketplace.value.size)
         assertEquals(5, client.marketplace.value[CardType.BAKERY])
+    }
+
+    // ── resetGameState ────────────────────────────────────────────────
+    @Test
+    fun transientDisconnectDoesNotClearWinnerOrActiveGameId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        // Seed active game
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"GAME_STARTED",
+                "gameId":42,
+                "payload":{
+                    "activePlayerId":1,
+                    "game":{
+                        "id":42,
+                        "lobbyCode":"ABC123",
+                        "turnPhase":"ROLL_DICE"
+                    },
+                    "players":[]
+                }
+            }"""
+            )
+        )
+
+        // Seed winner state
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"GAME_END",
+                "sender":"server",
+                "payload":{
+                    "winnerId":11,
+                    "roundsPlayed":4
+                }
+            }"""
+            )
+        )
+
+        // Simulate transient disconnect (reconnect path)
+        factory.simulateClosed()
+
+        // Identity should survive reconnect-safe resetGameState()
+        assertEquals(42, client.activeGameId.value)
+        assertEquals(11, client.winnerId.value)
     }
 
     /** Connects a client and feeds it one realistic SYNC snapshot frame. */

@@ -92,6 +92,11 @@ class GameScreenViewModel(
             }
         }
         viewModelScope.launch {
+            webSocketClient.winnerId.collect { winnerId ->
+                mutableState.update { it.copy(winnerId = winnerId) }
+            }
+        }
+        viewModelScope.launch {
             webSocketClient.roundNumber.collect { roundNumber ->
                 mutableState.update { state ->
                     state.copy(roundNumber = roundNumber)
@@ -153,6 +158,10 @@ class GameScreenViewModel(
                 if (current.isRolling) current.copy(isRolling = false) else current
             }
         }
+    }
+
+    fun clearGameState() {
+        webSocketClient.clearGameState()
     }
 
     fun purchase(itemType: String) {

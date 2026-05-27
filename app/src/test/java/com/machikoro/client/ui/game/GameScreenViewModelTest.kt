@@ -599,6 +599,35 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun winnerIdFromClientIsReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        fakeClient.emitWinnerId(11)
+        advanceUntilIdle()
+
+        assertEquals(11, viewModel.state.value.winnerId)
+    }
+
+    @Test
+    fun clearGameStateClearsFinishedGameDataFromClient() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        fakeClient.emitGameStatus(GameStatus.FINISHED)
+        fakeClient.emitWinnerId(11)
+        fakeClient.emitRoundNumber(4)
+        advanceUntilIdle()
+
+        viewModel.clearGameState()
+        advanceUntilIdle()
+
+        assertNull(viewModel.state.value.gameStatus)
+        assertNull(viewModel.state.value.winnerId)
+        assertNull(viewModel.state.value.roundNumber)
+    }
+
+    @Test
     fun roundNumberFromClientIsReflectedInState() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient)

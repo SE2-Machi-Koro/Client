@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -156,6 +157,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     snackbarHost = { SnackbarHost(snackbarHostState) },
+                    contentWindowInsets = WindowInsets(0)
                 ) { innerPadding ->
                     AppRoot(
                         navigationViewModel = navigationViewModel,
@@ -212,15 +214,25 @@ class MainActivity : ComponentActivity() {
                         },
                         onPurgeClick = {
                             lifecycleScope.launch {
-                                // Only clear local state if the server accepted the purge
-                                val response = debugApi.purge()
-                                if (response.isSuccessful) {
-                                    webSocketClient.clearGameState()
-                                    navigationViewModel.leaveLobby()
+                                try {
+                                    val response = debugApi.purge()
+                                    if (response.isSuccessful) {
+                                        webSocketClient.clearGameState()
+                                        navigationViewModel.leaveLobby()
+                                        snackbarHostState.showSnackbar("DB purged")
+                                    } else {
+                                        snackbarHostState.showSnackbar("Purge failed (${response.code()})")
+                                    }
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar("Purge error: ${e.message}")
                                 }
                             }
                         },
                         onPurchaseClick = gameScreenViewModel::purchase,
+                        onBackHome = {
+                            gameScreenViewModel.clearGameState()
+                            navigationViewModel.returnHome()
+                        },
                         onJoinLobbyClick = {
                             homeViewModel.clearLobbyCode()
                             showJoinLobbyInput = true

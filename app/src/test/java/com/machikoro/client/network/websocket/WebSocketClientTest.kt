@@ -44,6 +44,7 @@ class DummyWebSocketClient : WebSocketClient {
     override val lobbyCode: StateFlow<String?> = MutableStateFlow(null)
     override val activeGameId: StateFlow<Int?> = MutableStateFlow(null)
     override val isLobbyHost: StateFlow<Boolean> = MutableStateFlow(false)
+    override val winnerId: StateFlow<Int?> = MutableStateFlow(null)
     override val diceResult: StateFlow<List<Int>?> = MutableStateFlow(null)
     override val activePlayerId: StateFlow<Int?> = MutableStateFlow(null)
     override val authRejections = kotlinx.coroutines.flow.MutableSharedFlow<Unit>()
@@ -57,10 +58,10 @@ class DummyWebSocketClient : WebSocketClient {
     override fun sendCreateLobby() {}
     override fun sendJoinLobby(lobbyCode: String) = Unit
     override fun clearLobbyCode() {}
+    override fun clearGameState() {}
     override fun sendGameStart() {}
     override fun rollDice(diceCount: Int) {}
     override fun sendLeaveLobby(gameId: Int) {}
-    override fun clearGameState() {}
     override fun sendPurchase(
         gameId: Int,
         purchaseType: PurchaseType,
@@ -159,7 +160,7 @@ class WebSocketClientTest {
 
         assertEquals(GameStatus.FINISHED, fixture.client.gameStatus.value)
         assertEquals(202, fixture.client.activePlayerId.value)
-        assertEquals(GamePhase.END_TURN, fixture.client.gamePhase.value)
+        assertEquals(GamePhase.NONE, fixture.client.gamePhase.value)
     }
 
     @Test
