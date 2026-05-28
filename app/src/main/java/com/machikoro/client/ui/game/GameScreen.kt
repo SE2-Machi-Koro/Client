@@ -2,11 +2,7 @@ package com.machikoro.client.ui.game
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
@@ -40,34 +35,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
-import com.machikoro.client.domain.enums.PurchaseType
-import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.model.shop.ShopCatalog
-import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
-import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.model.state.toDisplayText
-import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.ui.theme.PanelBorder
-import com.machikoro.client.ui.theme.TextBlueDark
-import com.machikoro.client.ui.theme.White
 import kotlinx.coroutines.delay
 
 private const val BANNER_COLOR_ANIMATION_DURATION_MS = 300
@@ -120,7 +103,7 @@ fun GameScreen(
             )
         }
 
-        if (state.isBuyingPhase) {
+        if (state.shouldShowBuyingPhaseShop()) {
             BuyingPhaseShop(
                 state = state,
                 items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
@@ -505,295 +488,7 @@ private fun CoinIcon(modifier: Modifier = Modifier) {
 private fun coinDisplayTopPadding(players: List<PlayerCoinState>) =
     if (players.isEmpty()) 0.dp else 92.dp
 
-@Composable
-private fun BuyingPhaseShop(
-    state: GameScreenState,
-    items: List<ShopItem>,
-    onPurchaseClick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    // Disable buying until game is IN_PROGRESS, both active-player state and a server game id are known.
-    val canPurchase = state.canCurrentPlayerPurchase() && state.gameId != null
-    var selectedItemType by remember(items) {
-        mutableStateOf(items.firstOrNull { state.canPurchaseItem(it) }?.type)
-    }
-    val establishments = remember(items) {
-        items
-            .filter { it.purchaseType == PurchaseType.ESTABLISHMENT }
-            .sortedWith(compareBy<ShopItem> { it.cost }.thenBy { it.activationText }.thenBy { it.displayName })
-    }
-    val landmarks = remember(items) {
-        items
-            .filter { it.purchaseType == PurchaseType.LANDMARK }
-            .sortedBy { it.cost }
-    }
-
-    Surface(
-        color = White.copy(alpha = 0.96f),
-        contentColor = TextBlueDark,
-        shape = RoundedCornerShape(8.dp),
-        tonalElevation = 4.dp,
-        border = BorderStroke(2.dp, PanelBorder),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            ShopHeader(canPurchase = canPurchase)
-            ShopItemSection(
-                title = "Establishments",
-                items = establishments,
-                state = state,
-                canPurchase = canPurchase,
-                selectedItemType = selectedItemType,
-                onSelect = { selectedItemType = it },
-                onPurchaseClick = onPurchaseClick
-            )
-            ShopItemSection(
-                title = "Landmarks",
-                items = landmarks,
-                state = state,
-                canPurchase = canPurchase,
-                selectedItemType = selectedItemType,
-                onSelect = { selectedItemType = it },
-                onPurchaseClick = onPurchaseClick
-            )
-            state.purchaseMessage?.let { message ->
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = state.purchaseState.toFeedbackColor()
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ShopHeader(canPurchase: Boolean) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
-            Text(
-                text = "Shop",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = TextBlueDark
-            )
-            Text(
-                text = if (canPurchase) "Choose one item to build this turn" else "Waiting for the active player",
-                style = MaterialTheme.typography.bodySmall,
-                color = TextBlueDark.copy(alpha = 0.7f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
-private fun ShopItemSection(
-    title: String,
-    items: List<ShopItem>,
-    state: GameScreenState,
-    canPurchase: Boolean,
-    selectedItemType: String?,
-    onSelect: (String) -> Unit,
-    onPurchaseClick: (String) -> Unit,
-) {
-    if (items.isEmpty()) return
-
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            color = TextBlueDark
-        )
-        LazyRow(verticalAlignment = Alignment.Top) {
-            items(
-                items = items,
-                key = { it.type }
-            ) { item ->
-                ShopItemCard(
-                    item = item,
-                    state = state,
-                    canPurchase = canPurchase && state.canPurchaseItem(item),
-                    isSelected = selectedItemType == item.type,
-                    onSelect = onSelect,
-                    onPurchaseClick = onPurchaseClick,
-                    modifier = Modifier.padding(end = 10.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ShopItemCard(
-    item: ShopItem,
-    state: GameScreenState,
-    canPurchase: Boolean,
-    isSelected: Boolean,
-    onSelect: (String) -> Unit,
-    onPurchaseClick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val isPurchaseEnabled =
-        canPurchase &&
-            isSelected &&
-            (state.purchaseState == PurchaseState.IDLE || state.purchaseState == PurchaseState.ERROR)
-    val borderColor = if (isSelected) MaterialTheme.colorScheme.secondary else PanelBorder
-    Surface(
-        color = if (canPurchase) item.color.toContainerColor() else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = item.color.toContentColor(),
-        shape = RoundedCornerShape(8.dp),
-        tonalElevation = 2.dp,
-        modifier = modifier
-            .widthIn(min = 170.dp, max = 178.dp)
-            .alpha(if (canPurchase) 1f else 0.72f)
-            .border(2.dp, borderColor, RoundedCornerShape(8.dp))
-            .clickable(enabled = canPurchase) { onSelect(item.type) }
-            .semantics {
-                contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}"
-            }
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .padding(10.dp)
-                .defaultMinSize(minHeight = 238.dp)
-        ) {
-            Image(
-                painter = painterResource(id = ShopImageResolver.drawableFor(item.imageKey)),
-                contentDescription = item.displayName,
-                modifier = Modifier.size(68.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = item.displayName,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = "${item.cost} coins",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1
-            )
-            Text(
-                text = "${item.establishmentType} • ${item.activationText}",
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = item.effectText,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-            if (!canPurchase) {
-                Text(
-                    text = state.disabledReasonFor(item),
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = { onPurchaseClick(item.type) },
-                enabled = isPurchaseEnabled,
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) {
-                Text(text = state.buttonTextFor(item))
-            }
-        }
-    }
-}
-
-private fun GameScreenState.canCurrentPlayerPurchase(): Boolean = isActivePlayer && gameStatus == GameStatus.IN_PROGRESS
-
-private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
-    item.isAvailable &&
-        hasEnoughKnownCoinsFor(item) &&
-        !isKnownBuiltLandmark(item)
-
-private fun GameScreenState.disabledReasonFor(item: ShopItem): String = when {
-    gameStatus != GameStatus.IN_PROGRESS -> "Game not active"
-    !isActivePlayer -> "Waiting"
-    gameId == null -> "No game"
-    !item.isAvailable -> "Unavailable"
-    !hasEnoughKnownCoinsFor(item) -> "Need coins"
-    isKnownBuiltLandmark(item) -> "Built"
-    else -> "Blocked"
-}
-
-private fun GameScreenState.hasEnoughKnownCoinsFor(item: ShopItem): Boolean {
-    val activePlayerCoins = players.firstOrNull { it.isActivePlayer }?.coins
-    return activePlayerCoins == null || activePlayerCoins >= item.cost
-}
-
-private fun GameScreenState.isKnownBuiltLandmark(item: ShopItem): Boolean {
-    if (item.purchaseType != PurchaseType.LANDMARK) return false
-    val activePlayerId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull() ?: return false
-    val landmarkType = runCatching { LandmarkType.valueOf(item.type) }.getOrNull() ?: return false
-    return playerLandmarks[activePlayerId].orEmpty().any {
-        it.landmarkType == landmarkType && it.isBuilt
-    }
-}
-
 private fun shopTopPadding(players: List<PlayerCoinState>) = if (players.isEmpty()) 76.dp else 144.dp
-
-@Composable
-private fun ShopItemColor.toContainerColor(): Color = when (this) {
-    ShopItemColor.BLUE -> Color(0xFFB5E1E5)
-    ShopItemColor.GREEN -> Color(0xFFBEE6A8)
-    ShopItemColor.RED -> Color(0xFFE9B1AF)
-    ShopItemColor.PURPLE -> Color(0xFFDAB7E8)
-    ShopItemColor.LANDMARK -> Color(0xFFE8B68F)
-}
-
-@Composable
-private fun ShopItemColor.toContentColor(): Color = when (this) {
-    ShopItemColor.BLUE -> MaterialTheme.colorScheme.primary
-    ShopItemColor.GREEN -> Color(0xFF306514)
-    ShopItemColor.RED -> Color(0xFF743A38)
-    ShopItemColor.PURPLE -> Color(0xFF431755)
-    ShopItemColor.LANDMARK -> Color(0xFF7D3A1E)
-}
-
-private fun GameScreenState.buttonTextFor(item: ShopItem): String = when {
-    purchaseFeedbackItemType != item.type -> "Buy"
-    purchaseState == PurchaseState.PENDING -> "Buying"
-    purchaseState == PurchaseState.SUCCESS -> "Bought"
-    purchaseState == PurchaseState.ERROR -> "Retry"
-    else -> "Buy"
-}
-
-@Composable
-private fun PurchaseState.toFeedbackColor(): Color = when (this) {
-    PurchaseState.ERROR -> MaterialTheme.colorScheme.error
-    PurchaseState.SUCCESS -> Color(0xFF306514)
-    else -> MaterialTheme.colorScheme.onSurfaceVariant
-}
 
 @Composable
 private fun GamePhaseBanner(
@@ -826,149 +521,6 @@ private fun GamePhase.toBannerColor(): Color = when (this) {
     GamePhase.BUY_OR_BUILD -> MaterialTheme.colorScheme.tertiary
     GamePhase.END_TURN -> MaterialTheme.colorScheme.error
 }
-
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
-@Composable
-private fun GameScreenRollDicePreview() {
-    ClientTheme {
-        GameScreen(
-            state = GameScreenState(
-                gameId = 1,
-                gamePhase = GamePhase.ROLL_DICE,
-                connectionStatus = ConnectionStatus.CONNECTED,
-                players = previewPlayers(),
-                purchaseState = PurchaseState.IDLE,
-                myUserId = 1,
-                activePlayerId = 1,
-            )
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
-@Composable
-private fun GameScreenRollingPreview() {
-    ClientTheme {
-        GameScreen(
-            state = GameScreenState(
-                gameId = 1,
-                gamePhase = GamePhase.ROLL_DICE,
-                connectionStatus = ConnectionStatus.CONNECTED,
-                players = previewPlayers(),
-                purchaseState = PurchaseState.IDLE,
-                myUserId = 1,
-                activePlayerId = 1,
-                isRolling = true,
-            )
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
-@Composable
-private fun GameScreenRollDiceNotActivePreview() {
-    ClientTheme {
-        GameScreen(
-            state = GameScreenState(
-                gameId = 1,
-                gamePhase = GamePhase.ROLL_DICE,
-                connectionStatus = ConnectionStatus.CONNECTED,
-                players = previewPlayers(),
-                purchaseState = PurchaseState.IDLE,
-                myUserId = 1,
-                activePlayerId = 2,
-            )
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 412, heightDp = 600)
-@Composable
-private fun GameScreenReconnectSnapshotPreview() {
-    ClientTheme {
-        GameScreen(
-            state = GameScreenState(
-                gameId = 1,
-                gamePhase = GamePhase.ROLL_DICE,
-                connectionStatus = ConnectionStatus.CONNECTED,
-                players = previewPlayers(),
-                diceResult = listOf(3, 4),
-                purchaseState = PurchaseState.IDLE,
-                myUserId = 1,
-                activePlayerId = 1,
-            )
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
-@Composable
-private fun GameScreenBuyOrBuildPreview() {
-    ClientTheme {
-        GameScreen(
-            state = GameScreenState(
-                gameId = 1,
-                gamePhase = GamePhase.BUY_OR_BUILD,
-                connectionStatus = ConnectionStatus.CONNECTED,
-                players = previewPlayers(),
-                diceResult = listOf(8),
-                purchaseState = PurchaseState.IDLE,
-                myUserId = 1,
-                activePlayerId = 1,
-                roundNumber = 4,
-                playerLandmarks = previewLandmarks(),
-                marketplace = previewMarketplace(),
-            )
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
-@Composable
-private fun GameScreenNonePreview() {
-    ClientTheme {
-        GameScreen(state = GameScreenState.initial())
-    }
-}
-
-private fun previewPlayers() = listOf(
-    PlayerCoinState(
-        id = "1",
-        displayName = "You",
-        coins = 6,
-        isCurrentPlayer = true,
-        isActivePlayer = true
-    ),
-    PlayerCoinState(
-        id = "2",
-        displayName = "SoupCube",
-        coins = 3
-    ),
-    PlayerCoinState(
-        id = "3",
-        displayName = "doniliks",
-        coins = 0
-    )
-)
-
-private fun previewLandmarks() = mapOf(
-    1 to listOf(
-        PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
-        PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = true),
-        PlayerLandmarkState(LandmarkType.AMUSEMENT_PARK, isBuilt = false),
-        PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = false),
-    ),
-    2 to LandmarkType.entries.map { PlayerLandmarkState(it, isBuilt = false) },
-    3 to LandmarkType.entries.map { PlayerLandmarkState(it, isBuilt = false) },
-)
-
-private fun previewMarketplace() = mapOf(
-    CardType.WHEAT_FIELD to 6,
-    CardType.BAKERY to 5,
-    CardType.CAFE to 6,
-    CardType.CONVENIENCE_STORE to 4,
-    CardType.FOREST to 6,
-)
 
 @Composable
 private fun InitializationLoadingOverlay(
