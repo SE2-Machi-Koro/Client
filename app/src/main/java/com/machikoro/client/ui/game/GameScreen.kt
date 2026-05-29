@@ -643,10 +643,10 @@ private fun GameScreenState.canCurrentPlayerPurchase(): Boolean = isActivePlayer
 
 private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
     GamePhase.RESOLVE_EFFECTS -> "Resolve effects"
-    GamePhase.BUY_OR_BUILD -> "Finish buy/build"
-    GamePhase.END_TURN -> "End turn"
+    GamePhase.BUY_OR_BUILD -> "End turn"
     GamePhase.NONE,
-    GamePhase.ROLL_DICE -> null
+    GamePhase.ROLL_DICE,
+    GamePhase.END_TURN -> null
 }
 
 private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =

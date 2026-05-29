@@ -134,10 +134,10 @@ class GameScreenViewModel(
 
         when (current.gamePhase) {
             GamePhase.RESOLVE_EFFECTS -> webSocketClient.resolveEffects(gameId)
-            GamePhase.BUY_OR_BUILD -> webSocketClient.advancePhase(gameId)
-            GamePhase.END_TURN -> webSocketClient.endTurn(gameId)
+            GamePhase.BUY_OR_BUILD -> webSocketClient.endTurn(gameId)
             GamePhase.NONE,
-            GamePhase.ROLL_DICE -> Unit
+            GamePhase.ROLL_DICE,
+            GamePhase.END_TURN -> Unit
         }
     }
 

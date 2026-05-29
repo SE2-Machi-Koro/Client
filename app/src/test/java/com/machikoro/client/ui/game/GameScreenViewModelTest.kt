@@ -693,7 +693,7 @@ class GameScreenViewModelTest {
     }
 
     @Test
-    fun buyBuildPhaseActionAdvancesPhaseByActivePlayer() = runTest {
+    fun buyBuildPhaseActionEndsTurnByActivePlayer() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
 
@@ -705,13 +705,13 @@ class GameScreenViewModelTest {
 
         viewModel.performTurnFlowAction()
 
-        assertEquals(7, fakeClient.advancedPhaseGameId)
+        assertEquals(7, fakeClient.endedTurnGameId)
+        assertNull(fakeClient.advancedPhaseGameId)
         assertNull(fakeClient.resolvedEffectsGameId)
-        assertNull(fakeClient.endedTurnGameId)
     }
 
     @Test
-    fun endTurnPhaseActionIsSentByActivePlayer() = runTest {
+    fun endTurnPhaseActionIsIgnoredBecauseServerEndsTurnsFromBuyBuild() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
 
@@ -723,7 +723,7 @@ class GameScreenViewModelTest {
 
         viewModel.performTurnFlowAction()
 
-        assertEquals(7, fakeClient.endedTurnGameId)
+        assertNull(fakeClient.endedTurnGameId)
         assertNull(fakeClient.advancedPhaseGameId)
         assertNull(fakeClient.resolvedEffectsGameId)
     }

@@ -52,8 +52,11 @@ topic before subscribing to the new one.
 | `/app/game.endTurn` | `endTurn` | `{"gameId":...}` |
 
 The game screen only sends turn-flow actions for the active player while the
-game status is `IN_PROGRESS`. Server broadcasts remain authoritative for the
-resulting phase and game state.
+game status is `IN_PROGRESS`. The visible game controls send
+`/app/game.resolveEffects` during `RESOLVE_EFFECTS` and `/app/game.endTurn`
+during `BUY_OR_BUILD`; `END_TURN` is treated as a server-side transition phase
+and does not expose a client action. Server broadcasts remain authoritative for
+the resulting phase and game state.
 
 ## Handled Message Types
 
