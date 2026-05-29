@@ -106,6 +106,12 @@ class FakeWebSocketClient : WebSocketClient {
 
     var lastRolledDiceCount: Int? = null
         private set
+    var advancedPhaseGameId: Int? = null
+        private set
+    var resolvedEffectsGameId: Int? = null
+        private set
+    var endedTurnGameId: Int? = null
+        private set
 
     override fun connect() = Unit
     override fun disconnect() = Unit
@@ -178,6 +184,18 @@ class FakeWebSocketClient : WebSocketClient {
 
     override fun rollDice(diceCount: Int) {
         lastRolledDiceCount = diceCount
+    }
+
+    override fun advancePhase(gameId: Int) {
+        advancedPhaseGameId = gameId
+    }
+
+    override fun resolveEffects(gameId: Int) {
+        resolvedEffectsGameId = gameId
+    }
+
+    override fun endTurn(gameId: Int) {
+        endedTurnGameId = gameId
     }
 
     fun emitConnectionStatus(status: ConnectionStatus) {
