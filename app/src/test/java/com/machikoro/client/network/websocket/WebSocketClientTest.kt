@@ -61,6 +61,9 @@ class DummyWebSocketClient : WebSocketClient {
     override fun clearGameState() {}
     override fun sendGameStart() {}
     override fun rollDice(diceCount: Int) {}
+    override fun advancePhase(gameId: Int) {}
+    override fun resolveEffects(gameId: Int) {}
+    override fun endTurn(gameId: Int) {}
     override fun sendLeaveLobby(gameId: Int) {}
     override fun sendPurchase(
         gameId: Int,
@@ -186,11 +189,86 @@ class WebSocketClientTest {
         assertEquals(true, fixture.client.players.value.first { it.id == "22" }.isActivePlayer)
     }
 
-    private fun okHttpClientFixture(): OkHttpClientFixture {
+    @Test
+    fun twoClientsApplySameGameStartedBroadcast() {
+        val playerA = okHttpClientFixture(userId = 101)
+        val playerB = okHttpClientFixture(userId = 202)
+        val started = gameStartedMessage()
+
+        playerA.deliverMessage(started)
+        playerB.deliverMessage(started)
+
+        assertEquals(77, playerA.client.activeGameId.value)
+        assertEquals(77, playerB.client.activeGameId.value)
+        assertEquals(GameStatus.IN_PROGRESS, playerA.client.gameStatus.value)
+        assertEquals(GameStatus.IN_PROGRESS, playerB.client.gameStatus.value)
+        assertEquals(GamePhase.ROLL_DICE, playerA.client.gamePhase.value)
+        assertEquals(GamePhase.ROLL_DICE, playerB.client.gamePhase.value)
+    }
+
+    @Test
+    fun actionSentByOneClientUpdatesOtherClientFromBroadcast() {
+        val playerA = okHttpClientFixture(userId = 101)
+        val playerB = okHttpClientFixture(userId = 202)
+
+        playerA.client.advancePhase(gameId = 77)
+        playerB.deliverMessage(gameActionMessage())
+
+        assertEquals(
+            WebSocketContract.advancePhaseDestination,
+            playerA.sentFrames().last().headers["destination"]
+        )
+        assertEquals(GamePhase.BUY_OR_BUILD, playerB.client.gamePhase.value)
+        assertEquals(202, playerB.client.activePlayerId.value)
+        assertEquals(4, playerB.client.players.value.first { it.id == "22" }.coins)
+    }
+
+    @Test
+    fun rollDiceBroadcastUpdatesNonSenderClient() {
+        val playerB = okHttpClientFixture(userId = 202)
+
+        playerB.deliverMessage(rollDiceMessage())
+
+        assertEquals(listOf(2, 6), playerB.client.diceResult.value)
+        assertEquals(GamePhase.RESOLVE_EFFECTS, playerB.client.gamePhase.value)
+        assertEquals(202, playerB.client.activePlayerId.value)
+    }
+
+    @Test
+    fun purchaseBroadcastUpdatesNonSenderSnapshotAndPurchaseEvent() = runTest {
+        val playerB = okHttpClientFixture(userId = 202)
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
+        playerB.client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        playerB.deliverMessage(gameActionMessage(purchaseFields = true))
+        runCurrent()
+
+        assertEquals(
+            listOf(PurchaseEvent.Success(PurchaseType.ESTABLISHMENT, "BAKERY")),
+            purchaseEvents
+        )
+        assertEquals(mapOf(CardType.WHEAT_FIELD to 0, CardType.BAKERY to 4), playerB.client.marketplace.value)
+        assertEquals(4, playerB.client.players.value.first { it.id == "22" }.coins)
+    }
+
+    @Test
+    fun reconnectSyncRestoresNonSenderClient() {
+        val playerB = okHttpClientFixture(userId = 202)
+
+        playerB.deliverMessage(syncMessage())
+
+        assertEquals(GameStatus.IN_PROGRESS, playerB.client.gameStatus.value)
+        assertEquals(GamePhase.BUY_OR_BUILD, playerB.client.gamePhase.value)
+        assertEquals(mapOf(CardType.WHEAT_FIELD to 0, CardType.BAKERY to 4), playerB.client.marketplace.value)
+        assertEquals(202, playerB.client.activePlayerId.value)
+    }
+
+    private fun okHttpClientFixture(userId: Int = 101): OkHttpClientFixture {
         val factory = CapturingWebSocketFactory()
         val sessionHolder = object : SessionStateHolder {
             override val session: StateFlow<Session?> = MutableStateFlow(
-                Session(sessionToken = "token", username = "alice", userId = 101)
+                Session(sessionToken = "token", username = "user-$userId", userId = userId)
             )
             override fun signIn(token: String, username: String, userId: Int) = Unit
             override fun signOut() = Unit
@@ -214,6 +292,9 @@ class WebSocketClientTest {
             val socket = factory.socket
             listener.onMessage(socket, StompFrame(command = "MESSAGE", body = body).serialize())
         }
+
+        fun sentFrames(): List<StompFrame> =
+            factory.socket.sent.flatMap { parseFrames(StringBuilder(it)) }
     }
 
     private class CapturingWebSocketFactory : WebSocketFactory {
@@ -276,6 +357,16 @@ class WebSocketClientTest {
                 "completed":true,
                 "state":${snapshot(status = "IN_PROGRESS", phase = "RESOLVE_EFFECTS")}
               }
+            }
+        """.trimIndent()
+
+    private fun gameStartedMessage(): String =
+        """
+            {
+              "type":"GAME_STARTED",
+              "sender":"server",
+              "gameId":77,
+              "payload":${snapshot(status = "IN_PROGRESS", phase = "ROLL_DICE")}
             }
         """.trimIndent()
 
