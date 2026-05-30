@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
         AuthApiFactory.create(AppConfig.backendBaseUrl)
     }
     private val debugApi by lazy {
-        DebugApiFactory.create(AppConfig.backendBaseUrl)
+        DebugApiFactory.create(AppConfig.backendBaseUrl) { SessionManager.session.value?.sessionToken }
     }
     private val healthApi by lazy {
         HealthApiFactory.create(AppConfig.backendBaseUrl)
