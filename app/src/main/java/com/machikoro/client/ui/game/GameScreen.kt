@@ -70,7 +70,7 @@ private val DICE_FACES = listOf("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")
 fun GameScreen(
     state: GameScreenState,
     onPurchaseClick: (String) -> Unit = {},
-    onRollDice: () -> Unit = {},
+    onRollDice: (diceCount: Int) -> Unit = {},
     onLeaveGame: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -154,9 +154,33 @@ fun GameScreen(
                 state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
             }
 
-            if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer  && state.gameStatus == GameStatus.IN_PROGRESS) {
+            if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
+                var selectedDiceCount by remember { mutableIntStateOf(1) }
+
+                if (state.hasTrainStation) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(1, 2).forEach { count ->
+                            Button(
+                                onClick = { selectedDiceCount = count },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (selectedDiceCount == count)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (selectedDiceCount == count)
+                                        MaterialTheme.colorScheme.onPrimary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            ) {
+                                Text("$count 🎲")
+                            }
+                        }
+                    }
+                }
+
                 Button(
-                    onClick = onRollDice,
+                    onClick = { onRollDice(selectedDiceCount) },
                     enabled = !state.isRolling,
                     modifier = Modifier.semantics {
                         contentDescription = "Würfeln"
@@ -622,8 +646,8 @@ private fun GameScreenState.canCurrentPlayerPurchase(): Boolean = isActivePlayer
 
 private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
     item.isAvailable &&
-        hasEnoughKnownCoinsFor(item) &&
-        !isKnownBuiltLandmark(item)
+            hasEnoughKnownCoinsFor(item) &&
+            !isKnownBuiltLandmark(item)
 
 private fun GameScreenState.disabledReasonFor(item: ShopItem): String = when {
     gameStatus != GameStatus.IN_PROGRESS -> "Game not active"
