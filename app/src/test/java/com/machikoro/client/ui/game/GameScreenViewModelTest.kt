@@ -18,6 +18,7 @@ import com.machikoro.client.ui.start.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -672,6 +673,116 @@ class GameScreenViewModelTest {
         viewModel.rollDice(diceCount = 1)
 
         assertNull(fakeClient.lastRolledDiceCount)
+    }
+
+    // ── Insider Trading cheat (#203) ──────────────────────────────────────────
+
+    private fun inProgressMyTurn(
+        fakeClient: FakeWebSocketClient,
+        coins: Int = 5,
+        marketplace: Map<CardType, Int> = mapOf(CardType.CONVENIENCE_STORE to 6),
+    ) {
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitActivePlayerId(1) // matches fakeSession userId 1 -> isActivePlayer
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "1",
+                    displayName = "me",
+                    coins = coins,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true,
+                ),
+                PlayerCoinState(id = "2", displayName = "opp", coins = 3),
+            ),
+        )
+        fakeClient.emitMarketplace(marketplace)
+    }
+
+    @Test
+    fun onShakeSetsRecommendationDuringMyTurn() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 1)
+        inProgressMyTurn(fakeClient)
+        advanceUntilIdle()
+
+        viewModel.onShake()
+
+        assertEquals(CardType.CONVENIENCE_STORE, viewModel.cheatRecommendation.value)
+    }
+
+    @Test
+    fun onShakeIsNoOpWhenNotMyTurn() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 1)
+        inProgressMyTurn(fakeClient)
+        fakeClient.emitActivePlayerId(2) // another player's turn
+        advanceUntilIdle()
+
+        viewModel.onShake()
+
+        assertNull(viewModel.cheatRecommendation.value)
+    }
+
+    @Test
+    fun onShakeIsNoOpWhenGameNotInProgress() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 1)
+        inProgressMyTurn(fakeClient)
+        fakeClient.emitGameStatus(GameStatus.WAITING)
+        advanceUntilIdle()
+
+        viewModel.onShake()
+
+        assertNull(viewModel.cheatRecommendation.value)
+    }
+
+    @Test
+    fun cheatRecommendationClearsWhenActivePlayerRotates() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 1)
+        inProgressMyTurn(fakeClient)
+        advanceUntilIdle()
+        viewModel.onShake()
+        assertEquals(CardType.CONVENIENCE_STORE, viewModel.cheatRecommendation.value)
+
+        fakeClient.emitActivePlayerId(2) // turn rotates away
+        advanceUntilIdle()
+
+        assertNull(viewModel.cheatRecommendation.value)
+    }
+
+    @Test
+    fun cheatRecommendationClearsWhenRoundChanges() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 1)
+        inProgressMyTurn(fakeClient)
+        fakeClient.emitRoundNumber(1)
+        advanceUntilIdle()
+        viewModel.onShake()
+        assertEquals(CardType.CONVENIENCE_STORE, viewModel.cheatRecommendation.value)
+
+        fakeClient.emitRoundNumber(2)
+        advanceUntilIdle()
+
+        assertNull(viewModel.cheatRecommendation.value)
+    }
+
+    @Test
+    fun onShakeEmitsActivationSignal() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 1)
+        inProgressMyTurn(fakeClient)
+        advanceUntilIdle()
+        val activations = mutableListOf<CardType?>()
+        val job = launch { viewModel.cheatActivations.collect { activations.add(it) } }
+        advanceUntilIdle()
+
+        viewModel.onShake()
+        advanceUntilIdle()
+
+        assertEquals(listOf(CardType.CONVENIENCE_STORE), activations)
+        job.cancel()
     }
 
     @Test

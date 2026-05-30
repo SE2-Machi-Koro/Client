@@ -18,6 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.LoginDialogState
@@ -77,6 +78,8 @@ fun AppRoot(
     onPurchaseClick: (String) -> Unit = {},
     onBackHome: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
+    cheatRecommendation: CardType? = null,
+    onShake: () -> Unit = {},
     hasActiveGame: Boolean = false,
     onResumeGameClick: () -> Unit = {},
     onPurgeClick: () -> Unit = {},
@@ -216,6 +219,8 @@ fun AppRoot(
                     onTurnFlowAction = onTurnFlowAction,
                     onPurchaseClick = onPurchaseClick,
                     onLeaveGame = onLeaveGame,
+                    cheatRecommendation = cheatRecommendation,
+                    onShake = onShake,
                 )
             }
 
