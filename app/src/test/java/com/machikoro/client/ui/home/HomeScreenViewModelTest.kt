@@ -163,6 +163,8 @@ class HomeScreenViewModelTest {
         override val activeGameId: StateFlow<Int?> = mutableActiveGameId
         val mutableIsLobbyHost = MutableStateFlow(false)
         override val isLobbyHost: StateFlow<Boolean> = mutableIsLobbyHost
+        override val winnerId: StateFlow<Int?> =
+            MutableStateFlow(null)
         override val gameStatus: StateFlow<GameStatus?> =
             MutableStateFlow(null)
         override val roundNumber: StateFlow<Int?> =
@@ -203,6 +205,9 @@ class HomeScreenViewModelTest {
         override fun connect() { connectCalled = true }
         override fun disconnect() { disconnectCalled = true }
         override fun rollDice(diceCount: Int) = Unit
+        override fun advancePhase(gameId: Int) = Unit
+        override fun resolveEffects(gameId: Int) = Unit
+        override fun endTurn(gameId: Int) = Unit
         override fun sendGameStart() { sendGameStartCalled = true }
         override fun sendCreateLobby() { sendCreateLobbyCalled = true }
         override fun sendPurchase(
@@ -212,8 +217,8 @@ class HomeScreenViewModelTest {
             landmarkType: String?
         ) = Unit
         override fun clearLobbyCode() { mutableLobbyCode.value = null }
+        override fun clearGameState() = Unit
         override fun sendLeaveLobby(gameId: Int) {}
-        override fun clearGameState() {}
     }
 }
 

@@ -710,6 +710,66 @@ class OkHttpWebSocketClientTest {
         assertTrue(factory.socket.sentMessages.isEmpty())
     }
 
+    @Test
+    fun advancePhaseSendsGameIdPayloadToAdvancePhaseDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.advancePhase(gameId = 7)
+
+        val frame = factory.socket.sentFrames().last {
+            it.headers["destination"] == WebSocketContract.advancePhaseDestination
+        }
+        assertEquals("""{"gameId":7}""", frame.body)
+    }
+
+    @Test
+    fun resolveEffectsSendsGameIdPayloadToResolveEffectsDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.resolveEffects(gameId = 7)
+
+        val frame = factory.socket.sentFrames().last {
+            it.headers["destination"] == WebSocketContract.resolveEffectsDestination
+        }
+        assertEquals("""{"gameId":7}""", frame.body)
+    }
+
+    @Test
+    fun endTurnSendsGameIdPayloadToEndTurnDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.endTurn(gameId = 7)
+
+        val frame = factory.socket.sentFrames().last {
+            it.headers["destination"] == WebSocketContract.endTurnDestination
+        }
+        assertEquals("""{"gameId":7}""", frame.body)
+    }
+
+    @Test
+    fun turnFlowActionsWithoutConnectionAreIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.advancePhase(gameId = 7)
+        client.resolveEffects(gameId = 7)
+        client.endTurn(gameId = 7)
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
 
     @Test
     fun sendPurchaseEstablishmentSendsServerAlignedPayload() {
@@ -1493,6 +1553,24 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun gameEndMessageMarksGameFinishedAndKeepsWinnerId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_END","sender":"server","payload":{"winnerId":11,"roundsPlayed":4}}""")
+        )
+
+        assertEquals(GameStatus.FINISHED, client.gameStatus.value)
+        assertEquals(GamePhase.NONE, client.gamePhase.value)
+        assertEquals(11, client.winnerId.value)
+        assertEquals(4, client.roundNumber.value)
+    }
+
+    @Test
     fun malformedSyncMessageDoesNotCrashAndLeavesSnapshotEmpty() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -1514,6 +1592,25 @@ class OkHttpWebSocketClientTest {
         assertNull(client.roundNumber.value)
         assertTrue(client.marketplace.value.isEmpty())
         assertTrue(client.playerLandmarks.value.isEmpty())
+    }
+
+    @Test
+    fun clearGameStateResetsFinishedGameData() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame("""{"type":"GAME_END","sender":"server","payload":{"winnerId":11,"roundsPlayed":4}}""")
+        )
+
+        client.clearGameState()
+
+        assertNull(client.gameStatus.value)
+        assertNull(client.winnerId.value)
+        assertNull(client.activeGameId.value)
+        assertNull(client.lobbyCode.value)
     }
 
     // ── auto-reconnect (#166) ────────────────────────────────────────────────
@@ -2190,6 +2287,57 @@ class OkHttpWebSocketClientTest {
         assertEquals(5, client.marketplace.value[CardType.BAKERY])
     }
 
+    // ── resetGameState ────────────────────────────────────────────────
+    @Test
+    fun transientDisconnectDoesNotClearWinnerOrActiveGameId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        // Seed active game
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"GAME_STARTED",
+                "gameId":42,
+                "payload":{
+                    "activePlayerId":1,
+                    "game":{
+                        "id":42,
+                        "lobbyCode":"ABC123",
+                        "turnPhase":"ROLL_DICE"
+                    },
+                    "players":[]
+                }
+            }"""
+            )
+        )
+
+        // Seed winner state
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"GAME_END",
+                "sender":"server",
+                "payload":{
+                    "winnerId":11,
+                    "roundsPlayed":4
+                }
+            }"""
+            )
+        )
+
+        // Simulate transient disconnect (reconnect path)
+        factory.simulateClosed()
+
+        // Identity should survive reconnect-safe resetGameState()
+        assertEquals(42, client.activeGameId.value)
+        assertEquals(11, client.winnerId.value)
+    }
+
     /** Connects a client and feeds it one realistic SYNC snapshot frame. */
     private fun clientAfterSync(): OkHttpWebSocketClient {
         val factory = FakeWebSocketFactory()
@@ -2225,8 +2373,11 @@ class OkHttpWebSocketClientTest {
         )
 
     private fun FakeWebSocket.rollDiceFrames(): List<StompFrame> =
-        sentMessages.flatMap { parseFrames(StringBuilder(it)) }
+        sentFrames()
             .filter { it.headers["destination"] == WebSocketContract.rollDiceDestination }
+
+    private fun FakeWebSocket.sentFrames(): List<StompFrame> =
+        sentMessages.flatMap { parseFrames(StringBuilder(it)) }
 
     private class FakeWebSocketFactory : WebSocketFactory {
         lateinit var listener: WebSocketListener

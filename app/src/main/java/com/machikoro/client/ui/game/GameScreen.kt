@@ -74,6 +74,7 @@ fun GameScreen(
     state: GameScreenState,
     onPurchaseClick: (String) -> Unit = {},
     onRollDice: () -> Unit = {},
+    onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     cheatRecommendation: CardType? = null,
     onShake: () -> Unit = {},
@@ -177,6 +178,26 @@ fun GameScreen(
                 ) {
                     Text(
                         text = if (state.diceResult == null) "🎲 Würfeln" else "🎲 Nochmal würfeln",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            val turnFlowLabel = state.turnFlowActionLabel()
+            if (
+                turnFlowLabel != null &&
+                state.isActivePlayer &&
+                state.gameStatus == GameStatus.IN_PROGRESS
+            ) {
+                Button(
+                    onClick = onTurnFlowAction,
+                    modifier = Modifier.semantics {
+                        contentDescription = turnFlowLabel
+                    }
+                ) {
+                    Text(
+                        text = turnFlowLabel,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -657,6 +678,14 @@ private fun ShopItemCard(
 }
 
 private fun GameScreenState.canCurrentPlayerPurchase(): Boolean = isActivePlayer && gameStatus == GameStatus.IN_PROGRESS
+
+private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
+    GamePhase.RESOLVE_EFFECTS -> "Resolve effects"
+    GamePhase.BUY_OR_BUILD -> "End turn"
+    GamePhase.NONE,
+    GamePhase.ROLL_DICE,
+    GamePhase.END_TURN -> null
+}
 
 private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
     item.isAvailable &&

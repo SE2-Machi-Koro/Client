@@ -60,6 +60,8 @@ class OkHttpWebSocketClient(
 
     override val lobbyJoinErrors: SharedFlow<String>
         get() = mutableLobbyJoinErrors.asSharedFlow()
+    override val winnerId: StateFlow<Int?>
+        get() = mutableWinnerId.asStateFlow()
 
     override val diceResult: StateFlow<List<Int>?>
         get() = mutableDiceResult.asStateFlow()
@@ -109,6 +111,8 @@ class OkHttpWebSocketClient(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
+    private val mutableWinnerId = MutableStateFlow<Int?>(null)
+
     private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
     private val mutableActivePlayerId = MutableStateFlow<Int?>(null)
     private val mutableActiveGameId = MutableStateFlow<Int?>(null)
@@ -291,6 +295,13 @@ class OkHttpWebSocketClient(
         resetLobbyState()
     }
 
+    override fun clearGameState() {
+        resetGameState()
+        mutableActiveGameId.value = null
+        mutableWinnerId.value = null
+        resetLobbyState()
+    }
+
     override fun sendGameStart() {
         val socket = synchronized(this) { webSocket }
         if (socket == null) {
@@ -353,6 +364,18 @@ class OkHttpWebSocketClient(
         Log.d(TAG, "Roll dice message sent (gameId=$gameId, diceCount=$diceCount)")
     }
 
+    override fun advancePhase(gameId: Int) {
+        sendGameIdAction(WebSocketContract.advancePhaseDestination, gameId, "advancePhase")
+    }
+
+    override fun resolveEffects(gameId: Int) {
+        sendGameIdAction(WebSocketContract.resolveEffectsDestination, gameId, "resolveEffects")
+    }
+
+    override fun endTurn(gameId: Int) {
+        sendGameIdAction(WebSocketContract.endTurnDestination, gameId, "endTurn")
+    }
+
     override fun sendPurchase(
         gameId: Int,
         purchaseType: PurchaseType,
@@ -381,6 +404,28 @@ class OkHttpWebSocketClient(
             ).serialize()
         )
         Log.d(TAG, "Purchase message sent for game id: $gameId")
+    }
+
+    private fun sendGameIdAction(destination: String, gameId: Int, actionName: String) {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "$actionName called but no active WebSocket connection")
+            return
+        }
+        val body = JSONObject()
+            .put("gameId", gameId)
+            .toString()
+        socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to destination,
+                    "content-type" to "application/json"
+                ),
+                body = body
+            ).serialize()
+        )
+        Log.d(TAG, "$actionName message sent for game id: $gameId")
     }
 
     private val listener = object : WebSocketListener() {
@@ -485,6 +530,7 @@ class OkHttpWebSocketClient(
                 parsePurchaseSuccess(json)?.let { mutablePurchaseEvents.tryEmit(it) }
                 parsePurchaseFailure(json)?.let { mutablePurchaseEvents.tryEmit(it) }
                 parseDiceResult(json)?.let { mutableDiceResult.value = it }
+                handleGameEnded(json)
             }
             "ERROR" -> {
                 Log.e(TAG, "STOMP error frame received: ${frame.body}")
@@ -643,6 +689,18 @@ class OkHttpWebSocketClient(
         val playerUsernames = parsePlayerUsernames(payload.optJSONObject("playerUsernames"))
         mutablePlayers.value = payload.optJSONArray("players").toPlayerCoinStates(payload, game, playerUsernames)
         updateShopItemsFromState(payload)
+    }
+    private fun handleGameEnded(json: JSONObject) {
+        if (json.optString("type") != GAME_ENDED_TYPE) return
+
+        val payload = json.optJSONObject("payload") ?: return
+        val winnerId = payload.optIntOrNull("winnerId") ?: return
+
+        mutableWinnerId.value = winnerId
+        payload.optIntOrNull("roundsPlayed")?.let { mutableRoundNumber.value = it }
+        mutableGameStatus.value = GameStatus.FINISHED
+        mutableGamePhase.value = GamePhase.NONE
+        unsubscribeFromGameTopic(mutableActiveGameId.value)
     }
 
     /**
@@ -944,12 +1002,7 @@ class OkHttpWebSocketClient(
         val socket = webSocket ?: return
 
         subscribedGameId?.let { oldId ->
-            socket.send(
-                StompFrame(
-                    command = "UNSUBSCRIBE",
-                    headers = mapOf("id" to "game-topic-$oldId")
-                ).serialize()
-            )
+          unsubscribeFromGameTopic(oldId)
         }
 
         val subscribeFrame = StompFrame(
@@ -962,6 +1015,22 @@ class OkHttpWebSocketClient(
 
         if (socket.send(subscribeFrame)) {
             subscribedGameId = gameId
+        }
+    }
+    private fun unsubscribeFromGameTopic(gameId: Int?) {
+        if (subscribedGameId != gameId) return
+
+        val socket = webSocket ?: return
+
+        val unsubscribeFrame = StompFrame(
+            command = "UNSUBSCRIBE",
+            headers = mapOf(
+                "id" to "game-topic-$gameId"
+            )
+        ).serialize()
+
+        if (socket.send(unsubscribeFrame)) {
+            subscribedGameId = null
         }
     }
 
@@ -1031,11 +1100,6 @@ class OkHttpWebSocketClient(
 
     private fun isAuthRejection(body: String): Boolean =
         body.trim().contains(AUTH_REJECTION_BODY)
-
-    override fun clearGameState() {
-        resetGameState()
-        resetLobbyState()
-    }
 
     private fun resetGameState() {
         mutableGamePhase.value = GamePhase.NONE
@@ -1119,6 +1183,7 @@ class OkHttpWebSocketClient(
         private const val GAME_ACTION_TYPE = "GAME_ACTION"
         private const val GAME_END_TYPE = "GAME_END"
         private const val GAME_STARTED_TYPE = "GAME_STARTED"
+        private const val GAME_ENDED_TYPE = "GAME_END"
         private const val AUTH_HEADER = "Authorization"
         private const val BEARER_PREFIX = "Bearer "
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"

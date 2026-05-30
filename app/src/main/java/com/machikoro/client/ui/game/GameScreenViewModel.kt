@@ -97,6 +97,11 @@ class GameScreenViewModel(
             }
         }
         viewModelScope.launch {
+            webSocketClient.winnerId.collect { winnerId ->
+                mutableState.update { it.copy(winnerId = winnerId) }
+            }
+        }
+        viewModelScope.launch {
             webSocketClient.roundNumber.collect { roundNumber ->
                 if (mutableState.value.roundNumber != roundNumber) {
                     mutableCheatRecommendation.value = null
@@ -160,6 +165,25 @@ class GameScreenViewModel(
         val recommendation = recommendBestBuy(current, me)
         mutableCheatRecommendation.value = recommendation
         mutableCheatActivations.tryEmit(recommendation)
+    }
+
+    fun performTurnFlowAction() {
+        val current = mutableState.value
+        val gameId = current.gameId ?: return
+        if (current.gameStatus != GameStatus.IN_PROGRESS) return
+        if (!current.isActivePlayer) return
+
+        when (current.gamePhase) {
+            GamePhase.RESOLVE_EFFECTS -> webSocketClient.resolveEffects(gameId)
+            GamePhase.BUY_OR_BUILD -> webSocketClient.endTurn(gameId)
+            GamePhase.NONE,
+            GamePhase.ROLL_DICE,
+            GamePhase.END_TURN -> Unit
+        }
+    }
+
+    fun clearGameState() {
+        webSocketClient.clearGameState()
     }
 
     fun purchase(itemType: String) {
