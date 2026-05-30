@@ -627,12 +627,27 @@ class OkHttpWebSocketClient(
     }
 
     /**
-     * Handles LOBBY_ROSTER sent only to the joining player after a successful join.
-     * Replaces the full player list so the joiner sees everyone already in the lobby.
+     * Handles LOBBY_ROSTER sent only to the joining player on their user queue
+     * after a successful join. This is the joiner's *primary* signal that they
+     * are in the lobby — the LOBBY_JOINED broadcast on `/topic/game/{gameId}`
+     * is fired by the server before the joiner can subscribe, so they would
+     * otherwise miss it (and every subsequent broadcast on that topic).
+     *
+     * Replaces the full player list so the joiner sees everyone already in the
+     * lobby, captures the gameId, subscribes to the game topic so future
+     * broadcasts (GAME_STARTED, GAME_ACTION, …) arrive, and emits the lobby-
+     * entered signal so the UI can navigate.
      */
     private fun handleLobbyRoster(json: JSONObject) {
         if (json.optString("type") != LOBBY_ROSTER_TYPE) return
-        val players = json.optJSONArray("payload") ?: return
+        // Server payload is `LobbyRosterDto(players = [...])` — a JSON object, not a bare array.
+        val payload = json.optJSONObject("payload") ?: return
+        val players = payload.optJSONArray("players") ?: return
+        val gameId = json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId")
+        if (gameId != null) {
+            mutableActiveGameId.value = gameId
+            subscribeToGameTopic(gameId)
+        }
         mutablePlayers.value = (0 until players.length()).mapNotNull { index ->
             val entry = players.optJSONObject(index) ?: return@mapNotNull null
             val username = entry.optString("username").takeIf { it.isNotBlank() } ?: return@mapNotNull null
@@ -643,7 +658,8 @@ class OkHttpWebSocketClient(
                 coins = entry.optInt("coins", 3),
             )
         }
-        Log.d(TAG, "Lobby roster received: ${mutablePlayers.value.size} players")
+        Log.d(TAG, "Lobby roster received: ${mutablePlayers.value.size} players, gameId=$gameId")
+        mutableLobbyEntered.tryEmit(Unit)
     }
 
     private fun handleLobbyError(json: JSONObject) {
