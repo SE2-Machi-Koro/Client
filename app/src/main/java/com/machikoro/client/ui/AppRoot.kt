@@ -73,6 +73,7 @@ fun AppRoot(
     onFillWithDummies: () -> Unit = {},
     onResetLobby: () -> Unit = {},
     onRollDice: () -> Unit = {},
+    onTurnFlowAction: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
     onBackHome: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
@@ -212,6 +213,7 @@ fun AppRoot(
                 GameScreen(
                     state = gameScreenState.copy(gameId = routedGameId ?: gameScreenState.gameId),
                     onRollDice = onRollDice,
+                    onTurnFlowAction = onTurnFlowAction,
                     onPurchaseClick = onPurchaseClick,
                     onLeaveGame = onLeaveGame,
                 )

@@ -60,7 +60,7 @@ navigation flow and the implementation map for issue #29.
 
 - **In-App PDF Viewer**: The app includes a built-in PDF viewer (`PdfViewerScreen`) for displaying documents such as game rules directly within the UI. This feature supports smooth navigation, page controls, and adapts to both portrait and landscape orientations.
 
-- **WebSocket Contract Centralization**: All WebSocket/STOMP endpoint paths and protocol constants are defined in a single contract file (`WebSocketContract.kt`). This ensures consistency and simplifies updates to backend communication endpoints.
+- **WebSocket Contract Centralization**: All WebSocket/STOMP endpoint paths and protocol constants are defined in a single contract file (`WebSocketContract.kt`). See [docs/websocket-protocol.md](docs/websocket-protocol.md) for the client protocol, subscriptions, send destinations, and reconnect flow.
 
 - **Dedicated Home & Lobby Screens**: The UI layer contains specialized screens for Home (`HomeScreen.kt`) and Lobby (`LobbyScreen.kt`), providing a clear separation of concerns and supporting scalable UI development for different game phases.
 

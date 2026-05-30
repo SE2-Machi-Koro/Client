@@ -673,4 +673,105 @@ class GameScreenViewModelTest {
 
         assertNull(fakeClient.lastRolledDiceCount)
     }
+
+    @Test
+    fun resolveEffectsPhaseActionIsSentByActivePlayer() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.performTurnFlowAction()
+
+        assertEquals(7, fakeClient.resolvedEffectsGameId)
+        assertNull(fakeClient.advancedPhaseGameId)
+        assertNull(fakeClient.endedTurnGameId)
+    }
+
+    @Test
+    fun buyBuildPhaseActionEndsTurnByActivePlayer() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.performTurnFlowAction()
+
+        assertEquals(7, fakeClient.endedTurnGameId)
+        assertNull(fakeClient.advancedPhaseGameId)
+        assertNull(fakeClient.resolvedEffectsGameId)
+    }
+
+    @Test
+    fun endTurnPhaseActionIsIgnoredBecauseServerEndsTurnsFromBuyBuild() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGamePhase(GamePhase.END_TURN)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.performTurnFlowAction()
+
+        assertNull(fakeClient.endedTurnGameId)
+        assertNull(fakeClient.advancedPhaseGameId)
+        assertNull(fakeClient.resolvedEffectsGameId)
+    }
+
+    @Test
+    fun turnFlowActionIsIgnoredWhenNotActivePlayer() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 1)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGamePhase(GamePhase.END_TURN)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.performTurnFlowAction()
+
+        assertNull(fakeClient.endedTurnGameId)
+    }
+
+    @Test
+    fun turnFlowActionIsIgnoredWhenGameIsNotInProgress() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.WAITING)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.performTurnFlowAction()
+
+        assertNull(fakeClient.resolvedEffectsGameId)
+    }
+
+    @Test
+    fun turnFlowActionIsIgnoredWithoutGameId() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.performTurnFlowAction()
+
+        assertNull(fakeClient.advancedPhaseGameId)
+    }
 }

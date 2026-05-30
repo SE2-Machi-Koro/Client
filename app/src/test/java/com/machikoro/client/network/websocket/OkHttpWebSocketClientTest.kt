@@ -710,6 +710,66 @@ class OkHttpWebSocketClientTest {
         assertTrue(factory.socket.sentMessages.isEmpty())
     }
 
+    @Test
+    fun advancePhaseSendsGameIdPayloadToAdvancePhaseDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.advancePhase(gameId = 7)
+
+        val frame = factory.socket.sentFrames().last {
+            it.headers["destination"] == WebSocketContract.advancePhaseDestination
+        }
+        assertEquals("""{"gameId":7}""", frame.body)
+    }
+
+    @Test
+    fun resolveEffectsSendsGameIdPayloadToResolveEffectsDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.resolveEffects(gameId = 7)
+
+        val frame = factory.socket.sentFrames().last {
+            it.headers["destination"] == WebSocketContract.resolveEffectsDestination
+        }
+        assertEquals("""{"gameId":7}""", frame.body)
+    }
+
+    @Test
+    fun endTurnSendsGameIdPayloadToEndTurnDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.endTurn(gameId = 7)
+
+        val frame = factory.socket.sentFrames().last {
+            it.headers["destination"] == WebSocketContract.endTurnDestination
+        }
+        assertEquals("""{"gameId":7}""", frame.body)
+    }
+
+    @Test
+    fun turnFlowActionsWithoutConnectionAreIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.advancePhase(gameId = 7)
+        client.resolveEffects(gameId = 7)
+        client.endTurn(gameId = 7)
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
 
     @Test
     fun sendPurchaseEstablishmentSendsServerAlignedPayload() {
@@ -2313,8 +2373,11 @@ class OkHttpWebSocketClientTest {
         )
 
     private fun FakeWebSocket.rollDiceFrames(): List<StompFrame> =
-        sentMessages.flatMap { parseFrames(StringBuilder(it)) }
+        sentFrames()
             .filter { it.headers["destination"] == WebSocketContract.rollDiceDestination }
+
+    private fun FakeWebSocket.sentFrames(): List<StompFrame> =
+        sentMessages.flatMap { parseFrames(StringBuilder(it)) }
 
     private class FakeWebSocketFactory : WebSocketFactory {
         lateinit var listener: WebSocketListener

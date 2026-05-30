@@ -190,6 +190,7 @@ class MainActivity : ComponentActivity() {
                             homeViewModel.clearLobbyCode()
                         },
                         onRollDice = gameScreenViewModel::rollDice,
+                        onTurnFlowAction = gameScreenViewModel::performTurnFlowAction,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
                         joinLobbyCode = joinLobbyCode,

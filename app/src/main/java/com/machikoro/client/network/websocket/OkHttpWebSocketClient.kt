@@ -364,6 +364,18 @@ class OkHttpWebSocketClient(
         Log.d(TAG, "Roll dice message sent (gameId=$gameId, diceCount=$diceCount)")
     }
 
+    override fun advancePhase(gameId: Int) {
+        sendGameIdAction(WebSocketContract.advancePhaseDestination, gameId, "advancePhase")
+    }
+
+    override fun resolveEffects(gameId: Int) {
+        sendGameIdAction(WebSocketContract.resolveEffectsDestination, gameId, "resolveEffects")
+    }
+
+    override fun endTurn(gameId: Int) {
+        sendGameIdAction(WebSocketContract.endTurnDestination, gameId, "endTurn")
+    }
+
     override fun sendPurchase(
         gameId: Int,
         purchaseType: PurchaseType,
@@ -392,6 +404,28 @@ class OkHttpWebSocketClient(
             ).serialize()
         )
         Log.d(TAG, "Purchase message sent for game id: $gameId")
+    }
+
+    private fun sendGameIdAction(destination: String, gameId: Int, actionName: String) {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "$actionName called but no active WebSocket connection")
+            return
+        }
+        val body = JSONObject()
+            .put("gameId", gameId)
+            .toString()
+        socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to destination,
+                    "content-type" to "application/json"
+                ),
+                body = body
+            ).serialize()
+        )
+        Log.d(TAG, "$actionName message sent for game id: $gameId")
     }
 
     private val listener = object : WebSocketListener() {
