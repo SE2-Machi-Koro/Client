@@ -74,7 +74,6 @@ fun GameScreen(
     state: GameScreenState,
     onPurchaseClick: (String) -> Unit = {},
     onRollDice: (diceCount: Int) -> Unit = {},
-    onRollDice: () -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     cheatRecommendation: CardType? = null,
@@ -513,7 +512,7 @@ private fun MarketplaceCardChip(
     isRecommended: Boolean = false
 ) {
     val description = "${type.toDisplayText()}: $count in stock" +
-        if (isRecommended) ", recommended" else ""
+            if (isRecommended) ", recommended" else ""
     Surface(
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(8.dp),
@@ -579,7 +578,6 @@ private fun BuyingPhaseShop(
     recommendedCardType: CardType? = null,
     modifier: Modifier = Modifier
 ) {
-    // Disable buying until game is IN_PROGRESS, both active-player state and a server game id are known.
     val canPurchase = state.canCurrentPlayerPurchase() && state.gameId != null
     Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
