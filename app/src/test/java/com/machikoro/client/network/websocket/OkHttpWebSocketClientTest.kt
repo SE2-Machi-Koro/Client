@@ -1999,6 +1999,160 @@ class OkHttpWebSocketClientTest {
         assertEquals(1, client.players.value.size)
     }
 
+    // ── handleHostLeft ───────────────────────────────────────────────────────
+
+    @Test
+    fun hostLeftMessageResetsLobbyStateForNonHost() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        // Join as regular player (NOT host)
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"LOBBY_JOINED",
+                "payload":{
+                    "username":"alice",
+                    "playerId":1,
+                    "coins":3,
+                    "gameId":42
+                }
+            }"""
+            )
+        )
+
+        // Seed lobby state
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"LOBBY_CREATED",
+                "payload":{
+                    "lobbyCode":"ABC123",
+                    "gameId":42
+                }
+            }"""
+            )
+        )
+
+        assertEquals("ABC123", client.lobbyCode.value)
+
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"HOST_LEFT",
+                "payload":{
+                    "userId":123
+                }
+            }"""
+            )
+        )
+
+        assertNull(client.lobbyCode.value)
+        assertNull(client.activeGameId.value)
+        assertTrue(client.players.value.isEmpty())
+    }
+
+    @Test
+    fun hostLeftMessageEmitsEventForNonHost() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val events = mutableListOf<Unit>()
+
+        client.hostLeftLobby
+            .onEach { events += it }
+            .launchIn(backgroundScope)
+
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        // Regular player, not host
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"LOBBY_JOINED",
+                "payload":{
+                    "username":"alice",
+                    "playerId":1,
+                    "coins":3
+                }
+            }"""
+            )
+        )
+
+        assertFalse(client.isLobbyHost.value)
+
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"HOST_LEFT",
+                "payload":{
+                    "userId":123
+                }
+            }"""
+            )
+        )
+
+        runCurrent()
+
+        assertEquals(1, events.size)
+    }
+
+    @Test
+    fun hostLeftMessageIgnoredForHost() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val events = mutableListOf<Unit>()
+
+        client.hostLeftLobby
+            .onEach { events += it }
+            .launchIn(backgroundScope)
+
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        // Host creates lobby
+        client.sendCreateLobby()
+
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"LOBBY_CREATED",
+                "payload":{
+                    "lobbyCode":"ABC123",
+                    "gameId":42
+                }
+            }"""
+            )
+        )
+
+        assertTrue(client.isLobbyHost.value)
+
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"HOST_LEFT",
+                "payload":{
+                    "userId":123
+                }
+            }"""
+            )
+        )
+
+        runCurrent()
+
+        assertTrue(events.isEmpty())
+    }
+
     // ── handleLobbyJoined host branch + lobbyEntered ──────────────────────────
 
     @Test
