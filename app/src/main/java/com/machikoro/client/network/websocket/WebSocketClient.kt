@@ -73,4 +73,7 @@ interface WebSocketClient {
     )
 
     fun rollDice(diceCount: Int = 1)
+    fun advancePhase(gameId: Int)
+    fun resolveEffects(gameId: Int)
+    fun endTurn(gameId: Int)
 }

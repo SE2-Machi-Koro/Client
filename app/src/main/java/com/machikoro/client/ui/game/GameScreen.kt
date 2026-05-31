@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,21 +60,33 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.model.state.toDisplayText
+import com.machikoro.client.ui.cheat.ShakeDetector
 import com.machikoro.client.ui.theme.ClientTheme
 import kotlinx.coroutines.delay
 
 private const val BANNER_COLOR_ANIMATION_DURATION_MS = 300
 private const val DICE_ANIMATION_INTERVAL_MS = 100L
 private val DICE_FACES = listOf("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")
+private val RecommendedHighlight = Color(0xFF00C853)
 
 @Composable
 fun GameScreen(
     state: GameScreenState,
     onPurchaseClick: (String) -> Unit = {},
     onRollDice: (diceCount: Int) -> Unit = {},
+    onRollDice: () -> Unit = {},
+    onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
+    cheatRecommendation: CardType? = null,
+    onShake: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    // Insider Trading cheat (#203): shake during play to surface a local best-buy hint.
+    ShakeDetector(
+        enabled = state.gameStatus == GameStatus.IN_PROGRESS,
+        onShake = onShake,
+    )
+
     var showLeaveDialog by remember { mutableStateOf(false) }
 
     if (showLeaveDialog) {
@@ -117,6 +130,7 @@ fun GameScreen(
                 state = state,
                 items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
                 onPurchaseClick = onPurchaseClick,
+                recommendedCardType = cheatRecommendation,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = shopTopPadding(state.players))
@@ -136,6 +150,7 @@ fun GameScreen(
         if (state.marketplace.isNotEmpty()) {
             MarketplaceSection(
                 marketplace = state.marketplace,
+                recommendedCardType = cheatRecommendation,
                 modifier = Modifier
                     .align(Alignment.Center)
                     .padding(horizontal = 12.dp)
@@ -188,6 +203,26 @@ fun GameScreen(
                 ) {
                     Text(
                         text = if (state.diceResult == null) "🎲 Würfeln" else "🎲 Nochmal würfeln",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            val turnFlowLabel = state.turnFlowActionLabel()
+            if (
+                turnFlowLabel != null &&
+                state.isActivePlayer &&
+                state.gameStatus == GameStatus.IN_PROGRESS
+            ) {
+                Button(
+                    onClick = onTurnFlowAction,
+                    modifier = Modifier.semantics {
+                        contentDescription = turnFlowLabel
+                    }
+                ) {
+                    Text(
+                        text = turnFlowLabel,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -439,6 +474,7 @@ private fun LandmarkPip(
 @Composable
 private fun MarketplaceSection(
     marketplace: Map<CardType, Int>,
+    recommendedCardType: CardType? = null,
     modifier: Modifier = Modifier
 ) {
     val entries = CardType.entries.mapNotNull { type ->
@@ -459,7 +495,11 @@ private fun MarketplaceSection(
             )
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(items = entries, key = { it.first }) { (type, count) ->
-                    MarketplaceCardChip(type = type, count = count)
+                    MarketplaceCardChip(
+                        type = type,
+                        count = count,
+                        isRecommended = type == recommendedCardType,
+                    )
                 }
             }
         }
@@ -469,15 +509,25 @@ private fun MarketplaceSection(
 @Composable
 private fun MarketplaceCardChip(
     type: CardType,
-    count: Int
+    count: Int,
+    isRecommended: Boolean = false
 ) {
+    val description = "${type.toDisplayText()}: $count in stock" +
+        if (isRecommended) ", recommended" else ""
     Surface(
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(8.dp),
         tonalElevation = 1.dp,
         modifier = Modifier
             .widthIn(min = 96.dp)
-            .semantics { contentDescription = "${type.toDisplayText()}: $count in stock" }
+            .then(
+                if (isRecommended) {
+                    Modifier.border(3.dp, RecommendedHighlight, RoundedCornerShape(8.dp))
+                } else {
+                    Modifier
+                }
+            )
+            .semantics { contentDescription = description }
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
@@ -526,6 +576,7 @@ private fun BuyingPhaseShop(
     state: GameScreenState,
     items: List<ShopItem>,
     onPurchaseClick: (String) -> Unit,
+    recommendedCardType: CardType? = null,
     modifier: Modifier = Modifier
 ) {
     // Disable buying until game is IN_PROGRESS, both active-player state and a server game id are known.
@@ -554,6 +605,7 @@ private fun BuyingPhaseShop(
                         state = state,
                         canPurchase = canPurchase && state.canPurchaseItem(item),
                         onPurchaseClick = onPurchaseClick,
+                        isRecommended = item.type == recommendedCardType?.name,
                         modifier = Modifier.padding(end = 10.dp)
                     )
                 }
@@ -576,6 +628,7 @@ private fun ShopItemCard(
     state: GameScreenState,
     canPurchase: Boolean,
     onPurchaseClick: (String) -> Unit,
+    isRecommended: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val isPurchaseEnabled =
@@ -587,6 +640,13 @@ private fun ShopItemCard(
         tonalElevation = 2.dp,
         modifier = modifier
             .widthIn(min = 140.dp, max = 150.dp)
+            .then(
+                if (isRecommended) {
+                    Modifier.border(3.dp, RecommendedHighlight, RoundedCornerShape(8.dp))
+                } else {
+                    Modifier
+                }
+            )
             .alpha(if (canPurchase) 1f else 0.72f)
     ) {
         Column(
@@ -643,6 +703,14 @@ private fun ShopItemCard(
 }
 
 private fun GameScreenState.canCurrentPlayerPurchase(): Boolean = isActivePlayer && gameStatus == GameStatus.IN_PROGRESS
+
+private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
+    GamePhase.RESOLVE_EFFECTS -> "Resolve effects"
+    GamePhase.BUY_OR_BUILD -> "End turn"
+    GamePhase.NONE,
+    GamePhase.ROLL_DICE,
+    GamePhase.END_TURN -> null
+}
 
 private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
     item.isAvailable &&
