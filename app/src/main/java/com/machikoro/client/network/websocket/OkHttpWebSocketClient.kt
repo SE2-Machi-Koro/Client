@@ -60,6 +60,10 @@ class OkHttpWebSocketClient(
 
     override val lobbyJoinErrors: SharedFlow<String>
         get() = mutableLobbyJoinErrors.asSharedFlow()
+
+    override val hostLeftLobby: SharedFlow<Unit>
+        get() = mutableHostLeftLobby.asSharedFlow()
+
     override val winnerId: StateFlow<Int?>
         get() = mutableWinnerId.asStateFlow()
 
@@ -108,6 +112,11 @@ class OkHttpWebSocketClient(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     private val mutableLobbyJoinErrors = MutableSharedFlow<String>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    private val mutableHostLeftLobby = MutableSharedFlow<Unit>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
