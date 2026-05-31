@@ -152,6 +152,17 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(Unit) {
+                webSocketClient.hostLeftLobby.collect {
+                    navigationViewModel.leaveLobby()
+                    homeViewModel.clearLobbyCode()
+
+                    snackbarHostState.showSnackbar(
+                        "Lobby closed. Choose another one."
+                    )
+                }
+
+            }
+            LaunchedEffect(Unit) {
                 webSocketClient.lobbyJoinErrors.collect { message ->
                     Log.e("MainActivity", "Lobby join error received: $message")
                     homeViewModel.setJoinLobbyError(message)
