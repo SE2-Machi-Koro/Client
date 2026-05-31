@@ -188,7 +188,10 @@ class HomeScreenViewModelTest {
             extraBufferCapacity = 1,
             onBufferOverflow = BufferOverflow.DROP_OLDEST,
         )
-
+        override val hostLeftLobby: SharedFlow<Unit> = MutableSharedFlow(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
         var connectCalled = false
         var disconnectCalled = false
         var sendGameStartCalled = false

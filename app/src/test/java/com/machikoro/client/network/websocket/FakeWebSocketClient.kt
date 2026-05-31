@@ -31,6 +31,8 @@ class FakeWebSocketClient : WebSocketClient {
 
     override val lobbyJoinErrors: SharedFlow<String>
         get() = mutableLobbyJoinErrors
+    override val hostLeftLobby: SharedFlow<Unit>
+        get() = mutableHostLeftLobby
 
     override val winnerId: StateFlow<Int?>
         get() = mutableWinnerId
@@ -76,6 +78,10 @@ class FakeWebSocketClient : WebSocketClient {
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
     private val mutableLobbyJoinErrors = MutableSharedFlow<String>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    private val mutableHostLeftLobby = MutableSharedFlow<Unit>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
@@ -265,6 +271,11 @@ class FakeWebSocketClient : WebSocketClient {
     fun emitLobbyCode(code: String?) {
         mutableLobbyCode.value = code
     }
+
+    fun emitHostLeftLobby() {
+        mutableHostLeftLobby.tryEmit(Unit)
+    }
+
     data class PurchaseCall(
         val gameId: Int,
         val purchaseType: PurchaseType,
