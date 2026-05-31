@@ -73,7 +73,7 @@ fun AppRoot(
     onLeaveLobby: () -> Unit = {},
     onFillWithDummies: () -> Unit = {},
     onResetLobby: () -> Unit = {},
-    onRollDice: () -> Unit = {},
+    onRollDice: (diceCount: Int) -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
     onBackHome: () -> Unit = {},
@@ -92,12 +92,6 @@ fun AppRoot(
     val currentRoute = currentBackStackEntry?.destination?.route
     val showConnectionBanner = currentRoute != null && currentRoute != AppRoute.Main.route
 
-    // AppRoot owns the NavHost lifecycle, but route decisions are delegated to
-    // NavigationViewModel so navigation state has one source of truth.
-
-    // Reset NavigationViewModel idempotency cache when the NavController actually
-    // changes destination, so the same navigation can be re-emitted later if
-    // needed.
     DisposableEffect(navController) {
         val listener = NavController.OnDestinationChangedListener { _, _, _ ->
             navigationViewModel.clearLastNavigation()
@@ -108,7 +102,6 @@ fun AppRoot(
         }
     }
 
-    // Listen to navigation events from ViewModel and apply them
     LaunchedEffect(navigationViewModel) {
         navigationViewModel.navigationEvent.collectLatest { event ->
             when (event) {
@@ -118,7 +111,6 @@ fun AppRoot(
         }
     }
 
-    // Delegate state-based route decisions to NavigationViewModel
     LaunchedEffect(
         gameScreenState,
         startScreenState,
