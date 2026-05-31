@@ -710,6 +710,66 @@ class OkHttpWebSocketClientTest {
         assertTrue(factory.socket.sentMessages.isEmpty())
     }
 
+    @Test
+    fun advancePhaseSendsGameIdPayloadToAdvancePhaseDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.advancePhase(gameId = 7)
+
+        val frame = factory.socket.sentFrames().last {
+            it.headers["destination"] == WebSocketContract.advancePhaseDestination
+        }
+        assertEquals("""{"gameId":7}""", frame.body)
+    }
+
+    @Test
+    fun resolveEffectsSendsGameIdPayloadToResolveEffectsDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.resolveEffects(gameId = 7)
+
+        val frame = factory.socket.sentFrames().last {
+            it.headers["destination"] == WebSocketContract.resolveEffectsDestination
+        }
+        assertEquals("""{"gameId":7}""", frame.body)
+    }
+
+    @Test
+    fun endTurnSendsGameIdPayloadToEndTurnDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.endTurn(gameId = 7)
+
+        val frame = factory.socket.sentFrames().last {
+            it.headers["destination"] == WebSocketContract.endTurnDestination
+        }
+        assertEquals("""{"gameId":7}""", frame.body)
+    }
+
+    @Test
+    fun turnFlowActionsWithoutConnectionAreIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.advancePhase(gameId = 7)
+        client.resolveEffects(gameId = 7)
+        client.endTurn(gameId = 7)
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
 
     @Test
     fun sendPurchaseEstablishmentSendsServerAlignedPayload() {
@@ -1696,7 +1756,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n ")
-        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":[{"playerId":5,"userId":20,"username":"Alice","coins":3},{"playerId":6,"userId":21,"username":"Bob","coins":5}]}"""
+        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[{"playerId":5,"userId":20,"username":"Alice","coins":3},{"playerId":6,"userId":21,"username":"Bob","coins":5}]}}"""
         factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
         val players = client.players.value
         assertEquals(2, players.size)
@@ -1721,7 +1781,7 @@ class OkHttpWebSocketClientTest {
         )
         assertEquals(1, client.players.value.size)
         // LOBBY_ROSTER with two players replaces the list entirely
-        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":[{"playerId":5,"userId":20,"username":"Alice","coins":3},{"playerId":7,"userId":22,"username":"Carol","coins":3}]}"""
+        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[{"playerId":5,"userId":20,"username":"Alice","coins":3},{"playerId":7,"userId":22,"username":"Carol","coins":3}]}}"""
         factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
         val players = client.players.value
         assertEquals(2, players.size)
@@ -1739,7 +1799,7 @@ class OkHttpWebSocketClientTest {
             gameActionFrame("""{"type":"LOBBY_JOINED","gameId":1,"payload":{"playerId":5,"userId":20,"username":"Alice","coins":3,"gameId":1}}""")
         )
         assertEquals(1, client.players.value.size)
-        val emptyRoster = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":[]}"""
+        val emptyRoster = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[]}}"""
         factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$emptyRoster ")
         assertEquals(0, client.players.value.size)
     }
@@ -1752,7 +1812,7 @@ class OkHttpWebSocketClientTest {
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n ")
         // Second entry has no username field
-        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":[{"playerId":5,"userId":20,"username":"Alice","coins":3},{"playerId":6,"userId":21,"coins":3}]}"""
+        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[{"playerId":5,"userId":20,"username":"Alice","coins":3},{"playerId":6,"userId":21,"coins":3}]}}"""
         factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
         val players = client.players.value
         assertEquals(1, players.size)
@@ -1767,7 +1827,7 @@ class OkHttpWebSocketClientTest {
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n ")
         // First entry missing playerId, second is valid
-        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":[{"userId":20,"username":"Alice","coins":3},{"playerId":6,"userId":21,"username":"Bob","coins":3}]}"""
+        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[{"userId":20,"username":"Alice","coins":3},{"playerId":6,"userId":21,"username":"Bob","coins":3}]}}"""
         factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
         val players = client.players.value
         assertEquals(1, players.size)
@@ -2313,8 +2373,11 @@ class OkHttpWebSocketClientTest {
         )
 
     private fun FakeWebSocket.rollDiceFrames(): List<StompFrame> =
-        sentMessages.flatMap { parseFrames(StringBuilder(it)) }
+        sentFrames()
             .filter { it.headers["destination"] == WebSocketContract.rollDiceDestination }
+
+    private fun FakeWebSocket.sentFrames(): List<StompFrame> =
+        sentMessages.flatMap { parseFrames(StringBuilder(it)) }
 
     private class FakeWebSocketFactory : WebSocketFactory {
         lateinit var listener: WebSocketListener
@@ -2381,6 +2444,48 @@ class OkHttpWebSocketClientTest {
                 """"establishmentType":"BREAD","paymentSource":"BANK","activationNumbers":[2,3]}],""" +
                 """"landmarkDefinitions":[{"landmarkType":"TRAIN_STATION","cost":4}],""" +
                 """"turnOrder":[1,2]}}}"""
+    }
+
+    /**
+     * Regression test for the 2-player join bug: the joiner-only `LOBBY_ROSTER`
+     * message must (a) parse the `payload.players` array — the server wraps it
+     * in `LobbyRosterDto`, not as a bare JSON array — (b) capture the gameId
+     * and subscribe to `/topic/game/{gameId}` so subsequent broadcasts arrive,
+     * and (c) emit `lobbyEntered` so the UI navigates. Without all three, the
+     * joiner gets stuck on Home even though the server has accepted them.
+     */
+    @Test
+    fun lobbyRosterPopulatesPlayersSubscribesToGameTopicAndEmitsLobbyEntered() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        var enteredCount = 0
+        client.lobbyEntered.onEach { enteredCount++ }.launchIn(backgroundScope)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        runCurrent()
+
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":7,"payload":{"players":[""" +
+                """{"playerId":1,"userId":1,"username":"host","gameId":7,"turnOrder":0,"coins":3},""" +
+                """{"playerId":2,"userId":2,"username":"alice","gameId":7,"turnOrder":1,"coins":3}]}}"""
+            )
+        )
+        runCurrent()
+
+        assertEquals(7, client.activeGameId.value)
+        assertEquals(2, client.players.value.size)
+        assertEquals("host", client.players.value[0].displayName)
+        assertEquals("alice", client.players.value[1].displayName)
+        assertTrue(
+            "expected a SUBSCRIBE frame for /topic/game/7",
+            factory.socket.sentMessages.any {
+                it.startsWith("SUBSCRIBE\n") && it.contains("destination:/topic/game/7")
+            }
+        )
+        assertEquals(1, enteredCount)
     }
 
     private fun newClient(
