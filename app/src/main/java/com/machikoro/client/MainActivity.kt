@@ -67,7 +67,7 @@ class MainActivity : ComponentActivity() {
         StartScreenViewModel.Factory(webSocketClient, SessionManager, healthRepository)
     }
     private val gameScreenViewModel by viewModels<GameScreenViewModel> {
-        GameScreenViewModel.Factory(webSocketClient, SessionManager)
+        GameScreenViewModel.Factory(webSocketClient, SessionManager, debugApi)
     }
     private val homeViewModel by viewModels<HomeViewModel> {
         HomeViewModel.Factory(webSocketClient)
@@ -178,6 +178,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Debug End-game (#191): surface End-game button failures as a snackbar.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.debugEndGameErrors.collect { message ->
+                    snackbarHostState.showSnackbar(message)
+                }
+            }
+
             ClientTheme {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -226,6 +233,9 @@ class MainActivity : ComponentActivity() {
                         },
                         onLeaveGame = {
                             navigationViewModel.leaveLobby()
+                        },
+                        onEndGame = {
+                            gameScreenViewModel.endGame()
                         },
                         hasActiveGame = hasActiveGame,
                         onResumeGameClick = {

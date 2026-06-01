@@ -13,6 +13,10 @@ import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.session.Session
 import com.machikoro.client.domain.session.SessionStateHolder
+import com.machikoro.client.network.debug.DebugApi
+import com.machikoro.client.network.debug.EndGameRequest
+import com.machikoro.client.network.debug.FillLobbyRequest
+import com.machikoro.client.network.debug.ResetLobbyRequest
 import com.machikoro.client.network.websocket.FakeWebSocketClient
 import com.machikoro.client.ui.start.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -21,12 +25,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import retrofit2.Response
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameScreenViewModelTest {
@@ -44,7 +50,8 @@ class GameScreenViewModelTest {
     private fun viewModel(
         fakeClient: FakeWebSocketClient = FakeWebSocketClient(),
         userId: Int = 1,
-    ) = GameScreenViewModel(fakeClient, fakeSession(userId))
+        fakeDebugApi: FakeDebugApi = FakeDebugApi(),
+    ) = GameScreenViewModel(fakeClient, fakeSession(userId), fakeDebugApi)
 
     @Test
     fun initialStateUsesInitialValues() = runTest {
@@ -884,5 +891,132 @@ class GameScreenViewModelTest {
         viewModel.performTurnFlowAction()
 
         assertNull(fakeClient.advancedPhaseGameId)
+    }
+
+    // === Debug End-game (#191) ===
+
+    @Test
+    fun endGameCallsDebugApiWithCurrentGameId() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val fakeDebugApi = FakeDebugApi()
+        val viewModel = viewModel(fakeClient = fakeClient, userId = 42, fakeDebugApi = fakeDebugApi)
+        fakeClient.emitActiveGameId(7)
+        advanceUntilIdle()
+        val errors = mutableListOf<String>()
+        val job = launch { viewModel.debugEndGameErrors.collect { errors.add(it) } }
+        advanceUntilIdle()
+
+        viewModel.endGame()
+        advanceUntilIdle()
+
+        assertEquals(1, fakeDebugApi.endGameCallCount)
+        assertEquals(EndGameRequest(gameId = 7), fakeDebugApi.lastEndGameRequest)
+        // On a successful response no error is surfaced — GAME_END drives the transition.
+        assertEquals(emptyList<String>(), errors)
+        job.cancel()
+    }
+
+    @Test
+    fun endGameIsIgnoredWithoutGameId() = runTest {
+        val fakeDebugApi = FakeDebugApi()
+        val viewModel = viewModel(fakeDebugApi = fakeDebugApi)
+        advanceUntilIdle()
+
+        viewModel.endGame()
+        advanceUntilIdle()
+
+        assertEquals(0, fakeDebugApi.endGameCallCount)
+    }
+
+    @Test
+    fun endGameEmitsErrorOnNonSuccessfulResponse() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val fakeDebugApi = FakeDebugApi(response = Response.error(422, "".toResponseBody()))
+        val viewModel = viewModel(fakeClient = fakeClient, userId = 42, fakeDebugApi = fakeDebugApi)
+        fakeClient.emitActiveGameId(7)
+        advanceUntilIdle()
+        val errors = mutableListOf<String>()
+        val job = launch { viewModel.debugEndGameErrors.collect { errors.add(it) } }
+        advanceUntilIdle()
+
+        viewModel.endGame()
+        advanceUntilIdle()
+
+        assertEquals(listOf("End game failed (422)"), errors)
+        job.cancel()
+    }
+
+    @Test
+    fun endGameEmitsErrorOnException() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val fakeDebugApi = FakeDebugApi(throwError = true)
+        val viewModel = viewModel(fakeClient = fakeClient, userId = 42, fakeDebugApi = fakeDebugApi)
+        fakeClient.emitActiveGameId(7)
+        advanceUntilIdle()
+        val errors = mutableListOf<String>()
+        val job = launch { viewModel.debugEndGameErrors.collect { errors.add(it) } }
+        advanceUntilIdle()
+
+        viewModel.endGame()
+        advanceUntilIdle()
+
+        assertEquals(1, errors.size)
+        assertTrue(errors.first().startsWith("End game error"))
+        job.cancel()
+    }
+
+    @Test
+    fun endGameEmitsUnknownErrorWhenExceptionMessageIsNull() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val fakeDebugApi = FakeDebugApi(throwError = true, errorMessage = null)
+        val viewModel = viewModel(fakeClient = fakeClient, userId = 42, fakeDebugApi = fakeDebugApi)
+        fakeClient.emitActiveGameId(7)
+        advanceUntilIdle()
+        val errors = mutableListOf<String>()
+        val job = launch { viewModel.debugEndGameErrors.collect { errors.add(it) } }
+        advanceUntilIdle()
+
+        viewModel.endGame()
+        advanceUntilIdle()
+
+        assertEquals(listOf("End game error: unknown error"), errors)
+        job.cancel()
+    }
+
+    @Test
+    fun endGameIgnoresRapidSecondTapWhileInFlight() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val fakeDebugApi = FakeDebugApi()
+        val viewModel = viewModel(fakeClient = fakeClient, userId = 42, fakeDebugApi = fakeDebugApi)
+        fakeClient.emitActiveGameId(7)
+        advanceUntilIdle()
+
+        viewModel.endGame()
+        viewModel.endGame() // rapid second tap before the first call completes
+        advanceUntilIdle()
+
+        assertEquals(1, fakeDebugApi.endGameCallCount)
+    }
+
+    private class FakeDebugApi(
+        private val response: Response<Unit> = Response.success(Unit),
+        private val throwError: Boolean = false,
+        private val errorMessage: String? = "Simulated network error",
+    ) : DebugApi {
+        var endGameCallCount = 0
+            private set
+        var lastEndGameRequest: EndGameRequest? = null
+            private set
+
+        override suspend fun fillLobby(body: FillLobbyRequest): Response<Unit> = Response.success(Unit)
+        override suspend fun resetLobby(body: ResetLobbyRequest): Response<Unit> = Response.success(Unit)
+        override suspend fun purge(): Response<Unit> = Response.success(Unit)
+
+        override suspend fun endGame(body: EndGameRequest): Response<Unit> {
+            endGameCallCount++
+            lastEndGameRequest = body
+            if (throwError) throw RuntimeException(errorMessage)
+            return response
+        }
     }
 }

@@ -78,6 +78,7 @@ fun AppRoot(
     onPurchaseClick: (String) -> Unit = {},
     onBackHome: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
+    onEndGame: () -> Unit = {},
     cheatRecommendation: CardType? = null,
     onShake: () -> Unit = {},
     hasActiveGame: Boolean = false,
@@ -219,6 +220,7 @@ fun AppRoot(
                     onTurnFlowAction = onTurnFlowAction,
                     onPurchaseClick = onPurchaseClick,
                     onLeaveGame = onLeaveGame,
+                    onEndGame = onEndGame,
                     cheatRecommendation = cheatRecommendation,
                     onShake = onShake,
                 )
