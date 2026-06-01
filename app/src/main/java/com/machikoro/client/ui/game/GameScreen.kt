@@ -1,5 +1,11 @@
 package com.machikoro.client.ui.game
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.machikoro.client.BuildConfig
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
@@ -58,6 +65,7 @@ fun GameScreen(
     onRollDice: () -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
+    onEndGame: () -> Unit = {},
     cheatRecommendation: CardType? = null,
     onShake: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -210,6 +218,43 @@ fun GameScreen(
             }
         }
 
+        // Leave button drawn last so it sits on top of all other content
+        Button(
+            onClick = { showLeaveDialog = true },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(start = 8.dp, top = 6.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            ),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+        ) {
+            Text(text = "Leave", style = MaterialTheme.typography.labelSmall)
+        }
+
+        // Debug-only (#191): force-end the game to reach the winner screen without
+        // playing through. Subtle, like the home "Purge DB" control, and compiled out
+        // of release builds. Visible only while in a running game the local player is in;
+        // the server still enforces admin auth + membership.
+        if (BuildConfig.DEBUG &&
+            state.gameStatus == GameStatus.IN_PROGRESS &&
+            state.gameId != null &&
+            state.myUserId != null
+        ) {
+            Text(
+                text = "End game",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Red,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(start = 12.dp, top = 46.dp)
+                    .clickable { onEndGame() },
+            )
+        }
         //shows a loading indicator when the game is not in progress and the connection status is not disconnected
         InitializationLoadingOverlay(
             connectionStatus = state.connectionStatus,
