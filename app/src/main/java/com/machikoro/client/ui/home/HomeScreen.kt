@@ -61,6 +61,7 @@ fun HomeScreen(
     onJoinLobbySubmit: () -> Unit = {},
     joinLobbyError: Boolean = false,
     hasActiveGame: Boolean = false,
+    username: String = "Player",
     onResumeGameClick: () -> Unit = {},
     onPurgeClick: () -> Unit = {},
     onLogoutClick: () -> Unit,
@@ -95,7 +96,7 @@ fun HomeScreen(
             modifier = Modifier.align(Alignment.TopEnd),
             onClick = null,
             leftIcon = R.drawable.login_user_icon
-            )
+        )
 
         // Logout affordance in the top-left corner. Issue #106 places the
         // logout action on the authenticated screen; the start screen never
