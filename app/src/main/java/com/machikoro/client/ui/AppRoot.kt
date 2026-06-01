@@ -166,6 +166,7 @@ fun AppRoot(
 
             composable(AppRoute.Home.route) {
                 HomeScreen(
+                    username = startScreenState.loggedInAs,
                     joinLobbyCode = joinLobbyCode,
                     showJoinLobbyInput = showJoinLobbyInput && lobbyCode == null,
                     onJoinLobbyClick = onJoinLobbyClick,
