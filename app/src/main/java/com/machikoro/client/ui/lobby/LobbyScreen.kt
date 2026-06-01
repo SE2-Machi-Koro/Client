@@ -59,6 +59,7 @@ fun LobbyScreen(
 ) {
     LobbyScreen(
         playerNames = state.playerList,
+        playerReadyStates = state.playerReadyStates,
         maxPlayers = state.maxPlayers,
         currentUsername = state.loggedInAs,
         // TODO: Replace first-player-as-host fallback once backend exposes host information.
@@ -78,6 +79,7 @@ fun LobbyScreen(
 @Composable
 fun LobbyScreen(
     playerNames: List<String>,
+    playerReadyStates: Map<String, Boolean> = emptyMap(),
     maxPlayers: Int = 4,
     currentUsername: String? = null,
     hostUsername: String? = null,
@@ -180,11 +182,11 @@ fun LobbyScreen(
                         isHost = isHostPlayer
                     )
 
-                    // TODO: Replace placeholder ready state once backend exposes readiness per player.
+                    // Local user gets optimistic ready state; others use server-provided value (default: not ready)
                     val statusText = when {
                         name == null -> ""
-                        isCurrentUser && !isReady -> "not ready"
-                        else -> "ready"
+                        isCurrentUser -> if (isReady) "ready" else "not ready"
+                        else -> if (playerReadyStates[name] == true) "ready" else "not ready"
                     }
 
                     StatusSlot(text = statusText)
