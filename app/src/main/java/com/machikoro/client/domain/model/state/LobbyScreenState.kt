@@ -5,9 +5,12 @@ data class LobbyScreenState(
     val lobbyStatus: LobbyStatus,
     val playerList: List<String> = emptyList(),
     // TODO: Replace hardcoded maxPlayers once server provides lobby configuration.
-    val maxPlayers: Int = 4,    val isHost: Boolean = false,
+    val maxPlayers: Int = 4,
+    val isHost: Boolean = false,
     val isReady: Boolean = false,
     val loggedInAs: String? = null,
+    // Server-provided ready state per player display name; populated once backend sends isReady in roster
+    val playerReadyStates: Map<String, Boolean> = emptyMap(),
 ) {
     companion object {
         fun placeholder() = LobbyScreenState(
@@ -18,6 +21,7 @@ data class LobbyScreenState(
             isHost = false,
             isReady = false,
             loggedInAs = null,
+            playerReadyStates = emptyMap(),
         )
     }
 }

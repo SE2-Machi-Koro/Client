@@ -5,5 +5,7 @@ data class PlayerCoinState(
     val displayName: String,
     val coins: Int,
     val isCurrentPlayer: Boolean = false,
-    val isActivePlayer: Boolean = false
+    val isActivePlayer: Boolean = false,
+    // Populated once the backend includes isReady in LobbyRosterPlayerDto
+    val isReady: Boolean = false,
 )
