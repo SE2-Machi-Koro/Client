@@ -43,7 +43,7 @@ import com.machikoro.client.ui.theme.PrimaryBeigeLight
 import com.machikoro.client.ui.theme.TextBlueDark
 
 // Medal colors for top 3 ranks
-private val GoldColor = Color(0xFFFFD700)
+private val GoldColor = Color(0xFFD4AF37)
 private val SilverColor = Color(0xFFC0C0C0)
 private val BronzeColor = Color(0xFFCD7F32)
 
