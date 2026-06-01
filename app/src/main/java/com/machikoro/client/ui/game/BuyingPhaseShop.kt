@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
@@ -62,12 +63,14 @@ import com.machikoro.client.ui.theme.White
 private val SHOP_CARD_SHAPE = RoundedCornerShape(8.dp)
 private const val ESTABLISHMENT_CARD_ASPECT_RATIO = 0.68f
 private const val LANDMARK_CARD_ASPECT_RATIO = 1.12f
+private val RECOMMENDED_HIGHLIGHT = Color(0xFF00C853)
 
 @Composable
 internal fun BuyingPhaseShop(
     state: GameScreenState,
     items: List<ShopItem>,
     onPurchaseClick: (String) -> Unit,
+    recommendedCardType: CardType? = null,
     modifier: Modifier = Modifier
 ) {
     val landmarks = remember(items) {
@@ -115,6 +118,7 @@ internal fun BuyingPhaseShop(
                                 item = item,
                                 state = state,
                                 onPurchaseClick = onPurchaseClick,
+                                isRecommended = item.type == recommendedCardType?.name,
                                 aspectRatio = LANDMARK_CARD_ASPECT_RATIO
                             )
                         }
@@ -137,6 +141,7 @@ internal fun BuyingPhaseShop(
                                 item = item,
                                 state = state,
                                 onPurchaseClick = onPurchaseClick,
+                                isRecommended = item.type == recommendedCardType?.name,
                                 aspectRatio = ESTABLISHMENT_CARD_ASPECT_RATIO
                             )
                         }
@@ -185,6 +190,7 @@ private fun ShopImageTile(
     state: GameScreenState,
     onPurchaseClick: (String) -> Unit,
     aspectRatio: Float,
+    isRecommended: Boolean,
     modifier: Modifier = Modifier
 ) {
     val canPurchase = state.canPurchaseItem(item) &&
@@ -193,6 +199,7 @@ private fun ShopImageTile(
     val borderColor = when {
         isFeedbackItem && state.purchaseState == PurchaseState.SUCCESS -> PrimaryOrange
         isFeedbackItem && state.purchaseState == PurchaseState.PENDING -> MaterialTheme.colorScheme.primary
+        isRecommended -> RECOMMENDED_HIGHLIGHT
         else -> Color.Transparent
     }
 
@@ -204,7 +211,8 @@ private fun ShopImageTile(
             .border(2.dp, borderColor, SHOP_CARD_SHAPE)
             .clickable(enabled = canPurchase) { onPurchaseClick(item.type) }
             .semantics {
-                contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}"
+                contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
+                    if (isRecommended) ", recommended" else ""
             }
     ) {
         Image(
