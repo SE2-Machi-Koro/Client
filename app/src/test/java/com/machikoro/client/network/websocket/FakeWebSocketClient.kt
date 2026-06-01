@@ -31,6 +31,8 @@ class FakeWebSocketClient : WebSocketClient {
 
     override val lobbyJoinErrors: SharedFlow<String>
         get() = mutableLobbyJoinErrors
+    override val hostLeftLobby: SharedFlow<Unit>
+        get() = mutableHostLeftLobby
 
     override val winnerId: StateFlow<Int?>
         get() = mutableWinnerId
@@ -79,6 +81,10 @@ class FakeWebSocketClient : WebSocketClient {
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
+    private val mutableHostLeftLobby = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     private val mutableWinnerId = MutableStateFlow<Int?>(null)
     private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
     private val mutableActivePlayerId = MutableStateFlow<Int?>(null)
@@ -105,6 +111,12 @@ class FakeWebSocketClient : WebSocketClient {
         private set
 
     var lastRolledDiceCount: Int? = null
+        private set
+    var advancedPhaseGameId: Int? = null
+        private set
+    var resolvedEffectsGameId: Int? = null
+        private set
+    var endedTurnGameId: Int? = null
         private set
 
     override fun connect() = Unit
@@ -180,6 +192,18 @@ class FakeWebSocketClient : WebSocketClient {
         lastRolledDiceCount = diceCount
     }
 
+    override fun advancePhase(gameId: Int) {
+        advancedPhaseGameId = gameId
+    }
+
+    override fun resolveEffects(gameId: Int) {
+        resolvedEffectsGameId = gameId
+    }
+
+    override fun endTurn(gameId: Int) {
+        endedTurnGameId = gameId
+    }
+
     fun emitConnectionStatus(status: ConnectionStatus) {
         mutableConnectionStatus.value = status
     }
@@ -247,6 +271,11 @@ class FakeWebSocketClient : WebSocketClient {
     fun emitLobbyCode(code: String?) {
         mutableLobbyCode.value = code
     }
+
+    fun emitHostLeftLobby() {
+        mutableHostLeftLobby.tryEmit(Unit)
+    }
+
     data class PurchaseCall(
         val gameId: Int,
         val purchaseType: PurchaseType,
