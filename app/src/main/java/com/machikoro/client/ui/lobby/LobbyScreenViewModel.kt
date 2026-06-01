@@ -58,9 +58,12 @@ class LobbyScreenViewModel(
             webSocketClient.players.collect { players ->
                 mutableState.update { current ->
                     val playerNames = players.map { it.displayName }
+                    // Build ready map from server data; used by the UI to render each player's status
+                    val readyStates = players.associate { it.displayName to it.isReady }
 
                     current.copy(
                         playerList = playerNames,
+                        playerReadyStates = readyStates,
                         lobbyStatus = if (players.size >= 2) {
                             LobbyStatus.READY
                         } else {
@@ -104,12 +107,9 @@ class LobbyScreenViewModel(
     }
 
     fun onReadyToggle() {
-        mutableState.update { current ->
-            current.copy(isReady = !current.isReady)
-        }
-
-        // TODO: send ready status to backend when supported.
-        // webSocketClient.sendReadyToggle()
+        val newReady = !mutableState.value.isReady
+        mutableState.update { current -> current.copy(isReady = newReady) }
+        webSocketClient.sendReadyToggle(newReady)
     }
 
     fun onLeaveLobby() {
