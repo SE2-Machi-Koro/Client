@@ -55,7 +55,7 @@ class NavigationViewModelTest {
     }
 
     @Test
-    fun lobbyStateNavigatesToLobbyWithLobbyCode() = runTest {
+    fun lobbyStateNavigatesToLobbyWithLobbyCodeWithoutStatus() = runTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
@@ -77,13 +77,35 @@ class NavigationViewModelTest {
     }
 
     @Test
-    fun unauthenticatedStateNavigatesToMainEvenWhenLobbyWasShown() = runTest {
+    fun lobbyStateNavigatesToLobbyWithLobbyCodeAndStatusWaiting() = runTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
         viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
-            gameScreenState = GameScreenState.initial(),
+            gameScreenState = GameScreenState.initial().copy(gameStatus = GameStatus.WAITING),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = "ABC1234",
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            NavigationEvent.NavigateTo(
+                route = AppRoute.Lobby,
+                arguments = AppRoute.AppRouteArguments(lobbyCode = "ABC1234"),
+            ),
+            events.single(),
+        )
+    }
+
+    @Test
+    fun unauthenticatedStateNavigatesToMainEvenWhenLobbyWasShownAndGam() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.showLobby()
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial().copy(gameStatus = GameStatus.WAITING),
             startScreenState = StartScreenState.placeholder(),
             lobbyCode = "ABC1234",
         )
@@ -135,6 +157,7 @@ class NavigationViewModelTest {
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial().copy(
                 gamePhase = GamePhase.ROLL_DICE,
+                gameStatus = GameStatus.IN_PROGRESS,
                 gameId = 42,
             ),
             startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
