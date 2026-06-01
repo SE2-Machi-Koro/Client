@@ -1,10 +1,5 @@
 package com.machikoro.client.ui.game
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -216,23 +212,6 @@ fun GameScreen(
                     label = turnFlowLabel,
                 )
             }
-        }
-
-        // Leave button drawn last so it sits on top of all other content
-        Button(
-            onClick = { showLeaveDialog = true },
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .statusBarsPadding()
-                .padding(start = 8.dp, top = 6.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-            ),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 4.dp),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
-        ) {
-            Text(text = "Leave", style = MaterialTheme.typography.labelSmall)
         }
 
         // Debug-only (#191): force-end the game to reach the winner screen without
