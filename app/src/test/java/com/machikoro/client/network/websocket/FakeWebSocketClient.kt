@@ -157,6 +157,13 @@ class FakeWebSocketClient : WebSocketClient {
         lastJoinLobbyCode = lobbyCode
     }
 
+    var lastReadyToggle: Boolean? = null
+        private set
+
+    override fun sendReadyToggle(isReady: Boolean) {
+        lastReadyToggle = isReady
+    }
+
     override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow(extraBufferCapacity = 1)
 
     var leaveLobbyGameId: Int? = null
