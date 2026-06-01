@@ -175,6 +175,7 @@ fun AppRoot(
                     joinLobbyError = joinLobbyError,
                     onCreateLobbyClick = onCreateLobbyClick,
                     hasActiveGame = hasActiveGame,
+                    username = startScreenState.loggedInAs ?: "Player",
                     onResumeGameClick = onResumeGameClick,
                     onPurgeClick = onPurgeClick,
                     onLogoutClick = onLogoutSubmit,
