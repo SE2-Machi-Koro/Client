@@ -7,8 +7,13 @@ class LeaderboardApiTest {
 
     @Test
     fun interfaceCanBeReferenced() {
-        // Confirms the interface is accessible and loadable by the class loader
         val clazz = LeaderboardApi::class
         assertNotNull(clazz)
+    }
+
+    @Test
+    fun getLeaderboardMethodExistsOnInterface() {
+        val method = LeaderboardApi::class.java.methods.find { it.name == "getLeaderboard" }
+        assertNotNull(method)
     }
 }
