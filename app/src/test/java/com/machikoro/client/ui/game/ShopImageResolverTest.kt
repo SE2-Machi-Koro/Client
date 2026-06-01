@@ -2,6 +2,7 @@ package com.machikoro.client.ui.game
 
 import com.machikoro.client.R
 import com.machikoro.client.domain.model.shop.ShopCatalog
+import com.machikoro.client.ui.game.ui.ShopImageResolver
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test

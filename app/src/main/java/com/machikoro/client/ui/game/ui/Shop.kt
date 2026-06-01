@@ -1,4 +1,4 @@
-package com.machikoro.client.ui.game
+package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border

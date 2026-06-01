@@ -1,4 +1,4 @@
-package com.machikoro.client.ui.game
+package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +29,7 @@ import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.toDisplayText
+import kotlin.collections.get
 
 // todo: adjust to current figma design, keep landmark badges
 @Composable

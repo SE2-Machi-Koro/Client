@@ -38,6 +38,13 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.cheat.ShakeDetector
+import com.machikoro.client.ui.game.ui.BuyingPhaseShop
+import com.machikoro.client.ui.game.ui.DiceAnimationDisplay
+import com.machikoro.client.ui.game.ui.DiceResultDisplay
+import com.machikoro.client.ui.game.ui.GamePhaseBanner
+import com.machikoro.client.ui.game.ui.InitializationLoadingOverlay
+import com.machikoro.client.ui.game.ui.MarketplaceSection
+import com.machikoro.client.ui.game.ui.PlayersTopBar
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.theme.ClientTheme
@@ -136,14 +143,14 @@ fun GameScreen(
         // === END OF TOP BAR ===
 
             if (state.isBuyingPhase) {
-            BuyingPhaseShop(
-                state = state,
-                items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
-                onPurchaseClick = onPurchaseClick,
-                recommendedCardType = cheatRecommendation,
-                modifier = Modifier
-                    .align (Alignment.Center)
-            )
+                BuyingPhaseShop(
+                    state = state,
+                    items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
+                    onPurchaseClick = onPurchaseClick,
+                    recommendedCardType = cheatRecommendation,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                )
         }
 
         // todo: change "false" upon adding "marketplace" button to open it on player's click,
