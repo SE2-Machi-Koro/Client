@@ -24,6 +24,7 @@ interface WebSocketClient {
     val lobbyEntered: SharedFlow<Unit>
     // Fires when joining a lobby fails, e.g. because the lobby code is invalid.
     val lobbyJoinErrors: SharedFlow<String>
+    val hostLeftLobby: SharedFlow<Unit>
     val activeGameId: StateFlow<Int?>
     val isLobbyHost: StateFlow<Boolean>
 

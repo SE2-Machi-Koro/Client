@@ -15,6 +15,8 @@ import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.session.SessionStateHolder
+import com.machikoro.client.network.debug.DebugApi
+import com.machikoro.client.network.debug.EndGameRequest
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,6 +31,7 @@ import kotlinx.coroutines.launch
 class GameScreenViewModel(
     private val webSocketClient: WebSocketClient,
     private val sessionStateHolder: SessionStateHolder,
+    private val debugApi: DebugApi,
 ) : ViewModel() {
     val state: StateFlow<GameScreenState>
         get() = mutableState.asStateFlow()
@@ -44,6 +47,14 @@ class GameScreenViewModel(
     val cheatActivations: SharedFlow<CardType?>
         get() = mutableCheatActivations.asSharedFlow()
     private val mutableCheatActivations = MutableSharedFlow<CardType?>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    /** Debug End-game (#191): one-shot failure message, drives a snackbar. */
+    val debugEndGameErrors: SharedFlow<String>
+        get() = mutableDebugEndGameErrors.asSharedFlow()
+    private val mutableDebugEndGameErrors = MutableSharedFlow<String>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
@@ -276,6 +287,33 @@ class GameScreenViewModel(
             )
         }
 
+    /**
+     * Debug-only (#191): force-ends the current game with the local player as
+     * winner via the admin debug endpoint. On success the server's GAME_END
+     * broadcast drives the winner screen, so there is nothing else to do here;
+     * failures surface through [debugEndGameErrors] as a snackbar.
+     */
+    // Guards against rapid double-taps queuing concurrent end-game calls (#191 review).
+    private var endGameInFlight = false
+
+    fun endGame() {
+        val gameId = mutableState.value.gameId ?: return
+        if (endGameInFlight) return
+        endGameInFlight = true
+        viewModelScope.launch {
+            try {
+                val response = debugApi.endGame(EndGameRequest(gameId))
+                if (!response.isSuccessful) {
+                    mutableDebugEndGameErrors.tryEmit("End game failed (${response.code()})")
+                }
+            } catch (e: Exception) {
+                mutableDebugEndGameErrors.tryEmit("End game error: ${e.message ?: "unknown error"}")
+            } finally {
+                endGameInFlight = false
+            }
+        }
+    }
+
     private fun String.toDisplayName(): String =
         lowercase()
             .split("_")
@@ -284,13 +322,14 @@ class GameScreenViewModel(
     class Factory(
         private val webSocketClient: WebSocketClient,
         private val sessionStateHolder: SessionStateHolder,
+        private val debugApi: DebugApi,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(GameScreenViewModel::class.java)) {
                 "Unknown ViewModel class: ${modelClass.name}"
             }
-            return GameScreenViewModel(webSocketClient, sessionStateHolder) as T
+            return GameScreenViewModel(webSocketClient, sessionStateHolder, debugApi) as T
         }
     }
 }

@@ -52,6 +52,11 @@ class DummyWebSocketClient : WebSocketClient {
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
+    override val hostLeftLobby: SharedFlow<Unit> = MutableSharedFlow(
+            extraBufferCapacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
     override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow()
     override fun connect() {}
     override fun disconnect() {}

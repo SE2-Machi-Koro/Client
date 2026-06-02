@@ -60,6 +60,10 @@ class OkHttpWebSocketClient(
 
     override val lobbyJoinErrors: SharedFlow<String>
         get() = mutableLobbyJoinErrors.asSharedFlow()
+
+    override val hostLeftLobby: SharedFlow<Unit>
+        get() = mutableHostLeftLobby.asSharedFlow()
+
     override val winnerId: StateFlow<Int?>
         get() = mutableWinnerId.asStateFlow()
 
@@ -108,6 +112,11 @@ class OkHttpWebSocketClient(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     private val mutableLobbyJoinErrors = MutableSharedFlow<String>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    private val mutableHostLeftLobby = MutableSharedFlow<Unit>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
@@ -518,6 +527,7 @@ class OkHttpWebSocketClient(
                 handleLobbyCreated(json)
                 handleLobbyJoined(json)
                 handleLobbyLeft(json)
+                handleHostLeft(json)
                 handleLobbyRoster(json)
                 handleLobbyError(json)
                 handleGameStarted(json)
@@ -717,6 +727,19 @@ class OkHttpWebSocketClient(
         mutableGameStatus.value = GameStatus.FINISHED
         mutableGamePhase.value = GamePhase.NONE
         unsubscribeFromGameTopic(mutableActiveGameId.value)
+    }
+
+    private fun handleHostLeft(json: JSONObject) {
+        if (json.optString("type") != HOST_LEFT_TYPE) return
+
+        // Ignore if I am the host leaving intentionally
+        if (mutableIsLobbyHost.value) return
+
+        Log.d(TAG, "Host left lobby, lobby closed")
+
+        resetLobbyState()
+
+        mutableHostLeftLobby.tryEmit(Unit)
     }
 
     /**
@@ -1205,6 +1228,8 @@ class OkHttpWebSocketClient(
         private const val LOBBY_CREATED_TYPE = "LOBBY_CREATED"
         private const val LOBBY_JOINED_TYPE = "LOBBY_JOINED"
         private const val LOBBY_LEFT_TYPE = "LOBBY_LEFT"
+        private const val HOST_LEFT_TYPE = "HOST_LEFT"
+
         private const val LOBBY_ROSTER_TYPE = "LOBBY_ROSTER"
         private const val ERROR_TYPE = "ERROR"
         private const val PURCHASE_FAILED_EVENT = "PURCHASE_FAILED"

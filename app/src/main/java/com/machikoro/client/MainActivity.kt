@@ -30,11 +30,13 @@ import com.machikoro.client.network.auth.AuthApiFactory
 import com.machikoro.client.network.debug.DebugApiFactory
 import com.machikoro.client.network.health.BackendHealthRepository
 import com.machikoro.client.network.health.HealthApiFactory
+import com.machikoro.client.network.leaderboard.LeaderboardApiFactory
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.AppRoot
 import com.machikoro.client.ui.connection.ConnectionBannerViewModel
 import com.machikoro.client.ui.game.GameScreenViewModel
 import com.machikoro.client.ui.home.HomeViewModel
+import com.machikoro.client.ui.leaderboard.LeaderboardViewModel
 import com.machikoro.client.ui.lobby.LobbyScreenViewModel
 import com.machikoro.client.ui.navigation.NavigationViewModel
 import com.machikoro.client.ui.start.LoginDialogViewModel
@@ -67,7 +69,7 @@ class MainActivity : ComponentActivity() {
         StartScreenViewModel.Factory(webSocketClient, SessionManager, healthRepository)
     }
     private val gameScreenViewModel by viewModels<GameScreenViewModel> {
-        GameScreenViewModel.Factory(webSocketClient, SessionManager)
+        GameScreenViewModel.Factory(webSocketClient, SessionManager, debugApi)
     }
     private val homeViewModel by viewModels<HomeViewModel> {
         HomeViewModel.Factory(webSocketClient)
@@ -92,6 +94,12 @@ class MainActivity : ComponentActivity() {
     private val connectionBannerViewModel by viewModels<ConnectionBannerViewModel> {
         ConnectionBannerViewModel.Factory(webSocketClient, SessionManager)
     }
+    private val leaderboardApi by lazy {
+        LeaderboardApiFactory.create(AppConfig.backendBaseUrl) { SessionManager.session.value?.sessionToken }
+    }
+    private val leaderboardViewModel by viewModels<LeaderboardViewModel> {
+        LeaderboardViewModel.Factory(leaderboardApi)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -113,6 +121,7 @@ class MainActivity : ComponentActivity() {
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
             val connectionBannerState by connectionBannerViewModel.state.collectAsState()
+            val leaderboardState by leaderboardViewModel.state.collectAsState()
             var showJoinLobbyInput by remember { mutableStateOf(false) }
             val snackbarHostState = remember { SnackbarHostState() }
             val hasActiveGame = activeGameId != null && gameScreenState.gamePhase != GamePhase.NONE
@@ -152,6 +161,17 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(Unit) {
+                webSocketClient.hostLeftLobby.collect {
+                    navigationViewModel.leaveLobby()
+                    homeViewModel.clearLobbyCode()
+
+                    snackbarHostState.showSnackbar(
+                        "Lobby closed. Choose another one."
+                    )
+                }
+
+            }
+            LaunchedEffect(Unit) {
                 webSocketClient.lobbyJoinErrors.collect { message ->
                     Log.e("MainActivity", "Lobby join error received: $message")
                     homeViewModel.setJoinLobbyError(message)
@@ -164,6 +184,13 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) {
                 gameScreenViewModel.cheatActivations.collect {
                     Toast.makeText(context, "Insider Trading active", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            // Debug End-game (#191): surface End-game button failures as a snackbar.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.debugEndGameErrors.collect { message ->
+                    snackbarHostState.showSnackbar(message)
                 }
             }
 
@@ -182,6 +209,8 @@ class MainActivity : ComponentActivity() {
                         loginDialogState = loginDialogState,
                         logoutState = logoutState,
                         connectionBannerState = connectionBannerState,
+                        leaderboardState = leaderboardState,
+                        onLeaderboardRetry = leaderboardViewModel::load,
                         onRegisterUsernameChange = registerDialogViewModel::usernameChanged,
                         onRegisterPasswordChange = registerDialogViewModel::passwordChanged,
                         onRegisterSubmit = registerDialogViewModel::submit,
@@ -215,6 +244,9 @@ class MainActivity : ComponentActivity() {
                         },
                         onLeaveGame = {
                             navigationViewModel.leaveLobby()
+                        },
+                        onEndGame = {
+                            gameScreenViewModel.endGame()
                         },
                         hasActiveGame = hasActiveGame,
                         onResumeGameClick = {

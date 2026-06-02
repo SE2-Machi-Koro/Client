@@ -49,6 +49,7 @@ import com.machikoro.client.ui.theme.White
 
 @Composable
 fun HomeScreen(
+    username: String? = null,
     joinLobbyCode: String = "",
     showJoinLobbyInput: Boolean = false,
     onJoinLobbyCodeChange: (String) -> Unit = {},
@@ -88,8 +89,9 @@ fun HomeScreen(
 
         // === PROFILE SECTION ===
         // User profile card in the top right corner.
+        // Shows the logged-in username in the top right corner.
         SecondaryActionButton(
-            label = "pass real name",
+            label = username ?: "Guest",
             modifier = Modifier.align(Alignment.TopEnd),
             onClick = null,
             leftIcon = R.drawable.login_user_icon
