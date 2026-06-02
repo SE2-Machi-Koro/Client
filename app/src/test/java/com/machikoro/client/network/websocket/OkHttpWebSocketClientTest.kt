@@ -1729,7 +1729,7 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\nsession:sess-abc\n\n ")
+        factory.simulateText("CONNECTED\nversion:1.2\nsession:sess-abc\n\n\u0000")
         assertTrue(
             factory.socket.sentMessages.any {
                 it.startsWith("SUBSCRIBE") && it.contains("destination:/queue/lobby-usersess-abc")
@@ -1743,7 +1743,7 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         assertFalse(
             factory.socket.sentMessages.any { it.contains("destination:/queue/lobby-user") }
         )
@@ -1755,9 +1755,9 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[{"playerId":5,"userId":20,"username":"Alice","coins":3},{"playerId":6,"userId":21,"username":"Bob","coins":5}]}}"""
-        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson\u0000")
         val players = client.players.value
         assertEquals(2, players.size)
         assertEquals("5", players[0].id)
@@ -1774,7 +1774,7 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         // Seed one player via LOBBY_JOINED
         factory.simulateText(
             gameActionFrame("""{"type":"LOBBY_JOINED","gameId":1,"payload":{"playerId":5,"userId":20,"username":"Alice","coins":3,"gameId":1}}""")
@@ -1782,7 +1782,7 @@ class OkHttpWebSocketClientTest {
         assertEquals(1, client.players.value.size)
         // LOBBY_ROSTER with two players replaces the list entirely
         val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[{"playerId":5,"userId":20,"username":"Alice","coins":3},{"playerId":7,"userId":22,"username":"Carol","coins":3}]}}"""
-        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson\u0000")
         val players = client.players.value
         assertEquals(2, players.size)
         assertTrue(players.any { it.displayName == "Carol" })
@@ -1794,13 +1794,13 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         factory.simulateText(
             gameActionFrame("""{"type":"LOBBY_JOINED","gameId":1,"payload":{"playerId":5,"userId":20,"username":"Alice","coins":3,"gameId":1}}""")
         )
         assertEquals(1, client.players.value.size)
         val emptyRoster = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[]}}"""
-        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$emptyRoster ")
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$emptyRoster\u0000")
         assertEquals(0, client.players.value.size)
     }
 
@@ -1810,10 +1810,10 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         // Second entry has no username field
         val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[{"playerId":5,"userId":20,"username":"Alice","coins":3},{"playerId":6,"userId":21,"coins":3}]}}"""
-        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson\u0000")
         val players = client.players.value
         assertEquals(1, players.size)
         assertEquals("Alice", players[0].displayName)
@@ -1825,10 +1825,10 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
         // First entry missing playerId, second is valid
         val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[{"userId":20,"username":"Alice","coins":3},{"playerId":6,"userId":21,"username":"Bob","coins":3}]}}"""
-        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson\u0000")
         val players = client.players.value
         assertEquals(1, players.size)
         assertEquals("Bob", players[0].displayName)
@@ -2267,7 +2267,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
-        factory.simulateText("MESSAGE\ndestination:/topic/public\n\n  ")
+        factory.simulateText("MESSAGE\ndestination:/topic/public\n\n \u0000")
         assertEquals(GamePhase.NONE, client.gamePhase.value)
         assertTrue(client.players.value.isEmpty())
     }
@@ -2441,6 +2441,160 @@ class OkHttpWebSocketClientTest {
         assertEquals(5, client.marketplace.value[CardType.BAKERY])
     }
 
+    // ── two-client synchronization (#180) ────────────────────────────────────
+
+    @Test
+    fun twoClientsConvergeFromGameStartedBroadcast() = runTest {
+        val harness = twoConnectedClients(backgroundScope)
+
+        harness.broadcastToBoth(gameStartedTwoPlayerBody())
+
+        harness.assertBothSubscribedToGame(gameId = 7)
+        listOf(harness.playerA, harness.playerB).forEach { client ->
+            assertEquals(7, client.activeGameId.value)
+            assertEquals(GameStatus.IN_PROGRESS, client.gameStatus.value)
+            assertEquals(GamePhase.ROLL_DICE, client.gamePhase.value)
+            assertEquals(1, client.activePlayerId.value)
+            assertEquals(listOf("alice", "bob"), client.players.value.map { it.displayName })
+            assertEquals(5, client.marketplace.value[CardType.BAKERY])
+            assertTrue(client.shopItems.value.any { it.type == "BAKERY" && it.isAvailable })
+        }
+    }
+
+    @Test
+    fun twoClientsApplyGameActionBroadcastToNonSender() = runTest {
+        val harness = twoConnectedClients(backgroundScope)
+        harness.broadcastToBoth(gameStartedTwoPlayerBody())
+
+        harness.playerA.advancePhase(gameId = 7)
+        assertEquals(GamePhase.ROLL_DICE, harness.playerB.gamePhase.value)
+        assertFalse(
+            harness.playerBFactory.socket.sentFrames().any {
+                it.command == "SEND" &&
+                    it.headers["destination"] == WebSocketContract.advancePhaseDestination
+            }
+        )
+
+        harness.broadcastToBoth(
+            gameActionSnapshotBody(
+                turnPhase = "RESOLVE_EFFECTS",
+                activeUserId = 2,
+                player11Coins = 5,
+                player22Coins = 2,
+            )
+        )
+
+        assertTrue(
+            harness.playerAFactory.socket.sentFrames().any {
+                it.command == "SEND" &&
+                    it.headers["destination"] == WebSocketContract.advancePhaseDestination &&
+                    JSONObject(it.body).getInt("gameId") == 7
+            }
+        )
+        assertEquals(GamePhase.RESOLVE_EFFECTS, harness.playerB.gamePhase.value)
+        assertEquals(2, harness.playerB.activePlayerId.value)
+        assertEquals(5, harness.playerB.players.value.first { it.id == "11" }.coins)
+        assertEquals(2, harness.playerB.players.value.first { it.id == "22" }.coins)
+    }
+
+    @Test
+    fun twoClientsApplyRollDiceBroadcast() = runTest {
+        val harness = twoConnectedClients(backgroundScope)
+        harness.broadcastToBoth(gameStartedTwoPlayerBody())
+
+        harness.playerA.rollDice(diceCount = 2)
+        harness.broadcastToBoth(
+            rollDiceSnapshotBody(
+                result = "[3,5]",
+                lastDiceRoll = 8,
+            )
+        )
+
+        assertTrue(
+            harness.playerAFactory.socket.rollDiceFrames().any {
+                JSONObject(it.body).getJSONObject("payload").getInt("diceCount") == 2
+            }
+        )
+        assertEquals(listOf(3, 5), harness.playerA.diceResult.value)
+        assertEquals(listOf(3, 5), harness.playerB.diceResult.value)
+        assertEquals(GamePhase.BUY_OR_BUILD, harness.playerB.gamePhase.value)
+    }
+
+    @Test
+    fun twoClientsApplyPurchaseBroadcastToNonSender() = runTest {
+        val harness = twoConnectedClients(backgroundScope)
+        val playerBPurchaseEvents = mutableListOf<PurchaseEvent>()
+        harness.playerB.purchaseEvents.onEach { playerBPurchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+        harness.broadcastToBoth(gameStartedTwoPlayerBody())
+
+        harness.playerA.sendPurchase(
+            gameId = 7,
+            purchaseType = PurchaseType.LANDMARK,
+            landmarkType = "TRAIN_STATION",
+        )
+        harness.broadcastToBoth(
+            gameActionSnapshotBody(
+                turnPhase = "BUY_OR_BUILD",
+                activeUserId = 1,
+                bakerySupply = 4,
+                trainStationBuiltForPlayer11 = true,
+                purchaseType = "LANDMARK",
+                landmarkType = "TRAIN_STATION",
+            )
+        )
+        runCurrent()
+
+        assertEquals(
+            listOf(PurchaseEvent.Success(PurchaseType.LANDMARK, "TRAIN_STATION")),
+            playerBPurchaseEvents
+        )
+        assertEquals(4, harness.playerB.marketplace.value[CardType.BAKERY])
+        assertTrue(
+            harness.playerB.playerLandmarks.value
+                .getValue(11)
+                .first { it.landmarkType == LandmarkType.TRAIN_STATION }
+                .isBuilt
+        )
+    }
+
+    @Test
+    fun reconnectingClientRestoresStateFromSyncToMatchConnectedClient() = runTest {
+        val harness = twoConnectedClients(backgroundScope)
+        val latestState = twoPlayerState(
+            turnPhase = "BUY_OR_BUILD",
+            activeUserId = 2,
+            player11Coins = 8,
+            player22Coins = 6,
+            bakerySupply = 3,
+            trainStationBuiltForPlayer11 = true,
+            lastDiceRoll = 9,
+        )
+        harness.broadcastToBoth(gameActionSnapshotBody(state = latestState))
+
+        harness.playerBFactory.simulateFailure(IOException("backend restarted"))
+        runCurrent()
+        assertEquals(GamePhase.NONE, harness.playerB.gamePhase.value)
+
+        harness.playerBFactory.simulateOpen()
+        harness.playerBFactory.simulateText(connectedFrame())
+        harness.playerBFactory.simulateText(syncFrame(syncBody(latestState, targetUserId = 2)))
+
+        assertEquals(harness.playerA.activeGameId.value, harness.playerB.activeGameId.value)
+        assertEquals(harness.playerA.gamePhase.value, harness.playerB.gamePhase.value)
+        assertEquals(harness.playerA.activePlayerId.value, harness.playerB.activePlayerId.value)
+        assertEquals(harness.playerA.players.value, harness.playerB.players.value)
+        assertEquals(harness.playerA.marketplace.value, harness.playerB.marketplace.value)
+        assertEquals(harness.playerA.playerLandmarks.value, harness.playerB.playerLandmarks.value)
+        assertEquals(listOf(9), harness.playerB.diceResult.value)
+        assertTrue(
+            harness.playerBFactory.socket.sentFrames().any {
+                it.command == "SUBSCRIBE" &&
+                    it.headers["destination"] == WebSocketContract.gameSyncQueue
+            }
+        )
+    }
+
     // ── resetGameState ────────────────────────────────────────────────
     @Test
     fun transientDisconnectDoesNotClearWinnerOrActiveGameId() {
@@ -2519,12 +2673,58 @@ class OkHttpWebSocketClientTest {
         ).serialize()
 
     private fun gameActionFrame(body: String): String =
-        "MESSAGE\ndestination:/topic/public\ncontent-type:application/json\n\n$body\u0000"
+        StompFrame(
+            command = "MESSAGE",
+            headers = mapOf(
+                "destination" to WebSocketContract.publicTopic,
+                "content-type" to "application/json",
+            ),
+            body = body,
+        ).serialize()
+
+    private fun gameTopicFrame(gameId: Int, body: String): String =
+        StompFrame(
+            command = "MESSAGE",
+            headers = mapOf(
+                "destination" to "${WebSocketContract.gameTopicPrefix}/$gameId",
+                "content-type" to "application/json",
+            ),
+            body = body,
+        ).serialize()
 
     private fun gameStartedFrame(gameId: Int, activePlayerId: Int): String =
         gameActionFrame(
             """{"type":"GAME_STARTED","gameId":$gameId,"payload":{"activePlayerId":$activePlayerId,"game":{"id":$gameId,"lobbyCode":"ABC1234","turnPhase":"ROLL_DICE"},"players":[]}}"""
         )
+
+    private fun twoConnectedClients(reconnectScope: CoroutineScope): TwoClientHarness {
+        val playerAFactory = FakeWebSocketFactory()
+        val playerBFactory = FakeWebSocketFactory()
+        val playerA = newClient(
+            playerAFactory,
+            sessionStateHolder = FakeSessionStateHolder(Session("token-a", "alice", 1)),
+            reconnectScope = reconnectScope,
+        )
+        val playerB = newClient(
+            playerBFactory,
+            sessionStateHolder = FakeSessionStateHolder(Session("token-b", "bob", 2)),
+            reconnectScope = reconnectScope,
+        )
+
+        playerA.connect()
+        playerB.connect()
+        playerAFactory.simulateOpen()
+        playerBFactory.simulateOpen()
+        playerAFactory.simulateText(connectedFrame())
+        playerBFactory.simulateText(connectedFrame())
+
+        return TwoClientHarness(
+            playerA = playerA,
+            playerB = playerB,
+            playerAFactory = playerAFactory,
+            playerBFactory = playerBFactory,
+        )
+    }
 
     private fun FakeWebSocket.rollDiceFrames(): List<StompFrame> =
         sentFrames()
@@ -2532,6 +2732,23 @@ class OkHttpWebSocketClientTest {
 
     private fun FakeWebSocket.sentFrames(): List<StompFrame> =
         sentMessages.flatMap { parseFrames(StringBuilder(it)) }
+
+    private fun TwoClientHarness.broadcastToBoth(body: String, gameId: Int = 7) {
+        val frame = gameTopicFrame(gameId, body)
+        playerAFactory.simulateText(frame)
+        playerBFactory.simulateText(frame)
+    }
+
+    private fun TwoClientHarness.assertBothSubscribedToGame(gameId: Int) {
+        listOf(playerAFactory, playerBFactory).forEach { factory ->
+            assertTrue(
+                factory.socket.sentFrames().any {
+                    it.command == "SUBSCRIBE" &&
+                        it.headers["destination"] == "${WebSocketContract.gameTopicPrefix}/$gameId"
+                }
+            )
+        }
+    }
 
     private class FakeWebSocketFactory : WebSocketFactory {
         lateinit var listener: WebSocketListener
@@ -2567,6 +2784,13 @@ class OkHttpWebSocketClientTest {
         override fun cancel() { closed = true }
     }
 
+    private data class TwoClientHarness(
+        val playerA: OkHttpWebSocketClient,
+        val playerB: OkHttpWebSocketClient,
+        val playerAFactory: FakeWebSocketFactory,
+        val playerBFactory: FakeWebSocketFactory,
+    )
+
     private class FakeSessionStateHolder(initial: Session? = null) : SessionStateHolder {
         private val mutableSession = MutableStateFlow(initial)
         override val session: StateFlow<Session?> = mutableSession.asStateFlow()
@@ -2581,6 +2805,57 @@ class OkHttpWebSocketClientTest {
         const val DEFAULT_USERNAME = "test-user"
         const val DEFAULT_USER_ID = 1
         val DEFAULT_SESSION = Session(DEFAULT_TOKEN, DEFAULT_USERNAME, DEFAULT_USER_ID)
+
+        fun gameStartedTwoPlayerBody(): String =
+            """{"type":"GAME_STARTED","sender":"server","gameId":7,"payload":${twoPlayerState("ROLL_DICE", activeUserId = 1)}}"""
+
+        fun gameActionSnapshotBody(
+            state: String? = null,
+            turnPhase: String? = null,
+            activeUserId: Int = 2,
+            player11Coins: Int = 3,
+            player22Coins: Int = 4,
+            bakerySupply: Int = 5,
+            trainStationBuiltForPlayer11: Boolean = false,
+            purchaseType: String? = null,
+            landmarkType: String? = null,
+        ): String {
+            val resolvedState = state ?: run {
+                twoPlayerState(
+                    turnPhase = turnPhase ?: "RESOLVE_EFFECTS",
+                    activeUserId = activeUserId,
+                    player11Coins = player11Coins,
+                    player22Coins = player22Coins,
+                    bakerySupply = bakerySupply,
+                    trainStationBuiltForPlayer11 = trainStationBuiltForPlayer11,
+                )
+            }
+            val purchaseFields = buildString {
+                purchaseType?.let { append(",\"purchaseType\":\"").append(it).append("\"") }
+                landmarkType?.let { append(",\"landmarkType\":\"").append(it).append("\"") }
+            }
+            return """{"type":"GAME_ACTION","sender":"server","gameId":7,"payload":{"state":$resolvedState$purchaseFields}}"""
+        }
+
+        fun rollDiceSnapshotBody(result: String, lastDiceRoll: Int): String =
+            """{"type":"ROLL_DICE","sender":"server","gameId":7,"payload":{"result":$result,"state":${twoPlayerState("BUY_OR_BUILD", activeUserId = 1, lastDiceRoll = lastDiceRoll)}}}"""
+
+        fun syncBody(state: String, targetUserId: Int): String =
+            """{"type":"SYNC","sender":"server","gameId":7,"payload":{"targetUserId":$targetUserId,"state":$state}}"""
+
+        fun twoPlayerState(
+            turnPhase: String,
+            activeUserId: Int,
+            player11Coins: Int = 3,
+            player22Coins: Int = 4,
+            bakerySupply: Int = 5,
+            trainStationBuiltForPlayer11: Boolean = false,
+            lastDiceRoll: Int? = null,
+        ): String {
+            val currentTurnIndex = if (activeUserId == 1) 0 else 1
+            val lastDiceRollField = lastDiceRoll?.let { ""","lastDiceRoll":$it""" } ?: ""
+            return """{"game":{"id":7,"lobbyCode":"ABC1234","status":"IN_PROGRESS","turnPhase":"$turnPhase","roundNumber":2,"currentTurnIndex":$currentTurnIndex$lastDiceRollField},"activePlayerId":$activeUserId,"players":[{"id":11,"userId":1,"coins":$player11Coins},{"id":22,"userId":2,"coins":$player22Coins}],"playerUsernames":{"11":"alice","22":"bob"},"playerCards":{"11":[{"playerId":11,"cardType":"BAKERY","quantity":1}],"22":[{"playerId":22,"cardType":"CAFE","quantity":1}]},"playerLandmarks":{"11":[{"playerId":11,"landmarkType":"TRAIN_STATION","isBuilt":$trainStationBuiltForPlayer11}],"22":[{"playerId":22,"landmarkType":"TRAIN_STATION","isBuilt":false}]},"marketplace":{"BAKERY":$bakerySupply,"CAFE":6},"cardDefinitions":[{"cardType":"BAKERY","cost":1,"income":1,"color":"GREEN","establishmentType":"BREAD","paymentSource":"BANK","activationNumbers":[2,3]},{"cardType":"CAFE","cost":2,"income":1,"color":"RED","establishmentType":"RESTAURANT","paymentSource":"PLAYER","activationNumbers":[3]}],"landmarkDefinitions":[{"landmarkType":"TRAIN_STATION","cost":4}],"turnOrder":[1,2]}"""
+        }
 
         // A full /app/game.sync snapshot: game IN_PROGRESS / BUY_OR_BUILD,
         // round 3, last roll 8; player 11 (userId 1) is active with one
