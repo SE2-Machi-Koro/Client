@@ -2466,19 +2466,19 @@ class OkHttpWebSocketClientTest {
         val harness = twoConnectedClients(backgroundScope)
         harness.broadcastToBoth(gameStartedTwoPlayerBody())
 
-        harness.playerA.advancePhase(gameId = 7)
+        harness.playerA.resolveEffects(gameId = 7)
         assertEquals(GamePhase.ROLL_DICE, harness.playerB.gamePhase.value)
         assertFalse(
             harness.playerBFactory.socket.sentFrames().any {
                 it.command == "SEND" &&
-                    it.headers["destination"] == WebSocketContract.advancePhaseDestination
+                    it.headers["destination"] == WebSocketContract.resolveEffectsDestination
             }
         )
 
         harness.broadcastToBoth(
             gameActionSnapshotBody(
-                turnPhase = "RESOLVE_EFFECTS",
-                activeUserId = 2,
+                turnPhase = "BUY_OR_BUILD",
+                activeUserId = 1,
                 player11Coins = 5,
                 player22Coins = 2,
             )
@@ -2487,12 +2487,12 @@ class OkHttpWebSocketClientTest {
         assertTrue(
             harness.playerAFactory.socket.sentFrames().any {
                 it.command == "SEND" &&
-                    it.headers["destination"] == WebSocketContract.advancePhaseDestination &&
+                    it.headers["destination"] == WebSocketContract.resolveEffectsDestination &&
                     JSONObject(it.body).getInt("gameId") == 7
             }
         )
-        assertEquals(GamePhase.RESOLVE_EFFECTS, harness.playerB.gamePhase.value)
-        assertEquals(2, harness.playerB.activePlayerId.value)
+        assertEquals(GamePhase.BUY_OR_BUILD, harness.playerB.gamePhase.value)
+        assertEquals(1, harness.playerB.activePlayerId.value)
         assertEquals(5, harness.playerB.players.value.first { it.id == "11" }.coins)
         assertEquals(2, harness.playerB.players.value.first { it.id == "22" }.coins)
     }
@@ -2517,7 +2517,7 @@ class OkHttpWebSocketClientTest {
         )
         assertEquals(listOf(3, 5), harness.playerA.diceResult.value)
         assertEquals(listOf(3, 5), harness.playerB.diceResult.value)
-        assertEquals(GamePhase.BUY_OR_BUILD, harness.playerB.gamePhase.value)
+        assertEquals(GamePhase.RESOLVE_EFFECTS, harness.playerB.gamePhase.value)
     }
 
     @Test
@@ -2838,7 +2838,7 @@ class OkHttpWebSocketClientTest {
         }
 
         fun rollDiceSnapshotBody(result: String, lastDiceRoll: Int): String =
-            """{"type":"ROLL_DICE","sender":"server","gameId":7,"payload":{"result":$result,"state":${twoPlayerState("BUY_OR_BUILD", activeUserId = 1, lastDiceRoll = lastDiceRoll)}}}"""
+            """{"type":"ROLL_DICE","sender":"server","gameId":7,"payload":{"result":$result,"state":${twoPlayerState("RESOLVE_EFFECTS", activeUserId = 1, lastDiceRoll = lastDiceRoll)}}}"""
 
         fun syncBody(state: String, targetUserId: Int): String =
             """{"type":"SYNC","sender":"server","gameId":7,"payload":{"targetUserId":$targetUserId,"state":$state}}"""
