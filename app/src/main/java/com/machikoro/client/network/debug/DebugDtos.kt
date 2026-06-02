@@ -11,3 +11,6 @@ data class FillLobbyRequest(
 
 @Serializable
 data class ResetLobbyRequest(val lobbyCode: String)
+
+@Serializable
+data class EndGameRequest(val gameId: Int)

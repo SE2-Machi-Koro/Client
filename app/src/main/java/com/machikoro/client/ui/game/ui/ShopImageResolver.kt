@@ -1,6 +1,8 @@
-package com.machikoro.client.ui.game
+package com.machikoro.client.ui.game.ui
 
 import com.machikoro.client.R
+import com.machikoro.client.domain.enums.PurchaseType
+import com.machikoro.client.domain.model.shop.ShopItem
 
 /**
  * Central mapping from server/catalog image keys to Android drawables.
@@ -28,9 +30,22 @@ internal object ShopImageResolver {
         "card_tv_station" -> R.drawable.card_tv_station
         "card_business_center" -> R.drawable.card_business_center
         "landmark_train_station" -> R.drawable.landmark_train_station
+        "landmark_train_station_locked" -> R.drawable.landmark_train_station_locked
         "landmark_shopping_mall" -> R.drawable.landmark_shopping_mall
+        "landmark_shopping_mall_locked" -> R.drawable.landmark_shopping_mall_locked
         "landmark_amusement_park" -> R.drawable.landmark_amusement_park
+        "landmark_amusement_park_locked" -> R.drawable.landmark_amusement_park_locked
         "landmark_radio_tower" -> R.drawable.landmark_radio_tower
+        "landmark_radio_tower_locked" -> R.drawable.landmark_radio_tower_locked
         else -> R.drawable.card_bakery
     }
+
+    fun drawableForShopItem(item: ShopItem): Int =
+        drawableFor(
+            if (item.purchaseType == PurchaseType.LANDMARK) {
+                "${item.imageKey}_locked"
+            } else {
+                item.imageKey
+            }
+        )
 }

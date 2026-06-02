@@ -35,6 +35,8 @@ import com.machikoro.client.ui.navigation.AppNavigator
 import com.machikoro.client.ui.navigation.AppRoute
 import com.machikoro.client.ui.navigation.NavigationEvent
 import com.machikoro.client.ui.navigation.NavigationViewModel
+import com.machikoro.client.ui.leaderboard.LeaderboardScreen
+import com.machikoro.client.ui.leaderboard.LeaderboardState
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.win.GameOverOneWinner
@@ -78,11 +80,14 @@ fun AppRoot(
     onPurchaseClick: (String) -> Unit = {},
     onBackHome: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
+    onEndGame: () -> Unit = {},
     cheatRecommendation: CardType? = null,
     onShake: () -> Unit = {},
     hasActiveGame: Boolean = false,
     onResumeGameClick: () -> Unit = {},
     onPurgeClick: () -> Unit = {},
+    leaderboardState: LeaderboardState = LeaderboardState.Loading,
+    onLeaderboardRetry: () -> Unit = {},
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
 ) {
     val navController = rememberNavController()
@@ -162,6 +167,7 @@ fun AppRoot(
 
             composable(AppRoute.Home.route) {
                 HomeScreen(
+                    username = startScreenState.loggedInAs,
                     joinLobbyCode = joinLobbyCode,
                     showJoinLobbyInput = showJoinLobbyInput && lobbyCode == null,
                     onJoinLobbyClick = onJoinLobbyClick,
@@ -173,7 +179,21 @@ fun AppRoot(
                     onResumeGameClick = onResumeGameClick,
                     onPurgeClick = onPurgeClick,
                     onLogoutClick = onLogoutSubmit,
+                    // Navigate to leaderboard keeping Home in the back stack
+                    onRankingClick = {
+                        navController.navigate(AppRoute.Leaderboard.route) {
+                            launchSingleTop = true
+                        }
+                    },
                     modifier = modifier,
+                )
+            }
+
+            composable(AppRoute.Leaderboard.route) {
+                LeaderboardScreen(
+                    state = leaderboardState,
+                    onBackClick = { navController.popBackStack() },
+                    onRetry = onLeaderboardRetry,
                 )
             }
 
@@ -219,6 +239,7 @@ fun AppRoot(
                     onTurnFlowAction = onTurnFlowAction,
                     onPurchaseClick = onPurchaseClick,
                     onLeaveGame = onLeaveGame,
+                    onEndGame = onEndGame,
                     cheatRecommendation = cheatRecommendation,
                     onShake = onShake,
                 )
