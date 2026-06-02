@@ -257,6 +257,7 @@ fun GameScreen(
                 )
             }
         }
+    }
 
         // Debug-only (#191): force-end the game to reach the winner screen without
         // playing through. Subtle, like the home "Purge DB" control, and compiled out
