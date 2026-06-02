@@ -17,4 +17,9 @@ interface DebugApi {
     // Deletes all games and players — dev only
     @DELETE("/debug/purge")
     suspend fun purge(): Response<Unit>
+
+    // Force-ends the game with the caller as winner (Server #305). Admin-only;
+    // the server broadcasts GAME_END, which drives the winner screen.
+    @POST("/debug/end-game")
+    suspend fun endGame(@Body body: EndGameRequest): Response<Unit>
 }

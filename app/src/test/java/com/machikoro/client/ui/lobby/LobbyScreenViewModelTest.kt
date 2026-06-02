@@ -6,6 +6,7 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.session.Session
 import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.debug.DebugApi
+import com.machikoro.client.network.debug.EndGameRequest
 import com.machikoro.client.network.debug.FillLobbyRequest
 import com.machikoro.client.network.debug.ResetLobbyRequest
 import com.machikoro.client.network.websocket.FakeWebSocketClient
@@ -294,6 +295,8 @@ class LobbyScreenViewModelTest {
         }
 
         override suspend fun purge(): Response<Unit> = Response.success(Unit)
+
+        override suspend fun endGame(body: EndGameRequest): Response<Unit> = Response.success(Unit)
     }
 
     private class FakeSessionStateHolder : SessionStateHolder {
