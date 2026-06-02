@@ -70,7 +70,7 @@ fun HomeScreen(
         modifier = Modifier.fillMaxSize()
     ) {
 
-    Background(R.drawable.home_screen_background)
+    Background(R.drawable.background_wood)
     // Root container. Box allows placing elements freely with align().
     Box(
         modifier = modifier
@@ -82,7 +82,8 @@ fun HomeScreen(
 
             Header("WELCOME",
                 modifier = Modifier
-                .align(Alignment.TopCenter),
+                    .padding(top = 24.dp)
+                    .align(Alignment.TopCenter),
                 fontSize = 56
             )
 
