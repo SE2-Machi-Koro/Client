@@ -43,6 +43,7 @@ import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ButtonBlueDark
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.PanelBackgroundBeigeDark
 import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextWhite
 import com.machikoro.client.ui.theme.White
@@ -57,7 +58,6 @@ fun HomeScreen(
     onCreateLobbyClick: () -> Unit = {},
     onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {},
     onJoinLobbySubmit: () -> Unit = {},
     joinLobbyError: Boolean = false,
     hasActiveGame: Boolean = false,
@@ -196,7 +196,6 @@ fun HomeScreen(
         BottomMenuBar(
             onRulesClick = onRulesClick,
             onRankingClick = onRankingClick,
-            onSettingsClick = onSettingsClick,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
         )
@@ -347,16 +346,15 @@ private fun JoinLobbyCodeRow(
 private fun BottomMenuBar(
     onRulesClick: () -> Unit,
     onRankingClick: () -> Unit,
-    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Bottom menu container.
     Card(
         modifier = modifier
-            .width(475.dp)
-            .height(50.dp),
+            .width(430.dp)
+            .height(60.dp),
         shape = RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp),
-        colors = CardDefaults.cardColors(containerColor = ButtonBeigeLight),
+        colors = CardDefaults.cardColors(containerColor = PanelBackgroundBeigeDark),
         elevation = CardDefaults.cardElevation(defaultElevation = 14.dp)
     ) {
         Row(
@@ -379,13 +377,6 @@ private fun BottomMenuBar(
                 text = "Leaderboard",
                 onClick = onRankingClick
             )
-
-            // Opens the settings screen.
-            BottomMenuItem(
-                iconRes = R.drawable.home_settings_icon,
-                text = "Settings",
-                onClick = onSettingsClick
-            )
         }
     }
 }
@@ -396,29 +387,38 @@ private fun BottomMenuItem(
     text: String,
     onClick: () -> Unit
 ) {
-    // Single clickable menu item inside the bottom bar.
-    Row(
+    Card(
         modifier = Modifier
-            .clickable { onClick() }
-            .padding(horizontal = 4.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+            .width(158.dp)
+            .height(42.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = ButtonBeigeLight),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        // Menu icon.
-        Image(
-            painter = painterResource(id = iconRes),
-            contentDescription = null,
-            modifier = Modifier.size(30.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start
+        ) {
+            Image(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(26.dp)
+            )
 
-        // Menu label.
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = TextBlueDark,
-            maxLines = 1
-        )
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = TextBlueDark,
+                maxLines = 1
+            )
+        }
     }
 }
 
