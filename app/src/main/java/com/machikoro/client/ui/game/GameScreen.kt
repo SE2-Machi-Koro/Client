@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.machikoro.client.BuildConfig
+import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
@@ -50,6 +52,7 @@ import com.machikoro.client.ui.game.ui.MarketplaceSection
 import com.machikoro.client.ui.game.ui.PlayersTopBar
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
+import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ClientTheme
 
 
@@ -77,16 +80,59 @@ fun GameScreen(
     if (showLeaveDialog) {
         AlertDialog(
             onDismissRequest = { showLeaveDialog = false },
-            title = { Text("Leave Game?") },
-            text = { Text("The game will keep running. You can resume it from the home screen.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showLeaveDialog = false
-                    onLeaveGame()
-                }) { Text("Leave") }
+
+            title = {
+                Text("Leave Game?")
             },
+
+            text = {
+                Text(
+                    "The game will keep running. You can resume it from the home screen."
+                )
+            },
+
+            confirmButton = {
+                Row {
+                    // Leave button
+                    TextButton(
+                        onClick = {
+                            showLeaveDialog = false
+                            onLeaveGame()
+                        }
+                    ) {
+                        Text("Leave")
+                    }
+
+                    // Debug End Game button
+                    if (
+                        BuildConfig.DEBUG &&
+                        state.gameStatus == GameStatus.IN_PROGRESS &&
+                        state.gameId != null &&
+                        state.myUserId != null
+                    ) {
+                        TextButton(
+                            onClick = {
+                                showLeaveDialog = false
+                                onEndGame()
+                            }
+                        ) {
+                            Text(
+                                text = "End game",
+                                color = Color.Red
+                            )
+                        }
+                    }
+                }
+            },
+
             dismissButton = {
-                TextButton(onClick = { showLeaveDialog = false }) { Text("Stay") }
+                TextButton(
+                    onClick = {
+                        showLeaveDialog = false
+                    }
+                ) {
+                    Text("Stay")
+                }
             }
         )
     }
@@ -94,12 +140,13 @@ fun GameScreen(
     // === WHOLE SCREEN ===
     Box(
         modifier = modifier.fillMaxSize()
+            .padding(all = 12.dp)
     ) {
         // === START OF TOP BAR ===
         Box(
             modifier = modifier.fillMaxSize()
                 .align(Alignment.TopCenter)
-                .padding(all = 12.dp)
+
         ) {
             Column(
                 modifier = Modifier
@@ -110,7 +157,7 @@ fun GameScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     // Leave button (left)
-                    ActionButton(
+                    SecondaryActionButton(
                         label = "Leave",
                         modifier = Modifier
                             .align(Alignment.CenterStart)
@@ -146,15 +193,15 @@ fun GameScreen(
         }
         // === END OF TOP BAR ===
 
-            if (state.isBuyingPhase) {
-                BuyingPhaseShop(
-                    state = state,
-                    items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
-                    onPurchaseClick = onPurchaseClick,
-                    recommendedCardType = cheatRecommendation,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                )
+        if (state.isBuyingPhase) {
+            BuyingPhaseShop(
+                state = state,
+                items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
+                onPurchaseClick = onPurchaseClick,
+                recommendedCardType = cheatRecommendation,
+                modifier = Modifier
+                    .align(Alignment.Center)
+            )
         }
 
         // todo: change "false" upon adding "marketplace" button to open it on player's click,
@@ -183,19 +230,16 @@ fun GameScreen(
             }
 
             if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
-                Button(
+                ActionButton(
                     onClick = onRollDice,
                     enabled = !state.isRolling,
+                    label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
+                    leftIcon = R.drawable.game_dice_perspective,
                     modifier = Modifier.semantics {
                         contentDescription = "Würfeln"
                     }
-                ) {
-                    Text(
-                        text = if (state.diceResult == null) "🎲 Würfeln" else "🎲 Nochmal würfeln",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                )
+
             }
             // todo: adjust to buttons in sketches, remove as turnFlowLabel
             val turnFlowLabel = state.turnFlowActionLabel()
@@ -218,29 +262,14 @@ fun GameScreen(
         // playing through. Subtle, like the home "Purge DB" control, and compiled out
         // of release builds. Visible only while in a running game the local player is in;
         // the server still enforces admin auth + membership.
-        if (BuildConfig.DEBUG &&
-            state.gameStatus == GameStatus.IN_PROGRESS &&
-            state.gameId != null &&
-            state.myUserId != null
-        ) {
-            Text(
-                text = "End game",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.Red,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .statusBarsPadding()
-                    .padding(start = 12.dp, top = 46.dp)
-                    .clickable { onEndGame() },
-            )
-        }
+
         //shows a loading indicator when the game is not in progress and the connection status is not disconnected
         InitializationLoadingOverlay(
             connectionStatus = state.connectionStatus,
             gameStatus = state.gameStatus
         )
     }
-}
+
 private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
     GamePhase.RESOLVE_EFFECTS -> "Resolve effects"
     GamePhase.BUY_OR_BUILD -> "End turn"
