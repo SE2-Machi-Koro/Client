@@ -1,4 +1,4 @@
-package com.machikoro.client.ui.game
+package com.machikoro.client.ui.game.ui
 
 import com.machikoro.client.R
 
