@@ -23,45 +23,42 @@ import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
 
 
-// todo: adjust to figma design colors, shape etc
 @Composable
 fun GamePhaseBanner(
     phase: GamePhase,
     modifier: Modifier = Modifier,
     text: String? = null
 ) {
-
-
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
 
-        GameButton(
+        PhaseField(
             text = text
                 ?.takeIf { it.isNotEmpty() && phase == GamePhase.ROLL_DICE }
                 ?: GamePhase.ROLL_DICE.toDisplayText(),
             isActive = phase == GamePhase.ROLL_DICE
         )
 
-        GameButton(
+        PhaseField(
             text = text
                 ?.takeIf { it.isNotEmpty() && phase == GamePhase.RESOLVE_EFFECTS }
                 ?: GamePhase.RESOLVE_EFFECTS.toDisplayText(),
             isActive = phase == GamePhase.RESOLVE_EFFECTS
         )
 
-        GameButton(
+        PhaseField(
             text = text
-                ?.takeIf { it.isNotEmpty() && phase == GamePhase.RESOLVE_EFFECTS }
-                ?: GamePhase.RESOLVE_EFFECTS.toDisplayText(),
-            isActive = phase == GamePhase.RESOLVE_EFFECTS
+                ?.takeIf { it.isNotEmpty() && phase == GamePhase.BUY_OR_BUILD }
+                ?: GamePhase.BUY_OR_BUILD.toDisplayText(),
+            isActive = phase == GamePhase.BUY_OR_BUILD
         )
 
     }
 }
 @Composable
-fun GameButton(
+fun PhaseField(
     text: String,
     isActive: Boolean,
 ) {
