@@ -242,6 +242,11 @@ fun AppRoot(
                     winnerName = resolveWinnerName(gameScreenState),
                     roundsNumber = gameScreenState.roundNumber ?: 0,
                     onBackHome = onBackHome,
+                    onViewLeaderboard = {
+                        navController.navigate(AppRoute.Leaderboard.route) {
+                            launchSingleTop = true
+                        }
+                    },
                 )
             }
         }
