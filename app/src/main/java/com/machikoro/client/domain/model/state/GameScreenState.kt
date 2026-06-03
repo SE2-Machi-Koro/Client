@@ -10,6 +10,7 @@ data class GameScreenState(
     val gameId: Int?,
     val connectionStatus: ConnectionStatus,
     val gamePhase: GamePhase,
+    val customDisplayText: String? = null,
     val players: List<PlayerCoinState>,
     val diceResult: List<Int>? = null,
     val activePlayerId: Int? = null,
@@ -33,7 +34,7 @@ data class GameScreenState(
 ) {
     val isActivePlayer: Boolean
         get() = myUserId != null && myUserId == activePlayerId
-  
+
     // Keeps UI visibility tied to the existing phase stream from the server.
     val isBuyingPhase: Boolean
         get() = gamePhase == GamePhase.BUY_OR_BUILD
@@ -43,6 +44,7 @@ data class GameScreenState(
             gameId = null,
             connectionStatus = ConnectionStatus.IDLE,
             gamePhase = GamePhase.NONE,
+            customDisplayText = null,
             players = emptyList(),
             diceResult = null,
             activePlayerId = null,
