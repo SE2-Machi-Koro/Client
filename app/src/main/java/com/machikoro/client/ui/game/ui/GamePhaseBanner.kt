@@ -39,21 +39,21 @@ fun GamePhaseBanner(
 
         GameButton(
             text = text
-                ?.takeIf { it.isNotBlank() && phase == GamePhase.ROLL_DICE }
+                ?.takeIf { it.isNotEmpty() && phase == GamePhase.ROLL_DICE }
                 ?: GamePhase.ROLL_DICE.toDisplayText(),
             isActive = phase == GamePhase.ROLL_DICE
         )
 
         GameButton(
             text = text
-                ?.takeIf { it.isNotBlank() && phase == GamePhase.RESOLVE_EFFECTS }
+                ?.takeIf { it.isNotEmpty() && phase == GamePhase.RESOLVE_EFFECTS }
                 ?: GamePhase.RESOLVE_EFFECTS.toDisplayText(),
             isActive = phase == GamePhase.RESOLVE_EFFECTS
         )
 
         GameButton(
             text = text
-                ?.takeIf { it.isNotBlank() && phase == GamePhase.RESOLVE_EFFECTS }
+                ?.takeIf { it.isNotEmpty() && phase == GamePhase.RESOLVE_EFFECTS }
                 ?: GamePhase.RESOLVE_EFFECTS.toDisplayText(),
             isActive = phase == GamePhase.RESOLVE_EFFECTS
         )
