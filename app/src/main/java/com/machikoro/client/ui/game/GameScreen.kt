@@ -111,6 +111,21 @@ fun GameScreen(
                             )
                         }
                     }
+
+                    // Debug Insider Trading cheat trigger (#255): tap alternative to the
+                    // shake gesture so the cheat is reachable on emulators / devices
+                    // without a usable accelerometer. Calls the same onShake() path, so
+                    // off-turn it's a silent no-op exactly like a real shake.
+                    if (BuildConfig.DEBUG && state.gameStatus == GameStatus.IN_PROGRESS) {
+                        TextButton(
+                            onClick = {
+                                showLeaveDialog = false
+                                onShake()
+                            }
+                        ) {
+                            Text("Insider tip")
+                        }
+                    }
                 }
             },
             dismissButton = {
