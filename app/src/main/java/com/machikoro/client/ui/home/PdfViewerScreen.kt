@@ -36,7 +36,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.MutableState
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import com.machikoro.client.R
+import com.machikoro.client.ui.shared.Background
+import com.machikoro.client.ui.theme.ButtonBlueDark
+import com.machikoro.client.ui.theme.ButtonColor
+import com.machikoro.client.ui.theme.ButtonTextColor
+import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.PrimaryOrange
+import com.machikoro.client.ui.theme.TextBlueDark
+import com.machikoro.client.ui.theme.TextWhite
 import java.io.File
 
 @Composable
@@ -116,9 +129,9 @@ fun PdfViewerScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White)
-            .padding(systemBarsPadding)
     ) {
+        Background(R.drawable.background_wood)
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -137,8 +150,7 @@ fun PdfViewerScreen(
                             contentDescription = "PDF Page ${currentPage.intValue + 1}",
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .background(Color.White),
-                            contentScale = ContentScale.FillHeight
+                                .fillMaxWidth()
                         )
                     }
                 }
@@ -154,10 +166,9 @@ fun PdfViewerScreen(
                             bitmap = bitmap.asImageBitmap(),
                             contentDescription = "PDF Page ${currentPage.intValue + 1}",
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color.White),
-                            contentScale = ContentScale.FillWidth
-                        )
+                                .fillMaxHeight()
+                                .fillMaxWidth(0.9f),
+                            contentScale = ContentScale.Fit                        )
                     }
                 }
             }
@@ -168,20 +179,28 @@ fun PdfViewerScreen(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .fillMaxWidth()
-                .background(Color.White)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Close button
-            Button(onClick = onClose) {
-                Text("Close")
+            Button(
+                onClick = onClose,
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ButtonColor,
+                    contentColor = ButtonTextColor
+                )
+            ) {
+                Text("Close", fontWeight = FontWeight.ExtraBold)
             }
 
             // Page indicator
             Text(
                 text = "Page ${currentPage.intValue + 1} of ${totalPages.intValue}",
-                style = MaterialTheme.typography.labelMedium
+                style = MaterialTheme.typography.labelMedium,
+                color = PrimaryOrange,
+                fontWeight = FontWeight.Bold
             )
         }
 
@@ -191,7 +210,6 @@ fun PdfViewerScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .background(Color.White)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
@@ -202,9 +220,16 @@ fun PdfViewerScreen(
                             currentPage.intValue--
                         }
                     },
-                    enabled = currentPage.intValue > 0
+                    enabled = currentPage.intValue > 0,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ButtonBlueDark,
+                        contentColor = TextWhite,
+                        disabledContainerColor = ButtonBlueDark.copy(alpha = 0.45f),
+                        disabledContentColor = TextWhite.copy(alpha = 0.45f)
+                    )
                 ) {
-                    Text("Previous")
+                    Text("Previous", fontWeight = FontWeight.ExtraBold)
                 }
                 Button(
                     onClick = {
@@ -213,9 +238,19 @@ fun PdfViewerScreen(
                         }
                     },
                     enabled = currentPage.intValue < totalPages.intValue - 1,
-                    modifier = Modifier.padding(start = 8.dp)
+                    modifier = Modifier.padding(start = 8.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ButtonColor,
+                        contentColor = ButtonTextColor,
+                        disabledContainerColor = ButtonColor.copy(alpha = 0.45f),
+                        disabledContentColor = ButtonTextColor.copy(alpha = 0.45f)
+                    )
                 ) {
-                    Text("Next")
+                    Text(
+                        "Next",
+                        fontWeight = FontWeight.ExtraBold
+                    )
                 }
             }
         }
@@ -226,7 +261,7 @@ private fun renderPage(
     pdfRenderer: PdfRenderer,
     pageIndex: Int,
     currentBitmap: MutableState<Bitmap?>,
-    scaleFactor: Float = 3f
+    scaleFactor: Float = 6f
 ) {
     try {
         if (pageIndex < pdfRenderer.pageCount) {
