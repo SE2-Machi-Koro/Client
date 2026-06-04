@@ -29,4 +29,14 @@ class ShopImageResolverTest {
             ShopImageResolver.drawableFor("missing_card_art")
         )
     }
+
+    @Test
+    fun unbuiltLandmarkShopItemUsesLockedArtwork() {
+        val landmark = ShopCatalog.defaultItems.first { it.imageKey == "landmark_train_station" }
+
+        assertEquals(
+            R.drawable.landmark_train_station_locked,
+            ShopImageResolver.drawableForShopItem(landmark)
+        )
+    }
 }
