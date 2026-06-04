@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,13 +53,11 @@ import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ClientTheme
 
-
-
 @Composable
 fun GameScreen(
     state: GameScreenState,
     onPurchaseClick: (String) -> Unit = {},
-    onRollDice: () -> Unit = {},
+    onRollDice: (diceCount: Int) -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     onEndGame: () -> Unit = {},
@@ -66,7 +65,6 @@ fun GameScreen(
     onShake: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    // Insider Trading cheat (#203): shake during play to surface a local best-buy hint.
     ShakeDetector(
         enabled = state.gameStatus == GameStatus.IN_PROGRESS,
         onShake = onShake,
@@ -76,20 +74,14 @@ fun GameScreen(
     if (showLeaveDialog) {
         AlertDialog(
             onDismissRequest = { showLeaveDialog = false },
-
             title = {
                 Text("Leave Game?")
             },
-
             text = {
-                Text(
-                    "The game will keep running. You can resume it from the home screen."
-                )
+                Text("The game will keep running. You can resume it from the home screen.")
             },
-
             confirmButton = {
                 Row {
-                    // Leave button
                     TextButton(
                         onClick = {
                             showLeaveDialog = false
@@ -99,7 +91,6 @@ fun GameScreen(
                         Text("Leave")
                     }
 
-                    // Debug End Game button
                     if (
                         BuildConfig.DEBUG &&
                         state.gameStatus == GameStatus.IN_PROGRESS &&
@@ -120,39 +111,30 @@ fun GameScreen(
                     }
                 }
             },
-
             dismissButton = {
                 TextButton(
-                    onClick = {
-                        showLeaveDialog = false
-                    }
+                    onClick = { showLeaveDialog = false }
                 ) {
                     Text("Stay")
                 }
             }
         )
     }
+
     Background()
-    // === WHOLE SCREEN ===
+
     Box(
-        modifier = modifier.fillMaxSize()
+        modifier = modifier
+            .fillMaxSize()
             .padding(all = 12.dp)
     ) {
-        // === START OF TOP BAR ===
         Box(
-            modifier = modifier.fillMaxSize()
+            modifier = modifier
+                .fillMaxSize()
                 .align(Alignment.TopCenter)
-
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-            ) {
-                // Top row
-                Box(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Leave button (left)
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Box(modifier = Modifier.fillMaxWidth()) {
                     SecondaryActionButton(
                         label = "Leave",
                         modifier = Modifier
@@ -161,26 +143,22 @@ fun GameScreen(
                         onClick = { showLeaveDialog = true }
                     )
 
-                    // Top bar (centered)
                     PlayersTopBar(
                         players = state.players,
                         playerLandmarks = state.playerLandmarks,
                         modifier = Modifier.align(Alignment.Center)
                     )
 
-                    // Round indicator (right)
                     state.roundNumber?.let { round ->
                         RoundIndicator(
                             round = round,
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
+                            modifier = Modifier.align(Alignment.CenterEnd)
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Banner under row
                 GamePhaseBanner(
                     phase = state.gamePhase,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
@@ -188,7 +166,6 @@ fun GameScreen(
                 )
             }
         }
-        // === END OF TOP BAR ===
 
         if (state.isBuyingPhase) {
             BuyingPhaseShop(
@@ -196,14 +173,10 @@ fun GameScreen(
                 items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
                 onPurchaseClick = onPurchaseClick,
                 recommendedCardType = cheatRecommendation,
-                modifier = Modifier
-                    .align(Alignment.Center)
+                modifier = Modifier.align(Alignment.Center)
             )
         }
 
-        // todo: change "false" upon adding "marketplace" button to open it on player's click,
-        //  make sure that this action if possible during allowed phases only
-        //  see sketches
         if (false) {
             MarketplaceSection(
                 marketplace = state.marketplace,
@@ -227,8 +200,32 @@ fun GameScreen(
             }
 
             if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
+                var selectedDiceCount by remember { mutableIntStateOf(1) }
+
+                if (state.hasTrainStation) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(1, 2).forEach { count ->
+                            Button(
+                                onClick = { selectedDiceCount = count },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (selectedDiceCount == count)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (selectedDiceCount == count)
+                                        MaterialTheme.colorScheme.onPrimary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            ) {
+                                Text("$count 🎲")
+                            }
+                        }
+                    }
+                }
+
                 ActionButton(
-                    onClick = onRollDice,
+                    onClick = { onRollDice(selectedDiceCount) },
                     enabled = !state.isRolling,
                     label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
                     leftIcon = R.drawable.game_dice_perspective,
@@ -236,9 +233,8 @@ fun GameScreen(
                         contentDescription = "Würfeln"
                     }
                 )
-
             }
-            // todo: adjust to buttons in sketches, remove as turnFlowLabel
+
             val turnFlowLabel = state.turnFlowActionLabel()
             if (
                 turnFlowLabel != null &&
@@ -254,19 +250,13 @@ fun GameScreen(
                 )
             }
         }
-    }
 
-        // Debug-only (#191): force-end the game to reach the winner screen without
-        // playing through. Subtle, like the home "Purge DB" control, and compiled out
-        // of release builds. Visible only while in a running game the local player is in;
-        // the server still enforces admin auth + membership.
-
-        //shows a loading indicator when the game is not in progress and the connection status is not disconnected
         InitializationLoadingOverlay(
             connectionStatus = state.connectionStatus,
             gameStatus = state.gameStatus
         )
     }
+}
 
 private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
     GamePhase.RESOLVE_EFFECTS -> "Resolve effects"
@@ -281,17 +271,17 @@ private fun RoundIndicator(
     round: Int,
     modifier: Modifier = Modifier
 ) {
-        Text(
-            text = "Round $round",
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            fontSize = 24.sp,
-            color = Color.White,
-            modifier = modifier
-        )
-    }
+    Text(
+        text = "Round $round",
+        style = MaterialTheme.typography.bodyLarge,
+        fontWeight = FontWeight.Bold,
+        fontSize = 24.sp,
+        color = Color.White,
+        modifier = modifier
+    )
+}
 
- // === PREVIEWS ===
+// === PREVIEWS ===
 
 @Preview(showBackground = true, widthDp = 412, heightDp = 400)
 @Composable
