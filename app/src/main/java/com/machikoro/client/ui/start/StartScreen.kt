@@ -37,11 +37,8 @@ import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
-import com.machikoro.client.ui.home.PdfViewerScreen
-import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Header
 import com.machikoro.client.ui.shared.MainScreenBackground
-import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ButtonColor
 import com.machikoro.client.ui.theme.ButtonTextColor
 import com.machikoro.client.ui.theme.ClientTheme
