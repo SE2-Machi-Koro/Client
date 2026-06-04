@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -91,9 +92,13 @@ fun LobbyScreen(
     onLeaveLobby: () -> Unit = {},
     onFillWithDummies: () -> Unit = {},
     onResetLobby: () -> Unit = {},
-    modifier: Modifier = Modifier
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
-    val startEnabled = isHost && playerNames.size >= 2 && isReady
+    // All players must be ready; use optimistic local state for the current user
+    val allReady = playerNames.isNotEmpty() && playerNames.all { name ->
+        if (name == currentUsername) isReady else playerReadyStates[name] == true
+    }
+    val startEnabled = isHost && playerNames.size >= 2 && allReady
 
     Box(
         modifier = modifier
@@ -210,34 +215,26 @@ fun LobbyScreen(
                 Text("Start Game", color = TextWhite, style =  MaterialTheme.typography.labelLarge)
             }
 
-            // Debug helper: fill remaining slots so the host can start without real players
-            if (isHost && playerNames.size < maxPlayers) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = onFillWithDummies,
-                    modifier = Modifier
-                        .width(320.dp)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
-                ) {
-                    Text("[Debug] Fill with dummies", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
-                }
-            }
+        }
 
-            // Debug helper: remove all non-host players so the host can start fresh
-            if (isHost && playerNames.size > 1) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Button(
-                    onClick = onResetLobby,
-                    modifier = Modifier
-                        .width(320.dp)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
-                ) {
-                    Text("[Debug] Reset lobby", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
-                }
+        // Debug helper: fill lobby or reset it depending on current player count
+        if (isHost) {
+            val lobbyFull = playerNames.size >= maxPlayers
+            Button(
+                onClick = if (lobbyFull) onResetLobby else onFillWithDummies,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = 24.dp)
+                    .height(32.dp),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
+            ) {
+                Text(
+                    if (lobbyFull) "[Debug] Reset lobby" else "[Debug] Fill with dummies",
+                    color = TextBlueDark,
+                    style = MaterialTheme.typography.labelSmall
+                )
             }
         }
 

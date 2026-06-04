@@ -102,6 +102,9 @@ class LobbyScreenViewModel(
 
         if (!currentState.isHost) return
         if (currentState.playerList.size < 2) return
+        // Guard: all players must be ready before host can start
+        if (!currentState.isReady) return
+        if (currentState.playerReadyStates.values.any { !it }) return
 
         webSocketClient.sendGameStart()
     }
