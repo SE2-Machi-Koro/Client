@@ -39,6 +39,7 @@ yarn.lock
 # AI and automation
 .ai/
 .ai/mcp/
+.claude
 
 # Node.js
 node_modules/
