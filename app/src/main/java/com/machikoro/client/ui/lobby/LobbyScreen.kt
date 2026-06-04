@@ -8,12 +8,14 @@ import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -29,12 +31,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.R
@@ -49,7 +50,13 @@ import com.machikoro.client.ui.theme.PanelBackgroundBeige
 import com.machikoro.client.ui.theme.PanelBorder
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.Header
+import com.machikoro.client.ui.theme.ButtonBorderBeige
+import com.machikoro.client.ui.theme.ButtonBorderOrange
+import com.machikoro.client.ui.theme.ButtonOrange
 import com.machikoro.client.ui.theme.PrimaryOrange
+import com.machikoro.client.ui.theme.TextBlueLight
+import com.machikoro.client.ui.theme.TextOnOrange
+
 @Composable
 fun LobbyScreen(
     state: LobbyScreenState,
@@ -81,6 +88,7 @@ fun LobbyScreen(
 
 @Composable
 fun LobbyScreen(
+    modifier: Modifier = Modifier,
     playerNames: List<String>,
     maxPlayers: Int = 4,
     currentUsername: String? = null,
@@ -93,7 +101,6 @@ fun LobbyScreen(
     onLeaveLobby: () -> Unit = {},
     onFillWithDummies: () -> Unit = {},
     onResetLobby: () -> Unit = {},
-    modifier: Modifier = Modifier
 ) {
     val startEnabled = isHost && playerNames.size >= 2 && isReady
 
@@ -111,7 +118,6 @@ fun LobbyScreen(
             fontSize = 56
         )
 
-
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -126,51 +132,97 @@ fun LobbyScreen(
                 isReady = isReady
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             if (isHost) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(
-                        onClick = onStartGame,
-                        enabled = startEnabled,
-                        modifier = Modifier
-                            .width(150.dp)
-                            .height(44.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = ButtonBlueDark,
-                            disabledContainerColor = ButtonBlueDark.copy(alpha = 0.65f)
-                        )
-                    ) {
-                        Text("Start Game", color = TextWhite)
-                    }
+                Spacer(modifier = Modifier.height(4.dp))
 
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (playerNames.size < maxPlayers) {
-                        Button(
-                            onClick = onFillWithDummies,
-                            modifier = Modifier
-                                .width(150.dp)
-                                .height(44.dp),
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
-                        ) {
-                            Text("Fill Dummies", color = TextBlueDark)
+                        Box(
+                            modifier = modifier
+                                .width(170.dp)
+                                .height(55.dp)
+                                .background(
+                                    color = ButtonBorderBeige,
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                .padding(bottom = 4.dp)
+                        )
+                        {
+                            Button(
+                                onClick = onFillWithDummies,
+                                modifier = Modifier
+                                    .width(170.dp)
+                                    .height(55.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = ButtonBlueDark)
+                            ) {
+                                Text("Fill Dummies",
+                                    color = TextWhite,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth())
+                            }
+                        }
+                    } else if (playerNames.size > 1) {
+                        Box(
+                            modifier = modifier
+                                .width(170.dp)
+                                .height(55.dp)
+                                .background(
+                                    color = ButtonBorderBeige,
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                .padding(bottom = 4.dp)
+                        )
+                        {
+                            Button(
+                                onClick = onResetLobby,
+                                modifier = Modifier
+                                    .width(170.dp)
+                                    .height(55.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = ButtonBlueDark)
+                            ) {
+                                Text("Reset Lobby",
+                                    color = TextWhite,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
-                }
 
-                if (playerNames.size > 1) {
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = onResetLobby,
-                        modifier = Modifier
-                            .width(312.dp)
-                            .height(40.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
-                    ) {
-                        Text("Reset Lobby", color = TextBlueDark)
+                    Box(
+                        modifier = modifier
+                            .width(170.dp)
+                            .height(55.dp)
+                            .background(
+                                color = ButtonBorderOrange,
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .padding(bottom = 4.dp)
+                    )
+                    {
+                        Button(
+                            onClick = onStartGame,
+                            enabled = startEnabled,
+                            modifier = Modifier
+                                .width(170.dp)
+                                .height(55.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ButtonOrange,
+                                disabledContainerColor = ButtonOrange.copy(alpha = 0.65f)
+                            )
+                        ) {
+                            Text(
+                                text = "Start Game",
+                                color = TextOnOrange,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }
@@ -181,7 +233,7 @@ fun LobbyScreen(
             onClick = onReadyToggle,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 140.dp, top = 40.dp)
+                .padding(end = 140.dp, bottom = 12.dp)
         )
 
         lobbyCode?.let { code ->
@@ -189,7 +241,7 @@ fun LobbyScreen(
                 code = code,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(top = 180.dp, start = 95.dp)
+                    .padding(top = 180.dp, start = 85.dp)
             )
         }
 
@@ -213,15 +265,16 @@ private fun LobbyPanel(
 ) {
     Box(
         modifier = modifier
-            .width(360.dp)
+            .width(358.dp)
             .background(
                 color = PanelBorder,
                 shape = RoundedCornerShape(14.dp)
             )
-            .padding(bottom = 4.dp)
-    ) {
+            .padding(bottom = 4.dp, start = 4.dp)
+    )
+    {
         Card(
-            modifier = Modifier.width(360.dp),
+            modifier = Modifier.width(350.dp),
             shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.cardColors(containerColor = PanelBackgroundBeige),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -233,7 +286,7 @@ private fun LobbyPanel(
                 Row {
                     Text(
                         text = "Players",
-                        modifier = Modifier.width(200.dp),
+                        modifier = Modifier.width(200.dp).padding(top = 5.dp, start = 3.dp),
                         color = TextBlueDark,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
@@ -241,7 +294,7 @@ private fun LobbyPanel(
 
                     Text(
                         text = "Status",
-                        modifier = Modifier.width(100.dp),
+                        modifier = Modifier.width(100.dp).padding(top = 5.dp, start = 10.dp),
                         color = TextBlueDark,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
@@ -280,6 +333,23 @@ private fun LobbyPanel(
                 }
             }
         }
+        Image(
+            painter = painterResource(id = R.drawable.decor_screw),
+            contentDescription = null,
+            modifier = Modifier
+                .size(16.dp)
+                .align(Alignment.TopStart)
+                .offset(x = 10.dp, y = 8.dp)
+        )
+
+        Image(
+            painter = painterResource(id = R.drawable.decor_screw),
+            contentDescription = null,
+            modifier = Modifier
+                .size(16.dp)
+                .align(Alignment.TopEnd)
+                .offset(x = (-10).dp, y = 8.dp)
+        )
     }
 }
 @Composable
@@ -320,16 +390,32 @@ private fun PlayerSlot(name: String, isHost: Boolean) {
 
 @Composable
 private fun StatusSlot(text: String) {
+    val isNotReady = text == "not ready"
+    val isEmpty = text.isBlank()
+
     Card(
         modifier = Modifier
             .width(100.dp)
             .height(36.dp),
         shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = ButtonBeigeLight),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = when {
+                isEmpty -> ButtonBeigeLight.copy(alpha = 0.55f)
+                isNotReady -> ButtonBeigeLight.copy(alpha = 0.65f)
+                else -> ButtonBeigeLight
+            }
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isNotReady || isEmpty) 1.dp else 5.dp
+        )
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Text(text = text, color = TextBlueDark, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = text,
+                color = if (isNotReady || isEmpty) TextBlueDark.copy(alpha = 0.45f) else TextBlueDark,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -344,7 +430,7 @@ fun ReadyToggle(
         modifier = modifier
             .width(90.dp)
             .background(ButtonBlueDark, RoundedCornerShape(12.dp))
-            .padding(vertical = 12.dp),
+            .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -391,7 +477,7 @@ fun ReadyToggle(
             text = "not\nready",
             color = White,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -426,7 +512,7 @@ private fun LobbyCodeCopyRow(
                 .height(40.dp)
                 .clickable { copyLobbyCodeToClipboard() },
             shape = RoundedCornerShape(10.dp),
-            colors = CardDefaults.cardColors(containerColor = White),
+            colors = CardDefaults.cardColors(containerColor = PanelBackgroundBeige),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             Row(
@@ -438,7 +524,7 @@ private fun LobbyCodeCopyRow(
                 Text(
                     text = code,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0x4D004E7E),
+                    color = TextBlueLight,
                     maxLines = 1
                 )
 
@@ -467,7 +553,8 @@ private fun LeaveLobbyButton(
             text = "←",
             color = PrimaryOrange,
             style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.offset(y = (-3).dp)
         )
 
         Spacer(modifier = Modifier.width(6.dp))
@@ -488,9 +575,10 @@ private fun LobbyScreenPreview() {
         LobbyScreen(
             playerNames = listOf("Player1"),
             currentUsername = "Player1",
-            hostUsername = "Player",
+            hostUsername = "Player1",
             isHost = true,
-            isReady = false
+            isReady = false,
+            lobbyCode = "AJ25Z39"
         )
     }
 }
@@ -504,7 +592,8 @@ private fun LobbyScreenFullPreview() {
             currentUsername = "Player1",
             hostUsername = "Player1",
             isHost = true,
-            isReady = true
+            isReady = true,
+            lobbyCode = "AJ25Z39"
         )
     }
 }
