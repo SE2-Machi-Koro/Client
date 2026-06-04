@@ -1,4 +1,4 @@
-package com.machikoro.client.ui.start
+package com.machikoro.client.ui.home
 
 import android.content.Context
 import android.content.Intent
