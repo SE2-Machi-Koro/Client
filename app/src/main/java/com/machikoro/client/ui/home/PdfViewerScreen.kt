@@ -36,6 +36,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.MutableState
@@ -184,15 +188,27 @@ fun PdfViewerScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Close button
-            Button(
-                onClick = onClose,
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ButtonColor,
-                    contentColor = ButtonTextColor
-                )
+            Row(
+                modifier = Modifier
+                    .clickable { onClose() },
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Close", fontWeight = FontWeight.ExtraBold)
+                Text(
+                    text = "←",
+                    color = PrimaryOrange,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.offset(y = (-3).dp)
+                )
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                Text(
+                    text = "Close",
+                    color = PrimaryOrange,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             // Page indicator

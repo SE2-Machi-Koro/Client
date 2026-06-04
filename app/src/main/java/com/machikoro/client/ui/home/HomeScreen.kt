@@ -50,6 +50,7 @@ import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.PanelBackgroundBeige
 import com.machikoro.client.ui.theme.PanelBackgroundBeigeDark
 import com.machikoro.client.ui.theme.PanelBorder
+import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextWhite
 
@@ -121,12 +122,11 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                ActionButton(
-                    "Logout",
+                LogoutButton(
                     onClick = onLogoutClick
                 )
 
@@ -406,6 +406,35 @@ private fun JoinLobbyCodeRow(
                 modifier = Modifier.size(29.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun LogoutButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clickable { onClick() },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "←",
+            color = PrimaryOrange,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.offset(y = (-3).dp)
+        )
+
+        Spacer(modifier = Modifier.width(6.dp))
+
+        Text(
+            text = "Logout",
+            color = PrimaryOrange,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
