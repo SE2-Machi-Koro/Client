@@ -15,20 +15,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.overscroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalOverscrollConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -94,22 +91,20 @@ internal fun BuyingPhaseShop(
                 title = "Landmarks",
                 modifier = Modifier.width(238.dp)
             ) {
-                CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(5),
-                        contentPadding = SHOP_GRID_CONTENT_PADDING,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(items = landmarks, key = { it.type }) { item ->
-                            ShopImageTile(
-                                item = item,
-                                state = state,
-                                onPurchaseClick = onPurchaseClick,
-                                isRecommended = item.type == recommendedCardType?.name
-                            )
-                        }
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(5),
+                    contentPadding = SHOP_GRID_CONTENT_PADDING,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(items = landmarks, key = { it.type }) { item ->
+                        ShopImageTile(
+                            item = item,
+                            state = state,
+                            onPurchaseClick = onPurchaseClick,
+                            isRecommended = item.type == recommendedCardType?.name
+                        )
                     }
                 }
             }
@@ -120,22 +115,20 @@ internal fun BuyingPhaseShop(
                 title = "Establishments",
                 modifier = Modifier.weight(1f)
             ) {
-                CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(5),
-                        contentPadding = SHOP_GRID_CONTENT_PADDING,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(items = establishments, key = { it.type }) { item ->
-                            ShopImageTile(
-                                item = item,
-                                state = state,
-                                onPurchaseClick = onPurchaseClick,
-                                isRecommended = item.type == recommendedCardType?.name
-                            )
-                        }
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(5),
+                    contentPadding = SHOP_GRID_CONTENT_PADDING,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(items = establishments, key = { it.type }) { item ->
+                        ShopImageTile(
+                            item = item,
+                            state = state,
+                            onPurchaseClick = onPurchaseClick,
+                            isRecommended = item.type == recommendedCardType?.name
+                        )
                     }
                 }
             }
@@ -181,8 +174,8 @@ private fun ShopImageTile(
     item: ShopItem,
     state: GameScreenState,
     onPurchaseClick: (String) -> Unit,
-    isRecommended: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isRecommended: Boolean = false
 ) {
     val canPurchase = state.canPurchaseItem(item)
     val isSelected = state.pendingPurchaseItemType == item.type
