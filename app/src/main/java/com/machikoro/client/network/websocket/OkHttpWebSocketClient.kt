@@ -306,8 +306,19 @@ class OkHttpWebSocketClient(
             Log.w(TAG, "sendReadyToggle called but no active WebSocket connection")
             return
         }
+        // gameId required so the server knows which lobby to update
+        val gameId = activeGameId.value
+        if (gameId == null) {
+            Log.w(TAG, "sendReadyToggle: no active game, dropping toggle")
+            return
+        }
         val body = JSONObject()
-            .put("isReady", isReady)
+            .put("type", "LOBBY_ROSTER")
+            .put("sender", "CLIENT")
+            .put("payload", JSONObject()
+                .put("gameId", gameId)
+                .put("isReady", isReady)
+            )
             .toString()
         val sent = socket.send(
             StompFrame(
@@ -319,7 +330,7 @@ class OkHttpWebSocketClient(
                 body = body
             ).serialize()
         )
-        if (sent) Log.d(TAG, "Ready toggle sent: isReady=$isReady")
+        if (sent) Log.d(TAG, "Ready toggle sent: isReady=$isReady, gameId=$gameId")
         else Log.w(TAG, "sendReadyToggle: failed to send frame")
     }
 
@@ -677,6 +688,8 @@ class OkHttpWebSocketClient(
         val payload = json.optJSONObject("payload") ?: return
         val players = payload.optJSONArray("players") ?: return
         val gameId = json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId")
+        // Only navigate when this client is freshly entering a lobby, not on roster refreshes
+        val isFirstEntry = gameId != null && mutableActiveGameId.value != gameId
         if (gameId != null) {
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
@@ -693,7 +706,7 @@ class OkHttpWebSocketClient(
             )
         }
         Log.d(TAG, "Lobby roster received: ${mutablePlayers.value.size} players, gameId=$gameId")
-        mutableLobbyEntered.tryEmit(Unit)
+        if (isFirstEntry) mutableLobbyEntered.tryEmit(Unit)
     }
 
     private fun handleLobbyError(json: JSONObject) {
