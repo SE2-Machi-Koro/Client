@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalOverscrollConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -35,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.OverscrollEffect
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
@@ -59,18 +59,6 @@ private val SHOP_GRID_CONTENT_PADDING = PaddingValues(horizontal = SHOP_GRID_HOR
 val RecommendedHighlight = Color(0xFF00C853)
 val SelectedHighlight = Color(0xFFFFD700) // Gold color for selected card
 
-// NoOp overscroll effect to remove overscroll animation
-private object NoOpOverscrollEffect : OverscrollEffect {
-    override fun consumePreScroll(velocity: Float, pointerDirectionX: Float, pointerDirectionY: Float) = 0f
-    override fun consumePostScroll(
-        initialVelocity: Float,
-        overscrollDelta: Float,
-        source: androidx.compose.foundation.OverscrollSource
-    ) = 0f
-    override suspend fun animateToRelief(velocity: Float) {}
-    override val isActive: Boolean = false
-    override val effectModifier: Modifier = Modifier
-}
 
 @Composable
 internal fun BuyingPhaseShop(
@@ -106,7 +94,7 @@ internal fun BuyingPhaseShop(
                 title = "Landmarks",
                 modifier = Modifier.width(238.dp)
             ) {
-                CompositionLocalProvider(overscroll provides NoOpOverscrollEffect) {
+                CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(5),
                         contentPadding = SHOP_GRID_CONTENT_PADDING,
@@ -132,7 +120,7 @@ internal fun BuyingPhaseShop(
                 title = "Establishments",
                 modifier = Modifier.weight(1f)
             ) {
-                CompositionLocalProvider(overscroll provides NoOpOverscrollEffect) {
+                CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(5),
                         contentPadding = SHOP_GRID_CONTENT_PADDING,
