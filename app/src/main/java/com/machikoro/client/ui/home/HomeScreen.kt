@@ -432,7 +432,7 @@ private fun LogoutButton(
         Text(
             text = "Logout",
             color = PrimaryOrange,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold
         )
     }

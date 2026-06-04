@@ -206,7 +206,7 @@ fun PdfViewerScreen(
                 Text(
                     text = "Close",
                     color = PrimaryOrange,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold
                 )
             }

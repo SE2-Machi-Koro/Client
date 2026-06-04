@@ -401,7 +401,7 @@ private fun StatusSlot(text: String) {
         colors = CardDefaults.cardColors(
             containerColor = when {
                 isEmpty -> ButtonBeigeLight.copy(alpha = 0.55f)
-                isNotReady -> ButtonBeigeLight.copy(alpha = 0.65f)
+                isNotReady -> ButtonBeigeLight.copy(alpha = 0.55f)
                 else -> ButtonBeigeLight
             }
         ),
@@ -562,7 +562,7 @@ private fun LeaveLobbyButton(
         Text(
             text = "Leave Lobby",
             color = PrimaryOrange,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold
         )
     }
