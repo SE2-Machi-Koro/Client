@@ -26,6 +26,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -55,7 +59,6 @@ fun HomeScreen(
     onJoinLobbyCodeChange: (String) -> Unit = {},
     onJoinLobbyClick: () -> Unit = {},
     onCreateLobbyClick: () -> Unit = {},
-    onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onJoinLobbySubmit: () -> Unit = {},
@@ -66,6 +69,14 @@ fun HomeScreen(
     onLogoutClick: () -> Unit,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
+
+    var showPdfViewer by remember { mutableStateOf(false) }
+
+    if (showPdfViewer) {
+        PdfViewerScreen(
+            onClose = { showPdfViewer = false }
+        )
+    } else {
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -194,12 +205,13 @@ fun HomeScreen(
         // === BOTTOM MENU ===
         // Clickable menu items for rules, ranking and settings.
         BottomMenuBar(
-            onRulesClick = onRulesClick,
+            onRulesClick = { showPdfViewer = true },
             onRankingClick = onRankingClick,
             onSettingsClick = onSettingsClick,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-        )
+            )
+        }
     }
 }
 }

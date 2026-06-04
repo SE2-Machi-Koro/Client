@@ -31,6 +31,7 @@ import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
+import com.machikoro.client.ui.home.PdfViewerScreen
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Header
 import com.machikoro.client.ui.shared.MainScreenBackground
@@ -61,15 +62,15 @@ fun StartScreen(
     onLogoutSubmit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val showPdfViewer = remember { mutableStateOf(false) }
+   // val showPdfViewer = remember { mutableStateOf(false) }
     var showRegisterDialog by remember { mutableStateOf(false) }
     var showLoginDialog by remember { mutableStateOf(false) }
 
-    if (showPdfViewer.value) {
+   /* if (showPdfViewer.value) {
         PdfViewerScreen(
             onClose = { showPdfViewer.value = false }
         )
-    } else {
+    } else {*/
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -90,12 +91,12 @@ fun StartScreen(
                 .align(Alignment.TopCenter),
                 fontSize = 52)
 
-            SecondaryActionButton(
+            /*SecondaryActionButton(
                 label = "Rules",
                 onClick = { showPdfViewer.value = true },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-            )
+            )*/
 
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -155,8 +156,8 @@ fun StartScreen(
             }
         }
     }
-    }
 }
+
 
 
 @Composable

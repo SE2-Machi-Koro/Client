@@ -1,4 +1,4 @@
-package com.machikoro.client.ui.start
+package com.machikoro.client.ui.home
 
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
+import androidx.compose.runtime.MutableState
 import java.io.File
 
 @Composable
@@ -224,7 +225,7 @@ fun PdfViewerScreen(
 private fun renderPage(
     pdfRenderer: PdfRenderer,
     pageIndex: Int,
-    currentBitmap: androidx.compose.runtime.MutableState<Bitmap?>,
+    currentBitmap: MutableState<Bitmap?>,
     scaleFactor: Float = 3f
 ) {
     try {
