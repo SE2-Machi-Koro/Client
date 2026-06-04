@@ -28,7 +28,7 @@ import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
 import com.machikoro.client.ui.connection.ConnectionBannerState
 import com.machikoro.client.ui.connection.ConnectionStatusBanner
-import com.machikoro.client.ui.game.GameScreen
+import com.machikoro.client.ui.game.ui.GameScreen
 import com.machikoro.client.ui.home.HomeScreen
 import com.machikoro.client.ui.lobby.LobbyScreen
 import com.machikoro.client.ui.navigation.AppNavigator
