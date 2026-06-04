@@ -11,19 +11,35 @@ sonar {
         property("sonar.organization", "se2-machi-koro")
         property("sonar.host.url", "https://sonarcloud.io")
         property("sonar.sourceEncoding", "UTF-8")
-        property(
-            "sonar.coverage.jacoco.xmlReportPaths",
-            "app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml"
-        )
         property("sonar.qualitygate.wait", "true")
+    }
+}
+
+project(":app") {
+    sonar {
+        properties {
+            property(
+                "sonar.coverage.jacoco.xmlReportPaths",
+                layout.buildDirectory.file("reports/jacoco/jacocoTestReport/jacocoTestReport.xml").get().asFile
+            )
+            property(
+                "sonar.exclusions",
+                "**/build/**,**/generated/**,**/ui/**,**/res/**,**/AndroidManifest.xml,**/*.xml"
+            )
+            property("sonar.test.exclusions", "**/build/**,**/androidTest/**")
+            property(
+                "sonar.coverage.exclusions",
+                "**/ui/**,**/MainActivity.kt,**/config/**,**/*Application.kt,**/BuildConfig.*,**/R.class,**/R$*.class"
+            )
+        }
+    }
+}
+
+sonar {
+    properties {
         property(
             "sonar.exclusions",
-            "**/build/**,**/generated/**,**/gradlew**,**/ui/**,**/res/**,**/AndroidManifest.xml,**/*.xml"
-        )
-        property("sonar.test.exclusions", "**/build/**,**/androidTest/**")
-        property(
-            "sonar.coverage.exclusions",
-            "**/ui/**,**/MainActivity.kt,**/config/**,**/*Application.kt,**/BuildConfig.*,**/R.class,**/R$*.class"
+            "**/build/**,**/generated/**,**/gradlew**"
         )
     }
 }
