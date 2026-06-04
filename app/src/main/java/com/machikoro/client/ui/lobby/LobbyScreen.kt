@@ -220,7 +220,7 @@ fun LobbyScreen(
                                 text = "Start Game",
                                 color = TextOnOrange,
                                 textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
                     }
@@ -400,14 +400,13 @@ private fun StatusSlot(text: String) {
         shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(
             containerColor = when {
-                isEmpty -> ButtonBeigeLight.copy(alpha = 0.55f)
-                isNotReady -> ButtonBeigeLight.copy(alpha = 0.55f)
+                isEmpty -> Color(0xFFE3DDD2)
+                isNotReady -> Color(0xFFE3DDD2)
                 else -> ButtonBeigeLight
             }
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isNotReady || isEmpty) 1.dp else 5.dp
-        )
+            defaultElevation = if (isNotReady || isEmpty) 1.dp else 5.dp        )
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Text(

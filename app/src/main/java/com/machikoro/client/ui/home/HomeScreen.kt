@@ -109,7 +109,8 @@ fun HomeScreen(
             label = username ?: "Guest",
             modifier = Modifier.align(Alignment.TopEnd),
             onClick = null,
-            leftIcon = R.drawable.login_user_icon
+            leftIcon = R.drawable.login_user_icon,
+            fontSize = 18
             )
 
         // Logout affordance in the top-left corner. Issue #106 places the
