@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.machikoro.client.ui.theme.ButtonBeigeDark
 import com.machikoro.client.ui.theme.ButtonBeigeLight
+import com.machikoro.client.ui.theme.ButtonBorderBeige
 import com.machikoro.client.ui.theme.ButtonColor
 import com.machikoro.client.ui.theme.ButtonTextColor
 import com.machikoro.client.ui.theme.ClientTheme
@@ -121,7 +122,7 @@ fun SecondaryActionButton(
                 .matchParentSize()
                 .offset(y = 4.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(ButtonBeigeDark)
+                .background(ButtonBorderBeige)
         )
 
         // Main button
