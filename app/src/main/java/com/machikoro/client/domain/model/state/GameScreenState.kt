@@ -3,6 +3,7 @@ package com.machikoro.client.domain.model.state
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
+import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.ShopItem
 
 data class GameScreenState(
@@ -33,10 +34,16 @@ data class GameScreenState(
 ) {
     val isActivePlayer: Boolean
         get() = myUserId != null && myUserId == activePlayerId
-  
+
     // Keeps UI visibility tied to the existing phase stream from the server.
     val isBuyingPhase: Boolean
         get() = gamePhase == GamePhase.BUY_OR_BUILD
+
+    val hasTrainStation: Boolean
+        get() = activePlayerId != null &&
+                playerLandmarks[activePlayerId]
+                    ?.any { it.landmarkType == LandmarkType.TRAIN_STATION && it.isBuilt }
+                ?: false
 
     companion object {
         fun initial() = GameScreenState(
