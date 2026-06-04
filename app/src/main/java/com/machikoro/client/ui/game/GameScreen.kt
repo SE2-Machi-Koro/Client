@@ -71,7 +71,6 @@ fun GameScreen(
         enabled = state.gameStatus == GameStatus.IN_PROGRESS,
         onShake = onShake,
     )
-
     var showLeaveDialog by remember { mutableStateOf(false) }
 
     if (showLeaveDialog) {
@@ -164,7 +163,8 @@ fun GameScreen(
 
                 GamePhaseBanner(
                     phase = state.gamePhase,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    text = state.customDisplayText
                 )
             }
         }
