@@ -93,7 +93,7 @@ fun StartScreen(
                 fontSize = 56)
 
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.align(Alignment.Center).padding(bottom = 20.dp)
                 ) {
@@ -166,7 +166,7 @@ private fun StartScreenActionButton(
     fontSize: Int = 24,
 ) {
     Box(
-        modifier = Modifier.width(160.dp).height(48.dp)
+        modifier = Modifier.width(160.dp).height(49.dp)
     ) {
 
         // Bottom shadow
@@ -189,7 +189,7 @@ private fun StartScreenActionButton(
         ) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.labelLarge,
                 color = ButtonTextColor,
                 fontSize = fontSize.sp,
                 fontWeight = FontWeight.ExtraBold
