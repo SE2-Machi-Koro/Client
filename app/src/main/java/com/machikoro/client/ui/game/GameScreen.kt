@@ -202,7 +202,7 @@ fun GameScreen(
             }
 
             if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
-                var selectedDiceCount by remember { mutableIntStateOf(1) }
+                var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
 
                 if (state.hasTrainStation) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
