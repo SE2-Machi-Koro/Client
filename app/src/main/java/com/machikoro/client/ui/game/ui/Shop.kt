@@ -62,8 +62,8 @@ internal fun BuyingPhaseShop(
     state: GameScreenState,
     items: List<ShopItem>,
     onPurchaseClick: (String) -> Unit,
-    recommendedCardType: CardType? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    recommendedCardType: CardType? = null
 ) {
     val landmarks = remember(items, state.playerLandmarks, state.players) {
         items
@@ -174,8 +174,8 @@ private fun ShopImageTile(
     item: ShopItem,
     state: GameScreenState,
     onPurchaseClick: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    isRecommended: Boolean = false
+    isRecommended: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
     val canPurchase = state.canPurchaseItem(item)
     val isSelected = state.pendingPurchaseItemType == item.type
