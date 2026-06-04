@@ -44,7 +44,6 @@ import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
-import com.machikoro.client.ui.game.GameScreen
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.PanelBorder
 import com.machikoro.client.ui.theme.PrimaryOrange
