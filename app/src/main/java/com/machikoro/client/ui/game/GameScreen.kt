@@ -208,7 +208,8 @@ fun GameScreen(
         // =====================================
         leftContent = {
             Box(modifier = Modifier.align(Alignment.Center)) {
-                RegularInfoText("content")
+                Text("PLACEHOLDER \n FOR \n MARKETPLACE \n BUTTON",
+                    color = Color.White)
             }
         },
 
@@ -306,7 +307,8 @@ fun GameScreen(
         // =====================================
         rightContent = {
             Box(modifier = Modifier.align(Alignment.Center)) {
-                RegularInfoText("content")
+                Text("PLACEHOLDER \n FOR COINS",
+                        color = Color.White)
             }
         }
 
