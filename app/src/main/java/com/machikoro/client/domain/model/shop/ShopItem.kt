@@ -25,6 +25,8 @@ data class ShopItem(
 )
 
 object ShopCatalog {
+    private const val ONE_COIN_ON_ANY_TURN = "Get 1 coin from the bank on anyone's turn."
+
     /**
      * Temporary local catalog for issue #38.
      *
@@ -42,7 +44,7 @@ object ShopCatalog {
             color = ShopItemColor.BLUE,
             establishmentType = "WHEAT",
             activationText = "1",
-            effectText = "Get 1 coin from the bank on anyone's turn.",
+            effectText = ONE_COIN_ON_ANY_TURN,
             imageKey = "card_wheat_field"
         ),
         ShopItem(
@@ -53,7 +55,7 @@ object ShopCatalog {
             color = ShopItemColor.BLUE,
             establishmentType = "COW",
             activationText = "2",
-            effectText = "Get 1 coin from the bank on anyone's turn.",
+            effectText = ONE_COIN_ON_ANY_TURN,
             imageKey = "card_ranch"
         ),
         ShopItem(
@@ -64,7 +66,7 @@ object ShopCatalog {
             color = ShopItemColor.BLUE,
             establishmentType = "GEAR",
             activationText = "5",
-            effectText = "Get 1 coin from the bank on anyone's turn.",
+            effectText = ONE_COIN_ON_ANY_TURN,
             imageKey = "card_forest"
         ),
         ShopItem(
