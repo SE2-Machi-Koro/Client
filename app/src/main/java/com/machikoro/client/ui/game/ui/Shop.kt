@@ -4,7 +4,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -51,6 +51,8 @@ import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 
 private val SHOP_CARD_SHAPE = RoundedCornerShape(8.dp)
+private val SHOP_GRID_HORIZONTAL_PADDING = 4.dp
+private val SHOP_GRID_CONTENT_PADDING = PaddingValues(horizontal = SHOP_GRID_HORIZONTAL_PADDING, vertical = 4.dp)
 val RecommendedHighlight = Color(0xFF00C853)
 
 @Composable
@@ -89,7 +91,7 @@ internal fun BuyingPhaseShop(
             ) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(4.dp),
+                    contentPadding = SHOP_GRID_CONTENT_PADDING,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxSize()
@@ -112,8 +114,8 @@ internal fun BuyingPhaseShop(
                 modifier = Modifier.weight(1f)
             ) {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 110.dp),
-                    contentPadding = PaddingValues(4.dp),
+                    columns = GridCells.Fixed(3),
+                    contentPadding = SHOP_GRID_CONTENT_PADDING,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxSize()
@@ -158,7 +160,8 @@ private fun ShopColumn(
             text = title,
             style = MaterialTheme.typography.bodyMedium,
             color = TextBlueDark,
-            maxLines = 1
+            maxLines = 1,
+            modifier = Modifier.padding(start = SHOP_GRID_HORIZONTAL_PADDING)
         )
         content()
     }
@@ -182,25 +185,22 @@ private fun ShopImageTile(
         else -> Color.Transparent
     }
 
-    Box(
+    Image(
+        painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
         modifier = modifier
             .width(110.dp)
             .height(131.dp)
             .alpha(if (state.canPurchaseItem(item)) 1f else 0.45f)
             .border(2.dp, borderColor, SHOP_CARD_SHAPE)
+            .clip(SHOP_CARD_SHAPE)
             .clickable(enabled = canPurchase) { onPurchaseClick(item.type) }
             .semantics {
                 contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
                     if (isRecommended) ", recommended" else ""
             }
-    ) {
-        Image(
-            painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize()
-        )
-    }
+    )
 }
 
 internal fun GameScreenState.shouldShowBuyingPhaseShop(): Boolean =
