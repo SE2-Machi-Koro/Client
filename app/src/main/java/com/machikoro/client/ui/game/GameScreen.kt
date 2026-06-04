@@ -42,7 +42,6 @@ import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.cheat.ShakeDetector
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
-import com.machikoro.client.ui.shared.RegularInfoText
 import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ClientTheme
 
@@ -172,7 +171,8 @@ fun GameScreen(
         // =====================================
         leftContent = {
             Box(modifier = Modifier.align(Alignment.Center)) {
-                RegularInfoText("content")
+                Text("PLACEHOLDER \n FOR \n MARKETPLACE \n BUTTON",
+                    color = Color.White)
             }
         },
 
@@ -269,7 +269,8 @@ fun GameScreen(
         // =====================================
         rightContent = {
             Box(modifier = Modifier.align(Alignment.Center)) {
-                RegularInfoText("content")
+                Text("PLACEHOLDER \n FOR COINS",
+                        color = Color.White)
             }
         }
     )
