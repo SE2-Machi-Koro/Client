@@ -186,7 +186,9 @@ fun GameScreen(
                     state.roundNumber?.let { round ->
                         RoundIndicator(
                             round = round,
-                            modifier = Modifier.align(Alignment.CenterEnd)
+                            modifier = Modifier.align(
+                                Alignment.CenterEnd
+                            )
                         )
                     }
                 }
@@ -195,9 +197,8 @@ fun GameScreen(
 
                 GamePhaseBanner(
                     phase = state.gamePhase,
-                    modifier = Modifier.align(
-                        Alignment.CenterHorizontally
-                    )
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    text = state.customDisplayText
                 )
             }
         },
@@ -207,8 +208,7 @@ fun GameScreen(
         // =====================================
         leftContent = {
             Box(modifier = Modifier.align(Alignment.Center)) {
-                Text("PLACEHOLDER \n FOR \n MARKETPLACE \n BUTTON",
-                    color = Color.White)
+                RegularInfoText("content")
             }
         },
 
@@ -216,6 +216,7 @@ fun GameScreen(
         // CENTER
         // =====================================
         centerContent = {
+        },
 
         if (state.isBuyingPhase) {
             BuyingPhaseShop(
@@ -305,8 +306,7 @@ fun GameScreen(
         // =====================================
         rightContent = {
             Box(modifier = Modifier.align(Alignment.Center)) {
-                Text("PLACEHOLDER \n FOR COINS",
-                        color = Color.White)
+                RegularInfoText("content")
             }
         }
 
