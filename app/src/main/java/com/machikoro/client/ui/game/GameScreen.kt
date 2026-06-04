@@ -1,11 +1,10 @@
-package com.machikoro.client.ui.game
+package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -26,10 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.machikoro.client.BuildConfig
 import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
@@ -43,15 +40,9 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.cheat.ShakeDetector
-import com.machikoro.client.ui.game.ui.BuyingPhaseShop
-import com.machikoro.client.ui.game.ui.DiceAnimationDisplay
-import com.machikoro.client.ui.game.ui.DiceResultDisplay
-import com.machikoro.client.ui.game.ui.GamePhaseBanner
-import com.machikoro.client.ui.game.ui.InitializationLoadingOverlay
-import com.machikoro.client.ui.game.ui.MarketplaceSection
-import com.machikoro.client.ui.game.ui.PlayersTopBar
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
+import com.machikoro.client.ui.shared.RegularInfoText
 import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ClientTheme
 
@@ -122,121 +113,142 @@ fun GameScreen(
             }
         )
     }
-
     Background()
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(all = 12.dp)
-    ) {
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .align(Alignment.TopCenter)
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Box(modifier = Modifier.fillMaxWidth()) {
+    GameScreenLayout(
+        // =====================================
+        // TOP BAR
+        // =====================================
+        topBar = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+
                     SecondaryActionButton(
                         label = "Leave",
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .padding(start = 8.dp),
-                        onClick = { showLeaveDialog = true }
+                        modifier = Modifier.align(
+                            Alignment.CenterStart
+                        ),
+                        onClick = {
+                            showLeaveDialog = true
+                        }
                     )
 
                     PlayersTopBar(
                         players = state.players,
-                        playerLandmarks = state.playerLandmarks,
-                        modifier = Modifier.align(Alignment.Center)
+                        playerLandmarks =
+                            state.playerLandmarks,
+                        modifier = Modifier.align(
+                            Alignment.Center
+                        )
                     )
 
                     state.roundNumber?.let { round ->
                         RoundIndicator(
                             round = round,
-                            modifier = Modifier.align(Alignment.CenterEnd)
+                            modifier = Modifier.align(
+                                Alignment.CenterEnd
+                            )
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
 
                 GamePhaseBanner(
                     phase = state.gamePhase,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    text = state.customDisplayText
+                    modifier = Modifier.align(
+                        Alignment.CenterHorizontally
+                    )
                 )
             }
-        }
+        },
 
-        if (state.isBuyingPhase) {
-            BuyingPhaseShop(
-                state = state,
-                items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
-                onPurchaseClick = onPurchaseClick,
-                recommendedCardType = cheatRecommendation,
-                modifier = Modifier.align(Alignment.Center)
-            )
-        }
+        // =====================================
+        // LEFT
+        // =====================================
+        leftContent = {
+            Box(modifier = Modifier.align(Alignment.Center)) {
+                RegularInfoText("content")
+            }
+        },
 
-        if (false) {
-            MarketplaceSection(
-                marketplace = state.marketplace,
-                recommendedCardType = cheatRecommendation,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(horizontal = 12.dp)
-            )
-        }
+        // =====================================
+        // CENTER
+        // =====================================
+        centerContent = {
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            when {
-                state.isRolling -> DiceAnimationDisplay()
-                state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
+            if (state.isBuyingPhase) {
+                BuyingPhaseShop(
+                    state = state,
+                    items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
+                    onPurchaseClick = onPurchaseClick,
+                    recommendedCardType = cheatRecommendation,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
 
-            if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
-                var selectedDiceCount by remember { mutableIntStateOf(1) }
+            if (false) {
+                MarketplaceSection(
+                    marketplace = state.marketplace,
+                    recommendedCardType = cheatRecommendation,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = 12.dp)
+                )
+            }
 
-                if (state.hasTrainStation) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(1, 2).forEach { count ->
-                            Button(
-                                onClick = { selectedDiceCount = count },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (selectedDiceCount == count)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.surfaceVariant,
-                                    contentColor = if (selectedDiceCount == count)
-                                        MaterialTheme.colorScheme.onPrimary
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            ) {
-                                Text("$count 🎲")
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                when {
+                    state.isRolling -> DiceAnimationDisplay()
+                    state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
+                }
+
+                if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
+                    var selectedDiceCount by remember { mutableIntStateOf(1) }
+
+                    if (state.hasTrainStation) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(1, 2).forEach { count ->
+                                Button(
+                                    onClick = { selectedDiceCount = count },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (selectedDiceCount == count)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = if (selectedDiceCount == count)
+                                            MaterialTheme.colorScheme.onPrimary
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                ) {
+                                    Text("$count 🎲")
+                                }
                             }
                         }
                     }
+
+                    ActionButton(
+                        onClick = { onRollDice(selectedDiceCount) },
+                        enabled = !state.isRolling,
+                        label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
+                        leftIcon = R.drawable.game_dice_perspective,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Würfeln"
+                        }
+                    )
                 }
-
-                ActionButton(
-                    onClick = { onRollDice(selectedDiceCount) },
-                    enabled = !state.isRolling,
-                    label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
-                    leftIcon = R.drawable.game_dice_perspective,
-                    modifier = Modifier.semantics {
-                        contentDescription = "Würfeln"
-                    }
-                )
             }
-
             val turnFlowLabel = state.turnFlowActionLabel()
             if (
                 turnFlowLabel != null &&
@@ -251,13 +263,21 @@ fun GameScreen(
                     label = turnFlowLabel,
                 )
             }
+        },
+        // =====================================
+        // RIGHT
+        // =====================================
+        rightContent = {
+            Box(modifier = Modifier.align(Alignment.Center)) {
+                RegularInfoText("content")
+            }
         }
+    )
 
-        InitializationLoadingOverlay(
-            connectionStatus = state.connectionStatus,
-            gameStatus = state.gameStatus
-        )
-    }
+    InitializationLoadingOverlay(
+        connectionStatus = state.connectionStatus,
+        gameStatus = state.gameStatus
+    )
 }
 
 private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
@@ -268,20 +288,6 @@ private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
     GamePhase.END_TURN -> null
 }
 
-@Composable
-private fun RoundIndicator(
-    round: Int,
-    modifier: Modifier = Modifier
-) {
-    Text(
-        text = "Round $round",
-        style = MaterialTheme.typography.bodyLarge,
-        fontWeight = FontWeight.Bold,
-        fontSize = 24.sp,
-        color = Color.White,
-        modifier = modifier
-    )
-}
 
 // === PREVIEWS ===
 
