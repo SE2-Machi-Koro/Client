@@ -52,7 +52,6 @@ fun PlayersTopBar(
         }
     }
 }
-
 @Composable
 private fun PlayerCoinBadge(
     player: PlayerCoinState,
@@ -175,4 +174,3 @@ private fun CoinIcon(
         )
     }
 }
-
