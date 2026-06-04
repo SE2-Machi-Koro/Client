@@ -1,8 +1,8 @@
 package com.machikoro.client.ui.home
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -18,8 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -27,8 +26,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -47,6 +48,7 @@ import com.machikoro.client.ui.theme.PanelBackgroundBeigeDark
 import com.machikoro.client.ui.theme.PanelBorder
 import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextWhite
+
 
 @Composable
 fun HomeScreen(
@@ -155,16 +157,20 @@ fun HomeScreen(
                         enabled = !hasActiveGame,
                         onClick = onJoinLobbyClick
                     )
-
                     if (showJoinLobbyInput) {
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        JoinLobbyCodeRow(
-                            code = joinLobbyCode,
-                            onCodeChange = onJoinLobbyCodeChange,
-                            onJoinLobbySubmit = onJoinLobbySubmit,
-                            isError = joinLobbyError
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            JoinLobbyCodeRow(
+                                code = joinLobbyCode,
+                                onCodeChange = onJoinLobbyCodeChange,
+                                onJoinLobbySubmit = onJoinLobbySubmit,
+                                isError = joinLobbyError
+                            )
+                        }
                     }
                 }
 
@@ -322,12 +328,13 @@ private fun JoinLobbyCodeRow(
     isError: Boolean = false
 ) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Card(
             modifier = Modifier
-                .width(125.dp)
+                .width(137.dp)
                 .height(34.dp),
             shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(containerColor = PanelBackgroundBeige),
@@ -384,7 +391,7 @@ private fun JoinLobbyCodeRow(
             Image(
                 painter = painterResource(id = R.drawable.home_check_icon),
                 contentDescription = "Join lobby",
-                modifier = Modifier.size(25.dp)
+                modifier = Modifier.size(29.dp)
             )
         }
     }
@@ -437,7 +444,7 @@ private fun BottomMenuItem(
 ) {
     Card(
         modifier = Modifier
-            .width(158.dp)
+            .width(150.dp)
             .height(42.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(10.dp),
@@ -446,10 +453,10 @@ private fun BottomMenuItem(
     ) {
         Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 16.dp),
+                .fillMaxSize(),
+                //.padding(start = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start
+            horizontalArrangement = Arrangement.Center
         ) {
             Image(
                 painter = painterResource(id = iconRes),
