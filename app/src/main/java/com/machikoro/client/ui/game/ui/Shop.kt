@@ -15,11 +15,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.overscroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -33,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.OverscrollEffect
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
@@ -54,6 +57,20 @@ private val SHOP_CARD_SHAPE = RoundedCornerShape(8.dp)
 private val SHOP_GRID_HORIZONTAL_PADDING = 4.dp
 private val SHOP_GRID_CONTENT_PADDING = PaddingValues(horizontal = SHOP_GRID_HORIZONTAL_PADDING, vertical = 4.dp)
 val RecommendedHighlight = Color(0xFF00C853)
+val SelectedHighlight = Color(0xFFFFD700) // Gold color for selected card
+
+// NoOp overscroll effect to remove overscroll animation
+private object NoOpOverscrollEffect : OverscrollEffect {
+    override fun consumePreScroll(velocity: Float, pointerDirectionX: Float, pointerDirectionY: Float) = 0f
+    override fun consumePostScroll(
+        initialVelocity: Float,
+        overscrollDelta: Float,
+        source: androidx.compose.foundation.OverscrollSource
+    ) = 0f
+    override suspend fun animateToRelief(velocity: Float) {}
+    override val isActive: Boolean = false
+    override val effectModifier: Modifier = Modifier
+}
 
 @Composable
 internal fun BuyingPhaseShop(
@@ -89,20 +106,22 @@ internal fun BuyingPhaseShop(
                 title = "Landmarks",
                 modifier = Modifier.width(238.dp)
             ) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = SHOP_GRID_CONTENT_PADDING,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(items = landmarks, key = { it.type }) { item ->
-                        ShopImageTile(
-                            item = item,
-                            state = state,
-                            onPurchaseClick = onPurchaseClick,
-                            isRecommended = item.type == recommendedCardType?.name
-                        )
+                CompositionLocalProvider(overscroll provides NoOpOverscrollEffect) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(5),
+                        contentPadding = SHOP_GRID_CONTENT_PADDING,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(items = landmarks, key = { it.type }) { item ->
+                            ShopImageTile(
+                                item = item,
+                                state = state,
+                                onPurchaseClick = onPurchaseClick,
+                                isRecommended = item.type == recommendedCardType?.name
+                            )
+                        }
                     }
                 }
             }
@@ -113,20 +132,22 @@ internal fun BuyingPhaseShop(
                 title = "Establishments",
                 modifier = Modifier.weight(1f)
             ) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    contentPadding = SHOP_GRID_CONTENT_PADDING,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(items = establishments, key = { it.type }) { item ->
-                        ShopImageTile(
-                            item = item,
-                            state = state,
-                            onPurchaseClick = onPurchaseClick,
-                            isRecommended = item.type == recommendedCardType?.name
-                        )
+                CompositionLocalProvider(overscroll provides NoOpOverscrollEffect) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(5),
+                        contentPadding = SHOP_GRID_CONTENT_PADDING,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(items = establishments, key = { it.type }) { item ->
+                            ShopImageTile(
+                                item = item,
+                                state = state,
+                                onPurchaseClick = onPurchaseClick,
+                                isRecommended = item.type == recommendedCardType?.name
+                            )
+                        }
                     }
                 }
             }
@@ -175,15 +196,20 @@ private fun ShopImageTile(
     isRecommended: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val canPurchase = state.canPurchaseItem(item) &&
-        (state.purchaseState == PurchaseState.IDLE || state.purchaseState == PurchaseState.ERROR)
+    val canPurchase = state.canPurchaseItem(item)
+    val isSelected = state.pendingPurchaseItemType == item.type
     val isFeedbackItem = state.purchaseFeedbackItemType == item.type
+
     val borderColor = when {
         isFeedbackItem && state.purchaseState == PurchaseState.SUCCESS -> PrimaryOrange
         isFeedbackItem && state.purchaseState == PurchaseState.PENDING -> MaterialTheme.colorScheme.primary
+        isSelected -> SelectedHighlight
         isRecommended -> RecommendedHighlight
         else -> Color.Transparent
     }
+
+    // Allow clicking if purchasable OR if already selected (to deselect/change selection)
+    val isClickable = canPurchase || isSelected
 
     Image(
         painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
@@ -195,7 +221,7 @@ private fun ShopImageTile(
             .alpha(if (state.canPurchaseItem(item)) 1f else 0.45f)
             .border(2.dp, borderColor, SHOP_CARD_SHAPE)
             .clip(SHOP_CARD_SHAPE)
-            .clickable(enabled = canPurchase) { onPurchaseClick(item.type) }
+            .clickable(enabled = isClickable) { onPurchaseClick(item.type) }
             .semantics {
                 contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
                     if (isRecommended) ", recommended" else ""
