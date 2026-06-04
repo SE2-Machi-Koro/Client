@@ -108,10 +108,12 @@ class LobbyScreenViewModelTest {
         sessionHolder.signIn(token = "uuid-123", username = "alice", userId = 1)
         fakeClient.emitIsLobbyHost(true)
         fakeClient.emitPlayers(listOf(
-            PlayerCoinState(id = "1", displayName = "alice", coins = 3),
-            PlayerCoinState(id = "2", displayName = "bob", coins = 5),
+            PlayerCoinState(id = "1", displayName = "alice", coins = 3, isReady = true),
+            PlayerCoinState(id = "2", displayName = "bob", coins = 5, isReady = true),
         ))
         advanceUntilIdle()
+        // Host must be locally ready before sendGameStart is allowed
+        viewModel.onReadyToggle()
         viewModel.onStartGame()
         assertTrue(fakeClient.gameStartSent)
     }
@@ -141,10 +143,12 @@ class LobbyScreenViewModelTest {
         fakeClient.emitIsLobbyHost(true)
         fakeClient.emitActiveGameId(42)
         fakeClient.emitPlayers(listOf(
-            PlayerCoinState(id = "1", displayName = "alice", coins = 3),
-            PlayerCoinState(id = "2", displayName = "bob", coins = 5),
+            PlayerCoinState(id = "1", displayName = "alice", coins = 3, isReady = true),
+            PlayerCoinState(id = "2", displayName = "bob", coins = 5, isReady = true),
         ))
         advanceUntilIdle()
+        // Host must be locally ready before sendGameStart is allowed
+        viewModel.onReadyToggle()
         viewModel.onStartGame()
         assertTrue(fakeClient.gameStartSent)
     }
