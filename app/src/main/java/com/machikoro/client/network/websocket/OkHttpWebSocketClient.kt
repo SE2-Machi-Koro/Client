@@ -1322,8 +1322,6 @@ class OkHttpWebSocketClient(
         // StompAuthChannelInterceptor. If the server message changes, this
         // client will silently fall through to the generic ERROR handling.
         private const val AUTH_REJECTION_BODY = "Authentication failed"
-        private const val GAME_START_BODY =
-            """{"type":"START","sender":"${WebSocketContract.defaultSender}"}"""
 
         private fun purchaseBody(
             gameId: Int,

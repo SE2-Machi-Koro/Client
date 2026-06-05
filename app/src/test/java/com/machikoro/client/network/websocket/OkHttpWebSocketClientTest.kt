@@ -673,7 +673,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(gameStartedFrame(gameId = 7, activePlayerId = 1))
+        factory.simulateText(gameStartedFrame(gameId = 7))
         client.rollDice(diceCount = 1)
         assertTrue(factory.socket.sentMessages.any {
             it.startsWith("SEND\n") &&
@@ -690,7 +690,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
-        factory.simulateText(gameStartedFrame(gameId = 7, activePlayerId = 1))
+        factory.simulateText(gameStartedFrame(gameId = 7))
 
         client.rollDice(diceCount = 2)
 
@@ -1109,7 +1109,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText(gameStartedFrame(gameId = 7, activePlayerId = 1))
+        factory.simulateText(gameStartedFrame(gameId = 7))
         client.rollDice(diceCount = 2)
         assertTrue(factory.socket.sentMessages.any { it.contains("\"diceCount\":2") })
     }
@@ -1217,9 +1217,7 @@ class OkHttpWebSocketClientTest {
         runCurrent()
         assertEquals(null, client.lobbyCode.value)
     }
-    private fun authRejectionErrorFrame(): String =
-        "ERROR\nmessage:Authentication failed\n\nAuthentication failed\u0000"
-  
+
     // ── handleLobbyCreated — host auto-add ───────────────────────────────────
 
     @Test
@@ -1951,7 +1949,7 @@ class OkHttpWebSocketClientTest {
         assertTrue(factory.socket.sentMessages.any { it.contains("destination:/queue/lobby-usersess-1") })
 
         // Disconnect clears session ID; reconnect with new session gets new subscription
-        factory.simulateFailure(java.io.IOException("drop"))
+        factory.simulateFailure(IOException("drop"))
         runCurrent()
         factory.simulateOpen()
         factory.socket.sentMessages.clear()
@@ -2318,7 +2316,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
-        factory.simulateText(gameStartedFrame(gameId = 42, activePlayerId = 1))
+        factory.simulateText(gameStartedFrame(gameId = 42))
         assertEquals(42, client.activeGameId.value)
         assertTrue(client.lobbyCode.value != null)
         client.sendGameStart()
@@ -2615,9 +2613,9 @@ class OkHttpWebSocketClientTest {
     private fun gameActionFrame(body: String): String =
         "MESSAGE\ndestination:/topic/public\ncontent-type:application/json\n\n$body\u0000"
 
-    private fun gameStartedFrame(gameId: Int, activePlayerId: Int): String =
+    private fun gameStartedFrame(gameId: Int): String =
         gameActionFrame(
-            """{"type":"GAME_STARTED","gameId":$gameId,"payload":{"activePlayerId":$activePlayerId,"game":{"id":$gameId,"lobbyCode":"ABC1234","turnPhase":"ROLL_DICE"},"players":[]}}"""
+            """{"type":"GAME_STARTED","gameId":$gameId,"payload":{"activePlayerId":1,"game":{"id":$gameId,"lobbyCode":"ABC1234","turnPhase":"ROLL_DICE"},"players":[]}}"""
         )
 
     private fun FakeWebSocket.rollDiceFrames(): List<StompFrame> =
