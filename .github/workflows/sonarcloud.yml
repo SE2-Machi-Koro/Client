@@ -39,7 +39,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build, run tests, generate JaCoCo report and scan with SonarCloud
-        run: ./gradlew sonar --no-daemon --stacktrace
+        run: ./gradlew sonar --no-daemon --stacktrace -Dsonar.scanner.skipJreProvisioning=true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
