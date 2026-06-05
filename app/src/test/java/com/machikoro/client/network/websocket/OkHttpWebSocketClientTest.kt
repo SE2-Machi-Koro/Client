@@ -425,6 +425,20 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun sendCreateLobbyDoesNotSetHostFlagBeforeServerHostIdArrives() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.sendCreateLobby()
+
+        assertFalse(client.isLobbyHost.value)
+    }
+
+    @Test
     fun sendCreateLobbyWithoutConnectionIsIgnored() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -1285,13 +1299,47 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
-    fun lobbyCreatedTriggersAutoJoinWhenIsLobbyHost() {
+    fun lobbyCreatedSetsHostFlagWhenHostIdMatchesCurrentUser() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
-        client.sendCreateLobby() // sets isLobbyHost = true
+
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"ABC123","hostId":$DEFAULT_USER_ID}}"""
+            )
+        )
+
+        assertTrue(client.isLobbyHost.value)
+    }
+
+    @Test
+    fun lobbyCreatedKeepsHostFlagFalseWhenHostIdDoesNotMatchCurrentUser() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"ABC123","host_id":999}}"""
+            )
+        )
+
+        assertFalse(client.isLobbyHost.value)
+    }
+
+    @Test
+    fun lobbyCreatedTriggersAutoJoinAfterCreateRequest() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        client.sendCreateLobby()
         factory.simulateText(
             gameActionFrame(
                 """{"type":"LOBBY_CREATED","sender":"SERVER","payload":{"lobbyCode":"ABC123"}}"""
@@ -1789,6 +1837,52 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun lobbyRosterSetsHostFlagWhenHostIdMatchesCurrentUser() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+
+        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"hostId":$DEFAULT_USER_ID,"players":[{"playerId":5,"userId":$DEFAULT_USER_ID,"username":"Alice","coins":3}]}}"""
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
+
+        assertTrue(client.isLobbyHost.value)
+    }
+
+    @Test
+    fun lobbyRosterUpdatesHostFlagWhenHostChanges() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+
+        val hostRoster = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"host_id":$DEFAULT_USER_ID,"players":[{"playerId":5,"userId":$DEFAULT_USER_ID,"username":"Alice","coins":3},{"playerId":6,"userId":2,"username":"Bob","coins":3}]}}"""
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$hostRoster ")
+        assertTrue(client.isLobbyHost.value)
+
+        val guestRoster = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"host_id":2,"players":[{"playerId":5,"userId":$DEFAULT_USER_ID,"username":"Alice","coins":3},{"playerId":6,"userId":2,"username":"Bob","coins":3}]}}"""
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$guestRoster ")
+
+        assertFalse(client.isLobbyHost.value)
+    }
+
+    @Test
+    fun lobbyRosterCanResolveHostFromHostPlayerEntryWhenNoHostIdFieldExists() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+
+        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[{"playerId":5,"userId":$DEFAULT_USER_ID,"username":"Alice","coins":3,"isHost":true},{"playerId":6,"userId":2,"username":"Bob","coins":3}]}}"""
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
+
+        assertTrue(client.isLobbyHost.value)
+    }
+
+    @Test
     fun lobbyRosterWithEmptyArrayClearsPlayerList() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -2129,6 +2223,7 @@ class OkHttpWebSocketClientTest {
                 "type":"LOBBY_CREATED",
                 "payload":{
                     "lobbyCode":"ABC123",
+                    "hostId":$DEFAULT_USER_ID,
                     "gameId":42
                 }
             }"""
@@ -2162,11 +2257,10 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
-        client.sendCreateLobby() // sets isLobbyHost = true
         factory.socket.sentMessages.clear()
         factory.simulateText(
             gameActionFrame(
-                """{"type":"LOBBY_JOINED","gameId":10,"payload":{"username":"alice","playerId":1,"coins":3,"gameId":10}}"""
+                """{"type":"LOBBY_JOINED","gameId":10,"payload":{"username":"alice","playerId":1,"coins":3,"gameId":10,"hostId":$DEFAULT_USER_ID}}"""
             )
         )
         assertTrue(
