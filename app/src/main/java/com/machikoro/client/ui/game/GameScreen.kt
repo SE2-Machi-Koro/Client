@@ -275,7 +275,7 @@ fun GameScreen(
                 }
 
                 ActionButton(
-                    onClick = { onRollDice(selectedDiceCount) },
+                    onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
                     enabled = !state.isRolling,
                     label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
                     leftIcon = R.drawable.game_dice_perspective,
