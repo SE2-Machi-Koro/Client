@@ -69,127 +69,65 @@ fun PlayersTopBar(
 private fun PlayerCoinBadge(
     player: PlayerCoinState,
     landmarks: List<PlayerLandmarkState>,
-    cards: List<PlayerCardState>,
     modifier: Modifier = Modifier
 ) {
-    val containerColor = when {
-        player.isCurrentPlayer -> MaterialTheme.colorScheme.primary
-        player.isActivePlayer -> MaterialTheme.colorScheme.tertiary
-        else -> MaterialTheme.colorScheme.surfaceVariant
+    val backgroundColor = when {
+        player.isActivePlayer -> Color(0xFFFFFFFF)
+        else -> Color(0xB3FFFFFF)
     }
-    val contentColor = when {
-        player.isCurrentPlayer -> MaterialTheme.colorScheme.onPrimary
-        player.isActivePlayer -> MaterialTheme.colorScheme.onTertiary
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    Surface(
-        color = containerColor,
-        contentColor = contentColor,
-        shape = RoundedCornerShape(8.dp),
-        tonalElevation = 3.dp,
-        modifier = modifier
-            .widthIn(min = 138.dp, max = 232.dp)
-            .semantics { contentDescription = "${player.displayName}: ${player.coins} coins" }
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CoinIcon(
-                    amount = player.coins,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
 
-                Text(
-                    text = player.displayName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1
-                )
-            }
-            if (cards.hasVisibleCards()) {
-                OwnedCardRow(
-                    playerName = player.displayName,
-                    cards = cards,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-            }
-            if (landmarks.isNotEmpty()) {
-                LandmarkRow(
-                    landmarks = landmarks,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-            }
-        }
-    }
-}
+    val textColor = Color(0xFF004E7E)
 
-@Composable
-private fun OwnedCardRow(
-    playerName: String,
-    cards: List<PlayerCardState>,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        cards.visibleInDisplayOrder().forEach { card ->
-            OwnedCardChip(
-                playerName = playerName,
-                card = card
-            )
-        }
-    }
-}
-
-@Composable
-private fun OwnedCardChip(
-    playerName: String,
-    card: PlayerCardState
-) {
-    val cardName = card.cardType.toDisplayText()
-    val cardUnit = if (card.quantity == 1) "card" else "cards"
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = RoundedCornerShape(6.dp),
-        tonalElevation = 1.dp,
-        modifier = Modifier
-            .widthIn(min = 58.dp, max = 72.dp)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
-            .semantics {
-                contentDescription = "Owned by $playerName: $cardName, ${card.quantity} $cardUnit"
-            }
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(4.dp)
+    val scale = if(player.isActivePlayer) 1.0f else 0.95f
+    val fontSize = if(player.isActivePlayer) 18.sp else 16.sp
+    Box(modifier = Modifier.scale(scale)
         ) {
-            Image(
-                painter = painterResource(ShopImageResolver.drawableForCardType(card.cardType)),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .height(34.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(4.dp))
-            )
-            Text(
-                text = "x${card.quantity}",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = backgroundColor,
+                shadowElevation = 3.dp,
+                modifier = modifier
+                    .wrapContentSize()
+                    .semantics {
+                        contentDescription =
+                            "${player.displayName}, ${player.coins} coins"
+                    },
+
+                ) {
+                Column(
+                    modifier = modifier
+                        .padding(horizontal = 28.dp, vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    val name = if (player.isCurrentPlayer) "You" else player.displayName
+                    // Player name
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = fontSize,
+                        color = textColor,
+                        maxLines = 1
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    // Landmarks
+                    LandmarkRow(landmarks)
+                }
+
+            }
+        val opacity = if (player.isCurrentPlayer) 0f else 1f
+            // Coin
+            CoinBadge(
+                amount = player.coins,
+                 modifier = Modifier.align(Alignment.BottomEnd)
+                 .offset(x = 15.dp, y = 12.dp)
+                 .alpha(opacity)
             )
         }
+
+
     }
-}
-
-private fun List<PlayerCardState>.hasVisibleCards(): Boolean =
-    any { it.quantity > 0 }
-
-private fun List<PlayerCardState>.visibleInDisplayOrder(): List<PlayerCardState> {
-    val cardsByType = filter { it.quantity > 0 }.associateBy { it.cardType }
-    return CardType.entries.mapNotNull { cardsByType[it] }
-}
 
 /**
  * Compact built/unbuilt indicator for a player's four landmarks, rendered in a
