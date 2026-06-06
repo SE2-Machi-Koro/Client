@@ -168,6 +168,7 @@ fun GameScreen(
                     PlayersTopBar(
                         players = state.players,
                         playerLandmarks = state.playerLandmarks,
+                        playerCards = state.playerCards,
                         modifier = Modifier.align(Alignment.Center)
                     )
 
