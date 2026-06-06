@@ -92,7 +92,8 @@ fun LobbyScreen(
     onResetLobby: () -> Unit = {},
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
-    val startEnabled = isHost && players.size >= 2 && isReady
+    // All players must be ready, not just the host
+    val startEnabled = isHost && players.size >= 2 && players.all { it.isReady }
     // True when any dummy player (filled via debug) is present in the roster
     val hasDummies = players.any { it.displayName.startsWith("debug_player") }
 
