@@ -38,8 +38,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.machikoro.client.R
 import com.machikoro.client.domain.model.state.LobbyScreenState
+import com.machikoro.client.ui.shared.ArrowTextButton
 import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ButtonBlueDark
 import com.machikoro.client.ui.theme.ClientTheme
@@ -51,8 +53,10 @@ import com.machikoro.client.ui.theme.PanelBorder
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.Header
 import com.machikoro.client.ui.theme.ButtonBorderBeige
+import com.machikoro.client.ui.theme.ButtonBorderBlue
 import com.machikoro.client.ui.theme.ButtonBorderOrange
 import com.machikoro.client.ui.theme.ButtonOrange
+import com.machikoro.client.ui.theme.ButtonShadowColor
 import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueLight
 import com.machikoro.client.ui.theme.TextOnOrange
@@ -113,9 +117,9 @@ fun LobbyScreen(
         // Main title.
         Header("Lobby",
             modifier = Modifier
-                .padding(top = 24.dp)
+                .padding(top = 23.dp)
                 .align(Alignment.TopCenter),
-            fontSize = 56
+            fontSize = 52
         )
 
         Column(
@@ -144,7 +148,7 @@ fun LobbyScreen(
                                 .width(170.dp)
                                 .height(55.dp)
                                 .background(
-                                    color = ButtonBorderBeige,
+                                    color = ButtonBorderBlue,
                                     shape = RoundedCornerShape(10.dp)
                                 )
                                 .padding(bottom = 4.dp)
@@ -170,7 +174,7 @@ fun LobbyScreen(
                                 .width(170.dp)
                                 .height(55.dp)
                                 .background(
-                                    color = ButtonBorderBeige,
+                                    color = ButtonBorderBlue,
                                     shape = RoundedCornerShape(10.dp)
                                 )
                                 .padding(bottom = 4.dp)
@@ -245,11 +249,11 @@ fun LobbyScreen(
             )
         }
 
-        LeaveLobbyButton(
+        ArrowTextButton(
+            label = "Leave Lobby",
             onClick = onLeaveLobby,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(top = 25.dp, start = 30.dp)
+            modifier = Modifier.offset(x = 30.dp, y = 28.dp),
+            fontSize = 18.sp
         )
     }
 }
@@ -286,7 +290,7 @@ private fun LobbyPanel(
                 Row {
                     Text(
                         text = "Players",
-                        modifier = Modifier.width(200.dp).padding(top = 5.dp, start = 3.dp),
+                        modifier = Modifier.width(200.dp).padding(top = 5.dp, start = 45.dp),
                         color = TextBlueDark,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
@@ -294,7 +298,7 @@ private fun LobbyPanel(
 
                     Text(
                         text = "Status",
-                        modifier = Modifier.width(100.dp).padding(top = 5.dp, start = 10.dp),
+                        modifier = Modifier.width(100.dp).padding(top = 5.dp, start = 17.dp),
                         color = TextBlueDark,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
@@ -536,34 +540,6 @@ private fun LobbyCodeCopyRow(
                 )
             }
         }
-    }
-}
-@Composable
-private fun LeaveLobbyButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .clickable { onClick() },
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "←",
-            color = PrimaryOrange,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.offset(y = (-3).dp)
-        )
-
-        Spacer(modifier = Modifier.width(6.dp))
-
-        Text(
-            text = "Leave Lobby",
-            color = PrimaryOrange,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold
-        )
     }
 }
 
