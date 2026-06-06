@@ -24,7 +24,11 @@ project(":app") {
             )
             property(
                 "sonar.exclusions",
-                "**/build/**,**/generated/**,**/ui/**,**/res/**,**/AndroidManifest.xml,**/*.xml"
+                "**/build/**,**/generated/**,**/ui/**,**/res/**,**/assets/**,**/AndroidManifest.xml,**/*.xml,**/*.pdf"
+            )
+            property(
+                "sonar.androidLint.reportPaths",
+                layout.buildDirectory.file("reports/lint-results-debug.xml").get().asFile
             )
             property("sonar.test.exclusions", "**/build/**,**/androidTest/**")
             property(
@@ -39,11 +43,11 @@ sonar {
     properties {
         property(
             "sonar.exclusions",
-            "**/build/**,**/generated/**,**/gradlew**"
+            "**/build/**,**/generated/**,**/gradlew**,**/assets/**,**/*.pdf"
         )
     }
 }
 
 tasks.named("sonar") {
-    dependsOn(":app:jacocoTestReport")
+    dependsOn(":app:jacocoTestReport", ":app:lintDebug")
 }
