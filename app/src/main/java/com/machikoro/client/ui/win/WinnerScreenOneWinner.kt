@@ -15,6 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.R
+import com.machikoro.client.domain.enums.LandmarkType
+import com.machikoro.client.domain.model.state.PlayerCoinState
+import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.AnimatedItem
 import com.machikoro.client.ui.shared.AnimationType
@@ -41,6 +44,7 @@ fun GameOverOneWinner(
     roundsNumber: Int,
     onBackHome: () -> Unit,
     onViewLeaderboard: () -> Unit = {},
+    rankedPlayers: List<Pair<String, Int>> = emptyList(),
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         Background(R.drawable.game_end)
@@ -70,12 +74,21 @@ fun GameOverOneWinner(
                         PlayerProfileCard(winnerName, 1)
                     }
                     AnimatedItem(
-                        delayMillis = 1000, // show crown after all cards are shown
+                        delayMillis = 1000,
                         animationType = AnimationType.Bounce
                     ) {
                         Box(modifier = Modifier.offset(y = (-28).dp)) {
                             Crown()
                         }
+                    }
+                }
+
+                rankedPlayers.drop(1).forEachIndexed { index, (name, _) ->
+                    AnimatedItem(
+                        delayMillis = 1500 + index * 300,
+                        animationType = AnimationType.Bounce
+                    ) {
+                        PlayerProfileCard(name, index + 2)
                     }
                 }
 
@@ -114,6 +127,12 @@ fun GameOverOnePlayerPreview() {
             roundsNumber = 5,
             onBackHome = {},
             onViewLeaderboard = {},
+            rankedPlayers = listOf(
+                "Alice" to 4,
+                "Bob" to 2,
+                "Charlie" to 1,
+                "Diana" to 0,
+            )
         )
     }
 }
