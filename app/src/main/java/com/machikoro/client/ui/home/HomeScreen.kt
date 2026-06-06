@@ -415,35 +415,6 @@ private fun JoinLobbyCodeRow(
 }
 
 @Composable
-private fun LogoutButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .clickable { onClick() },
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "←",
-            color = PrimaryOrange,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.offset(y = (-3).dp)
-        )
-
-        Spacer(modifier = Modifier.width(6.dp))
-
-        Text(
-            text = "Logout",
-            color = PrimaryOrange,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
 private fun BottomMenuBar(
     onRulesClick: () -> Unit,
     onRankingClick: () -> Unit,
