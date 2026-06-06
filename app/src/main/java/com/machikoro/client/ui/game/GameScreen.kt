@@ -246,27 +246,26 @@ fun GameScreen(
                     state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
                 }
 
-                if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
-                    var selectedDiceCount by remember { mutableIntStateOf(1) }
+            if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
+                var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
 
-                    if (state.hasTrainStation) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf(1, 2).forEach { count ->
-                                Button(
-                                    onClick = { selectedDiceCount = count },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (selectedDiceCount == count)
-                                            MaterialTheme.colorScheme.primary
-                                        else
-                                            MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = if (selectedDiceCount == count)
-                                            MaterialTheme.colorScheme.onPrimary
-                                        else
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                ) {
-                                    Text("$count 🎲")
-                                }
+                if (state.hasTrainStation) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(1, 2).forEach { count ->
+                            Button(
+                                onClick = { selectedDiceCount = count },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (selectedDiceCount == count)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (selectedDiceCount == count)
+                                        MaterialTheme.colorScheme.onPrimary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            ) {
+                                Text("$count 🎲")
                             }
                         }
                     }
@@ -296,6 +295,15 @@ fun GameScreen(
                         label = turnFlowLabel,
                     )
                 }
+                ActionButton(
+                    onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
+                    enabled = !state.isRolling,
+                    label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
+                    leftIcon = R.drawable.game_dice_perspective,
+                    modifier = Modifier.semantics {
+                        contentDescription = "Würfeln"
+                    }
+                )
             }
 
         },
