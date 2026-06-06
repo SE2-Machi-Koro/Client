@@ -128,7 +128,13 @@ class WebSocketClientTest {
             fixture.client.marketplace.value
         )
         assertEquals(false, fixture.client.shopItems.value.first { it.type == "WHEAT_FIELD" }.isAvailable)
-        assertEquals(true, fixture.client.shopItems.value.first { it.type == "BAKERY" }.isAvailable)
+        val bakery = fixture.client.shopItems.value.first { it.type == "BAKERY" }
+        assertEquals(true, bakery.isAvailable)
+        assertEquals("2-3", bakery.activationText)
+        assertEquals("Get 1 coin from the bank on your turn.", bakery.effectText)
+        val trainStation = fixture.client.shopItems.value.first { it.type == "TRAIN_STATION" }
+        assertEquals("Permanent", trainStation.activationText)
+        assertEquals("You may roll one or two dice.", trainStation.effectText)
     }
 
     @Test
@@ -195,6 +201,19 @@ class WebSocketClientTest {
     }
 
     @Test
+    fun shopDefinitionsPreferServerProvidedActivationAndEffectText() {
+        val fixture = okHttpClientFixture()
+
+        fixture.deliverMessage(syncMessage(snapshotWithDetailedShopDefinitions()))
+
+        val bakery = fixture.client.shopItems.value.first { it.type == "BAKERY" }
+        assertEquals("2-3", bakery.activationText)
+        assertEquals("Server bakery effect", bakery.effectText)
+        val trainStation = fixture.client.shopItems.value.first { it.type == "TRAIN_STATION" }
+        assertEquals("Permanent", trainStation.activationText)
+        assertEquals("Server train station effect", trainStation.effectText)
+    }
+
     fun twoClientsApplySameGameStartedBroadcast() {
         val playerA = okHttpClientFixture(userId = 101)
         val playerB = okHttpClientFixture(userId = 202)
@@ -452,4 +471,48 @@ class WebSocketClientTest {
             }
         """.trimIndent()
     }
+
+    private fun snapshotWithDetailedShopDefinitions(): String =
+        """
+            {
+              "game":{
+                "id":77,
+                "status":"IN_PROGRESS",
+                "hostUserId":101,
+                "lobbyCode":"ABC123",
+                "maxPlayers":4,
+                "currentTurnIndex":1,
+                "turnPhase":"BUY_OR_BUILD",
+                "lastDiceRoll":8,
+                "roundNumber":2,
+                "hasPurchasedThisTurn":false
+              },
+              "players":[
+                {"id":11,"gameId":77,"userId":101,"turnOrder":0,"coins":1,"lastSeenAt":null},
+                {"id":22,"gameId":77,"userId":202,"turnOrder":1,"coins":4,"lastSeenAt":null}
+              ],
+              "marketplace":{
+                "BAKERY":4
+              },
+              "cardDefinitions":[
+                {
+                  "cardType":"BAKERY",
+                  "cost":1,
+                  "color":"GREEN",
+                  "establishmentType":"RESTAURANT",
+                  "activationNumbers":[2,3],
+                  "effectDescription":"Server bakery effect"
+                }
+              ],
+              "landmarkDefinitions":[
+                {
+                  "landmarkType":"TRAIN_STATION",
+                  "cost":4,
+                  "description":"Server train station effect"
+                }
+              ],
+              "turnOrder":[101,202],
+              "activePlayerId":202
+            }
+        """.trimIndent()
 }

@@ -71,7 +71,6 @@ fun GameScreen(
         enabled = state.gameStatus == GameStatus.IN_PROGRESS,
         onShake = onShake,
     )
-
     var showLeaveDialog by remember { mutableStateOf(false) }
 
     if (showLeaveDialog) {
@@ -81,37 +80,57 @@ fun GameScreen(
                 Text("Leave Game?")
             },
             text = {
-                Text("The game will keep running. You can resume it from the home screen.")
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("The game will keep running. You can resume it from the home screen.")
+
+                    // Debug-only in-game tools, stacked in the dialog body so they don't
+                    // crowd the Leave/Stay buttons and so neither label wraps/clips in the
+                    // dialog's narrow width (#255). Compiled out of release builds.
+                    if (BuildConfig.DEBUG && state.gameStatus == GameStatus.IN_PROGRESS) {
+                        Column {
+                            Text(
+                                text = "Debug",
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+
+                            // Insider Trading cheat trigger (#255): tap alternative to the
+                            // shake gesture so the cheat is reachable on emulators / devices
+                            // without a usable accelerometer. Calls the same onShake() path,
+                            // so off-turn it's a silent no-op exactly like a real shake.
+                            TextButton(
+                                onClick = {
+                                    showLeaveDialog = false
+                                    onShake()
+                                }
+                            ) {
+                                Text("Insider tip")
+                            }
+
+                            if (state.gameId != null && state.myUserId != null) {
+                                TextButton(
+                                    onClick = {
+                                        showLeaveDialog = false
+                                        onEndGame()
+                                    }
+                                ) {
+                                    Text(
+                                        text = "End game",
+                                        color = Color.Red
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             },
             confirmButton = {
-                Row {
-                    TextButton(
-                        onClick = {
-                            showLeaveDialog = false
-                            onLeaveGame()
-                        }
-                    ) {
-                        Text("Leave")
+                TextButton(
+                    onClick = {
+                        showLeaveDialog = false
+                        onLeaveGame()
                     }
-
-                    if (
-                        BuildConfig.DEBUG &&
-                        state.gameStatus == GameStatus.IN_PROGRESS &&
-                        state.gameId != null &&
-                        state.myUserId != null
-                    ) {
-                        TextButton(
-                            onClick = {
-                                showLeaveDialog = false
-                                onEndGame()
-                            }
-                        ) {
-                            Text(
-                                text = "End game",
-                                color = Color.Red
-                            )
-                        }
-                    }
+                ) {
+                    Text("Leave")
                 }
             },
             dismissButton = {
@@ -164,7 +183,8 @@ fun GameScreen(
 
                 GamePhaseBanner(
                     phase = state.gamePhase,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    text = state.customDisplayText
                 )
             }
         }
