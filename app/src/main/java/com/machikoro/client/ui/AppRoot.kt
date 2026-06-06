@@ -40,6 +40,7 @@ import com.machikoro.client.ui.leaderboard.LeaderboardState
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.win.GameOverOneWinner
+import com.machikoro.client.ui.win.resolveRankedPlayers
 import com.machikoro.client.ui.win.resolveWinnerName
 import kotlinx.coroutines.flow.collectLatest
 
@@ -241,6 +242,7 @@ fun AppRoot(
                 GameOverOneWinner(
                     winnerName = resolveWinnerName(gameScreenState),
                     roundsNumber = gameScreenState.roundNumber ?: 0,
+                    rankedPlayers = resolveRankedPlayers(gameScreenState),
                     onBackHome = onBackHome,
                     onViewLeaderboard = {
                         navController.navigate(AppRoute.Leaderboard.route) {
