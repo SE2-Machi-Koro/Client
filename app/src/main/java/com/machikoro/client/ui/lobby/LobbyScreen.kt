@@ -93,6 +93,8 @@ fun LobbyScreen(
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     val startEnabled = isHost && players.size >= 2 && isReady
+    // True when any dummy player (filled via debug) is present in the roster
+    val hasDummies = players.any { it.displayName.startsWith("debug_player") }
 
     Box(
         modifier = modifier
@@ -209,36 +211,6 @@ fun LobbyScreen(
             ) {
                 Text("Start Game", color = TextWhite, style =  MaterialTheme.typography.labelLarge)
             }
-
-            // Debug helper: fill remaining slots so the host can start without real players
-            if (isHost && players.size < maxPlayers) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = onFillWithDummies,
-                    modifier = Modifier
-                        .width(320.dp)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
-                ) {
-                    Text("[Debug] Fill with dummies", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
-                }
-            }
-
-            // Debug helper: remove all non-host players so the host can start fresh
-            if (isHost && players.size > 1) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Button(
-                    onClick = onResetLobby,
-                    modifier = Modifier
-                        .width(320.dp)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
-                ) {
-                    Text("[Debug] Reset lobby", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
-                }
-            }
         }
 
         ReadyToggle(
@@ -256,6 +228,24 @@ fun LobbyScreen(
                     .align(Alignment.TopStart)
                     .padding(top = 180.dp, start = 95.dp)
             )
+        }
+
+        // Debug button: fill lobby with dummies, or reset once dummies are present
+        if (isHost) {
+            val debugLabel = if (hasDummies) "[Debug] Reset lobby" else "[Debug] Fill with dummies"
+            val debugAction = if (hasDummies) onResetLobby else onFillWithDummies
+            Button(
+                onClick = debugAction,
+                enabled = hasDummies || players.size < maxPlayers,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 20.dp, bottom = 20.dp)
+                    .height(34.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
+            ) {
+                Text(debugLabel, color = TextBlueDark, style = MaterialTheme.typography.labelSmall)
+            }
         }
 
         LeaveLobbyButton(
