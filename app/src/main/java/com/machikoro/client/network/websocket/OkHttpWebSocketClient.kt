@@ -499,23 +499,22 @@ class OkHttpWebSocketClient(
         when (frame.command) {
             "CONNECTED" -> {
                 Log.d(TAG, "STOMP connected")
-                // A live STOMP session: drop any pending retry and reset backoff.
                 cancelReconnect()
-                mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+
+                // All subscriptions must be queued on the socket before we signal CONNECTED.
+                // HomeViewModel waits for CONNECTED before sending lobby.join — if the lobby
+                // queue subscription hasn't been sent yet, the server's LOBBY_ROSTER reply
+                // arrives on a queue the client hasn't registered, and the message is lost.
                 subscribeToPublicTopic()
                 subscribeToErrorsQueue()
-
-                // Subscribe before the JOIN send below: chat.addUser triggers the
-                // server-side reconnect snapshot, and the SUBSCRIBE must be
-                // registered first or the SYNC frame is delivered to nobody.
                 subscribeToSyncQueue()
-
-                // Use session-scoped destination when server provides session ID; fall back to user-scoped
                 val sessionId = frame.headers["session"]
                 stompSessionId = sessionId
                 subscribeToLobbyQueue(sessionId)
-
                 mutableActiveGameId.value?.let(::subscribeToGameTopic)
+
+                // Signal ready only after all SUBSCRIBE frames are in the socket queue
+                mutableConnectionStatus.value = ConnectionStatus.CONNECTED
                 sendJoinMessage()
             }
             "MESSAGE" -> {
