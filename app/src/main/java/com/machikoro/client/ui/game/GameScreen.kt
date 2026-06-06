@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -47,6 +46,7 @@ import com.machikoro.client.ui.game.ui.BuyingPhaseShop
 import com.machikoro.client.ui.game.ui.DiceAnimationDisplay
 import com.machikoro.client.ui.game.ui.DiceResultDisplay
 import com.machikoro.client.ui.game.ui.GamePhaseBanner
+import com.machikoro.client.ui.game.ui.GameScreenLayout
 import com.machikoro.client.ui.game.ui.InitializationLoadingOverlay
 import com.machikoro.client.ui.game.ui.MarketplaceSection
 import com.machikoro.client.ui.game.ui.PlayersTopBar
@@ -94,10 +94,6 @@ fun GameScreen(
                                 style = MaterialTheme.typography.labelMedium,
                             )
 
-                            // Insider Trading cheat trigger (#255): tap alternative to the
-                            // shake gesture so the cheat is reachable on emulators / devices
-                            // without a usable accelerometer. Calls the same onShake() path,
-                            // so off-turn it's a silent no-op exactly like a real shake.
                             TextButton(
                                 onClick = {
                                     showLeaveDialog = false
@@ -107,22 +103,24 @@ fun GameScreen(
                                 Text("Insider tip")
                             }
 
-                    if (
-                        BuildConfig.DEBUG &&
-                        state.gameStatus == GameStatus.IN_PROGRESS &&
-                        state.gameId != null &&
-                        state.myUserId != null
-                    ) {
-                        TextButton(
-                            onClick = {
-                                showLeaveDialog = false
-                                onEndGame()
+                            if (
+                                BuildConfig.DEBUG &&
+                                state.gameStatus == GameStatus.IN_PROGRESS &&
+                                state.gameId != null &&
+                                state.myUserId != null
+                            ) {
+                                TextButton(
+                                    onClick = {
+                                        showLeaveDialog = false
+                                        onEndGame()
+                                    }
+                                ) {
+                                    Text(
+                                        text = "End game",
+                                        color = Color.Red
+                                    )
+                                }
                             }
-                        ) {
-                            Text(
-                                text = "End game",
-                                color = Color.Red
-                            )
                         }
                     }
                 }
@@ -177,10 +175,8 @@ fun GameScreen(
                             state.playerLandmarks,
                         modifier = Modifier.align(
                             Alignment.Center
-                        )
-                        playerLandmarks = state.playerLandmarks,
+                        ),
                         playerCards = state.playerCards,
-                        modifier = Modifier.align(Alignment.Center)
                     )
 
                     state.roundNumber?.let { round ->
@@ -217,90 +213,91 @@ fun GameScreen(
         // CENTER
         // =====================================
         centerContent = {
-        },
 
-        if (state.isBuyingPhase) {
-            BuyingPhaseShop(
-                state = state,
-                items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
-                onPurchaseClick = onPurchaseClick,
-                recommendedCardType = cheatRecommendation,
-                modifier = Modifier.align(Alignment.Center)
-            )
-        }
-
-        if (false) {
-            MarketplaceSection(
-                marketplace = state.marketplace,
-                recommendedCardType = cheatRecommendation,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(horizontal = 12.dp)
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            when {
-                state.isRolling -> DiceAnimationDisplay()
-                state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
+            if (state.isBuyingPhase) {
+                BuyingPhaseShop(
+                    state = state,
+                    items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
+                    onPurchaseClick = onPurchaseClick,
+                    recommendedCardType = cheatRecommendation,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
 
-            if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
-                var selectedDiceCount by remember { mutableIntStateOf(1) }
+            if (false) {
+                MarketplaceSection(
+                    marketplace = state.marketplace,
+                    recommendedCardType = cheatRecommendation,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = 12.dp)
+                )
+            }
 
-                if (state.hasTrainStation) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(1, 2).forEach { count ->
-                            Button(
-                                onClick = { selectedDiceCount = count },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (selectedDiceCount == count)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.surfaceVariant,
-                                    contentColor = if (selectedDiceCount == count)
-                                        MaterialTheme.colorScheme.onPrimary
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            ) {
-                                Text("$count 🎲")
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                when {
+                    state.isRolling -> DiceAnimationDisplay()
+                    state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
+                }
+
+                if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
+                    var selectedDiceCount by remember { mutableIntStateOf(1) }
+
+                    if (state.hasTrainStation) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(1, 2).forEach { count ->
+                                Button(
+                                    onClick = { selectedDiceCount = count },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (selectedDiceCount == count)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = if (selectedDiceCount == count)
+                                            MaterialTheme.colorScheme.onPrimary
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                ) {
+                                    Text("$count 🎲")
+                                }
                             }
                         }
                     }
+
+                    ActionButton(
+                        onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
+                        enabled = !state.isRolling,
+                        label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
+                        leftIcon = R.drawable.game_dice_perspective,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Würfeln"
+                        }
+                    )
                 }
 
-                ActionButton(
-                    onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
-                    enabled = !state.isRolling,
-                    label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
-                    leftIcon = R.drawable.game_dice_perspective,
-                    modifier = Modifier.semantics {
-                        contentDescription = "Würfeln"
-                    }
-                )
+                val turnFlowLabel = state.turnFlowActionLabel()
+                if (
+                    turnFlowLabel != null &&
+                    state.isActivePlayer &&
+                    state.gameStatus == GameStatus.IN_PROGRESS
+                ) {
+                    ActionButton(
+                        onClick = onTurnFlowAction,
+                        modifier = Modifier.semantics {
+                            contentDescription = turnFlowLabel
+                        },
+                        label = turnFlowLabel,
+                    )
+                }
             }
 
-            val turnFlowLabel = state.turnFlowActionLabel()
-            if (
-                turnFlowLabel != null &&
-                state.isActivePlayer &&
-                state.gameStatus == GameStatus.IN_PROGRESS
-            ) {
-                ActionButton(
-                    onClick = onTurnFlowAction,
-                    modifier = Modifier.semantics {
-                        contentDescription = turnFlowLabel
-                    },
-                    label = turnFlowLabel,
-                )
-            }
         },
         // =====================================
         // RIGHT
@@ -311,13 +308,15 @@ fun GameScreen(
                         color = Color.White)
             }
         }
+    )
+
 
         InitializationLoadingOverlay(
             connectionStatus = state.connectionStatus,
             gameStatus = state.gameStatus
         )
     }
-}
+
 
 private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
     GamePhase.RESOLVE_EFFECTS -> "Resolve effects"
