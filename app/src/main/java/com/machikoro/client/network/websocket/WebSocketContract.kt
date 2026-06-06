@@ -18,6 +18,7 @@ object WebSocketContract {
     const val createLobbyDestination: String = "/app/lobby.create"
     const val joinLobbyDestination = "/app/lobby.join"
     const val leaveLobbyDestination = "/app/lobby.leave"
+    const val readyToggleDestination: String = "/app/lobby.ready"
     const val gameStartDestination: String = "/app/game.start"
     // Server PR #216 exposes PurchaseRequest at @MessageMapping("/game.purchase").
     const val purchaseDestination: String = "/app/game.purchase"

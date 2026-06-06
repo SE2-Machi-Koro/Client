@@ -278,6 +278,39 @@ class OkHttpWebSocketClient(
         }
     }
 
+    override fun sendReadyToggle(isReady: Boolean) {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "sendReadyToggle called but no active WebSocket connection")
+            return
+        }
+        val gameId = mutableActiveGameId.value
+        if (gameId == null) {
+            Log.w(TAG, "sendReadyToggle: no active game, dropping toggle")
+            return
+        }
+        val body = JSONObject()
+            .put("type", "LOBBY_ROSTER")
+            .put("sender", WebSocketContract.defaultSender)
+            .put("payload", JSONObject()
+                .put("gameId", gameId)
+                .put("isReady", isReady)
+            )
+            .toString()
+        val sent = socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.readyToggleDestination,
+                    "content-type" to "application/json"
+                ),
+                body = body
+            ).serialize()
+        )
+        if (sent) Log.d(TAG, "Ready toggle sent: isReady=$isReady, gameId=$gameId")
+        else Log.w(TAG, "sendReadyToggle: failed to send frame")
+    }
+
     override fun sendLeaveLobby(gameId: Int) {
         val socket = synchronized(this) { webSocket }
         if (socket == null) {
@@ -677,6 +710,7 @@ class OkHttpWebSocketClient(
                 id = playerId,
                 displayName = username,
                 coins = entry.optInt("coins", 3),
+                isReady = entry.optBoolean("isReady", false),
             )
         }
         Log.d(TAG, "Lobby roster received: ${mutablePlayers.value.size} players, gameId=$gameId")
