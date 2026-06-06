@@ -7,6 +7,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
@@ -17,7 +19,6 @@ import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
-import com.machikoro.client.ui.game.ui.GameScreen
 import com.machikoro.client.ui.theme.ClientTheme
 import org.junit.Rule
 import org.junit.Test
@@ -31,12 +32,13 @@ class GameScreenSnapshotTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    /** A single-player mid-game snapshot — one player keeps every assertion unambiguous. */
+    /** A mid-game snapshot with synchronized card and landmark ownership for each player. */
     private fun reconnectState() = GameScreenState(
         connectionStatus = ConnectionStatus.CONNECTED,
         gamePhase = GamePhase.BUY_OR_BUILD,
         players = listOf(
-            PlayerCoinState(id = "1", displayName = "You", coins = 9, isCurrentPlayer = true)
+            PlayerCoinState(id = "1", displayName = "You", coins = 9, isCurrentPlayer = true),
+            PlayerCoinState(id = "2", displayName = "Opponent", coins = 4),
         ),
         diceResult = listOf(8),
         activePlayerId = 1,
@@ -49,12 +51,22 @@ class GameScreenSnapshotTest {
                 PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = true),
                 PlayerLandmarkState(LandmarkType.AMUSEMENT_PARK, isBuilt = false),
                 PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = false),
+            ),
+            2 to listOf(
+                PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = false),
+                PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = true),
+                PlayerLandmarkState(LandmarkType.AMUSEMENT_PARK, isBuilt = false),
+                PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = false),
             )
         ),
         playerCards = mapOf(
             1 to listOf(
                 PlayerCardState(CardType.WHEAT_FIELD, quantity = 1),
                 PlayerCardState(CardType.BAKERY, quantity = 2),
+            ),
+            2 to listOf(
+                PlayerCardState(CardType.CAFE, quantity = 2),
+                PlayerCardState(CardType.FOREST, quantity = 1),
             )
         ),
         marketplace = mapOf(CardType.WHEAT_FIELD to 6, CardType.BAKERY to 5),
@@ -112,6 +124,45 @@ class GameScreenSnapshotTest {
 
         composeTestRule.onNodeWithContentDescription("Owned by You: Wheat Field, 3 cards").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Owned by You: Cafe, 1 card").assertIsDisplayed()
+    }
+
+    @Test
+    fun opensPlayerCardWindowFromOpponentNameAndSwitchesPlayers() {
+        composeTestRule.setContent { ClientTheme { GameScreen(state = reconnectState()) } }
+
+        composeTestRule.onNodeWithText("Opponent").performScrollTo().performClick()
+
+        composeTestRule.onNodeWithContentDescription("Player cards window for Opponent").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Opponent owns Cafe, quantity 2").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Opponent landmark Shopping Mall: built").assertIsDisplayed()
+
+        composeTestRule.onNodeWithContentDescription("Inspect You in player cards window").performClick()
+
+        composeTestRule.onNodeWithContentDescription("Player cards window for You").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("You owns Bakery, quantity 2").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("You landmark Train Station: built").assertIsDisplayed()
+    }
+
+    @Test
+    fun updatesOpenPlayerCardWindowWhenSnapshotChanges() {
+        var state by mutableStateOf(reconnectState())
+        composeTestRule.setContent { ClientTheme { GameScreen(state = state) } }
+
+        composeTestRule.onNodeWithText("Opponent").performScrollTo().performClick()
+
+        composeTestRule.runOnIdle {
+            state = state.copy(
+                playerCards = state.playerCards + (
+                    2 to listOf(
+                        PlayerCardState(CardType.CAFE, quantity = 3),
+                        PlayerCardState(CardType.TV_STATION, quantity = 1),
+                    )
+                    )
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("Opponent owns Cafe, quantity 3").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Opponent owns TV Station, quantity 1").assertIsDisplayed()
     }
 
     @Test
