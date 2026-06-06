@@ -49,6 +49,7 @@ import com.machikoro.client.ui.game.ui.GamePhaseBanner
 import com.machikoro.client.ui.game.ui.GameScreenLayout
 import com.machikoro.client.ui.game.ui.InitializationLoadingOverlay
 import com.machikoro.client.ui.game.ui.MarketplaceSection
+import com.machikoro.client.ui.game.ui.PlayerCoinField
 import com.machikoro.client.ui.game.ui.PlayersTopBar
 import com.machikoro.client.ui.game.ui.RoundIndicator
 import com.machikoro.client.ui.shared.ActionButton
@@ -314,8 +315,7 @@ fun GameScreen(
         // =====================================
         rightContent = {
             Box(modifier = Modifier.align(Alignment.Center)) {
-                Text("PLACEHOLDER \n FOR COINS",
-                        color = Color.White)
+                PlayerCoinField(state)
             }
         }
 
