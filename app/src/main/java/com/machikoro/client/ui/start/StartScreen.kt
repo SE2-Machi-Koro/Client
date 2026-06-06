@@ -7,11 +7,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,19 +27,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.machikoro.client.domain.model.state.BackendHealth
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.model.state.LogoutState
 import com.machikoro.client.domain.model.state.RegisterDialogState
 import com.machikoro.client.domain.model.state.StartScreenState
-import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Header
 import com.machikoro.client.ui.shared.MainScreenBackground
-import com.machikoro.client.ui.shared.SecondaryActionButton
+import com.machikoro.client.ui.theme.ButtonColor
+import com.machikoro.client.ui.theme.ButtonTextColor
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.OrangeButtonShadowColor
 
 
 private val HealthChipShape = RoundedCornerShape(12.dp)
@@ -61,15 +68,9 @@ fun StartScreen(
     onLogoutSubmit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val showPdfViewer = remember { mutableStateOf(false) }
     var showRegisterDialog by remember { mutableStateOf(false) }
     var showLoginDialog by remember { mutableStateOf(false) }
 
-    if (showPdfViewer.value) {
-        PdfViewerScreen(
-            onClose = { showPdfViewer.value = false }
-        )
-    } else {
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -87,46 +88,47 @@ fun StartScreen(
             Header(
                 label = "Machi Koro",
                 modifier = Modifier
-                .align(Alignment.TopCenter),
-                fontSize = 52)
+                    .padding(top = 24.dp)
+                    .align(Alignment.TopCenter),
+                fontSize = 56)
 
-            SecondaryActionButton(
-                label = "Rules",
-                onClick = { showPdfViewer.value = true },
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-            )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.align(Alignment.Center).padding(bottom = 20.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.width(180.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        StartScreenActionButton(
+                            label = "Login",
+                            onClick = {
+                                onLoginDialogReset()
+                                showLoginDialog = true
+                            }
+                        )
+                    }
 
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .align(Alignment.Center)
-            ) {
-                ActionButton(
-                    label = "Login",
-                    onClick = {
-                        onLoginDialogReset()
-                        showLoginDialog = true
-                    },
-                    fontSize = 24
-                )
-                ActionButton(
-                    label = "Register",
-                    // Reset dialog VM state before opening so the dialog can't
-                    // surface leftover values from a previous successful
-                    // submission — the route flips to HomeScreen on success
-                    // before the user can dismiss the dialog, so the dismissal
-                    // reset never fires and the Activity-scoped VM keeps its
-                    // stale state until the user comes back to StartScreen.
-                    onClick = {
-                        onRegisterDialogReset()
-                        showRegisterDialog = true
-                    },
-                    fontSize = 24
-                )
-
-            }
+                    Box(
+                        modifier = Modifier.width(180.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Reset dialog VM state before opening so the dialog can't
+                        // surface leftover values from a previous successful
+                        // submission — the route flips to HomeScreen on success
+                        // before the user can dismiss the dialog, so the dismissal
+                        // reset never fires and the Activity-scoped VM keeps its
+                        // stale state until the user comes back to StartScreen.
+                        StartScreenActionButton(
+                            label = "Register",
+                            onClick = {
+                                onRegisterDialogReset()
+                                showRegisterDialog = true
+                            }
+                        )
+                    }
+                }
 
             if (showRegisterDialog) {
                 RegisterDialog(
@@ -155,10 +157,46 @@ fun StartScreen(
             }
         }
     }
-    }
 }
 
+@Composable
+private fun StartScreenActionButton(
+    label: String,
+    onClick: () -> Unit,
+    fontSize: Int = 24,
+) {
+    Box(
+        modifier = Modifier.width(160.dp).height(49.dp)
+    ) {
 
+        // Bottom shadow
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(y = 4.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(OrangeButtonShadowColor)
+        )
+
+        // Main button
+        Button(
+            modifier = Modifier.matchParentSize(),
+            onClick = onClick,
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ButtonColor
+            )
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = ButtonTextColor,
+                fontSize = fontSize.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+    }
+}
 @Composable
 private fun BackendHealthChip(
     health: BackendHealth,

@@ -8,6 +8,7 @@ import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.model.shop.PurchaseEvent
+import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCardState
@@ -147,6 +148,8 @@ class OkHttpWebSocketClient(
     @Volatile
     private var webSocket: WebSocket? = null
     private var subscribedGameId: Int? = null
+    @Volatile
+    private var pendingCreatedLobbyJoin = false
     // STOMP session ID assigned by the server on CONNECTED — used for lobby queue subscription
     private var stompSessionId: String? = null
 
@@ -229,7 +232,7 @@ class OkHttpWebSocketClient(
         )
 
         if (sent) {
-            mutableIsLobbyHost.value = true
+            pendingCreatedLobbyJoin = true
             Log.d(TAG, "Lobby create message sent")
         } else {
             Log.w(TAG, "sendCreateLobby: failed to send create-lobby frame")
@@ -570,6 +573,8 @@ class OkHttpWebSocketClient(
         val code = payload.optString("lobbyCode")
         val gameId = json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId")
 
+        updateLobbyHostOwnership(resolveHostUserId(json, payload, payload.optJSONObject("game")))
+
         if (code.isNotBlank()) {
             Log.d(TAG, "Lobby created with code: $code")
             mutableLobbyCode.value = code
@@ -591,7 +596,8 @@ class OkHttpWebSocketClient(
             }
         }
         // Host must join their own lobby to become a player in the roster
-        if (mutableIsLobbyHost.value && code.isNotBlank()) {
+        if (pendingCreatedLobbyJoin && code.isNotBlank()) {
+            pendingCreatedLobbyJoin = false
             sendJoinLobby(code)
         }
     }
@@ -604,6 +610,8 @@ class OkHttpWebSocketClient(
 
         val payload = json.optJSONObject("payload") ?: return
         val gameId = json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId")
+
+        updateLobbyHostOwnership(resolveHostUserId(json, payload, payload.optJSONObject("game")))
 
         if (gameId != null) {
             Log.d(TAG, "Joined lobby with gameId: $gameId")
@@ -654,6 +662,10 @@ class OkHttpWebSocketClient(
         val payload = json.optJSONObject("payload") ?: return
         val players = payload.optJSONArray("players") ?: return
         val gameId = json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId")
+        updateLobbyHostOwnership(
+            resolveHostUserId(json, payload, payload.optJSONObject("game"))
+                ?: resolveHostUserIdFromRoster(players)
+        )
         if (gameId != null) {
             mutableActiveGameId.value = gameId
             subscribeToGameTopic(gameId)
@@ -777,6 +789,8 @@ class OkHttpWebSocketClient(
             .takeIf { it.isNotBlank() }
             ?.let { mutableLobbyCode.value = it }
 
+        updateLobbyHostOwnership(resolveHostUserId(state, game))
+
         parseGameStatus(game.optString("status"))?.let { mutableGameStatus.value = it }
         parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
         game.optIntOrNull("roundNumber")?.let { mutableRoundNumber.value = it }
@@ -822,6 +836,8 @@ class OkHttpWebSocketClient(
                 cost = definition.optInt("cost"),
                 color = definition.optString("color").toShopItemColor(),
                 establishmentType = definition.optString("establishmentType"),
+                activationText = definition.activationText(cardType),
+                effectText = definition.effectText(cardType),
                 imageKey = "card_${cardType.name.lowercase()}",
                 isAvailable = (marketplace[cardType] ?: 0) > 0
             )
@@ -842,9 +858,41 @@ class OkHttpWebSocketClient(
                 cost = definition.optInt("cost"),
                 color = ShopItemColor.LANDMARK,
                 establishmentType = "LANDMARK",
+                activationText = "Permanent",
+                effectText = definition.effectText(landmarkType),
                 imageKey = "landmark_${landmarkType.name.lowercase()}",
                 isAvailable = true
             )
+        }
+    }
+
+    private fun JSONObject.activationText(cardType: CardType): String =
+        optString("activationText")
+            .ifBlank { optString("activationRange") }
+            .ifBlank { optJSONArray("activationNumbers")?.toRangeText().orEmpty() }
+            .ifBlank { defaultShopItem(cardType.name)?.activationText.orEmpty() }
+
+    private fun JSONObject.effectText(cardType: CardType): String =
+        optString("effectText")
+            .ifBlank { optString("effectDescription") }
+            .ifBlank { optString("description") }
+            .ifBlank { defaultShopItem(cardType.name)?.effectText.orEmpty() }
+
+    private fun JSONObject.effectText(landmarkType: LandmarkType): String =
+        optString("effectText")
+            .ifBlank { optString("effectDescription") }
+            .ifBlank { optString("description") }
+            .ifBlank { defaultShopItem(landmarkType.name)?.effectText.orEmpty() }
+
+    private fun JSONArray.toRangeText(): String {
+        val numbers = (0 until length()).mapNotNull { index ->
+            runCatching { getInt(index) }.getOrNull()
+        }.sorted()
+        if (numbers.isEmpty()) return ""
+        return if (numbers.size == 1) {
+            numbers.first().toString()
+        } else {
+            "${numbers.first()}-${numbers.last()}"
         }
     }
 
@@ -854,6 +902,9 @@ class OkHttpWebSocketClient(
     private fun CardType.displayName(): String = name.toDisplayName()
 
     private fun LandmarkType.displayName(): String = name.toDisplayName()
+
+    private fun defaultShopItem(type: String): ShopItem? =
+        ShopCatalog.defaultItems.firstOrNull { it.type == type }
 
     private fun String.toDisplayName(): String =
         lowercase()
@@ -1159,6 +1210,7 @@ class OkHttpWebSocketClient(
         mutableActiveGameId.value = null
         mutableIsLobbyHost.value = false
         mutablePlayers.value = emptyList()
+        pendingCreatedLobbyJoin = false
     }
 
     private fun parseTurnPhase(phaseName: String): GamePhase? =
@@ -1200,6 +1252,30 @@ class OkHttpWebSocketClient(
     private fun JSONObject.optIntOrNull(key: String): Int? =
         if (has(key) && !isNull(key)) optInt(key) else null
 
+    private fun updateLobbyHostOwnership(hostUserId: Int?) {
+        if (hostUserId == null) return
+        mutableIsLobbyHost.value = sessionStateHolder.session.value?.userId == hostUserId
+    }
+
+    private fun resolveHostUserId(vararg sources: JSONObject?): Int? =
+        sources.firstNotNullOfOrNull { source ->
+            source?.hostUserId()
+        }
+
+    private fun JSONObject.hostUserId(): Int? =
+        HOST_USER_ID_KEYS.firstNotNullOfOrNull { key -> optIntOrNull(key) }
+
+    private fun resolveHostUserIdFromRoster(players: JSONArray): Int? =
+        (0 until players.length()).firstNotNullOfOrNull { index ->
+            val entry = players.optJSONObject(index) ?: return@firstNotNullOfOrNull null
+            if (!entry.optBoolean("isHost", false) && !entry.optBoolean("host", false)) {
+                return@firstNotNullOfOrNull null
+            }
+            entry.optIntOrNull("userId")
+                ?: entry.optIntOrNull("user_id")
+                ?: entry.optIntOrNull("id")
+        }
+
     private fun websocketHostHeader(): String {
         val uri = URI(websocketUrl)
         val port = uri.port
@@ -1235,12 +1311,17 @@ class OkHttpWebSocketClient(
         private const val PURCHASE_FAILED_EVENT = "PURCHASE_FAILED"
         private const val ROLL_DICE_TYPE = "ROLL_DICE"
         private const val SYNC_TYPE = "SYNC"
+        private val HOST_USER_ID_KEYS = listOf(
+            "hostId",
+            "host_id",
+            "hostUserId",
+            "host_user_id",
+            "hostUserID",
+        )
         // Frozen contract: matches GENERIC_AUTH_FAILURE on the server's
         // StompAuthChannelInterceptor. If the server message changes, this
         // client will silently fall through to the generic ERROR handling.
         private const val AUTH_REJECTION_BODY = "Authentication failed"
-        private const val GAME_START_BODY =
-            """{"type":"START","sender":"${WebSocketContract.defaultSender}"}"""
 
         private fun purchaseBody(
             gameId: Int,
