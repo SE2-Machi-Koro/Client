@@ -163,6 +163,9 @@ fun GameScreen(
                         modifier = Modifier.align(
                             Alignment.Center
                         )
+                        playerLandmarks = state.playerLandmarks,
+                        playerCards = state.playerCards,
+                        modifier = Modifier.align(Alignment.Center)
                     )
 
                     state.roundNumber?.let { round ->
