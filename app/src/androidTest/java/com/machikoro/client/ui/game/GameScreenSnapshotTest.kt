@@ -157,7 +157,7 @@ class GameScreenSnapshotTest {
                         PlayerCardState(CardType.CAFE, quantity = 3),
                         PlayerCardState(CardType.TV_STATION, quantity = 1),
                     )
-                    )
+                )
             )
         }
 
