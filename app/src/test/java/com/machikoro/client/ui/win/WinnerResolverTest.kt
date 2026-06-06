@@ -26,4 +26,41 @@ class WinnerResolverTest {
         )
     }
 
+    @Test
+    fun resolveWinnerNameReturnsDefaultWhenNoWinnerIdSet() {
+        val state = GameScreenState.initial().copy(
+            winnerId = null,
+            players = listOf(
+                PlayerCoinState(id = "1", displayName = "Alice", coins = 5)
+            )
+        )
+
+        assertEquals("Winner", resolveWinnerName(state))
+    }
+
+    @Test
+    fun resolveWinnerNameReturnsDefaultWhenWinnerNotInPlayerList() {
+        val state = GameScreenState.initial().copy(
+            winnerId = 99,
+            players = listOf(
+                PlayerCoinState(id = "1", displayName = "Alice", coins = 5)
+            )
+        )
+
+        assertEquals("Winner", resolveWinnerName(state))
+    }
+
+    @Test
+    fun resolveWinnerNameReturnsCorrectPlayerFromMultiplePlayers() {
+        val state = GameScreenState.initial().copy(
+            winnerId = 2,
+            players = listOf(
+                PlayerCoinState(id = "1", displayName = "Alice", coins = 5),
+                PlayerCoinState(id = "2", displayName = "Bob", coins = 10),
+                PlayerCoinState(id = "3", displayName = "Charlie", coins = 3),
+            )
+        )
+
+        assertEquals("Bob", resolveWinnerName(state))
+    }
 }
