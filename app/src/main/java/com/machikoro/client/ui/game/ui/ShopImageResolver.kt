@@ -1,6 +1,7 @@
 package com.machikoro.client.ui.game.ui
 
 import com.machikoro.client.R
+import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.model.shop.ShopItem
 
@@ -48,4 +49,7 @@ internal object ShopImageResolver {
                 item.imageKey
             }
         )
+
+    fun drawableForCardType(cardType: CardType): Int =
+        drawableFor("card_${cardType.name.lowercase()}")
 }
