@@ -660,7 +660,8 @@ class OkHttpWebSocketClient(
         // Try both "playerId" and "id" since the server may use either field name
         val playerId = (payload.optIntOrNull("playerId") ?: payload.optIntOrNull("id"))?.toString() ?: return
         val coins = payload.optInt("coins", 3)
-        val newPlayer = PlayerCoinState(id = playerId, displayName = username, coins = coins)
+        val isReady = payload.optBoolean("isReady", false)
+        val newPlayer = PlayerCoinState(id = playerId, displayName = username, coins = coins, isReady = isReady)
         // Replace any existing entry with same id or name (e.g., temp host entry) then add
         mutablePlayers.value = mutablePlayers.value
             .filter { it.id != playerId && it.displayName != username } + newPlayer
