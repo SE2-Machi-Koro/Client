@@ -38,9 +38,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.machikoro.client.BuildConfig
 import com.machikoro.client.R
 import com.machikoro.client.ui.shared.ActionButton
+import com.machikoro.client.ui.shared.ArrowTextButton
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.Header
 import com.machikoro.client.ui.shared.SecondaryActionButton
@@ -127,8 +129,10 @@ fun HomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                LogoutButton(
-                    onClick = onLogoutClick
+                ArrowTextButton(
+                    label = "Leave Lobby",
+                    onClick = onLogoutClick,
+                    fontSize = 18.sp
                 )
 
                 if (BuildConfig.DEBUG) {
