@@ -243,25 +243,31 @@ private fun LandmarkPip(
         )
     }
 }
-
-
 @Composable
-private fun CoinIcon(
+private fun CoinBadge(
     amount: Int,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        shape = CircleShape,
-        color = Color(0xFFFFD54F),
-        contentColor = Color(0xFF5D4100),
-        modifier = modifier.size(28.dp)
+    Box(
+        modifier = modifier.size(36.dp),
     ) {
+
+        Image(
+            painter = painterResource(R.drawable.coin),
+            contentDescription = "Coin",
+            modifier = Modifier.fillMaxSize()
+                .align(Alignment.Center),
+            contentScale = ContentScale.Fit
+        )
+
         Text(
-            text = "$amount",
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 3.dp)
+            text = amount.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF744300),
+            fontSize = 18.sp,
+            modifier = Modifier.offset(y = (-4).dp)
+            .align(Alignment.Center),
         )
     }
 }
