@@ -70,6 +70,7 @@ class DummyWebSocketClient : WebSocketClient {
     override fun resolveEffects(gameId: Int) {}
     override fun endTurn(gameId: Int) {}
     override fun sendLeaveLobby(gameId: Int) {}
+    override fun sendReadyToggle(isReady: Boolean) {}
     override fun sendPurchase(
         gameId: Int,
         purchaseType: PurchaseType,

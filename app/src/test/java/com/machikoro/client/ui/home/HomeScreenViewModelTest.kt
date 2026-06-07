@@ -222,6 +222,7 @@ class HomeScreenViewModelTest {
         override fun clearLobbyCode() { mutableLobbyCode.value = null }
         override fun clearGameState() = Unit
         override fun sendLeaveLobby(gameId: Int) {}
+        override fun sendReadyToggle(isReady: Boolean) = Unit
     }
 }
 

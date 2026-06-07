@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import com.machikoro.client.R
 import com.machikoro.client.domain.model.state.LobbyScreenState
 import com.machikoro.client.ui.shared.ArrowTextButton
+import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ButtonBlueDark
 import com.machikoro.client.ui.theme.ClientTheme
@@ -73,11 +74,11 @@ fun LobbyScreen(
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     LobbyScreen(
-        playerNames = state.playerList,
+        players = state.playerList,
         maxPlayers = state.maxPlayers,
         currentUsername = state.loggedInAs,
-        // TODO: Replace first-player-as-host fallback once backend exposes host information.
-        hostUsername = state.playerList.firstOrNull(),
+        // First player in roster has lowest turnOrder, which is the host
+        hostUsername = state.playerList.firstOrNull()?.displayName,
         isHost = state.isHost,
         isReady = state.isReady,
         lobbyCode = lobbyCode,
@@ -94,6 +95,7 @@ fun LobbyScreen(
 fun LobbyScreen(
     modifier: Modifier = Modifier,
     playerNames: List<String>,
+    players: List<PlayerCoinState>,
     maxPlayers: Int = 4,
     currentUsername: String? = null,
     hostUsername: String? = null,
@@ -105,8 +107,13 @@ fun LobbyScreen(
     onLeaveLobby: () -> Unit = {},
     onFillWithDummies: () -> Unit = {},
     onResetLobby: () -> Unit = {},
+
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
-    val startEnabled = isHost && playerNames.size >= 2 && isReady
+    // All players must be ready, not just the host
+    val startEnabled = isHost && players.size >= 2 && players.all { it.isReady }
+    // True when any dummy player (filled via debug) is present in the roster
+    val hasDummies = players.any { it.displayName.startsWith("debug_player") }
 
     Box(
         modifier = modifier.fillMaxSize()
@@ -129,7 +136,7 @@ fun LobbyScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             LobbyPanel(
-                playerNames = playerNames,
+                playerNames = players.map { it.displayName },
                 maxPlayers = maxPlayers,
                 currentUsername = currentUsername,
                 hostUsername = hostUsername,
@@ -548,7 +555,7 @@ private fun LobbyCodeCopyRow(
 private fun LobbyScreenPreview() {
     ClientTheme {
         LobbyScreen(
-            playerNames = listOf("Player1"),
+            players = listOf(PlayerCoinState(id = "1", displayName = "Player1", coins = 3)),
             currentUsername = "Player1",
             hostUsername = "Player1",
             isHost = true,
@@ -563,7 +570,12 @@ private fun LobbyScreenPreview() {
 private fun LobbyScreenFullPreview() {
     ClientTheme {
         LobbyScreen(
-            playerNames = listOf("Player1", "Player2", "Player3", "Player4"),
+            players = listOf(
+                PlayerCoinState(id = "1", displayName = "Player1", coins = 3, isReady = true),
+                PlayerCoinState(id = "2", displayName = "Player2", coins = 3, isReady = true),
+                PlayerCoinState(id = "3", displayName = "Player3", coins = 3, isReady = false),
+                PlayerCoinState(id = "4", displayName = "Player4", coins = 3, isReady = true),
+            ),
             currentUsername = "Player1",
             hostUsername = "Player1",
             isHost = true,
