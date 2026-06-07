@@ -31,6 +31,7 @@ import okio.ByteString
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -1937,6 +1938,88 @@ class OkHttpWebSocketClientTest {
         val noPayload = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1}"""
         factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$noPayload ")
         assertEquals(emptyList<PlayerCoinState>(), client.players.value)
+    }
+
+    // ── isReady field in LOBBY_ROSTER ───────────────────────────────────────────
+
+    @Test
+    fun lobbyRosterMessagePopulatesIsReadyField() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        // Player entry with isReady:true
+        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[{"playerId":5,"userId":20,"username":"Alice","coins":3,"isReady":true}]}}"""
+        factory.simulateText(gameActionFrame(rosterJson))
+        assertTrue(client.players.value[0].isReady)
+    }
+
+    @Test
+    fun lobbyRosterMessageDefaultsIsReadyToFalseWhenAbsent() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        // Player entry without isReady field — should default to false
+        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[{"playerId":5,"userId":20,"username":"Alice","coins":3}]}}"""
+        factory.simulateText(gameActionFrame(rosterJson))
+        assertFalse(client.players.value[0].isReady)
+    }
+
+    // ── sendReadyToggle ──────────────────────────────────────────────────────────
+
+    @Test
+    fun sendReadyToggleSendsStompFrameToReadyToggleDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        // Lobby roster sets activeGameId so the toggle has a game to target
+        val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":7,"payload":{"players":[{"playerId":1,"userId":1,"username":"Alice","coins":3}]}}"""
+        factory.simulateText(gameActionFrame(rosterJson))
+        factory.socket.sentMessages.clear()
+
+        client.sendReadyToggle(true)
+
+        val readyFrame = factory.socket.sentMessages.firstOrNull {
+            it.contains("destination:${WebSocketContract.readyToggleDestination}")
+        }
+        assertNotNull("expected a SEND frame to ${WebSocketContract.readyToggleDestination}", readyFrame)
+        assertTrue(readyFrame!!.contains("\"isReady\":true"))
+        assertTrue(readyFrame.contains("\"gameId\":7"))
+    }
+
+    @Test
+    fun sendReadyToggleWithoutActiveGameIdIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        // No roster → activeGameId stays null
+        factory.socket.sentMessages.clear()
+
+        client.sendReadyToggle(true)
+
+        assertFalse(
+            factory.socket.sentMessages.any {
+                it.contains("destination:${WebSocketContract.readyToggleDestination}")
+            }
+        )
+    }
+
+    @Test
+    fun sendReadyToggleWithoutConnectionIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        // Never connected — webSocket is null
+
+        client.sendReadyToggle(true)
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
     }
 
     @Test

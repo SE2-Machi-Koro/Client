@@ -39,6 +39,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.R
 import com.machikoro.client.domain.model.state.LobbyScreenState
+import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ButtonBlueDark
 import com.machikoro.client.ui.theme.ClientTheme
@@ -58,11 +59,11 @@ fun LobbyScreen(
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     LobbyScreen(
-        playerNames = state.playerList,
+        players = state.playerList,
         maxPlayers = state.maxPlayers,
         currentUsername = state.loggedInAs,
-        // TODO: Replace first-player-as-host fallback once backend exposes host information.
-        hostUsername = state.playerList.firstOrNull(),
+        // First player in roster has lowest turnOrder, which is the host
+        hostUsername = state.playerList.firstOrNull()?.displayName,
         isHost = state.isHost,
         isReady = state.isReady,
         lobbyCode = lobbyCode,
@@ -77,7 +78,7 @@ fun LobbyScreen(
 
 @Composable
 fun LobbyScreen(
-    playerNames: List<String>,
+    players: List<PlayerCoinState>,
     maxPlayers: Int = 4,
     currentUsername: String? = null,
     hostUsername: String? = null,
@@ -89,9 +90,12 @@ fun LobbyScreen(
     onLeaveLobby: () -> Unit = {},
     onFillWithDummies: () -> Unit = {},
     onResetLobby: () -> Unit = {},
-    modifier: Modifier = Modifier
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
-    val startEnabled = isHost && playerNames.size >= 2 && isReady
+    // All players must be ready, not just the host
+    val startEnabled = isHost && players.size >= 2 && players.all { it.isReady }
+    // True when any dummy player (filled via debug) is present in the roster
+    val hasDummies = players.any { it.displayName.startsWith("debug_player") }
 
     Box(
         modifier = modifier
@@ -163,7 +167,8 @@ fun LobbyScreen(
             Spacer(modifier = Modifier.height(5.dp))
 
             repeat(maxPlayers) { index ->
-                val name = playerNames.getOrNull(index)
+                val player = players.getOrNull(index)
+                val name = player?.displayName
                 val isCurrentUser = name != null && name == currentUsername
                 val isHostPlayer = name != null && name == hostUsername
 
@@ -180,11 +185,11 @@ fun LobbyScreen(
                         isHost = isHostPlayer
                     )
 
-                    // TODO: Replace placeholder ready state once backend exposes readiness per player.
+                    // Ready state comes from the server roster per player
                     val statusText = when {
-                        name == null -> ""
-                        isCurrentUser && !isReady -> "not ready"
-                        else -> "ready"
+                        player == null -> ""
+                        player.isReady -> "ready"
+                        else -> "not ready"
                     }
 
                     StatusSlot(text = statusText)
@@ -207,36 +212,6 @@ fun LobbyScreen(
             ) {
                 Text("Start Game", color = TextWhite, style =  MaterialTheme.typography.labelLarge)
             }
-
-            // Debug helper: fill remaining slots so the host can start without real players
-            if (isHost && playerNames.size < maxPlayers) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = onFillWithDummies,
-                    modifier = Modifier
-                        .width(320.dp)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
-                ) {
-                    Text("[Debug] Fill with dummies", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
-                }
-            }
-
-            // Debug helper: remove all non-host players so the host can start fresh
-            if (isHost && playerNames.size > 1) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Button(
-                    onClick = onResetLobby,
-                    modifier = Modifier
-                        .width(320.dp)
-                        .height(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
-                ) {
-                    Text("[Debug] Reset lobby", color = TextBlueDark, style = MaterialTheme.typography.labelMedium)
-                }
-            }
         }
 
         ReadyToggle(
@@ -254,6 +229,24 @@ fun LobbyScreen(
                     .align(Alignment.TopStart)
                     .padding(top = 180.dp, start = 95.dp)
             )
+        }
+
+        // Debug button: fill lobby with dummies, or reset once dummies are present
+        if (isHost) {
+            val debugLabel = if (hasDummies) "[Debug] Reset lobby" else "[Debug] Fill with dummies"
+            val debugAction = if (hasDummies) onResetLobby else onFillWithDummies
+            Button(
+                onClick = debugAction,
+                enabled = hasDummies || players.size < maxPlayers,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 20.dp, bottom = 20.dp)
+                    .height(34.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
+            ) {
+                Text(debugLabel, color = TextBlueDark, style = MaterialTheme.typography.labelSmall)
+            }
         }
 
         LeaveLobbyButton(
@@ -478,9 +471,9 @@ private fun LeaveLobbyButton(
 private fun LobbyScreenPreview() {
     ClientTheme {
         LobbyScreen(
-            playerNames = listOf("Player1"),
+            players = listOf(PlayerCoinState(id = "1", displayName = "Player1", coins = 3)),
             currentUsername = "Player1",
-            hostUsername = "Player",
+            hostUsername = "Player1",
             isHost = true,
             isReady = false
         )
@@ -492,7 +485,12 @@ private fun LobbyScreenPreview() {
 private fun LobbyScreenFullPreview() {
     ClientTheme {
         LobbyScreen(
-            playerNames = listOf("Player1", "Player2", "Player3", "Player4"),
+            players = listOf(
+                PlayerCoinState(id = "1", displayName = "Player1", coins = 3, isReady = true),
+                PlayerCoinState(id = "2", displayName = "Player2", coins = 3, isReady = true),
+                PlayerCoinState(id = "3", displayName = "Player3", coins = 3, isReady = false),
+                PlayerCoinState(id = "4", displayName = "Player4", coins = 3, isReady = true),
+            ),
             currentUsername = "Player1",
             hostUsername = "Player1",
             isHost = true,
