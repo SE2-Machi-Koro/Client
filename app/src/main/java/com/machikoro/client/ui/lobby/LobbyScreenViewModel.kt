@@ -57,10 +57,14 @@ class LobbyScreenViewModel(
         viewModelScope.launch {
             webSocketClient.players.collect { players ->
                 mutableState.update { current ->
-                    val playerNames = players.map { it.displayName }
-
+                    // Sync local ready state from the server roster for the current user
+                    val myReady = players
+                        .find { it.displayName == current.loggedInAs }
+                        ?.isReady
+                        ?: current.isReady
                     current.copy(
-                        playerList = playerNames,
+                        playerList = players,
+                        isReady = myReady,
                         lobbyStatus = if (players.size >= 2) {
                             LobbyStatus.READY
                         } else {
@@ -104,12 +108,10 @@ class LobbyScreenViewModel(
     }
 
     fun onReadyToggle() {
-        mutableState.update { current ->
-            current.copy(isReady = !current.isReady)
-        }
-
-        // TODO: send ready status to backend when supported.
-        // webSocketClient.sendReadyToggle()
+        // Optimistic local update so the toggle feels instant before the server responds
+        val newReady = !mutableState.value.isReady
+        mutableState.update { current -> current.copy(isReady = newReady) }
+        webSocketClient.sendReadyToggle(newReady)
     }
 
     fun onLeaveLobby() {

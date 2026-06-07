@@ -3,9 +3,11 @@ package com.machikoro.client.domain.model.state
 data class LobbyScreenState(
     val connectionStatus: ConnectionStatus,
     val lobbyStatus: LobbyStatus,
-    val playerList: List<String> = emptyList(),
+    val playerList: List<PlayerCoinState> = emptyList(),
     // TODO: Replace hardcoded maxPlayers once server provides lobby configuration.
-    val maxPlayers: Int = 4,    val isHost: Boolean = false,
+    val maxPlayers: Int = 4,
+    val isHost: Boolean = false,
+    // Mirrors the local player's ready state from the server roster
     val isReady: Boolean = false,
     val loggedInAs: String? = null,
 ) {

@@ -204,6 +204,13 @@ class FakeWebSocketClient : WebSocketClient {
         endedTurnGameId = gameId
     }
 
+    var lastReadyToggle: Boolean? = null
+        private set
+
+    override fun sendReadyToggle(isReady: Boolean) {
+        lastReadyToggle = isReady
+    }
+
     fun emitConnectionStatus(status: ConnectionStatus) {
         mutableConnectionStatus.value = status
     }
