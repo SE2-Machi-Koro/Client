@@ -1841,10 +1841,10 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
 
         val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"hostId":$DEFAULT_USER_ID,"players":[{"playerId":5,"userId":$DEFAULT_USER_ID,"username":"Alice","coins":3}]}}"""
-        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson\u0000")
 
         assertTrue(client.isLobbyHost.value)
     }
@@ -1855,14 +1855,14 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
 
         val hostRoster = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"host_id":$DEFAULT_USER_ID,"players":[{"playerId":5,"userId":$DEFAULT_USER_ID,"username":"Alice","coins":3},{"playerId":6,"userId":2,"username":"Bob","coins":3}]}}"""
-        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$hostRoster ")
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$hostRoster\u0000")
         assertTrue(client.isLobbyHost.value)
 
         val guestRoster = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"host_id":2,"players":[{"playerId":5,"userId":$DEFAULT_USER_ID,"username":"Alice","coins":3},{"playerId":6,"userId":2,"username":"Bob","coins":3}]}}"""
-        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$guestRoster ")
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$guestRoster\u0000")
 
         assertFalse(client.isLobbyHost.value)
     }
@@ -1873,10 +1873,10 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
 
         val rosterJson = """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[{"playerId":5,"userId":$DEFAULT_USER_ID,"username":"Alice","coins":3,"isHost":true},{"playerId":6,"userId":2,"username":"Bob","coins":3}]}}"""
-        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson ")
+        factory.simulateText("MESSAGE\ndestination:/queue/lobby-user1\ncontent-type:application/json\n\n$rosterJson\u0000")
 
         assertTrue(client.isLobbyHost.value)
     }
@@ -2621,10 +2621,10 @@ class OkHttpWebSocketClientTest {
     @Test
     fun twoClientsConvergeFromGameStartedBroadcast() = runTest {
         val harness = twoConnectedClients(backgroundScope)
+        harness.assertBothSubscribedToGame(gameId = 7)
 
         harness.broadcastToBoth(gameStartedTwoPlayerBody())
 
-        harness.assertBothSubscribedToGame(gameId = 7)
         listOf(harness.playerA, harness.playerB).forEach { client ->
             assertEquals(7, client.activeGameId.value)
             assertEquals(GameStatus.IN_PROGRESS, client.gameStatus.value)
@@ -2639,6 +2639,7 @@ class OkHttpWebSocketClientTest {
     @Test
     fun twoClientsApplyGameActionBroadcastToNonSender() = runTest {
         val harness = twoConnectedClients(backgroundScope)
+        harness.assertBothSubscribedToGame(gameId = 7)
         harness.broadcastToBoth(gameStartedTwoPlayerBody())
 
         harness.playerA.resolveEffects(gameId = 7)
@@ -2675,6 +2676,7 @@ class OkHttpWebSocketClientTest {
     @Test
     fun twoClientsApplyRollDiceBroadcast() = runTest {
         val harness = twoConnectedClients(backgroundScope)
+        harness.assertBothSubscribedToGame(gameId = 7)
         harness.broadcastToBoth(gameStartedTwoPlayerBody())
 
         harness.playerA.rollDice(diceCount = 2)
@@ -2701,6 +2703,7 @@ class OkHttpWebSocketClientTest {
         val playerBPurchaseEvents = mutableListOf<PurchaseEvent>()
         harness.playerB.purchaseEvents.onEach { playerBPurchaseEvents += it }.launchIn(backgroundScope)
         runCurrent()
+        harness.assertBothSubscribedToGame(gameId = 7)
         harness.broadcastToBoth(gameStartedTwoPlayerBody())
 
         harness.playerA.sendPurchase(
@@ -2736,6 +2739,7 @@ class OkHttpWebSocketClientTest {
     @Test
     fun reconnectingClientRestoresStateFromSyncToMatchConnectedClient() = runTest {
         val harness = twoConnectedClients(backgroundScope)
+        harness.assertBothSubscribedToGame(gameId = 7)
         val latestState = twoPlayerState(
             turnPhase = "BUY_OR_BUILD",
             activeUserId = 2,
@@ -2857,6 +2861,16 @@ class OkHttpWebSocketClientTest {
             body = body,
         ).serialize()
 
+    private fun lobbyQueueFrame(body: String): String =
+        StompFrame(
+            command = "MESSAGE",
+            headers = mapOf(
+                "destination" to WebSocketContract.lobbyQueue,
+                "content-type" to "application/json",
+            ),
+            body = body,
+        ).serialize()
+
     private fun gameTopicFrame(gameId: Int, body: String): String =
         StompFrame(
             command = "MESSAGE",
@@ -2893,12 +2907,15 @@ class OkHttpWebSocketClientTest {
         playerAFactory.simulateText(connectedFrame())
         playerBFactory.simulateText(connectedFrame())
 
-        return TwoClientHarness(
+        val harness = TwoClientHarness(
             playerA = playerA,
             playerB = playerB,
             playerAFactory = playerAFactory,
             playerBFactory = playerBFactory,
         )
+        harness.establishSharedLobby(gameId = 7)
+
+        return harness
     }
 
     private fun FakeWebSocket.rollDiceFrames(): List<StompFrame> =
@@ -2908,19 +2925,49 @@ class OkHttpWebSocketClientTest {
     private fun FakeWebSocket.sentFrames(): List<StompFrame> =
         sentMessages.flatMap { parseFrames(StringBuilder(it)) }
 
+    private fun FakeWebSocket.isSubscribedToGame(gameId: Int): Boolean =
+        sentFrames().any {
+            it.command == "SUBSCRIBE" &&
+                it.headers["destination"] == "${WebSocketContract.gameTopicPrefix}/$gameId"
+        }
+
+    private fun TwoClientHarness.establishSharedLobby(gameId: Int) {
+        playerAFactory.simulateText(
+            lobbyQueueFrame(
+                """{"type":"LOBBY_CREATED","sender":"server","gameId":$gameId,"payload":{"lobbyCode":"ABC123","gameId":$gameId,"playerId":11,"username":"alice","coins":3}}"""
+            )
+        )
+        assertTrue(playerAFactory.socket.isSubscribedToGame(gameId))
+        assertFalse(playerBFactory.socket.isSubscribedToGame(gameId))
+
+        playerAFactory.simulateText(
+            gameTopicFrame(
+                gameId,
+                """{"type":"LOBBY_JOINED","sender":"server","gameId":$gameId,"payload":{"gameId":$gameId,"playerId":22,"userId":2,"username":"bob","coins":3}}"""
+            )
+        )
+        playerBFactory.simulateText(
+            lobbyQueueFrame(
+                """{"type":"LOBBY_ROSTER","sender":"server","gameId":$gameId,"payload":{"gameId":$gameId,"players":[{"playerId":11,"userId":1,"username":"alice","coins":3},{"playerId":22,"userId":2,"username":"bob","coins":3}]}}"""
+            )
+        )
+        assertBothSubscribedToGame(gameId)
+    }
+
     private fun TwoClientHarness.broadcastToBoth(body: String, gameId: Int = 7) {
         val frame = gameTopicFrame(gameId, body)
-        playerAFactory.simulateText(frame)
-        playerBFactory.simulateText(frame)
+        listOf(playerAFactory, playerBFactory).forEach { factory ->
+            if (factory.socket.isSubscribedToGame(gameId)) {
+                factory.simulateText(frame)
+            }
+        }
     }
 
     private fun TwoClientHarness.assertBothSubscribedToGame(gameId: Int) {
         listOf(playerAFactory, playerBFactory).forEach { factory ->
             assertTrue(
-                factory.socket.sentFrames().any {
-                    it.command == "SUBSCRIBE" &&
-                        it.headers["destination"] == "${WebSocketContract.gameTopicPrefix}/$gameId"
-                }
+                "expected ${factory.socket.request.url} to subscribe to ${WebSocketContract.gameTopicPrefix}/$gameId",
+                factory.socket.isSubscribedToGame(gameId),
             )
         }
     }
