@@ -36,12 +36,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
 import com.machikoro.client.R
+import com.machikoro.client.ui.shared.ArrowTextButton
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.theme.ButtonBlueDark
 import com.machikoro.client.ui.theme.ButtonColor
@@ -86,7 +92,8 @@ fun PdfViewerScreen(
             }
 
             // Open PDF with PdfRenderer and keep it open
-            val fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            val fileDescriptor =
+                ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
             val pdfRenderer = PdfRenderer(fileDescriptor)
 
             fileDescriptorRef.value = fileDescriptor
@@ -168,7 +175,8 @@ fun PdfViewerScreen(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .fillMaxWidth(0.9f),
-                            contentScale = ContentScale.Fit                        )
+                            contentScale = ContentScale.Fit
+                        )
                     }
                 }
             }
@@ -183,22 +191,41 @@ fun PdfViewerScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Close button
-            Button(
+            // Top controls - Close button and page indicator
+            ArrowTextButton(
+                label = "Close",
                 onClick = onClose,
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ButtonColor,
-                    contentColor = ButtonTextColor
-                )
+                fontSize = 18.sp
+            )
+
+            /*// Close button
+            Row(
+                modifier = Modifier
+                    .clickable { onClose() },
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Close", fontWeight = FontWeight.ExtraBold)
-            }
+                Text(
+                    text = "←",
+                    color = PrimaryOrange,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.offset(y = (-3).dp)
+                )
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                Text(
+                    text = "Close",
+                    color = PrimaryOrange,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }*/
 
             // Page indicator
             Text(
                 text = "Page ${currentPage.intValue + 1} of ${totalPages.intValue}",
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = PrimaryOrange,
                 fontWeight = FontWeight.Bold
             )
