@@ -66,11 +66,11 @@ val Typography = Typography(
         letterSpacing = 1.sp
     ),
 
-    // Default text (16sp)
+    // Default text (18sp)
     bodyLarge = TextStyle(
         fontFamily = BodyFont,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
+        fontSize = 18.sp,
         letterSpacing = 0.5.sp
     ),
 
