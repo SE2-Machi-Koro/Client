@@ -61,7 +61,6 @@ fun MarketplaceSection(
         }
     }
 }
-
 @Composable
 private fun MarketplaceCardChip(
     type: CardType,
@@ -105,4 +104,3 @@ private fun MarketplaceCardChip(
         }
     }
 }
-

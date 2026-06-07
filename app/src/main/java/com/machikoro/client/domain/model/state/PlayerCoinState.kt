@@ -5,5 +5,6 @@ data class PlayerCoinState(
     val displayName: String,
     val coins: Int,
     val isCurrentPlayer: Boolean = false,
-    val isActivePlayer: Boolean = false
+    val isActivePlayer: Boolean = false,
+    val isReady: Boolean = false,
 )

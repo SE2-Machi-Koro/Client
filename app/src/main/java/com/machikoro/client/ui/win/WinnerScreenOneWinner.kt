@@ -21,6 +21,7 @@ import com.machikoro.client.ui.shared.AnimationType
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.Header
 import com.machikoro.client.ui.shared.RegularInfoText
+import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ClientTheme
 
 /*
@@ -39,18 +40,16 @@ fun GameOverOneWinner(
     winnerName: String,
     roundsNumber: Int,
     onBackHome: () -> Unit,
+    onViewLeaderboard: () -> Unit = {},
 ) {
-    Box(modifier = Modifier.fillMaxSize())
-    {
+    Box(modifier = Modifier.fillMaxSize()) {
         Background(R.drawable.game_end)
-        //Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Header("Congratulations to...")
 
             Spacer(modifier = Modifier.padding(17.dp))
@@ -63,36 +62,28 @@ fun GameOverOneWinner(
                 ),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-
-                Box(
-                    contentAlignment = Alignment.TopCenter
-                ) {
-
+                Box(contentAlignment = Alignment.TopCenter) {
                     AnimatedItem(
                         delayMillis = 500,
                         animationType = AnimationType.Bounce
                     ) {
                         PlayerProfileCard(winnerName, 1)
                     }
-                        AnimatedItem(
-                            delayMillis = 1000, // show crown after all cards are shown
-                            animationType = AnimationType.Bounce
-                        ) {
-                            Box(
-                                modifier = Modifier.offset(y = (-28).dp)
-                            ) {
-                                Crown()
-                            }
+                    AnimatedItem(
+                        delayMillis = 1000, // show crown after all cards are shown
+                        animationType = AnimationType.Bounce
+                    ) {
+                        Box(modifier = Modifier.offset(y = (-28).dp)) {
+                            Crown()
                         }
+                    }
                 }
 
                 AnimatedItem(
                     delayMillis = 2000,
                     animationType = AnimationType.Fade
                 ) {
-                    RegularInfoText(
-                        "won the game in \n$roundsNumber rounds!"
-                    )
+                    RegularInfoText("won the game in \n$roundsNumber rounds!")
                 }
             }
 
@@ -102,12 +93,17 @@ fun GameOverOneWinner(
                 delayMillis = 5000,
                 animationType = AnimationType.SlideUp
             ) {
-                ActionButton("Back to home screen", onBackHome)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ActionButton("Back to home screen", onBackHome)
+                    SecondaryActionButton("View Leaderboard", onViewLeaderboard)
+                }
             }
         }
     }
 }
-
 
 @Preview(showBackground = true)
 @Composable
@@ -117,6 +113,7 @@ fun GameOverOnePlayerPreview() {
             winnerName = "Alice",
             roundsNumber = 5,
             onBackHome = {},
+            onViewLeaderboard = {},
         )
     }
 }
