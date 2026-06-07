@@ -42,6 +42,7 @@ import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.toDisplayText
 import kotlin.collections.get
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import com.machikoro.client.R
 
@@ -72,7 +73,7 @@ fun PlayersTopBar(
         LazyRow(
             modifier = modifier.wrapContentWidth()
                 .padding(bottom = 2.dp, end = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
         ) {
             items(
@@ -114,6 +115,7 @@ private fun PlayerCoinBadge(
                 shadowElevation = 3.dp,
                 modifier = modifier
                     .wrapContentSize()
+                    .widthIn(max = 140.dp)
                     .semantics {
                         contentDescription =
                             "${player.displayName}, ${player.coins} coins"
@@ -133,7 +135,8 @@ private fun PlayerCoinBadge(
                         fontWeight = FontWeight.Bold,
                         fontSize = fontSize,
                         color = textColor,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(2.dp))
 
