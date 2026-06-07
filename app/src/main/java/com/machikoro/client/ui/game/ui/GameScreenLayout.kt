@@ -30,7 +30,7 @@ fun GameScreenLayout(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(top = 8.dp,
+            .padding(
                 start = 42.dp,
             )
     ) {
