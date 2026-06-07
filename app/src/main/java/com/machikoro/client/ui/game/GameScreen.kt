@@ -177,7 +177,6 @@ fun GameScreen(
                         modifier = Modifier.align(
                             Alignment.Center
                         ),
-                        playerCards = state.playerCards,
                     )
 
                     state.roundNumber?.let { round ->
@@ -474,7 +473,12 @@ private fun previewPlayers() = listOf(
         id = "3",
         displayName = "doniliks",
         coins = 0
-    )
+    ),
+    PlayerCoinState(
+        id = "4",
+        displayName = "looooooooooooooooooooooong name",
+        coins = 3
+    ),
 )
 
 private fun previewLandmarks() = mapOf(
