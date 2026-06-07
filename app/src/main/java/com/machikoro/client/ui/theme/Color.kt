@@ -22,6 +22,7 @@ val ShadowDarkLight = Color(0x40000000)
 val ButtonBeigeLight: Color = PrimaryBeigeLight
 val ButtonBeigeDark = Color(0xFFBC9C72)
 val ButtonBorderBeige = Color(0xFF7F5E34)
+val ButtonBorderBlue = Color(0xFF022D47)
 val ButtonBlueDark = PrimaryBlueDark
 val ButtonOrange = PrimaryOrange
 val ButtonBorderOrange = PrimaryOrangeDark
