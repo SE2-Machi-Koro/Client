@@ -117,7 +117,7 @@ internal fun BuyingPhaseShop(
                         style = MaterialTheme.typography.bodyMedium,
                         color = if(selectedTab == "Landmarks") Color.White else TextBlueDark,
                         maxLines = 1,
-                        fontSize = 20.sp,
+                        fontSize = 18.sp,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                             .clickable(
                                 onClick = { selectedTab = "Landmarks"},
@@ -143,7 +143,7 @@ internal fun BuyingPhaseShop(
                     style = MaterialTheme.typography.bodyMedium,
                     color = if(selectedTab == "Establishments") Color.White else TextBlueDark,
                     maxLines = 1,
-                    fontSize = 20.sp,
+                    fontSize = 18.sp,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                         .clickable(
                         onClick = { selectedTab = "Establishments"},
