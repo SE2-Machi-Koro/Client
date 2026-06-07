@@ -2,21 +2,24 @@ package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -24,8 +27,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -33,163 +36,127 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.LandmarkType
-import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.toDisplayText
 import kotlin.collections.get
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
+import com.machikoro.client.R
+
+private val SURFACE_COLOR = Color(0xFF8F7365)
+
 
 // todo: adjust to current figma design, keep landmark badges
+
 @Composable
 fun PlayersTopBar(
     players: List<PlayerCoinState>,
     playerLandmarks: Map<Int, List<PlayerLandmarkState>>,
-    playerCards: Map<Int, List<PlayerCardState>>,
     modifier: Modifier = Modifier
 ) {
     if (players.isEmpty()) return
-    LazyRow(
-        modifier = modifier,
-        verticalAlignment = Alignment.Top
+    Surface(
+        shape = RoundedCornerShape(
+            bottomStart = 10.dp,
+            bottomEnd = 12.dp
+        ),
+        color = SURFACE_COLOR,
+        shadowElevation = 3.dp,
+        modifier = modifier
+            .wrapContentSize()
+            .semantics {
+                contentDescription = ""},
     ) {
-        items(items = players, key = { it.id }) { player ->
-            val playerSnapshotId = player.id.toIntOrNull()
-            PlayerCoinBadge(
-                player = player,
-                landmarks = playerLandmarks[playerSnapshotId].orEmpty(),
-                cards = playerCards[playerSnapshotId].orEmpty(),
-                modifier = Modifier.padding(end = 8.dp)
-            )
+        LazyRow(
+            modifier = modifier.wrapContentWidth()
+                .padding(bottom = 2.dp, end = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            items(
+                items = players,
+                key = { it.id }
+            ) { player ->
+
+                val playerId = player.id.toIntOrNull()
+
+                PlayerCoinBadge(
+                    player = player,
+                    landmarks = playerLandmarks[playerId].orEmpty()
+                )
+            }
         }
     }
 }
+
 @Composable
 private fun PlayerCoinBadge(
     player: PlayerCoinState,
     landmarks: List<PlayerLandmarkState>,
-    cards: List<PlayerCardState>,
     modifier: Modifier = Modifier
 ) {
-    val containerColor = when {
-        player.isCurrentPlayer -> MaterialTheme.colorScheme.primary
-        player.isActivePlayer -> MaterialTheme.colorScheme.tertiary
-        else -> MaterialTheme.colorScheme.surfaceVariant
+    val backgroundColor = when {
+        player.isActivePlayer -> Color(0xFFFFFFFF)
+        else -> Color(0xB3FFFFFF)
     }
-    val contentColor = when {
-        player.isCurrentPlayer -> MaterialTheme.colorScheme.onPrimary
-        player.isActivePlayer -> MaterialTheme.colorScheme.onTertiary
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    Surface(
-        color = containerColor,
-        contentColor = contentColor,
-        shape = RoundedCornerShape(8.dp),
-        tonalElevation = 3.dp,
-        modifier = modifier
-            .widthIn(min = 138.dp, max = 232.dp)
-            .semantics { contentDescription = "${player.displayName}: ${player.coins} coins" }
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CoinIcon(
-                    amount = player.coins,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
 
-                Text(
-                    text = player.displayName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1
-                )
-            }
-            if (cards.hasVisibleCards()) {
-                OwnedCardRow(
-                    playerName = player.displayName,
-                    cards = cards,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-            }
-            if (landmarks.isNotEmpty()) {
-                LandmarkRow(
-                    landmarks = landmarks,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-            }
-        }
-    }
-}
+    val textColor = Color(0xFF004E7E)
 
-@Composable
-private fun OwnedCardRow(
-    playerName: String,
-    cards: List<PlayerCardState>,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        cards.visibleInDisplayOrder().forEach { card ->
-            OwnedCardChip(
-                playerName = playerName,
-                card = card
-            )
-        }
-    }
-}
-
-@Composable
-private fun OwnedCardChip(
-    playerName: String,
-    card: PlayerCardState
-) {
-    val cardName = card.cardType.toDisplayText()
-    val cardUnit = if (card.quantity == 1) "card" else "cards"
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = RoundedCornerShape(6.dp),
-        tonalElevation = 1.dp,
-        modifier = Modifier
-            .widthIn(min = 58.dp, max = 72.dp)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
-            .semantics {
-                contentDescription = "Owned by $playerName: $cardName, ${card.quantity} $cardUnit"
-            }
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(4.dp)
+    val scale = if(player.isActivePlayer) 1.0f else 0.95f
+    val fontSize = if(player.isActivePlayer) 18.sp else 16.sp
+    Box(modifier = Modifier.scale(scale)
         ) {
-            Image(
-                painter = painterResource(ShopImageResolver.drawableForCardType(card.cardType)),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .height(34.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(4.dp))
-            )
-            Text(
-                text = "x${card.quantity}",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = backgroundColor,
+                shadowElevation = 3.dp,
+                modifier = modifier
+                    .wrapContentSize()
+                    .widthIn(max = 140.dp)
+                    .semantics {
+                        contentDescription =
+                            "${player.displayName}, ${player.coins} coins"
+                    },
+
+                ) {
+                Column(
+                    modifier = modifier
+                        .padding(horizontal = 28.dp, vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    val name = if (player.isCurrentPlayer) "You" else player.displayName
+                    // Player name
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = fontSize,
+                        color = textColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    // Landmarks
+                    LandmarkRow(landmarks)
+                }
+
+            }
+        val opacity = if (player.isCurrentPlayer) 0f else 1f
+            // Coin
+            CoinBadge(
+                amount = player.coins,
+                 modifier = Modifier.align(Alignment.BottomEnd)
+                 .offset(x = 15.dp, y = 12.dp)
+                 .alpha(opacity)
             )
         }
+
+
     }
-}
-
-private fun List<PlayerCardState>.hasVisibleCards(): Boolean =
-    any { it.quantity > 0 }
-
-private fun List<PlayerCardState>.visibleInDisplayOrder(): List<PlayerCardState> {
-    val cardsByType = filter { it.quantity > 0 }.associateBy { it.cardType }
-    return CardType.entries.mapNotNull { cardsByType[it] }
-}
 
 /**
  * Compact built/unbuilt indicator for a player's four landmarks, rendered in a
@@ -243,25 +210,31 @@ private fun LandmarkPip(
         )
     }
 }
-
-
 @Composable
-private fun CoinIcon(
+private fun CoinBadge(
     amount: Int,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        shape = CircleShape,
-        color = Color(0xFFFFD54F),
-        contentColor = Color(0xFF5D4100),
-        modifier = modifier.size(28.dp)
+    Box(
+        modifier = modifier.size(36.dp),
     ) {
+
+        Image(
+            painter = painterResource(R.drawable.coin),
+            contentDescription = "Coin",
+            modifier = Modifier.fillMaxSize()
+                .align(Alignment.Center),
+            contentScale = ContentScale.Fit
+        )
+
         Text(
-            text = "$amount",
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 3.dp)
+            text = amount.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF744300),
+            fontSize = 18.sp,
+            modifier = Modifier.offset(y = (-4).dp)
+            .align(Alignment.Center),
         )
     }
 }
