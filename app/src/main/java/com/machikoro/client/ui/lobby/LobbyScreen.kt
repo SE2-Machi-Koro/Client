@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -93,8 +92,6 @@ fun LobbyScreen(
 
 @Composable
 fun LobbyScreen(
-    modifier: Modifier = Modifier,
-    playerNames: List<String>,
     players: List<PlayerCoinState>,
     maxPlayers: Int = 4,
     currentUsername: String? = null,
@@ -149,7 +146,7 @@ fun LobbyScreen(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    if (playerNames.size < maxPlayers) {
+                    if (players.size < maxPlayers) {
                         Box(
                             modifier = modifier
                                 .width(170.dp)
@@ -175,7 +172,7 @@ fun LobbyScreen(
                                     modifier = Modifier.fillMaxWidth())
                             }
                         }
-                    } else if (playerNames.size > 1) {
+                    } else if (players.size > 1) {
                         Box(
                             modifier = modifier
                                 .width(170.dp)
