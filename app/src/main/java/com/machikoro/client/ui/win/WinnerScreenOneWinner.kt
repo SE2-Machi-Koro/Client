@@ -58,6 +58,7 @@ fun GameOverOneWinner(
 
             Spacer(modifier = Modifier.padding(17.dp))
 
+            // Winner card with crown and round info
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(
@@ -83,20 +84,33 @@ fun GameOverOneWinner(
                     }
                 }
 
-                rankedPlayers.drop(1).forEachIndexed { index, (name, _) ->
-                    AnimatedItem(
-                        delayMillis = 1500 + index * 300,
-                        animationType = AnimationType.Bounce
-                    ) {
-                        PlayerProfileCard(name, index + 2)
-                    }
-                }
-
                 AnimatedItem(
                     delayMillis = 2000,
                     animationType = AnimationType.Fade
                 ) {
                     RegularInfoText("won the game in \n$roundsNumber rounds!")
+                }
+            }
+
+            // Remaining players in a separate wrapping row below
+            if (rankedPlayers.size > 1) {
+                Spacer(modifier = Modifier.padding(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(
+                        16.dp,
+                        Alignment.CenterHorizontally
+                    ),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    rankedPlayers.drop(1).forEachIndexed { index, (name, _) ->
+                        AnimatedItem(
+                            delayMillis = 1500 + index * 300,
+                            animationType = AnimationType.Bounce
+                        ) {
+                            PlayerProfileCard(name, index + 2)
+                        }
+                    }
                 }
             }
 
