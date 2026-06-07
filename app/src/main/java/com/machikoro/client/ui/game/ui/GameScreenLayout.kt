@@ -48,6 +48,7 @@ fun GameScreenLayout(
                     .wrapContentHeight()
                     .padding(
                         end = 24.dp,
+                        bottom = 12.dp
                     )
             ) {
                 topBar()
