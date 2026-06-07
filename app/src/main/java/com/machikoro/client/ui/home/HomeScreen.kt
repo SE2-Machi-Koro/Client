@@ -38,9 +38,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.machikoro.client.BuildConfig
 import com.machikoro.client.R
 import com.machikoro.client.ui.shared.ActionButton
+import com.machikoro.client.ui.shared.ArrowTextButton
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.Header
 import com.machikoro.client.ui.shared.SecondaryActionButton
@@ -50,6 +52,7 @@ import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.PanelBackgroundBeige
 import com.machikoro.client.ui.theme.PanelBackgroundBeigeDark
 import com.machikoro.client.ui.theme.PanelBorder
+import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextWhite
 
@@ -108,7 +111,8 @@ fun HomeScreen(
             label = username ?: "Guest",
             modifier = Modifier.align(Alignment.TopEnd),
             onClick = null,
-            leftIcon = R.drawable.login_user_icon
+            leftIcon = R.drawable.login_user_icon,
+            fontSize = 18
             )
 
         // Logout affordance in the top-left corner. Issue #106 places the
@@ -121,13 +125,14 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                ActionButton(
-                    "Logout",
-                    onClick = onLogoutClick
+                ArrowTextButton(
+                    label = "Leave Lobby",
+                    onClick = onLogoutClick,
+                    fontSize = 18.sp
                 )
 
                 if (BuildConfig.DEBUG) {
