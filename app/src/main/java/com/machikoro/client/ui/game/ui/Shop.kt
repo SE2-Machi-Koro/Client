@@ -237,8 +237,8 @@ private fun ShopImageTile(
         contentDescription = null,
         contentScale = ContentScale.Fit,
         modifier = modifier
-            .width(165.dp)
-            .height(185.dp)
+            .width(155.dp)
+            .height(175.dp)
             .alpha(if (state.canPurchaseItem(item)) 1f else 0.45f)
             .border(2.dp, borderColor, SHOP_CARD_SHAPE)
             .clip(SHOP_CARD_SHAPE)
