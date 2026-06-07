@@ -3,6 +3,7 @@ package com.machikoro.client.ui.shared
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,11 +23,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.machikoro.client.R
 import com.machikoro.client.ui.theme.ButtonBeigeDark
 import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ButtonBorderBeige
@@ -34,9 +38,41 @@ import com.machikoro.client.ui.theme.ButtonColor
 import com.machikoro.client.ui.theme.ButtonTextColor
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.OrangeButtonShadowColor
+import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 
 private val BUTTONS_ICON_SPACER = 12.dp
+
+@Composable
+fun ArrowTextButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    fontSize: TextUnit = 18.sp,
+    color: Color = PrimaryOrange
+) {
+    Row(
+        modifier = modifier.clickable { onClick() },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = painterResource(R.drawable.decor_arrow),
+            contentDescription = null,
+            modifier = Modifier.size(16.dp)
+        )
+
+        Spacer(modifier = Modifier.width(6.dp))
+
+        Text(
+            text = label,
+            color = color,
+            style = MaterialTheme.typography.bodyLarge,
+            fontSize = fontSize,
+            fontWeight = FontWeight.ExtraBold
+        )
+    }
+}
+
 @Composable
 fun ActionButton(
     label: String,
@@ -188,6 +224,7 @@ fun ButtonsPreview() {
                 ActionButton("Some text", null)
                 ActionButton("Some text but long", null)
                 SecondaryActionButton("text", null)
+                ArrowTextButton("Back",{})
             }
         }
     }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -29,16 +30,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.machikoro.client.R
 import com.machikoro.client.domain.model.state.LobbyScreenState
+import com.machikoro.client.ui.shared.ArrowTextButton
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ButtonBlueDark
@@ -46,6 +48,18 @@ import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextWhite
 import com.machikoro.client.ui.theme.White
+import com.machikoro.client.ui.theme.PanelBackgroundBeige
+import com.machikoro.client.ui.theme.PanelBorder
+import com.machikoro.client.ui.shared.Background
+import com.machikoro.client.ui.shared.Header
+import com.machikoro.client.ui.theme.ButtonBorderBeige
+import com.machikoro.client.ui.theme.ButtonBorderBlue
+import com.machikoro.client.ui.theme.ButtonBorderOrange
+import com.machikoro.client.ui.theme.ButtonOrange
+import com.machikoro.client.ui.theme.ButtonShadowColor
+import com.machikoro.client.ui.theme.PrimaryOrange
+import com.machikoro.client.ui.theme.TextBlueLight
+import com.machikoro.client.ui.theme.TextOnOrange
 
 @Composable
 fun LobbyScreen(
@@ -90,6 +104,7 @@ fun LobbyScreen(
     onLeaveLobby: () -> Unit = {},
     onFillWithDummies: () -> Unit = {},
     onResetLobby: () -> Unit = {},
+
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     // All players must be ready, not just the host
@@ -98,119 +113,126 @@ fun LobbyScreen(
     val hasDummies = players.any { it.displayName.startsWith("debug_player") }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(White)
+        modifier = modifier.fillMaxSize()
     ) {
-        // === BACKGROUND LAYER ===
-        // Decorative background image on the bottom left.
-        Image(
-            painter = painterResource(id = R.drawable.background_left),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .offset(x = -15.dp, y = 25.dp)
-                .blur(3.5.dp)
-        )
-
-        // Decorative background image on the bottom right.
-        Image(
-            painter = painterResource(id = R.drawable.background_right),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .offset(x = 15.dp, y = 25.dp)
-                .blur(3.5.dp)
-        )
-
-        // White transparent overlay for better readability.
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(Color.White.copy(alpha = 0.7f))
-        )
+        Background(R.drawable.background_wood)// === BACKGROUND LAYER ===
 
         // === HEADER ===
         // Main title.
-        Text(
-            text = "Lobby",
-            style = MaterialTheme.typography.headlineMedium,
-            color = TextBlueDark,
+        Header("Lobby",
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 50.dp),
+                .padding(top = 23.dp)
+                .align(Alignment.TopCenter),
+            fontSize = 52
         )
 
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
-                .padding(top = 70.dp),
+                .offset(y = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-                Text(
-                    text = "Players",
-                    modifier = Modifier.width(220.dp),
-                    color = TextBlueDark,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "Status",
-                    modifier = Modifier.width(90.dp),
-                    color = TextBlueDark,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+            LobbyPanel(
+                playerNames = players.map { it.displayName },
+                maxPlayers = maxPlayers,
+                currentUsername = currentUsername,
+                hostUsername = hostUsername,
+                isReady = isReady
+            )
 
-            Spacer(modifier = Modifier.height(5.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            repeat(maxPlayers) { index ->
-                val player = players.getOrNull(index)
-                val name = player?.displayName
-                val isCurrentUser = name != null && name == currentUsername
-                val isHostPlayer = name != null && name == hostUsername
+            if (isHost) {
+                Spacer(modifier = Modifier.height(4.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.padding(bottom = 6.dp)
-                ) {
-                    PlayerSlot(
-                        name = when {
-                            name == null -> ""
-                            isCurrentUser -> "$name (you)"
-                            else -> name
-                        },
-                        isHost = isHostPlayer
-                    )
-
-                    // Ready state comes from the server roster per player
-                    val statusText = when {
-                        player == null -> ""
-                        player.isReady -> "ready"
-                        else -> "not ready"
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (players.size < maxPlayers) {
+                        Box(
+                            modifier = modifier
+                                .width(170.dp)
+                                .height(55.dp)
+                                .background(
+                                    color = ButtonBorderBlue,
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                .padding(bottom = 4.dp)
+                        )
+                        {
+                            Button(
+                                onClick = onFillWithDummies,
+                                modifier = Modifier
+                                    .width(170.dp)
+                                    .height(55.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = ButtonBlueDark)
+                            ) {
+                                Text("Fill Dummies",
+                                    color = TextWhite,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth())
+                            }
+                        }
+                    } else if (players.size > 1) {
+                        Box(
+                            modifier = modifier
+                                .width(170.dp)
+                                .height(55.dp)
+                                .background(
+                                    color = ButtonBorderBlue,
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                .padding(bottom = 4.dp)
+                        )
+                        {
+                            Button(
+                                onClick = onResetLobby,
+                                modifier = Modifier
+                                    .width(170.dp)
+                                    .height(55.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = ButtonBlueDark)
+                            ) {
+                                Text("Reset Lobby",
+                                    color = TextWhite,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
                     }
 
-                    StatusSlot(text = statusText)
+                    Box(
+                        modifier = modifier
+                            .width(170.dp)
+                            .height(55.dp)
+                            .background(
+                                color = ButtonBorderOrange,
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .padding(bottom = 4.dp)
+                    )
+                    {
+                        Button(
+                            onClick = onStartGame,
+                            enabled = startEnabled,
+                            modifier = Modifier
+                                .width(170.dp)
+                                .height(55.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ButtonOrange,
+                                disabledContainerColor = ButtonOrange.copy(alpha = 0.65f)
+                            )
+                        ) {
+                            Text(
+                                text = "Start Game",
+                                color = TextOnOrange,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Button(
-                onClick = onStartGame,
-                enabled = startEnabled,
-                modifier = Modifier
-                    .width(320.dp)
-                    .height(52.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ButtonBlueDark,
-                    disabledContainerColor = ButtonBlueDark.copy(alpha = 0.65f)
-                )
-            ) {
-                Text("Start Game", color = TextWhite, style =  MaterialTheme.typography.labelLarge)
             }
         }
 
@@ -219,7 +241,7 @@ fun LobbyScreen(
             onClick = onReadyToggle,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 140.dp, top = 40.dp)
+                .padding(end = 140.dp, bottom = 12.dp)
         )
 
         lobbyCode?.let { code ->
@@ -227,33 +249,114 @@ fun LobbyScreen(
                 code = code,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(top = 180.dp, start = 95.dp)
+                    .padding(top = 180.dp, start = 85.dp)
             )
         }
 
-        // Debug button: fill lobby with dummies, or reset once dummies are present
-        if (isHost) {
-            val debugLabel = if (hasDummies) "[Debug] Reset lobby" else "[Debug] Fill with dummies"
-            val debugAction = if (hasDummies) onResetLobby else onFillWithDummies
-            Button(
-                onClick = debugAction,
-                enabled = hasDummies || players.size < maxPlayers,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 20.dp, bottom = 20.dp)
-                    .height(34.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = ButtonBeigeLight)
+        ArrowTextButton(
+            label = "Leave Lobby",
+            onClick = onLeaveLobby,
+            modifier = Modifier.offset(x = 30.dp, y = 28.dp),
+            fontSize = 18.sp
+        )
+    }
+}
+
+@Composable
+private fun LobbyPanel(
+    playerNames: List<String>,
+    maxPlayers: Int,
+    currentUsername: String?,
+    hostUsername: String?,
+    isReady: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .width(358.dp)
+            .background(
+                color = PanelBorder,
+                shape = RoundedCornerShape(14.dp)
+            )
+            .padding(bottom = 4.dp, start = 4.dp)
+    )
+    {
+        Card(
+            modifier = Modifier.width(350.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = PanelBackgroundBeige),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(debugLabel, color = TextBlueDark, style = MaterialTheme.typography.labelSmall)
+                Row {
+                    Text(
+                        text = "Players",
+                        modifier = Modifier.width(200.dp).padding(top = 5.dp, start = 45.dp),
+                        color = TextBlueDark,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = "Status",
+                        modifier = Modifier.width(100.dp).padding(top = 5.dp, start = 17.dp),
+                        color = TextBlueDark,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                repeat(maxPlayers) { index ->
+                    val name = playerNames.getOrNull(index)
+                    val isCurrentUser = name != null && name == currentUsername
+                    val isHostPlayer = name != null && name == hostUsername
+
+                    val statusText = when {
+                        name == null -> ""
+                        isCurrentUser && !isReady -> "not ready"
+                        else -> "ready"
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(bottom = 6.dp)
+                    ) {
+                        PlayerSlot(
+                            name = when {
+                                name == null && index == playerNames.size -> "Waiting for players..."
+                                name == null -> ""
+                                isCurrentUser -> "$name (you)"
+                                else -> name
+                            },
+                            isHost = isHostPlayer
+                        )
+
+                        StatusSlot(text = statusText)
+                    }
+                }
             }
         }
-
-        LeaveLobbyButton(
-            onClick = onLeaveLobby,
+        Image(
+            painter = painterResource(id = R.drawable.decor_screw),
+            contentDescription = null,
             modifier = Modifier
+                .size(16.dp)
                 .align(Alignment.TopStart)
-                .padding(top = 25.dp, start = 30.dp)
+                .offset(x = 10.dp, y = 8.dp)
+        )
+
+        Image(
+            painter = painterResource(id = R.drawable.decor_screw),
+            contentDescription = null,
+            modifier = Modifier
+                .size(16.dp)
+                .align(Alignment.TopEnd)
+                .offset(x = (-10).dp, y = 8.dp)
         )
     }
 }
@@ -295,16 +398,31 @@ private fun PlayerSlot(name: String, isHost: Boolean) {
 
 @Composable
 private fun StatusSlot(text: String) {
+    val isNotReady = text == "not ready"
+    val isEmpty = text.isBlank()
+
     Card(
         modifier = Modifier
             .width(100.dp)
             .height(36.dp),
         shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = ButtonBeigeLight),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = when {
+                isEmpty -> Color(0xFFE3DDD2)
+                isNotReady -> Color(0xFFE3DDD2)
+                else -> ButtonBeigeLight
+            }
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isNotReady || isEmpty) 1.dp else 5.dp        )
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Text(text = text, color = TextBlueDark, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = text,
+                color = if (isNotReady || isEmpty) TextBlueDark.copy(alpha = 0.45f) else TextBlueDark,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -319,7 +437,7 @@ fun ReadyToggle(
         modifier = modifier
             .width(90.dp)
             .background(ButtonBlueDark, RoundedCornerShape(12.dp))
-            .padding(vertical = 12.dp),
+            .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -366,7 +484,7 @@ fun ReadyToggle(
             text = "not\nready",
             color = White,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
         )
     }
 }
@@ -401,7 +519,7 @@ private fun LobbyCodeCopyRow(
                 .height(40.dp)
                 .clickable { copyLobbyCodeToClipboard() },
             shape = RoundedCornerShape(10.dp),
-            colors = CardDefaults.cardColors(containerColor = White),
+            colors = CardDefaults.cardColors(containerColor = PanelBackgroundBeige),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             Row(
@@ -413,7 +531,7 @@ private fun LobbyCodeCopyRow(
                 Text(
                     text = code,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0x4D004E7E),
+                    color = TextBlueLight,
                     maxLines = 1
                 )
 
@@ -428,43 +546,6 @@ private fun LobbyCodeCopyRow(
         }
     }
 }
-@Composable
-private fun LeaveLobbyButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .width(105.dp)
-            .height(42.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = ButtonBlueDark),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.lobby_leave),
-                contentDescription = "Lobby verlassen",
-                modifier = Modifier.size(22.dp)
-            )
-
-            Spacer(modifier = Modifier.width(10.dp))
-
-            Text(
-                text = "Leave Lobby",
-                color = TextWhite,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
 
 @Preview(showBackground = true, widthDp = 917, heightDp = 412)
 @Composable
@@ -475,7 +556,8 @@ private fun LobbyScreenPreview() {
             currentUsername = "Player1",
             hostUsername = "Player1",
             isHost = true,
-            isReady = false
+            isReady = false,
+            lobbyCode = "AJ25Z39"
         )
     }
 }
@@ -494,7 +576,8 @@ private fun LobbyScreenFullPreview() {
             currentUsername = "Player1",
             hostUsername = "Player1",
             isHost = true,
-            isReady = true
+            isReady = true,
+            lobbyCode = "AJ25Z39"
         )
     }
 }
