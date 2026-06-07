@@ -133,11 +133,10 @@ fun LobbyScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             LobbyPanel(
-                playerNames = players.map { it.displayName },
+                players = players,
                 maxPlayers = maxPlayers,
                 currentUsername = currentUsername,
                 hostUsername = hostUsername,
-                isReady = isReady
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -264,11 +263,10 @@ fun LobbyScreen(
 
 @Composable
 private fun LobbyPanel(
-    playerNames: List<String>,
+    players: List<PlayerCoinState>,
     maxPlayers: Int,
     currentUsername: String?,
     hostUsername: String?,
-    isReady: Boolean,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -312,14 +310,16 @@ private fun LobbyPanel(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 repeat(maxPlayers) { index ->
-                    val name = playerNames.getOrNull(index)
+                    val player = players.getOrNull(index)
+                    val name = player?.displayName
                     val isCurrentUser = name != null && name == currentUsername
                     val isHostPlayer = name != null && name == hostUsername
 
+                    // Use server-provided isReady per player, not the local toggle state
                     val statusText = when {
-                        name == null -> ""
-                        isCurrentUser && !isReady -> "not ready"
-                        else -> "ready"
+                        player == null -> ""
+                        player.isReady -> "ready"
+                        else -> "not ready"
                     }
 
                     Row(
@@ -328,7 +328,7 @@ private fun LobbyPanel(
                     ) {
                         PlayerSlot(
                             name = when {
-                                name == null && index == playerNames.size -> "Waiting for players..."
+                                name == null && index == players.size -> "Waiting for players..."
                                 name == null -> ""
                                 isCurrentUser -> "$name (you)"
                                 else -> name
