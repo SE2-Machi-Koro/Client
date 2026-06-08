@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -63,9 +64,12 @@ import com.machikoro.client.ui.game.ui.PlayersTopBar
 import com.machikoro.client.ui.game.ui.RoundIndicator
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
+import com.machikoro.client.ui.shared.DecreasingLineTimer
 import com.machikoro.client.ui.shared.RegularInfoText
 import com.machikoro.client.ui.shared.SecondaryActionButton
+import com.machikoro.client.ui.shared.Timer
 import com.machikoro.client.ui.theme.ClientTheme
+import kotlinx.coroutines.delay
 
 @Composable
 fun GameScreen(
@@ -245,13 +249,18 @@ fun GameScreen(
         // =====================================
         centerContent = {
             Box(modifier = Modifier.align(Alignment.Center)) {
-                if(showOwnCards) {
+                if(showOwnCards && isOwnCardsDisplayPermitted) {
+                    LaunchedEffect(Unit) {
+                        delay(10000)
+                        showOwnCards = false
+                    }
                     Column(
                         modifier = Modifier.align(Alignment.Center)
                             .fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
 
                     ) {
+                        DecreasingLineTimer(10)
                         Image(
                             painter = painterResource(id = R.drawable.rotated_arrow),
                             contentDescription = "Arrow",
