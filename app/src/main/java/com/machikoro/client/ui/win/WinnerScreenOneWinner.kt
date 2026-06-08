@@ -3,6 +3,8 @@ package com.machikoro.client.ui.win
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,6 +40,7 @@ it includes buttons for navigating back to the home
 screen or starting a new game, which are also animated
 for visibility.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GameOverOneWinner(
     winnerName: String,
@@ -92,16 +95,16 @@ fun GameOverOneWinner(
                 }
             }
 
-            // Remaining players in a separate wrapping row below
+            // Remaining players in a wrapping layout below
             if (rankedPlayers.size > 1) {
                 Spacer(modifier = Modifier.padding(8.dp))
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(
                         16.dp,
                         Alignment.CenterHorizontally
                     ),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     rankedPlayers.drop(1).forEachIndexed { index, (name, _) ->
                         AnimatedItem(
