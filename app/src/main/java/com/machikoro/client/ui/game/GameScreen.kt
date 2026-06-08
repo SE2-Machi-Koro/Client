@@ -92,11 +92,13 @@ fun GameScreen(
     var showOwnCards by remember { mutableStateOf(false) }
 
 
-    var isOwnCardsDisplayPermitted by remember { mutableStateOf(
-            if((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
-                && !state.isActivePlayer
-            ) true else false
-        )
+    var isOwnCardsDisplayPermitted = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
+            && !state.isActivePlayer)
+
+    LaunchedEffect(isOwnCardsDisplayPermitted) {
+        if (!isOwnCardsDisplayPermitted) {
+            showOwnCards = false
+        }
     }
 
 
@@ -380,7 +382,27 @@ fun GameScreen(
             }
         }
     )
-
+    Text(
+        text = """
+        gameId: ${state.gameId}
+        phase: ${state.gamePhase}
+        status: ${state.gameStatus}
+        activePlayer: ${state.activePlayerId}
+        myUserId: ${state.myUserId}
+        isActive: ${state.isActivePlayer}
+        players: ${state.players.toString()}
+        dice: ${state.diceResult?.joinToString() ?: "null"}
+        rolling: ${state.isRolling}
+        purchaseState: ${state.purchaseState}
+        pending: ${state.pendingPurchaseItemType}
+        message: ${state.purchaseMessage}
+        players: ${state.players.size}
+        cards: ${state.playerCards.size}
+        landmarks: ${state.playerLandmarks.size}
+        market: ${state.marketplace.size}
+    """.trimIndent(),
+        color = Color.White
+    )
 
         if(isOwnCardsDisplayPermitted && !showOwnCards) {
             Column(
