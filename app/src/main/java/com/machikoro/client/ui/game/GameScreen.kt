@@ -1,13 +1,18 @@
 package com.machikoro.client.ui.game
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -15,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -22,13 +28,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.machikoro.client.BuildConfig
 import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
@@ -42,19 +48,27 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.cheat.ShakeDetector
+import com.machikoro.client.ui.game.ui.BigPlayerCardsDisplay
 import com.machikoro.client.ui.game.ui.BuyingPhaseShop
 import com.machikoro.client.ui.game.ui.DiceAnimationDisplay
 import com.machikoro.client.ui.game.ui.DiceResultDisplay
 import com.machikoro.client.ui.game.ui.GamePhaseBanner
 import com.machikoro.client.ui.game.ui.GameScreenLayout
 import com.machikoro.client.ui.game.ui.InitializationLoadingOverlay
+import com.machikoro.client.ui.game.ui.MarketplaceButton
 import com.machikoro.client.ui.game.ui.MarketplaceSection
+import com.machikoro.client.ui.game.ui.PlayerCardsDisplay
+import com.machikoro.client.ui.game.ui.PlayerCoinField
 import com.machikoro.client.ui.game.ui.PlayersTopBar
 import com.machikoro.client.ui.game.ui.RoundIndicator
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
+import com.machikoro.client.ui.shared.DecreasingLineTimer
+import com.machikoro.client.ui.shared.RegularInfoText
 import com.machikoro.client.ui.shared.SecondaryActionButton
+import com.machikoro.client.ui.shared.Timer
 import com.machikoro.client.ui.theme.ClientTheme
+import kotlinx.coroutines.delay
 
 @Composable
 fun GameScreen(
@@ -74,6 +88,19 @@ fun GameScreen(
     )
 
     var showLeaveDialog by remember { mutableStateOf(false) }
+    var showOwnCards by remember { mutableStateOf(false) }
+
+
+    var isOwnCardsDisplayPermitted = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
+            && !state.isActivePlayer)
+
+    LaunchedEffect(isOwnCardsDisplayPermitted) {
+        if (!isOwnCardsDisplayPermitted) {
+            showOwnCards = false
+        }
+    }
+
+
 
     if (showLeaveDialog) {
         AlertDialog(
@@ -147,6 +174,8 @@ fun GameScreen(
     }
 
     Background()
+    Box {
+
 
     GameScreenLayout(
         // =====================================
@@ -174,10 +203,10 @@ fun GameScreen(
                         players = state.players,
                         playerLandmarks =
                             state.playerLandmarks,
+                        playerCards = state.playerCards,
                         modifier = Modifier.align(
                             Alignment.Center
                         ),
-                        playerCards = state.playerCards,
                     )
 
                     state.roundNumber?.let { round ->
@@ -205,8 +234,15 @@ fun GameScreen(
         // =====================================
         leftContent = {
             Box(modifier = Modifier.align(Alignment.Center)) {
-                Text("PLACEHOLDER \n FOR \n MARKETPLACE \n BUTTON",
-                    color = Color.White)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if(state.gamePhase != GamePhase.ROLL_DICE) {
+                        state.diceResult?.let { DiceResultDisplay(dice = it) }
+                    }
+                    MarketplaceButton()
+                }
             }
         },
 
@@ -214,74 +250,118 @@ fun GameScreen(
         // CENTER
         // =====================================
         centerContent = {
+            Box(modifier = Modifier.align(Alignment.Center)) {
+                if(showOwnCards && isOwnCardsDisplayPermitted) {
+                    LaunchedEffect(Unit) {
+                        delay(10000)
+                        showOwnCards = false
+                    }
+                    Column(
+                        modifier = Modifier.align(Alignment.Center)
+                            .fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally
 
-            if (state.isBuyingPhase) {
-                BuyingPhaseShop(
-                    state = state,
-                    items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
-                    onPurchaseClick = onPurchaseClick,
-                    recommendedCardType = cheatRecommendation,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
-
-            if (false) {
-                MarketplaceSection(
-                    marketplace = state.marketplace,
-                    recommendedCardType = cheatRecommendation,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(horizontal = 12.dp)
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                when {
-                    state.isRolling -> DiceAnimationDisplay()
-                    state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
-                }
-
-                if (state.gamePhase == GamePhase.ROLL_DICE && state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
-                    var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
-
-                    if (state.hasTrainStation) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf(1, 2).forEach { count ->
-                                Button(
-                                    onClick = { selectedDiceCount = count },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (selectedDiceCount == count)
-                                            MaterialTheme.colorScheme.primary
-                                        else
-                                            MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = if (selectedDiceCount == count)
-                                            MaterialTheme.colorScheme.onPrimary
-                                        else
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                ) {
-                                    Text("$count 🎲")
-                                }
+                    ) {
+                        DecreasingLineTimer(10)
+                        Image(
+                            painter = painterResource(id = R.drawable.rotated_arrow),
+                            contentDescription = "Arrow",
+                            modifier = Modifier.clickable {
+                                showOwnCards = false
                             }
-                        }
+                                .size(35.dp)
 
-                        ActionButton(
-                            onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
-                            enabled = !state.isRolling,
-                            label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
-                            leftIcon = R.drawable.game_dice_perspective,
-                            modifier = Modifier.semantics {
-                                contentDescription = "Würfeln"
-                            }
+                            )
+                        BigPlayerCardsDisplay(
+                            state
                         )
                     }
+                }
+                else
 
+                if (state.isBuyingPhase) {
+                    if(state.isActivePlayer) {
+                        BuyingPhaseShop(
+                            state = state,
+                            items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
+                            onPurchaseClick = onPurchaseClick,
+                            recommendedCardType = cheatRecommendation,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    } else RegularInfoText("Waiting for purchase")
+                }
+
+                if (false) {
+                    MarketplaceSection(
+                        marketplace = state.marketplace,
+                        recommendedCardType = cheatRecommendation,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = 12.dp)
+                    )
+                }
+
+                if(state.gamePhase == GamePhase.ROLL_DICE) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(bottom = 32.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        when {
+                            state.isRolling -> DiceAnimationDisplay()
+                            state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
+                        }
+
+                        if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
+                            var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
+
+                            if (state.hasTrainStation) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    listOf(1, 2).forEach { count ->
+                                        Button(
+                                            onClick = { selectedDiceCount = count },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (selectedDiceCount == count)
+                                                    MaterialTheme.colorScheme.primary
+                                                else
+                                                    MaterialTheme.colorScheme.surfaceVariant,
+                                                contentColor = if (selectedDiceCount == count)
+                                                    MaterialTheme.colorScheme.onPrimary
+                                                else
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        ) {
+                                            Text("$count 🎲")
+                                        }
+                                    }
+                                }
+                            }
+
+                            ActionButton(
+                                onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
+                                enabled = !state.isRolling,
+                                label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
+                                leftIcon = R.drawable.game_dice_perspective,
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Würfeln"
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+// =====================================
+// RIGHT
+// =====================================
+        rightContent = {
+            Box(modifier = Modifier.align(Alignment.Center)) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     val turnFlowLabel = state.turnFlowActionLabel()
                     if (
                         turnFlowLabel != null &&
@@ -296,31 +376,37 @@ fun GameScreen(
                             label = turnFlowLabel,
                         )
                     }
-                    ActionButton(
-                        onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
-                        enabled = !state.isRolling,
-                        label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
-                        leftIcon = R.drawable.game_dice_perspective,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Würfeln"
-                        }
-                    )
+
+                    PlayerCoinField(state)
                 }
             }
+        }
+    )
 
-        },
-        // =====================================
-        // RIGHT
-        // =====================================
-        rightContent = {
-            Box(modifier = Modifier.align(Alignment.Center)) {
-                Text("PLACEHOLDER \n FOR COINS",
-                        color = Color.White)
+        if(isOwnCardsDisplayPermitted && !showOwnCards) {
+            Column(
+                modifier = Modifier.align(Alignment.BottomCenter)
+                    .offset(y = 90.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.arrow_button),
+                    contentDescription = "Arrow",
+                    modifier = Modifier.clickable {
+                        showOwnCards = true
+                    }
+                        .size(35.dp),
+
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                PlayerCardsDisplay(
+                    state,
+                    modifier = Modifier
+                )
             }
         }
-
-            )
-
+    }
         InitializationLoadingOverlay(
             connectionStatus = state.connectionStatus,
             gameStatus = state.gameStatus
@@ -334,21 +420,6 @@ private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
     GamePhase.NONE,
     GamePhase.ROLL_DICE,
     GamePhase.END_TURN -> null
-}
-
-@Composable
-private fun RoundIndicator(
-    round: Int,
-    modifier: Modifier = Modifier
-) {
-    Text(
-        text = "Round $round",
-        style = MaterialTheme.typography.bodyLarge,
-        fontWeight = FontWeight.Bold,
-        fontSize = 24.sp,
-        color = Color.White,
-        modifier = modifier
-    )
 }
 
 // === PREVIEWS ===
@@ -474,7 +545,12 @@ private fun previewPlayers() = listOf(
         id = "3",
         displayName = "doniliks",
         coins = 0
-    )
+    ),
+    PlayerCoinState(
+        id = "4",
+        displayName = "looooooooooooooooooooooong name",
+        coins = 3
+    ),
 )
 
 private fun previewLandmarks() = mapOf(
