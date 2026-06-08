@@ -28,8 +28,9 @@ fun PlayerCoinField(
 ) {
     val coins = state
         .players.
-        first { it.isCurrentPlayer }
-        .coins
+        firstOrNull() { it.isCurrentPlayer }
+        ?.coins ?: 0
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -37,15 +38,13 @@ fun PlayerCoinField(
         Text(
             text = "$coins",
             color = Color.White,
-            fontSize = 40.sp,
+            fontSize = 36.sp,
         )
         Image(
             painter = painterResource(id = R.drawable.player_coins),
             contentDescription = "Coins",
             modifier = Modifier.size(120.dp)
-                .offset(y = -20.dp)
+                .offset(y = (-18).dp)
         )
-
-
     }
 }
