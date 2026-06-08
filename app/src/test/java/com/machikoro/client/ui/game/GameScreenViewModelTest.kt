@@ -752,8 +752,28 @@ class GameScreenViewModelTest {
         val viewModel = viewModel(fakeClient)
 
         val shopItems = listOf(
-            ShopItem(type = "BAKERY", displayName = "Bakery", cost = 1, purchaseType = PurchaseType.ESTABLISHMENT, color = ShopItemColor.GREEN, imageKey = "bakery", establishmentType = "Bakery"),
-            ShopItem(type = "CAFE", displayName = "Cafe", cost = 2, purchaseType = PurchaseType.ESTABLISHMENT, color = ShopItemColor.RED, imageKey = "cafe", establishmentType = "Cafe"),
+            ShopItem(
+                type = "BAKERY",
+                displayName = "Bakery",
+                cost = 1,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                color = ShopItemColor.GREEN,
+                imageKey = "bakery",
+                establishmentType = "Bakery",
+                activationText = "2-3",
+                effectText = "Get 1 coin from the bank on your turn.",
+            ),
+            ShopItem(
+                type = "CAFE",
+                displayName = "Cafe",
+                cost = 2,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                color = ShopItemColor.RED,
+                imageKey = "cafe",
+                establishmentType = "Cafe",
+                activationText = "3",
+                effectText = "Take 1 coin from the active player.",
+            ),
         )
 
         fakeClient.emitShopItems(shopItems)
@@ -782,7 +802,17 @@ class GameScreenViewModelTest {
             CardType.BAKERY to 4,
         )
         val shopItems = listOf(
-            ShopItem(type = "BAKERY", displayName = "Bakery", cost = 1, purchaseType = PurchaseType.ESTABLISHMENT, color = ShopItemColor.GREEN, imageKey = "bakery", establishmentType = "Bakery"),
+            ShopItem(
+                type = "BAKERY",
+                displayName = "Bakery",
+                cost = 1,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                color = ShopItemColor.GREEN,
+                imageKey = "bakery",
+                establishmentType = "Bakery",
+                activationText = "2-3",
+                effectText = "Get 1 coin from the bank on your turn.",
+            ),
         )
 
         fakeClient.emitPlayers(players)
