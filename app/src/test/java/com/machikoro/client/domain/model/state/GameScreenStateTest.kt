@@ -72,6 +72,83 @@ class GameScreenStateTest {
         assertFalse(state.hasTrainStation)
     }
 
+    @Test
+    fun hasTrainStationIsFalseWhenNoPlayerIsMarkedActive() {
+        val state = GameScreenState.initial().copy(
+            activePlayerId = ACTIVE_USER_ID,
+            myUserId = ACTIVE_USER_ID,
+            players = listOf(
+                PlayerCoinState(
+                    id = ACTIVE_PLAYER_DATABASE_ID.toString(),
+                    displayName = "Waiting Player",
+                    coins = 4,
+                    isCurrentPlayer = true,
+                    isActivePlayer = false,
+                ),
+            ),
+            playerLandmarks = mapOf(
+                ACTIVE_PLAYER_DATABASE_ID to listOf(
+                    PlayerLandmarkState(
+                        landmarkType = LandmarkType.TRAIN_STATION,
+                        isBuilt = true,
+                    ),
+                ),
+            ),
+        )
+
+        assertFalse(state.hasTrainStation)
+    }
+
+    @Test
+    fun hasTrainStationIsFalseWhenActivePlayerIdCannotBeMappedToDatabaseId() {
+        val state = GameScreenState.initial().copy(
+            activePlayerId = ACTIVE_USER_ID,
+            myUserId = ACTIVE_USER_ID,
+            players = listOf(
+                PlayerCoinState(
+                    id = "player-$ACTIVE_PLAYER_DATABASE_ID",
+                    displayName = "Active Player",
+                    coins = 4,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true,
+                ),
+            ),
+            playerLandmarks = mapOf(
+                ACTIVE_PLAYER_DATABASE_ID to listOf(
+                    PlayerLandmarkState(
+                        landmarkType = LandmarkType.TRAIN_STATION,
+                        isBuilt = true,
+                    ),
+                ),
+            ),
+        )
+
+        assertFalse(state.hasTrainStation)
+    }
+
+    @Test
+    fun hasTrainStationIsFalseWhenActivePlayerLandmarksAreMissing() {
+        val state = trainStationState(playerLandmarks = emptyMap())
+
+        assertFalse(state.hasTrainStation)
+    }
+
+    @Test
+    fun hasTrainStationIgnoresBuiltNonTrainStationLandmarks() {
+        val state = trainStationState(
+            playerLandmarks = mapOf(
+                ACTIVE_PLAYER_DATABASE_ID to listOf(
+                    PlayerLandmarkState(
+                        landmarkType = LandmarkType.SHOPPING_MALL,
+                        isBuilt = true,
+                    ),
+                ),
+            ),
+        )
+
+        assertFalse(state.hasTrainStation)
+    }
+
     private fun trainStationState(
         playerLandmarks: Map<Int, List<PlayerLandmarkState>>,
     ): GameScreenState =
