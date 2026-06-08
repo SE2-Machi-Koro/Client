@@ -3,8 +3,6 @@ package com.machikoro.client.ui.win
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,9 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.R
-import com.machikoro.client.domain.enums.LandmarkType
-import com.machikoro.client.domain.model.state.PlayerCoinState
-import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.AnimatedItem
 import com.machikoro.client.ui.shared.AnimationType
@@ -40,14 +35,12 @@ it includes buttons for navigating back to the home
 screen or starting a new game, which are also animated
 for visibility.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GameOverOneWinner(
     winnerName: String,
     roundsNumber: Int,
     onBackHome: () -> Unit,
     onViewLeaderboard: () -> Unit = {},
-    rankedPlayers: List<Pair<String, Int>> = emptyList(),
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         Background(R.drawable.game_end)
@@ -61,7 +54,6 @@ fun GameOverOneWinner(
 
             Spacer(modifier = Modifier.padding(17.dp))
 
-            // Winner card with crown and round info
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(
@@ -95,28 +87,6 @@ fun GameOverOneWinner(
                 }
             }
 
-            // Remaining players in a wrapping layout below
-            if (rankedPlayers.size > 1) {
-                Spacer(modifier = Modifier.padding(8.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(
-                        16.dp,
-                        Alignment.CenterHorizontally
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    rankedPlayers.drop(1).forEachIndexed { index, (name, _) ->
-                        AnimatedItem(
-                            delayMillis = 1500 + index * 300,
-                            animationType = AnimationType.Bounce
-                        ) {
-                            PlayerProfileCard(name, index + 2)
-                        }
-                    }
-                }
-            }
-
             Spacer(modifier = Modifier.weight(1f))
 
             AnimatedItem(
@@ -144,12 +114,6 @@ fun GameOverOnePlayerPreview() {
             roundsNumber = 5,
             onBackHome = {},
             onViewLeaderboard = {},
-            rankedPlayers = listOf(
-                "Alice" to 4,
-                "Bob" to 2,
-                "Charlie" to 1,
-                "Diana" to 0,
-            )
         )
     }
 }
