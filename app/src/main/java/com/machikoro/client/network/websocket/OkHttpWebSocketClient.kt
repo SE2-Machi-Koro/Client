@@ -1253,16 +1253,11 @@ class OkHttpWebSocketClient(
     private fun JSONArray?.toPlayerCoinStates(payload: JSONObject, game: JSONObject, playerUsernames: Map<Int, String> = emptyMap()): List<PlayerCoinState> {
         if (this == null) return emptyList()
 
-        val activeUserId = payload.optIntOrNull("activePlayerId")
-        val currentTurnIndex = game.optIntOrNull("currentTurnIndex")
-        val currentTurnUserId = payload.optJSONArray("turnOrder")
-            ?.takeIf { currentTurnIndex != null && currentTurnIndex in 0 until it.length() }
-            ?.let { turnOrder -> currentTurnIndex?.let(turnOrder::optInt) }
-        val resolvedActiveUserId = activeUserId ?: currentTurnUserId
         val localUserId = sessionStateHolder.session.value?.userId
+        val activeUserId = resolveActiveUserId(payload, game)
 
         return List(length()) { index ->
-            getJSONObject(index).toPlayerCoinState(localUserId, resolvedActiveUserId, playerUsernames)
+            getJSONObject(index).toPlayerCoinState(localUserId, activeUserId, playerUsernames)
         }
     }
 
