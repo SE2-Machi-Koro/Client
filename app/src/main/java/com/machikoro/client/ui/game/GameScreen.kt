@@ -382,27 +382,6 @@ fun GameScreen(
             }
         }
     )
-    Text(
-        text = """
-        gameId: ${state.gameId}
-        phase: ${state.gamePhase}
-        status: ${state.gameStatus}
-        activePlayer: ${state.activePlayerId}
-        myUserId: ${state.myUserId}
-        isActive: ${state.isActivePlayer}
-        players: ${state.players.toString()}
-        dice: ${state.diceResult?.joinToString() ?: "null"}
-        rolling: ${state.isRolling}
-        purchaseState: ${state.purchaseState}
-        pending: ${state.pendingPurchaseItemType}
-        message: ${state.purchaseMessage}
-        players: ${state.players.size}
-        cards: ${state.playerCards.size}
-        landmarks: ${state.playerLandmarks.size}
-        market: ${state.marketplace.size}
-    """.trimIndent(),
-        color = Color.White
-    )
 
         if(isOwnCardsDisplayPermitted && !showOwnCards) {
             Column(
