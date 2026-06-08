@@ -10,6 +10,7 @@ import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.shop.ShopItem
+import com.machikoro.client.domain.model.state.AccusationResult
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
@@ -104,6 +105,9 @@ class OkHttpWebSocketClient(
     override val authRejections: SharedFlow<Unit>
         get() = mutableAuthRejections.asSharedFlow()
 
+    override val accusationResults: SharedFlow<AccusationResult>
+        get() = mutableAccusationResults.asSharedFlow()
+
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
@@ -140,6 +144,10 @@ class OkHttpWebSocketClient(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     private val mutableAuthRejections = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    private val mutableAccusationResults = MutableSharedFlow<AccusationResult>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
@@ -421,6 +429,33 @@ class OkHttpWebSocketClient(
         sendGameIdAction(WebSocketContract.endTurnDestination, gameId, "endTurn")
     }
 
+    override fun reportCheat(gameId: Int) {
+        sendGameIdAction(WebSocketContract.reportCheatDestination, gameId, "reportCheat")
+    }
+
+    override fun accuse(gameId: Int, accusedPlayerId: Int) {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "accuse called but no active WebSocket connection")
+            return
+        }
+        val body = JSONObject()
+            .put("gameId", gameId)
+            .put("accusedPlayerId", accusedPlayerId)
+            .toString()
+        socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.accuseDestination,
+                    "content-type" to "application/json"
+                ),
+                body = body
+            ).serialize()
+        )
+        Log.d(TAG, "accuse sent for game $gameId against player $accusedPlayerId")
+    }
+
     override fun sendPurchase(
         gameId: Int,
         purchaseType: PurchaseType,
@@ -568,6 +603,7 @@ class OkHttpWebSocketClient(
                 handleGameStarted(json)
                 handleSync(json)
                 handleAuthoritativeSnapshot(json)
+                handleAccusationResult(json)
                 parseGameAction(json).let { (phase, activePlayerId) ->
                     phase?.let { mutableGamePhase.value = it }
                     activePlayerId?.let { mutableActivePlayerId.value = it }
@@ -802,9 +838,32 @@ class OkHttpWebSocketClient(
         applyGameStateSnapshot(state, json.optIntOrNull("gameId"))
     }
 
+    /**
+     * Cheating-accusation result (#280). The embedded state snapshot is applied by
+     * [handleAuthoritativeSnapshot] (so coin penalties show up); here we just emit a
+     * one-shot result for the toast, resolving names from the freshly-applied roster.
+     */
+    private fun handleAccusationResult(json: JSONObject) {
+        if (json.optString("type") != ACCUSATION_RESULT_TYPE) return
+        val payload = json.optJSONObject("payload") ?: return
+        val caught = payload.optString("outcome") == "CAUGHT"
+        val accuserId = payload.optIntOrNull("accuserPlayerId")
+        val accusedId = payload.optIntOrNull("accusedPlayerId")
+        val roster = mutablePlayers.value
+        fun nameOf(id: Int?): String =
+            roster.firstOrNull { it.id == id?.toString() }?.displayName ?: "A player"
+        mutableAccusationResults.tryEmit(
+            AccusationResult(
+                caught = caught,
+                accuserName = nameOf(accuserId),
+                accusedName = nameOf(accusedId),
+            )
+        )
+    }
+
     private fun handleAuthoritativeSnapshot(json: JSONObject) {
         val type = json.optString("type")
-        if (type != GAME_ACTION_TYPE && type != ROLL_DICE_TYPE && type != GAME_END_TYPE) return
+        if (type != GAME_ACTION_TYPE && type != ROLL_DICE_TYPE && type != GAME_END_TYPE && type != ACCUSATION_RESULT_TYPE) return
         val payload = json.optJSONObject("payload") ?: return
         val state = payload.optJSONObject("state") ?: return
         applyGameStateSnapshot(state, json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId"))
@@ -1335,6 +1394,7 @@ class OkHttpWebSocketClient(
         // restart without hammering the server.
         private val RECONNECT_DELAYS_MS = listOf(1_000L, 2_000L, 4_000L, 8_000L, 16_000L)
         private const val GAME_ACTION_TYPE = "GAME_ACTION"
+        private const val ACCUSATION_RESULT_TYPE = "ACCUSATION_RESULT"
         private const val GAME_END_TYPE = "GAME_END"
         private const val GAME_STARTED_TYPE = "GAME_STARTED"
         private const val GAME_ENDED_TYPE = "GAME_END"

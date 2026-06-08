@@ -8,6 +8,7 @@ import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
+import com.machikoro.client.domain.model.state.AccusationResult
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import kotlinx.coroutines.flow.SharedFlow
@@ -49,6 +50,9 @@ interface WebSocketClient {
     // One-shot purchase success/error updates used to move the shop out of optimistic UI state.
     val purchaseEvents: SharedFlow<PurchaseEvent>
 
+    // One-shot result of a cheating accusation (#280), for a toast.
+    val accusationResults: SharedFlow<AccusationResult>
+
     // Fires when the server rejects the STOMP CONNECT for auth reasons (token
     // missing / invalid / server-side cleared). The UI layer is responsible for
     // calling SessionManager.signOut() and surfacing a "session expired"
@@ -78,4 +82,10 @@ interface WebSocketClient {
     fun advancePhase(gameId: Int)
     fun resolveEffects(gameId: Int)
     fun endTurn(gameId: Int)
+
+    // Cheating accusations (#280). reportCheat silently tells the server the
+    // local active player used the Insider Trading cheat; accuse bets that
+    // [accusedPlayerId] cheated.
+    fun reportCheat(gameId: Int)
+    fun accuse(gameId: Int, accusedPlayerId: Int)
 }

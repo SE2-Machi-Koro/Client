@@ -81,12 +81,45 @@ fun GameScreen(
     onEndGame: () -> Unit = {},
     cheatRecommendation: CardType? = null,
     onShake: () -> Unit = {},
+    onAccuse: (accusedPlayerId: Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     ShakeDetector(
         enabled = state.gameStatus == GameStatus.IN_PROGRESS,
         onShake = onShake,
     )
+
+    // Cheating accusation (#280): tapping another player's badge opens this
+    // confirmation. Accusing wrongly costs a coin, so we always confirm first.
+    var accuseTargetId by remember { mutableStateOf<String?>(null) }
+    val accuseTarget = accuseTargetId?.let { id -> state.players.firstOrNull { it.id == id } }
+    if (accuseTarget != null) {
+        AlertDialog(
+            onDismissRequest = { accuseTargetId = null },
+            title = { Text("Accuse ${accuseTarget.displayName}?") },
+            text = {
+                Text(
+                    "Bet that ${accuseTarget.displayName} used the Insider Trading cheat. " +
+                        "If you're wrong, you lose a coin."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        accuseTarget.id.toIntOrNull()?.let(onAccuse)
+                        accuseTargetId = null
+                    }
+                ) {
+                    Text("Accuse")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { accuseTargetId = null }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
 
     var showLeaveDialog by remember { mutableStateOf(false) }
     var showOwnCards by remember { mutableStateOf(false) }
@@ -204,6 +237,7 @@ fun GameScreen(
                         players = state.players,
                         playerLandmarks =
                             state.playerLandmarks,
+                        onAccusePlayer = { accuseTargetId = it },
                         modifier = Modifier.align(
                             Alignment.Center
                         ),

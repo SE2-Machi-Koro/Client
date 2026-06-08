@@ -2,6 +2,7 @@ package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +56,7 @@ private val SURFACE_COLOR = Color(0xFF8F7365)
 fun PlayersTopBar(
     players: List<PlayerCoinState>,
     playerLandmarks: Map<Int, List<PlayerLandmarkState>>,
+    onAccusePlayer: (playerId: String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (players.isEmpty()) return
@@ -85,7 +87,8 @@ fun PlayersTopBar(
 
                 PlayerCoinBadge(
                     player = player,
-                    landmarks = playerLandmarks[playerId].orEmpty()
+                    landmarks = playerLandmarks[playerId].orEmpty(),
+                    onAccuse = { onAccusePlayer(player.id) }
                 )
             }
         }
@@ -96,6 +99,7 @@ fun PlayersTopBar(
 private fun PlayerCoinBadge(
     player: PlayerCoinState,
     landmarks: List<PlayerLandmarkState>,
+    onAccuse: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = when {
@@ -107,8 +111,11 @@ private fun PlayerCoinBadge(
 
     val scale = if(player.isActivePlayer) 1.0f else 0.95f
     val fontSize = if(player.isActivePlayer) 18.sp else 16.sp
-    Box(modifier = Modifier.scale(scale)
-        ) {
+    Box(
+        modifier = Modifier
+            .scale(scale)
+            .clickable(enabled = !player.isCurrentPlayer) { onAccuse() }
+    ) {
             Surface(
                 shape = RoundedCornerShape(10.dp),
                 color = backgroundColor,

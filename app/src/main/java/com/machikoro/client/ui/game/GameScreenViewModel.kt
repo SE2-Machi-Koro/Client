@@ -21,6 +21,7 @@ import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import com.machikoro.client.domain.model.state.AccusationResult
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -46,6 +47,10 @@ class GameScreenViewModel(
     /** One-shot signal each time a shake produces a recommendation (drives the toast). */
     val cheatActivations: SharedFlow<CardType?>
         get() = mutableCheatActivations.asSharedFlow()
+
+    /** One-shot cheating-accusation result (#280) for a toast — pass-through from the WS client. */
+    val accusationResults: SharedFlow<AccusationResult>
+        get() = webSocketClient.accusationResults
     private val mutableCheatActivations = MutableSharedFlow<CardType?>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -166,8 +171,10 @@ class GameScreenViewModel(
     /**
      * Insider Trading cheat (#203). On a shake during the local player's turn,
      * computes a local best-buy recommendation and emits a one-shot activation
-     * signal for the toast. No-op off-turn or before the game is running; never
-     * contacts the server.
+     * signal for the toast. No-op off-turn or before the game is running.
+     *
+     * Also silently reports the cheat usage to the server (#280 / server #361) so
+     * other players can later accuse this player of cheating.
      */
     fun onShake() {
         val current = mutableState.value
@@ -176,6 +183,19 @@ class GameScreenViewModel(
         val recommendation = recommendBestBuy(current, me)
         mutableCheatRecommendation.value = recommendation
         mutableCheatActivations.tryEmit(recommendation)
+        current.gameId?.let { webSocketClient.reportCheat(it) }
+    }
+
+    /**
+     * Accuse [accusedPlayerId] (a PlayerModel.id) of cheating (#280). The server
+     * adjudicates and the outcome arrives via [accusationResults]; coin changes
+     * arrive through the normal authoritative snapshot.
+     */
+    fun accuse(accusedPlayerId: Int) {
+        val current = mutableState.value
+        if (current.gameStatus != GameStatus.IN_PROGRESS) return
+        val gameId = current.gameId ?: return
+        webSocketClient.accuse(gameId, accusedPlayerId)
     }
 
     fun performTurnFlowAction() {
