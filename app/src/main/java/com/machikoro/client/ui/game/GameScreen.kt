@@ -48,6 +48,7 @@ import com.machikoro.client.ui.game.ui.GameScreenLayout
 import com.machikoro.client.ui.game.ui.InitializationLoadingOverlay
 import com.machikoro.client.ui.game.ui.MarketplaceButton
 import com.machikoro.client.ui.game.ui.MarketplaceSection
+import com.machikoro.client.ui.game.ui.PlayerCoinField
 import com.machikoro.client.ui.game.ui.PlayersTopBar
 import com.machikoro.client.ui.game.ui.RoundIndicator
 import com.machikoro.client.ui.shared.ActionButton
@@ -313,6 +314,7 @@ fun GameScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+
                     val turnFlowLabel = state.turnFlowActionLabel()
                     if (
                         turnFlowLabel != null &&
@@ -328,8 +330,8 @@ fun GameScreen(
                         )
                     }
 
-                    Text("PLACEHOLDER \n FOR COINS",
-                        color = Color.White)
+                    PlayerCoinField(state)
+
                 }
             }
         }
