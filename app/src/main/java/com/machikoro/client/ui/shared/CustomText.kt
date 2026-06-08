@@ -22,7 +22,7 @@ import com.machikoro.client.ui.theme.HeaderFill
 import com.machikoro.client.ui.theme.HeaderStroke
 
 @Composable
-fun RegularInfoText(label: String) = (
+fun RegularInfoText(label: String, modifier: Modifier = Modifier) = (
         Text(
             text = label,
             style = MaterialTheme.typography.headlineMedium,
@@ -30,7 +30,8 @@ fun RegularInfoText(label: String) = (
             fontWeight = FontWeight.Bold,
             fontSize = 24.sp,
             textAlign = TextAlign.Center,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            modifier = modifier
         )
 )
 
@@ -87,7 +88,7 @@ fun BackgroundHeaderTextPreview() {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Header("Machi Koro")
-                RegularInfoText("Some preview text. Lorem ipsum blah blah")
+                RegularInfoText("Some preview text. Lorem ipsum blah blah",)
             }
         }
     }
