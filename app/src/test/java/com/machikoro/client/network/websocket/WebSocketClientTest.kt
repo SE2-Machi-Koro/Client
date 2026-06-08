@@ -115,7 +115,9 @@ class WebSocketClientTest {
             fixture.client.players.value.map { it.id to it.coins }
         )
         assertFalse(fixture.client.players.value.first { it.id == "11" }.isActivePlayer)
+        assertEquals(true, fixture.client.players.value.first { it.id == "11" }.isCurrentPlayer)
         assertEquals(true, fixture.client.players.value.first { it.id == "22" }.isActivePlayer)
+        assertFalse(fixture.client.players.value.first { it.id == "22" }.isCurrentPlayer)
         assertEquals(
             mapOf(11 to listOf(PlayerCardState(CardType.WHEAT_FIELD, 1))),
             fixture.client.playerCards.value
@@ -198,7 +200,9 @@ class WebSocketClientTest {
 
         assertEquals(202, fixture.client.activePlayerId.value)
         assertFalse(fixture.client.players.value.first { it.id == "202" }.isActivePlayer)
+        assertEquals(true, fixture.client.players.value.first { it.id == "202" }.isCurrentPlayer)
         assertEquals(true, fixture.client.players.value.first { it.id == "22" }.isActivePlayer)
+        assertFalse(fixture.client.players.value.first { it.id == "22" }.isCurrentPlayer)
     }
 
     @Test
