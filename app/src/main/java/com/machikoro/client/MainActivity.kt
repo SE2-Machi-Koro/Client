@@ -187,6 +187,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Cheating accusation result (#280): toast the outcome.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.accusationResults.collect { result ->
+                    val message = if (result.caught) {
+                        "${result.accuserName} caught ${result.accusedName} cheating!"
+                    } else {
+                        "${result.accuserName} wrongly accused ${result.accusedName}"
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            }
+
             // Debug End-game (#191): surface End-game button failures as a snackbar.
             LaunchedEffect(Unit) {
                 gameScreenViewModel.debugEndGameErrors.collect { message ->
@@ -232,6 +244,7 @@ class MainActivity : ComponentActivity() {
                         onRollDice = gameScreenViewModel::rollDice,
                         cheatRecommendation = cheatRecommendation,
                         onShake = gameScreenViewModel::onShake,
+                        onAccuse = { gameScreenViewModel.accuse(it) },
                         onTurnFlowAction = gameScreenViewModel::performTurnFlowAction,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,

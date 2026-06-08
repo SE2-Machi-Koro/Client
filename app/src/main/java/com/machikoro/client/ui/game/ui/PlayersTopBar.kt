@@ -1,4 +1,5 @@
 package com.machikoro.client.ui.game.ui
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -81,6 +82,7 @@ private const val PlayerInventoryAutoDismissMillis = 12_000L
 fun PlayersTopBar(
     players: List<PlayerCoinState>,
     playerLandmarks: Map<Int, List<PlayerLandmarkState>>,
+    onAccusePlayer: (playerId: String) -> Unit = {},
     playerCards: Map<Int, List<PlayerCardState>>,
     modifier: Modifier = Modifier
 ) {
@@ -150,12 +152,11 @@ private fun PlayerCoinBadge(
     val backgroundColor = White
     val textColor = TextOnLight
 
-    
+
     val displayName = if (player.isCurrentPlayer) "You" else player.displayName
-    val scale = if (player.isActivePlayer) 1.0f else 0.92f
+    val scale = if (player.isActivePlayer) 1.0f else 0.95f
     val fontSize = if (player.isActivePlayer) 18.sp else 16.sp
-    val inactiveAlpha = if (player.isActivePlayer) 1f else 0.65f
-    
+
     Box(modifier = Modifier.scale(scale)
         ) {
         Surface(
@@ -164,7 +165,6 @@ private fun PlayerCoinBadge(
             shadowElevation = 3.dp,
             modifier = modifier
                 .scale(scale)
-                .alpha(inactiveAlpha)
                 .wrapContentSize()
                 .widthIn(max = 140.dp)
                 .clickable(enabled = canInspect, onClick = onInspect)
@@ -193,8 +193,8 @@ private fun PlayerCoinBadge(
                     // Landmarks
                     LandmarkRow(landmarks)
                 }
-            }
 
+            }
         val opacity = if (player.isCurrentPlayer) 0f else 1f
         CoinBadge(
             amount = player.coins,
@@ -563,7 +563,6 @@ private fun LandmarkRow(
     modifier: Modifier = Modifier
 ) {
     val byType = landmarks.associateBy { it.landmarkType }
-
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(4.dp)

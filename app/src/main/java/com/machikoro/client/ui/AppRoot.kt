@@ -86,6 +86,7 @@ fun AppRoot(
     onEndGame: () -> Unit = {},
     cheatRecommendation: CardType? = null,
     onShake: () -> Unit = {},
+    onAccuse: (Int) -> Unit = {},
     hasActiveGame: Boolean = false,
     onResumeGameClick: () -> Unit = {},
     onPurgeClick: () -> Unit = {},
@@ -238,6 +239,7 @@ fun AppRoot(
                     onEndGame = onEndGame,
                     cheatRecommendation = cheatRecommendation,
                     onShake = onShake,
+                    onAccuse = onAccuse,
                 )
             }
 
