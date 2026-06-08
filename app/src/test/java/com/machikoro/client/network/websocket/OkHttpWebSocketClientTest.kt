@@ -2763,9 +2763,17 @@ class OkHttpWebSocketClientTest {
         assertEquals(harness.playerA.gamePhase.value, harness.playerB.gamePhase.value)
         assertEquals(harness.playerA.activePlayerId.value, harness.playerB.activePlayerId.value)
         assertEquals(
-            harness.playerA.players.value.map { Triple(it.id, it.displayName, it.coins) },
-            harness.playerB.players.value.map { Triple(it.id, it.displayName, it.coins) }
+            harness.playerA.players.value.map { player ->
+                listOf(player.id, player.displayName, player.coins, player.isActivePlayer)
+            },
+            harness.playerB.players.value.map { player ->
+                listOf(player.id, player.displayName, player.coins, player.isActivePlayer)
+            }
         )
+        assertEquals(true, harness.playerA.players.value.first { it.id == "11" }.isCurrentPlayer)
+        assertFalse(harness.playerA.players.value.first { it.id == "22" }.isCurrentPlayer)
+        assertFalse(harness.playerB.players.value.first { it.id == "11" }.isCurrentPlayer)
+        assertEquals(true, harness.playerB.players.value.first { it.id == "22" }.isCurrentPlayer)
         assertEquals(harness.playerA.marketplace.value, harness.playerB.marketplace.value)
         assertEquals(harness.playerA.playerLandmarks.value, harness.playerB.playerLandmarks.value)
         assertEquals(listOf(9), harness.playerB.diceResult.value)

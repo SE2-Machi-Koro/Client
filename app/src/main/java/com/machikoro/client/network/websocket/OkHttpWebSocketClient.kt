@@ -1261,7 +1261,11 @@ class OkHttpWebSocketClient(
         }
     }
 
-    private fun JSONObject.toPlayerCoinState(localUserId: Int?, activeUserId: Int?, playerUsernames: Map<Int, String> = emptyMap()): PlayerCoinState {
+    private fun JSONObject.toPlayerCoinState(
+        localUserId: Int?,
+        activeUserId: Int?,
+        playerUsernames: Map<Int, String> = emptyMap()
+    ): PlayerCoinState {
         val playerId = optInt("id")
         val userId = optIntOrNull("userId")
         val resolvedDisplayName =
