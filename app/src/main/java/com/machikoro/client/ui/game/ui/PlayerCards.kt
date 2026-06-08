@@ -2,33 +2,47 @@ package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalOverscrollFactory
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.R
+import com.machikoro.client.ui.theme.TextBlueDark
 
 
 private val SHOP_CARD_SHAPE = RoundedCornerShape(8.dp)
@@ -92,23 +106,28 @@ fun BigPlayerCardsDisplay(
             .orEmpty()
 
    Row(
-       modifier = modifier
+       modifier = modifier.wrapContentSize()
    ) {
        CompositionLocalProvider(
            LocalOverscrollFactory provides null
        ) {
+
            LazyVerticalGrid(
                columns = GridCells.Fixed(2), // 2 per row
-               modifier = Modifier.wrapContentSize()
+               modifier = Modifier
                    .weight(1f),
            ) {
 
                items(landmarks) { landmark ->
-                   LandmarkDisplay(
-                       landmark,
-                       width = 155.dp,
-                       height = 180.dp
-                   )
+                   Box(
+                       modifier = Modifier.padding(top = 8.dp)
+                   ) {
+                       LandmarkDisplay(
+                           landmark,
+                           width = 155.dp,
+                           height = 180.dp
+                       )
+                   }
                }
            }
        }
@@ -117,15 +136,20 @@ fun BigPlayerCardsDisplay(
        ) {
            LazyVerticalGrid(
                columns = GridCells.Fixed(2), // 2 per row
-               modifier = Modifier.wrapContentSize()
+               modifier = Modifier
                    .weight(1f),
            ) {
                items(establishments) { establishment ->
-                   CardDisplay(
-                       establishment,
-                       width = 155.dp,
-                       height = 180.dp
-                   )
+                   Box(
+                       modifier = Modifier.padding(top = 8.dp)
+                   ) {
+                       CardDisplay(
+                           establishment,
+                           width = 155.dp,
+                           height = 180.dp,
+                           showCounter = true
+                       )
+                   }
                }
            }
        }
@@ -147,30 +171,60 @@ private fun LandmarkDisplay(
             .width(width)
             .height(height)
             .clip(SHOP_CARD_SHAPE)
-            .semantics {
-            }
+            .semantics {}
     )
 }
+
 @Composable
 private fun CardDisplay(
     item: PlayerCardState,
     modifier: Modifier = Modifier,
     width: Dp = 90.dp,
-    height: Dp = 110.dp
+    height: Dp = 110.dp,
+    showCounter: Boolean = false
 ) {
-    Image(
-        painter = painterResource(id = drawableForPlayerCard(item)),
-        contentDescription = null,
-        contentScale = ContentScale.Fit,
-        modifier = modifier
-            .width(width)
-            .height(height)
-            .clip(SHOP_CARD_SHAPE)
-            .semantics {
-            }
-    )
-}
+    Box(
+        modifier = modifier.wrapContentSize()
+    ) {
 
+        Image(
+            painter = painterResource(id = drawableForPlayerCard(item)),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .width(width)
+                .height(height)
+                .clip(SHOP_CARD_SHAPE)
+                .semantics { }
+        )
+        if(showCounter) {
+            val alpha = if (item.quantity > 1) 1f else 0f // if more that 1 card
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .size(30.dp)
+                    .alpha(alpha)
+                    .offset(x = (-6).dp, y = (-8).dp)
+                    .clip(CircleShape)
+                    .border(
+                        width = 2.dp,
+                        color = TextBlueDark,
+                        shape = CircleShape
+                    )
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = item.quantity.toString() + "x",
+                    color = TextBlueDark,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+        }
+    }
+}
 
 
 fun drawableForPlayerLandmark(playerLandmarkState: PlayerLandmarkState): Int {
