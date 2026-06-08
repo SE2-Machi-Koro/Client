@@ -39,18 +39,19 @@ internal fun PlayerCardsDisplay(
     state: GameScreenState,
     modifier: Modifier = Modifier,
 ) {
+    val currentPlayerId =
+        state.players
+            .firstOrNull { it.isCurrentPlayer }
+            ?.id
+            ?.toIntOrNull()
 
     val landmarks =
-        state.playerLandmarks
-            .values
-            .firstOrNull()
+        state.playerLandmarks[currentPlayerId]
             .orEmpty()
             .take(4)
 
     val establishments =
-        state.playerCards
-            .values
-            .firstOrNull()
+        state.playerCards[currentPlayerId]
             .orEmpty()
             .take(4)
 
@@ -76,17 +77,21 @@ fun BigPlayerCardsDisplay(
     state: GameScreenState,
     modifier: Modifier = Modifier,
 ) {
+    val currentPlayerId =
+        state.players
+            .firstOrNull { it.isCurrentPlayer }
+            ?.id
+            ?.toIntOrNull()
+
     val landmarks =
-        state.playerLandmarks
-            .values
-            .firstOrNull()
+        state.playerLandmarks[currentPlayerId]
             .orEmpty()
+            .take(4)
 
     val establishments =
-        state.playerCards
-            .values
-            .firstOrNull()
+        state.playerCards[currentPlayerId]
             .orEmpty()
+            .take(4)
 
    Row(
        modifier = modifier
