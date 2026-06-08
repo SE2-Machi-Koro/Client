@@ -36,7 +36,7 @@ class LobbyScreenViewModelTest {
         advanceUntilIdle()
         assertEquals(ConnectionStatus.IDLE, viewModel.state.value.connectionStatus)
         assertEquals(LobbyStatus.WAITING_FOR_PLAYERS, viewModel.state.value.lobbyStatus)
-        assertEquals(emptyList<String>(), viewModel.state.value.playerList)
+        assertEquals(emptyList<PlayerCoinState>(), viewModel.state.value.playerList)
         assertEquals(4, viewModel.state.value.maxPlayers)
         assertFalse(viewModel.state.value.isHost)
         assertNull(viewModel.state.value.loggedInAs)
@@ -52,7 +52,13 @@ class LobbyScreenViewModelTest {
             PlayerCoinState(id = "2", displayName = "bob", coins = 5),
         ))
         advanceUntilIdle()
-        assertEquals(listOf("alice", "bob"), viewModel.state.value.playerList)
+        assertEquals(
+            listOf(
+                PlayerCoinState(id = "1", displayName = "alice", coins = 3),
+                PlayerCoinState(id = "2", displayName = "bob", coins = 5),
+            ),
+            viewModel.state.value.playerList
+        )
         assertEquals(LobbyStatus.READY, viewModel.state.value.lobbyStatus)
     }
 
@@ -62,7 +68,7 @@ class LobbyScreenViewModelTest {
         val viewModel = LobbyScreenViewModel(fakeClient, FakeSessionStateHolder(), FakeDebugApi())
         fakeClient.emitPlayers(listOf(PlayerCoinState(id = "1", displayName = "alice", coins = 3)))
         advanceUntilIdle()
-        assertEquals(listOf("alice"), viewModel.state.value.playerList)
+        assertEquals(listOf(PlayerCoinState(id = "1", displayName = "alice", coins = 3)), viewModel.state.value.playerList)
         assertEquals(LobbyStatus.WAITING_FOR_PLAYERS, viewModel.state.value.lobbyStatus)
     }
 
@@ -268,6 +274,56 @@ class LobbyScreenViewModelTest {
         viewModel.resetLobby()
         advanceUntilIdle()
         assertEquals(1, fakeDebugApi.resetLobbyCallCount)
+    }
+
+    // === ready-sync tests ===
+
+    @Test
+    fun isReadySyncedFromServerRosterWhenPlayersFlowUpdates() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val sessionHolder = FakeSessionStateHolder()
+        val viewModel = LobbyScreenViewModel(fakeClient, sessionHolder, FakeDebugApi())
+        sessionHolder.signIn(token = "t", username = "alice", userId = 1)
+        advanceUntilIdle()
+        // Server roster says alice is ready
+        fakeClient.emitPlayers(listOf(PlayerCoinState(id = "1", displayName = "alice", coins = 3, isReady = true)))
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.isReady)
+    }
+
+    @Test
+    fun isReadyNotOverriddenWhenCurrentUserNotInRoster() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val sessionHolder = FakeSessionStateHolder()
+        val viewModel = LobbyScreenViewModel(fakeClient, sessionHolder, FakeDebugApi())
+        sessionHolder.signIn(token = "t", username = "alice", userId = 1)
+        advanceUntilIdle()
+        // Alice toggled ready locally
+        viewModel.onReadyToggle()
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.isReady)
+        // Roster update that does not include alice — local state preserved
+        fakeClient.emitPlayers(listOf(PlayerCoinState(id = "2", displayName = "bob", coins = 3, isReady = false)))
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.isReady)
+    }
+
+    @Test
+    fun onReadyToggleSendsToggleViaWebSocketClient() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = LobbyScreenViewModel(fakeClient, FakeSessionStateHolder(), FakeDebugApi())
+        viewModel.onReadyToggle()
+        assertEquals(true, fakeClient.lastReadyToggle)
+    }
+
+    @Test
+    fun onReadyToggleSendsCorrectValueOnSubsequentToggles() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = LobbyScreenViewModel(fakeClient, FakeSessionStateHolder(), FakeDebugApi())
+        viewModel.onReadyToggle()
+        assertEquals(true, fakeClient.lastReadyToggle)
+        viewModel.onReadyToggle()
+        assertEquals(false, fakeClient.lastReadyToggle)
     }
 
     private class FakeDebugApi(private val shouldThrow: Boolean = false) : DebugApi {
