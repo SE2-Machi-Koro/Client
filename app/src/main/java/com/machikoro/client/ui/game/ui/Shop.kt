@@ -1,26 +1,33 @@
 package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -33,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
@@ -46,16 +54,12 @@ import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.game.GameScreen
 import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.ui.theme.PanelBorder
 import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 
 private val SHOP_CARD_SHAPE = RoundedCornerShape(8.dp)
-private val SHOP_GRID_HORIZONTAL_PADDING = 4.dp
-private val SHOP_GRID_CONTENT_PADDING = PaddingValues(horizontal = SHOP_GRID_HORIZONTAL_PADDING, vertical = 4.dp)
 val RecommendedHighlight = Color(0xFF00C853)
 val SelectedHighlight = Color(0xFFFFD700) // Gold color for selected card
-
 
 @Composable
 internal fun BuyingPhaseShop(
@@ -65,64 +69,117 @@ internal fun BuyingPhaseShop(
     modifier: Modifier = Modifier,
     recommendedCardType: CardType? = null
 ) {
-    val landmarks = remember(items, state.playerLandmarks, state.players) {
+
+    val landmarks = remember(
+        items,
+        state.playerLandmarks,
+        state.players
+    ) {
         items
             .filter { it.purchaseType == PurchaseType.LANDMARK }
             .filterNot { state.isKnownBuiltLandmark(it) }
             .sortedBy { it.cost }
     }
+
     val establishments = remember(items) {
         items
             .filter { it.purchaseType == PurchaseType.ESTABLISHMENT }
             .sortedWith(compareBy<ShopItem> { it.cost }.thenBy { it.activationText }.thenBy { it.displayName })
     }
 
+    var selectedTab by remember {
+            mutableStateOf("Landmarks")
+    }
+
     Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(292.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(
+                24.dp,
+                Alignment.CenterHorizontally
+            ),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            ShopColumn(
-                title = "Landmarks",
-                modifier = Modifier.width(238.dp)
-            ) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(5),
-                    contentPadding = SHOP_GRID_CONTENT_PADDING,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
+            // Top buttons
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = if(selectedTab == "Landmarks") TextBlueDark else Color.White,
+                shadowElevation = 3.dp,
+                modifier = modifier
+                    .wrapContentSize()
+
                 ) {
-                    items(items = landmarks, key = { it.type }) { item ->
-                        ShopImageTile(
-                            item = item,
-                            state = state,
-                            onPurchaseClick = onPurchaseClick,
-                            isRecommended = item.type == recommendedCardType?.name
-                        )
-                    }
-                }
+                    Text(
+                        text = "Landmarks",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if(selectedTab == "Landmarks") Color.White else TextBlueDark,
+                        maxLines = 1,
+                        fontSize = 18.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            .clickable(
+                                onClick = { selectedTab = "Landmarks"},
+                    )
+                )
             }
 
-            VerticalDivider(color = PanelBorder)
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = if(selectedTab == "Establishments") TextBlueDark else Color.White,
+                shadowElevation = 3.dp,
+                modifier = modifier
+                    .wrapContentSize()
+                    .border(
+                        width = if(selectedTab == "Establishments") 3.dp else 0.dp,
+                        color = TextBlueDark,
+                        shape = RoundedCornerShape(16.dp)
+                    ),
 
-            ShopColumn(
-                title = "Establishments",
-                modifier = Modifier.weight(1f)
+                ) {
+                Text(
+                    text = "Establishments",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if(selectedTab == "Establishments") Color.White else TextBlueDark,
+                    maxLines = 1,
+                    fontSize = 18.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        .clickable(
+                        onClick = { selectedTab = "Establishments"},
+                    )
+                )
+            }
+        }
+
+        if (selectedTab == "Landmarks") {
+            // Cards grid
+            Row(
+                modifier = Modifier.weight(1f),
+            ) {
+                landmarks.forEach { item ->
+                    ShopImageTile(
+                        item = item,
+                        state = state,
+                        onPurchaseClick = onPurchaseClick,
+                        isRecommended = item.type == recommendedCardType?.name
+                    )
+                }
+            }
+        } else {
+            // Cards grid
+            CompositionLocalProvider(
+                LocalOverscrollFactory provides null
             ) {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(5),
-                    contentPadding = SHOP_GRID_CONTENT_PADDING,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
+                    columns = GridCells.Fixed(4),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    items(items = establishments, key = { it.type }) { item ->
+                    items(
+                        items = establishments,
+                        key = { it.type }
+                    ) { item ->
+
                         ShopImageTile(
                             item = item,
                             state = state,
@@ -134,6 +191,7 @@ internal fun BuyingPhaseShop(
             }
         }
 
+        // Purchase message
         state.purchaseMessage?.let { message ->
             Text(
                 text = message,
@@ -148,26 +206,8 @@ internal fun BuyingPhaseShop(
     }
 }
 
-@Composable
-private fun ShopColumn(
-    title: String,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextBlueDark,
-            maxLines = 1,
-            modifier = Modifier.padding(start = SHOP_GRID_HORIZONTAL_PADDING)
-        )
-        content()
-    }
-}
+
+
 
 @Composable
 private fun ShopImageTile(
@@ -197,29 +237,35 @@ private fun ShopImageTile(
         contentDescription = null,
         contentScale = ContentScale.Fit,
         modifier = modifier
-            .width(110.dp)
-            .height(131.dp)
+            .width(155.dp)
+            .height(175.dp)
             .alpha(if (state.canPurchaseItem(item)) 1f else 0.45f)
             .border(2.dp, borderColor, SHOP_CARD_SHAPE)
             .clip(SHOP_CARD_SHAPE)
-            .clickable(enabled = isClickable) { onPurchaseClick(item.type) }
+            .clickable(
+                enabled = isClickable,
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) {
+                onPurchaseClick(item.type)
+            }
             .semantics {
                 contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
-                    if (isRecommended) ", recommended" else ""
+                        if (isRecommended) ", recommended" else ""
             }
     )
 }
 
 internal fun GameScreenState.shouldShowBuyingPhaseShop(): Boolean =
     isBuyingPhase &&
-        isActivePlayer &&
-        gameStatus == GameStatus.IN_PROGRESS &&
-        gameId != null
+            isActivePlayer &&
+            gameStatus == GameStatus.IN_PROGRESS &&
+            gameId != null
 
 private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
     item.isAvailable &&
-        hasEnoughKnownCoinsFor(item) &&
-        !isKnownBuiltLandmark(item)
+            hasEnoughKnownCoinsFor(item) &&
+            !isKnownBuiltLandmark(item)
 
 private fun GameScreenState.hasEnoughKnownCoinsFor(item: ShopItem): Boolean {
     val activePlayerCoins = players.firstOrNull { it.isActivePlayer }?.coins

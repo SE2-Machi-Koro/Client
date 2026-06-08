@@ -1,9 +1,12 @@
 package com.machikoro.client.ui.game.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -14,13 +17,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.model.state.toDisplayText
+import com.machikoro.client.ui.theme.White
 
 
 /**
@@ -104,3 +111,29 @@ private fun MarketplaceCardChip(
         }
     }
 }
+
+// todo wire
+@Composable
+fun MarketplaceButton(
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+    ) {
+        Column{
+            Image(
+                painter = painterResource(id = R.drawable.markerplace_icon),
+                contentDescription = "",
+                Modifier.size(85.dp)
+
+            )
+            Text(
+                text = "Marketplace",
+                style = MaterialTheme.typography.bodyMedium,
+                color = White,
+                fontSize = 18.sp,
+            )
+        }
+    }
+}
+
