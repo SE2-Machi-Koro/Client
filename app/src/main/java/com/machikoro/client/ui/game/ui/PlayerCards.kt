@@ -86,12 +86,10 @@ fun BigPlayerCardsDisplay(
     val landmarks =
         state.playerLandmarks[currentPlayerId]
             .orEmpty()
-            .take(4)
 
     val establishments =
         state.playerCards[currentPlayerId]
             .orEmpty()
-            .take(4)
 
    Row(
        modifier = modifier
