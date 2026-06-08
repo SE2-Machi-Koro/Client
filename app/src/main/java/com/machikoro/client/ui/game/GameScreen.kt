@@ -279,16 +279,6 @@ fun GameScreen(
                                         }
                                     }
                                 }
-
-                                ActionButton(
-                                    onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
-                                    enabled = !state.isRolling,
-                                    label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
-                                    leftIcon = R.drawable.game_dice_perspective,
-                                    modifier = Modifier.semantics {
-                                        contentDescription = "Würfeln"
-                                    }
-                                )
                             }
 
                             ActionButton(
@@ -305,33 +295,9 @@ fun GameScreen(
                 }
             }
         },
-        // =====================================
-        // RIGHT
-        // =====================================
-        rightContent = {
-            Box(modifier = Modifier.align(Alignment.Center)) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-
-                            ActionButton(
-                                onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
-                                enabled = !state.isRolling,
-                                label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
-                                leftIcon = R.drawable.game_dice_perspective,
-                                modifier = Modifier.semantics {
-                                    contentDescription = "Würfeln"
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        // =====================================
-        // RIGHT
-        // =====================================
+// =====================================
+// RIGHT
+// =====================================
         rightContent = {
             Box(modifier = Modifier.align(Alignment.Center)) {
                 Column(
@@ -354,7 +320,6 @@ fun GameScreen(
                     }
 
                     PlayerCoinField(state)
-
                 }
             }
         }
