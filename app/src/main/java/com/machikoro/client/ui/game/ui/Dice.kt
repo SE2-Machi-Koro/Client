@@ -105,6 +105,7 @@ fun DiceSection(
     var localDiceResult by remember { mutableStateOf<List<Int>?>(null) }
 
     LaunchedEffect(state.diceResult) {
+        android.util.Log.d("DICE_ANIM", "LaunchedEffect triggered, diceResult=${state.diceResult}, localDiceResult=$localDiceResult")
         if (state.diceResult != null && state.diceResult != localDiceResult) {
             isAnimating = true
             showResult = false
