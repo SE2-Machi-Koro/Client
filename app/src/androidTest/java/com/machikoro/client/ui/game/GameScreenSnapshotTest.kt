@@ -21,6 +21,7 @@ import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
+import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.ClientTheme
 import org.junit.Rule
 import org.junit.Test
@@ -180,5 +181,120 @@ class GameScreenSnapshotTest {
         composeTestRule.setContent { ClientTheme { GameScreen(state = reconnectState()) } }
 
         composeTestRule.onNodeWithContentDescription("Würfelergebnis: 8").assertIsDisplayed()
+    }
+
+    @Test
+    fun rendersPlayerNamesAndCoinCountsCorrectly() {
+        val state = GameScreenState(
+            gameId = 1,
+            connectionStatus = ConnectionStatus.CONNECTED,
+            gamePhase = GamePhase.ROLL_DICE,
+            players = listOf(
+                PlayerCoinState(id = "1", displayName = "Alice", coins = 4, isCurrentPlayer = true, isActivePlayer = true),
+                PlayerCoinState(id = "2", displayName = "Bob", coins = 3),
+            ),
+            activePlayerId = 1,
+            myUserId = 1,
+            gameStatus = GameStatus.IN_PROGRESS,
+            purchaseState = PurchaseState.IDLE,
+        )
+
+        composeTestRule.setContent { ClientTheme { GameScreen(state = state) } }
+
+        composeTestRule.onNodeWithText("You").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Alice, 4 coins").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Bob").assertIsDisplayed()
+    }
+
+    @Test
+    fun rendersAllFourLandmarksUnbuiltOnGameStart() {
+        val state = GameScreenState(
+            gameId = 1,
+            connectionStatus = ConnectionStatus.CONNECTED,
+            gamePhase = GamePhase.BUY_OR_BUILD,
+            players = listOf(
+                PlayerCoinState(id = "1", displayName = "You", coins = 4, isCurrentPlayer = true, isActivePlayer = true)
+            ),
+            playerLandmarks = mapOf(
+                1 to LandmarkType.entries.map { PlayerLandmarkState(it, isBuilt = false) }
+            ),
+            activePlayerId = 1,
+            myUserId = 1,
+            gameStatus = GameStatus.IN_PROGRESS,
+            purchaseState = PurchaseState.IDLE,
+        )
+
+        composeTestRule.setContent { ClientTheme { GameScreen(state = state) } }
+
+        LandmarkType.entries.forEach { type ->
+            composeTestRule.onNodeWithContentDescription("${type.toDisplayText()}: not built").assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun rendersBuiltAndUnbuiltLandmarksCorrectly() {
+        val state = GameScreenState(
+            connectionStatus = ConnectionStatus.CONNECTED,
+            gamePhase = GamePhase.BUY_OR_BUILD,
+            players = listOf(
+                // single player to keep assertions unambiguous
+                PlayerCoinState(id = "1", displayName = "You", coins = 5, isCurrentPlayer = true)
+            ),
+            activePlayerId = 1,
+            myUserId = 1,
+            gameStatus = GameStatus.IN_PROGRESS,
+            playerLandmarks = mapOf(
+                1 to listOf(
+                    // mix of built and unbuilt landmarks
+                    PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
+                    PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = false),
+                    PlayerLandmarkState(LandmarkType.AMUSEMENT_PARK, isBuilt = true),
+                    PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = false),
+                )
+            ),
+            purchaseState = PurchaseState.IDLE,
+            gameId = 1
+        )
+
+        composeTestRule.setContent { ClientTheme { GameScreen(state = state) } }
+
+        // Positive assertions: built landmarks
+        composeTestRule.onNodeWithContentDescription("Train Station: built").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Amusement Park: built").assertIsDisplayed()
+
+        // Positive assertions: unbuilt landmarks
+        composeTestRule.onNodeWithContentDescription("Shopping Mall: not built").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Radio Tower: not built").assertIsDisplayed()
+
+        // Optional negatives: ensure no incorrect labels
+        composeTestRule.onNodeWithContentDescription("Train Station: not built").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription("Shopping Mall: built").assertDoesNotExist()
+    }
+
+    @Test
+    fun marketplaceDisplaysCorrectCardCountsAfterSync() {
+        val state = GameScreenState(
+            gameId = 1,
+            connectionStatus = ConnectionStatus.CONNECTED,
+            gamePhase = GamePhase.BUY_OR_BUILD,
+            players = listOf(
+                PlayerCoinState(id = "1", displayName = "You", coins = 4, isCurrentPlayer = true)
+            ),
+            marketplace = mapOf(
+                CardType.WHEAT_FIELD to 6,
+                CardType.BAKERY to 5,
+                CardType.CAFE to 4,
+            ),
+            activePlayerId = 1,
+            myUserId = 1,
+            gameStatus = GameStatus.IN_PROGRESS,
+            purchaseState = PurchaseState.IDLE,
+        )
+
+        composeTestRule.setContent { ClientTheme { GameScreen(state = state) } }
+
+        composeTestRule.onNodeWithContentDescription("Wheat Field: 6 in stock").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Bakery: 5 in stock").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Cafe: 4 in stock").assertIsDisplayed()
     }
 }
