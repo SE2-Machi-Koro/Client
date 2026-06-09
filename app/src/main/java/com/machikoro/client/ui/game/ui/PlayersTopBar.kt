@@ -58,6 +58,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.LandmarkType
+import com.machikoro.client.domain.model.shop.CardDefinitions
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
@@ -528,7 +529,7 @@ private fun <T> TwoColumnGrid(
 
 private fun List<PlayerCardState>.visibleInDisplayOrder(): List<PlayerCardState> {
     val cardsByType = filter { it.quantity > 0 }.associateBy { it.cardType }
-    return CardType.entries.mapNotNull { cardsByType[it] }
+    return CardDefinitions.sortCardTypesByActivation(cardsByType.keys).mapNotNull { cardsByType[it] }
 }
 
 private fun PlayerCoinState.snapshotId(): Int? = id.toIntOrNull()
