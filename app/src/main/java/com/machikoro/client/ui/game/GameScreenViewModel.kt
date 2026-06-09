@@ -88,13 +88,6 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.diceResult.collect { diceResult ->
-                // Wait at least 1.5s from when rolling started before showing the result
-                val rollingStartTime = mutableState.value.rollingStartTime
-                if (rollingStartTime != null) {
-                    val elapsed = System.currentTimeMillis() - rollingStartTime
-                    val remaining = 4000L - elapsed
-                    if (remaining > 0) delay(remaining)
-                }
                 mutableState.update { it.copy(diceResult = diceResult, isRolling = false, rollingStartTime = null) }
             }
         }
