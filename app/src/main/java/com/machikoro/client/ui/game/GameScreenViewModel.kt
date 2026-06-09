@@ -19,7 +19,6 @@ import com.machikoro.client.network.debug.DebugApi
 import com.machikoro.client.network.debug.EndGameRequest
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -88,7 +87,6 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.diceResult.collect { diceResult ->
-                android.util.Log.d("DICE_VM", "diceResult received: $diceResult")
                 mutableState.update { it.copy(diceResult = diceResult, isRolling = false, rollingStartTime = null) }
             }
         }
@@ -181,12 +179,6 @@ class GameScreenViewModel(
         webSocketClient.rollDice(diceCount)
     }
 
-    /**
-     * Insider Trading cheat (#203). On a shake during the local player's turn,
-     * computes a local best-buy recommendation and emits a one-shot activation
-     * signal for the toast. No-op off-turn or before the game is running; never
-     * contacts the server.
-     */
     fun onShake() {
         val current = mutableState.value
         if (current.gameStatus != GameStatus.IN_PROGRESS || !current.isActivePlayer) return
@@ -336,7 +328,6 @@ class GameScreenViewModel(
             )
         }
 
-    // Guards against rapid double-taps queuing concurrent end-game calls (#191 review).
     private var endGameInFlight = false
 
     fun endGame() {
