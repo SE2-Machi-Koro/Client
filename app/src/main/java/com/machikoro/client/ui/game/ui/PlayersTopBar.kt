@@ -175,6 +175,7 @@ private fun PlayerCoinBadge(
                     color = Color(0xFF004E7E),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -364,12 +365,12 @@ private fun PlayerInventoryLandmarks(
         )
 
         TwoColumnGrid(items = LandmarkType.entries) { type ->
-                val built = landmarksByType[type]?.isBuilt == true
-                PlayerInventoryLandmarkCard(
-                    playerName = playerName,
-                    landmarkType = type,
-                    built = built
-                )
+            val built = landmarksByType[type]?.isBuilt == true
+            PlayerInventoryLandmarkCard(
+                playerName = playerName,
+                landmarkType = type,
+                built = built
+            )
         }
     }
 }

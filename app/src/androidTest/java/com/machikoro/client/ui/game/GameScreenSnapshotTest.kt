@@ -3,6 +3,7 @@ package com.machikoro.client.ui.game
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -99,15 +100,15 @@ class GameScreenSnapshotTest {
     }
 
     @Test
-    fun rendersOwnedPlayerCardsFromSnapshot() {
+    fun doesNotRenderOwnedPlayerCardsInTopBar() {
         composeTestRule.setContent { ClientTheme { GameScreen(state = reconnectState()) } }
 
-        composeTestRule.onNodeWithContentDescription("Owned by You: Wheat Field, 1 card").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Owned by You: Bakery, 2 cards").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Owned by You: Wheat Field, 1 card").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription("Owned by You: Bakery, 2 cards").assertDoesNotExist()
     }
 
     @Test
-    fun updatesOwnedPlayerCardsWhenSnapshotChanges() {
+    fun doesNotReintroduceTopBarCardsWhenSnapshotChanges() {
         var state by mutableStateOf(reconnectState())
         composeTestRule.setContent { ClientTheme { GameScreen(state = state) } }
 
@@ -122,25 +123,29 @@ class GameScreenSnapshotTest {
             )
         }
 
-        composeTestRule.onNodeWithContentDescription("Owned by You: Wheat Field, 3 cards").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Owned by You: Cafe, 1 card").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Owned by You: Wheat Field, 3 cards").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription("Owned by You: Cafe, 1 card").assertDoesNotExist()
     }
 
     @Test
-    fun opensPlayerCardWindowFromOpponentNameAndSwitchesPlayers() {
+    fun opensPlayerCardWindowFromOpponentCoinBadgeOnly() {
         composeTestRule.setContent { ClientTheme { GameScreen(state = reconnectState()) } }
 
-        composeTestRule.onNodeWithText("Opponent").performScrollTo().performClick()
+        composeTestRule.onNodeWithContentDescription("Inspect Opponent").performScrollTo().performClick()
 
         composeTestRule.onNodeWithContentDescription("Player cards window for Opponent").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Opponent owns Cafe, quantity 2").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Opponent landmark Shopping Mall: built").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Inspect You in player cards window").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription("You owns Bakery, quantity 2").assertDoesNotExist()
+    }
 
-        composeTestRule.onNodeWithContentDescription("Inspect You in player cards window").performClick()
+    @Test
+    fun doesNotOpenPlayerCardWindowForCurrentPlayer() {
+        composeTestRule.setContent { ClientTheme { GameScreen(state = reconnectState()) } }
 
-        composeTestRule.onNodeWithContentDescription("Player cards window for You").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("You owns Bakery, quantity 2").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("You landmark Train Station: built").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Inspect You").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription("Player cards window for You").assertDoesNotExist()
     }
 
     @Test
@@ -148,7 +153,7 @@ class GameScreenSnapshotTest {
         var state by mutableStateOf(reconnectState())
         composeTestRule.setContent { ClientTheme { GameScreen(state = state) } }
 
-        composeTestRule.onNodeWithText("Opponent").performScrollTo().performClick()
+        composeTestRule.onNodeWithContentDescription("Inspect Opponent").performScrollTo().performClick()
 
         composeTestRule.runOnIdle {
             state = state.copy(
