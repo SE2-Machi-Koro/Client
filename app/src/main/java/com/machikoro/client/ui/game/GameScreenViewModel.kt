@@ -150,7 +150,18 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.purchaseEvents.collect { event ->
+                val before = mutableState.value
                 mutableState.update { state -> state.applyPurchaseEvent(event) }
+                if (
+                    event is PurchaseEvent.Success &&
+                    before.pendingPurchaseItemType == event.itemType &&
+                    before.gameId != null &&
+                    before.gameStatus == GameStatus.IN_PROGRESS &&
+                    before.gamePhase == GamePhase.BUY_OR_BUILD &&
+                    before.isActivePlayer
+                ) {
+                    webSocketClient.endTurn(before.gameId)
+                }
             }
         }
         viewModelScope.launch {
@@ -213,6 +224,26 @@ class GameScreenViewModel(
         }
     }
 
+    fun selectPurchaseItem(itemType: String) {
+        val current = mutableState.value
+        val availableItems = current.shopItems.ifEmpty { ShopCatalog.defaultItems }
+        val item = availableItems.firstOrNull { it.type == itemType && it.isAvailable } ?: return
+        if (!current.canSelectPurchaseItem(item)) return
+
+        mutableState.update { state ->
+            state.copy(
+                selectedPurchaseItemType = item.type,
+                purchaseFeedbackItemType = null,
+                purchaseMessage = null
+            )
+        }
+    }
+
+    fun purchaseSelectedItem() {
+        val selectedItemType = mutableState.value.selectedPurchaseItemType ?: return
+        purchase(selectedItemType)
+    }
+
     fun clearGameState() {
         webSocketClient.clearGameState()
     }
@@ -227,6 +258,7 @@ class GameScreenViewModel(
         mutableState.update { state ->
             state.copy(
                 purchaseState = PurchaseState.PENDING,
+                selectedPurchaseItemType = item.type,
                 pendingPurchaseItemType = item.type,
                 purchaseFeedbackItemType = item.type,
                 purchaseMessage = "Buying ${item.displayName}..."
@@ -239,6 +271,16 @@ class GameScreenViewModel(
             landmarkType = item.type.takeIf { item.purchaseType == PurchaseType.LANDMARK }
         )
     }
+
+    private fun GameScreenState.canSelectPurchaseItem(item: ShopItem): Boolean =
+        gameStatus == GameStatus.IN_PROGRESS &&
+        isBuyingPhase &&
+            isActivePlayer &&
+            purchaseState != PurchaseState.PENDING &&
+            purchaseState != PurchaseState.SUCCESS &&
+            item.isAvailable &&
+            hasEnoughKnownCoinsFor(item) &&
+            !isKnownBuiltLandmark(item)
 
     private fun GameScreenState.canStartPurchase(item: ShopItem): Boolean =
         gameStatus == GameStatus.IN_PROGRESS &&
@@ -274,6 +316,7 @@ class GameScreenViewModel(
                 } else {
                     copy(
                         purchaseState = PurchaseState.SUCCESS,
+                        selectedPurchaseItemType = null,
                         pendingPurchaseItemType = null,
                         purchaseFeedbackItemType = event.itemType,
                         purchaseMessage = "${event.itemType.toDisplayName()} bought"
@@ -302,6 +345,7 @@ class GameScreenViewModel(
             copy(
                 purchaseState = PurchaseState.IDLE,
                 pendingPurchaseItemType = null,
+                selectedPurchaseItemType = null,
                 purchaseFeedbackItemType = null,
                 purchaseMessage = null
             )
