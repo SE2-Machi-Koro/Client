@@ -102,30 +102,22 @@ fun DiceSection(
 ) {
     var isAnimating by remember { mutableStateOf(false) }
     var showResult by remember { mutableStateOf(false) }
+    var localDiceResult by remember { mutableStateOf<List<Int>?>(null) }
 
-    // Trigger animation when isRolling becomes false and we have a result
-    // Also re-triggers when activePlayerId changes (player switch resets everything)
-    LaunchedEffect(state.isRolling, state.activePlayerId) {
-        android.util.Log.d("DICE_ANIM", "isRolling changed: ${state.isRolling}, diceResult=${state.diceResult}")
-        if (!state.isRolling && state.diceResult != null) {
+    LaunchedEffect(state.diceResult) {
+        if (state.diceResult != null && state.diceResult != localDiceResult) {
             isAnimating = true
             showResult = false
-            android.util.Log.d("DICE_ANIM", "Animation started")
+            android.util.Log.d("DICE_ANIM", "Animation started for result: ${state.diceResult}")
             delay(DICE_ANIMATION_DURATION_MS)
             android.util.Log.d("DICE_ANIM", "Animation finished")
             isAnimating = false
             showResult = true
-        } else {
+            localDiceResult = state.diceResult
+        } else if (state.diceResult == null) {
             isAnimating = false
             showResult = false
-        }
-    }
-
-    // Reset when diceResult becomes null (player changed)
-    LaunchedEffect(state.diceResult) {
-        if (state.diceResult == null) {
-            isAnimating = false
-            showResult = false
+            localDiceResult = null
         }
     }
 
@@ -187,6 +179,7 @@ fun DiceSection(
                 ActionButton(
                     onClick = {
                         showResult = false
+                        localDiceResult = null
                         onRollDice(if (state.hasTrainStation) selectedDiceCount else 1)
                     },
                     enabled = !state.isRolling && !isAnimating,
