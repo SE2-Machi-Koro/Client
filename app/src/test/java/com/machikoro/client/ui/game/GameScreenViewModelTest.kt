@@ -275,6 +275,51 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun selectingPurchaseItemDoesNotSendPurchase() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.selectPurchaseItem("BAKERY")
+
+        assertEquals("BAKERY", viewModel.state.value.selectedPurchaseItemType)
+        assertNull(fakeClient.lastPurchase)
+        assertEquals(PurchaseState.IDLE, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun purchaseSelectedItemBuysSelectedCard() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.selectPurchaseItem("BAKERY")
+        viewModel.purchaseSelectedItem()
+
+        assertEquals(
+            FakeWebSocketClient.PurchaseCall(
+                gameId = 7,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                cardType = "BAKERY",
+                landmarkType = null
+            ),
+            fakeClient.lastPurchase
+        )
+        assertEquals(PurchaseState.PENDING, viewModel.state.value.purchaseState)
+        assertEquals("BAKERY", viewModel.state.value.pendingPurchaseItemType)
+    }
+
+    @Test
     fun activePlayerCanPurchaseEstablishmentDuringBuyOrBuild() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
@@ -406,9 +451,33 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         assertEquals(PurchaseState.SUCCESS, viewModel.state.value.purchaseState)
+        assertNull(viewModel.state.value.selectedPurchaseItemType)
         assertNull(viewModel.state.value.pendingPurchaseItemType)
         assertEquals("BAKERY", viewModel.state.value.purchaseFeedbackItemType)
         assertEquals("Bakery bought", viewModel.state.value.purchaseMessage)
+    }
+
+    @Test
+    fun matchingPurchaseSuccessEventEndsTurn() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+        fakeClient.emitPurchaseEvent(
+            PurchaseEvent.Success(
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                itemType = "BAKERY"
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(7, fakeClient.endedTurnGameId)
     }
 
     @Test
