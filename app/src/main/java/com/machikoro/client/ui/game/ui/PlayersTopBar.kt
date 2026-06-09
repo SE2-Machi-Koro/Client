@@ -1,5 +1,4 @@
 package com.machikoro.client.ui.game.ui
-
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -43,8 +42,15 @@ import com.machikoro.client.domain.model.state.toDisplayText
 import kotlin.collections.get
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import com.machikoro.client.R
+import com.machikoro.client.ui.theme.ButtonColor
+import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.OrangeDark
+import com.machikoro.client.ui.theme.TextOnLight
+import com.machikoro.client.ui.theme.TextOnOrange
+import com.machikoro.client.ui.theme.White
 
 private val SURFACE_COLOR = Color(0xFF8F7365)
 
@@ -99,11 +105,14 @@ private fun PlayerCoinBadge(
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = when {
-        player.isActivePlayer -> Color(0xFFFFFFFF)
-        else -> Color(0xB3FFFFFF)
+        player.isActivePlayer -> ButtonColor
+        else -> White
     }
 
-    val textColor = Color(0xFF004E7E)
+    val textColor = when {
+        player.isActivePlayer -> TextOnOrange
+        else -> TextOnLight
+    }
 
     val scale = if(player.isActivePlayer) 1.0f else 0.95f
     val fontSize = if(player.isActivePlayer) 18.sp else 16.sp
@@ -185,7 +194,7 @@ private fun LandmarkPip(
     built: Boolean
 ) {
     val pipColor = if (built) {
-        MaterialTheme.colorScheme.primary
+        OrangeDark
     } else {
         MaterialTheme.colorScheme.outline
     }
@@ -236,5 +245,64 @@ private fun CoinBadge(
             modifier = Modifier.offset(y = (-4).dp)
             .align(Alignment.Center),
         )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 120)
+@Composable
+private fun PlayersTopBarPreview() {
+    ClientTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF5A321E)),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            PlayersTopBar(
+                players = listOf(
+                    PlayerCoinState(
+                        id = "1",
+                        displayName = "Player1",
+                        coins = 6,
+                        isCurrentPlayer = true,
+                        isActivePlayer = true
+                    ),
+                    PlayerCoinState(
+                        id = "2",
+                        displayName = "Player2",
+                        coins = 3,
+                        isCurrentPlayer = false,
+                        isActivePlayer = false
+                    ),
+                    PlayerCoinState(
+                        id = "3",
+                        displayName = "Player3",
+                        coins = 8,
+                        isCurrentPlayer = false,
+                        isActivePlayer = false
+                    )
+                ),
+                playerLandmarks = mapOf(
+                    1 to listOf(
+                        PlayerLandmarkState(LandmarkType.TRAIN_STATION, true),
+                        PlayerLandmarkState(LandmarkType.SHOPPING_MALL, false),
+                        PlayerLandmarkState(LandmarkType.AMUSEMENT_PARK, false),
+                        PlayerLandmarkState(LandmarkType.RADIO_TOWER, true)
+                    ),
+                    2 to listOf(
+                        PlayerLandmarkState(LandmarkType.TRAIN_STATION, false),
+                        PlayerLandmarkState(LandmarkType.SHOPPING_MALL, true),
+                        PlayerLandmarkState(LandmarkType.AMUSEMENT_PARK, false),
+                        PlayerLandmarkState(LandmarkType.RADIO_TOWER, false)
+                    ),
+                    3 to listOf(
+                        PlayerLandmarkState(LandmarkType.TRAIN_STATION, true),
+                        PlayerLandmarkState(LandmarkType.SHOPPING_MALL, true),
+                        PlayerLandmarkState(LandmarkType.AMUSEMENT_PARK, false),
+                        PlayerLandmarkState(LandmarkType.RADIO_TOWER, false)
+                    )
+                )
+            )
+        }
     }
 }
