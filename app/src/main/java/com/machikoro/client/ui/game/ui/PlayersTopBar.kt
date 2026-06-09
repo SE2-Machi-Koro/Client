@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -48,11 +47,12 @@ import com.machikoro.client.R
 import com.machikoro.client.ui.theme.ButtonColor
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.OrangeDark
+import com.machikoro.client.ui.theme.PanelBackgroundBeigeDark
 import com.machikoro.client.ui.theme.TextOnLight
 import com.machikoro.client.ui.theme.TextOnOrange
 import com.machikoro.client.ui.theme.White
 
-private val SURFACE_COLOR = Color(0xFF8F7365)
+private val SURFACE_COLOR = PanelBackgroundBeigeDark
 
 
 // todo: adjust to current figma design, keep landmark badges
