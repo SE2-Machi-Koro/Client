@@ -18,7 +18,6 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.model.state.toDisplayText
-import com.machikoro.client.ui.game.ui.GameScreen
 import com.machikoro.client.ui.theme.ClientTheme
 import org.junit.Rule
 import org.junit.Test
@@ -140,8 +139,8 @@ class GameScreenSnapshotTest {
 
         composeTestRule.setContent { ClientTheme { GameScreen(state = state) } }
 
-        composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
-        composeTestRule.onNodeWithText("4 coins").assertIsDisplayed()  // alice's coins
+        composeTestRule.onNodeWithText("You").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Alice, 4 coins").assertIsDisplayed()
         composeTestRule.onNodeWithText("Bob").assertIsDisplayed()
     }
 
