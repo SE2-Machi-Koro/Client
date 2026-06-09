@@ -100,14 +100,13 @@ fun DiceSection(
     onRollDice: (diceCount: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Local animation state — true while we're showing the roll animation
     var isAnimating by remember { mutableStateOf(false) }
     var showResult by remember { mutableStateOf(false) }
 
-    // When diceResult arrives, start local animation then show result
-    LaunchedEffect(state.diceResult) {
-        android.util.Log.d("DICE_ANIM", "diceResult changed: ${state.diceResult}")
-        if (state.diceResult != null) {
+    // Trigger animation when isRolling becomes false and we have a result
+    LaunchedEffect(state.isRolling) {
+        android.util.Log.d("DICE_ANIM", "isRolling changed: ${state.isRolling}, diceResult=${state.diceResult}")
+        if (!state.isRolling && state.diceResult != null) {
             isAnimating = true
             showResult = false
             android.util.Log.d("DICE_ANIM", "Animation started")
@@ -115,7 +114,12 @@ fun DiceSection(
             android.util.Log.d("DICE_ANIM", "Animation finished")
             isAnimating = false
             showResult = true
-        } else {
+        }
+    }
+
+    // Reset when player changes (diceResult becomes null)
+    LaunchedEffect(state.diceResult) {
+        if (state.diceResult == null) {
             isAnimating = false
             showResult = false
         }
@@ -126,7 +130,6 @@ fun DiceSection(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier.padding(bottom = 32.dp)
     ) {
-        // Dice display area
         when {
             state.isRolling || isAnimating -> {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
