@@ -41,10 +41,13 @@ data class GameScreenState(
         get() = gamePhase == GamePhase.BUY_OR_BUILD
 
     val hasTrainStation: Boolean
-        get() = activePlayerId != null &&
-                playerLandmarks[activePlayerId]
-                    ?.any { it.landmarkType == LandmarkType.TRAIN_STATION && it.isBuilt }
-                ?: false
+        get() {
+            val activePlayerDatabaseId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
+                ?: return false
+            return playerLandmarks[activePlayerDatabaseId].orEmpty().any {
+                it.landmarkType == LandmarkType.TRAIN_STATION && it.isBuilt
+            }
+        }
 
     companion object {
         fun initial() = GameScreenState(
