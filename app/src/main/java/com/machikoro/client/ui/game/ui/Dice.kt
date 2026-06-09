@@ -104,7 +104,8 @@ fun DiceSection(
     var showResult by remember { mutableStateOf(false) }
 
     // Trigger animation when isRolling becomes false and we have a result
-    LaunchedEffect(state.isRolling) {
+    // Also re-triggers when activePlayerId changes (player switch resets everything)
+    LaunchedEffect(state.isRolling, state.activePlayerId) {
         android.util.Log.d("DICE_ANIM", "isRolling changed: ${state.isRolling}, diceResult=${state.diceResult}")
         if (!state.isRolling && state.diceResult != null) {
             isAnimating = true
@@ -114,10 +115,13 @@ fun DiceSection(
             android.util.Log.d("DICE_ANIM", "Animation finished")
             isAnimating = false
             showResult = true
+        } else {
+            isAnimating = false
+            showResult = false
         }
     }
 
-    // Reset when player changes (diceResult becomes null)
+    // Reset when diceResult becomes null (player changed)
     LaunchedEffect(state.diceResult) {
         if (state.diceResult == null) {
             isAnimating = false
