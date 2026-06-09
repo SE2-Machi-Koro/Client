@@ -76,6 +76,7 @@ import kotlinx.coroutines.delay
 fun GameScreen(
     state: GameScreenState,
     onPurchaseClick: (String) -> Unit = {},
+    onBuySelectedClick: () -> Unit = {},
     onRollDice: (diceCount: Int) -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
@@ -367,13 +368,26 @@ fun GameScreen(
                         state.isActivePlayer &&
                         state.gameStatus == GameStatus.IN_PROGRESS
                     ) {
+                        val isBuyPhase = state.gamePhase == GamePhase.BUY_OR_BUILD
                         ActionButton(
-                            onClick = onTurnFlowAction,
+                            onClick = if (isBuyPhase) onBuySelectedClick else onTurnFlowAction,
+                            enabled = !isBuyPhase || state.canConfirmSelectedPurchase(),
                             modifier = Modifier.semantics {
                                 contentDescription = turnFlowLabel
                             },
                             label = turnFlowLabel,
                         )
+
+                        if (isBuyPhase) {
+                            SecondaryActionButton(
+                                onClick = onTurnFlowAction,
+                                enabled = state.purchaseState != PurchaseState.PENDING,
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Skip"
+                                },
+                                label = "Skip",
+                            )
+                        }
                     }
 
                     PlayerCoinField(state)
@@ -415,11 +429,16 @@ fun GameScreen(
 
 private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
     GamePhase.RESOLVE_EFFECTS -> "Resolve effects"
-    GamePhase.BUY_OR_BUILD -> "End turn"
+    GamePhase.BUY_OR_BUILD -> "Buy card"
     GamePhase.NONE,
     GamePhase.ROLL_DICE,
     GamePhase.END_TURN -> null
 }
+
+private fun GameScreenState.canConfirmSelectedPurchase(): Boolean =
+    selectedPurchaseItemType != null &&
+        purchaseState != PurchaseState.PENDING &&
+        purchaseState != PurchaseState.SUCCESS
 
 // === PREVIEWS ===
 
