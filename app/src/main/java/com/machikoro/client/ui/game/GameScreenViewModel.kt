@@ -102,7 +102,7 @@ class GameScreenViewModel(
                 mutableState.update { state ->
                     state.copy(
                         activePlayerId = activePlayerId,
-                        diceResult = if (playerChanged) null else state.diceResult,
+                        // diceResult not reset here — DiceSection handles animation timing
                         isRolling = if (playerChanged) false else state.isRolling,
                         rollingStartTime = if (playerChanged) null else state.rollingStartTime,
                     ).resetPurchaseFeedbackIf(playerChanged)
