@@ -28,6 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.machikoro.client.R
+import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.ui.shared.ActionButton
@@ -138,7 +139,12 @@ fun DiceSection(
             }
         }
 
-        if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
+        if (state.isActivePlayer &&
+            state.gameStatus == GameStatus.IN_PROGRESS &&
+            state.gamePhase == GamePhase.ROLL_DICE &&
+            !state.isRolling &&
+            !isAnimating
+        ) {
             var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
 
             if (state.hasTrainStation) {
@@ -167,7 +173,7 @@ fun DiceSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (!state.isRolling && !isAnimating && state.diceResult == null) {
+                if (state.diceResult == null) {
                     Image(
                         painter = painterResource(id = R.drawable.game_dice_perspective),
                         contentDescription = "Dice",
@@ -180,7 +186,7 @@ fun DiceSection(
                         localDiceResult = null
                         onRollDice(if (state.hasTrainStation) selectedDiceCount else 1)
                     },
-                    enabled = !state.isRolling && !isAnimating,
+                    enabled = true,
                     label = if (showResult && state.hasRadioTower) "Roll Dice Again" else "Roll Dice",
                     modifier = Modifier.semantics {
                         contentDescription = "Roll Dice"
