@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -33,6 +34,7 @@ import com.machikoro.client.ui.shared.ActionButton
 import kotlinx.coroutines.delay
 
 private const val DICE_ANIMATION_INTERVAL_MS = 300L
+private const val DICE_ANIMATION_DURATION_MS = 4000L
 private val DICE_FACES = listOf(
     R.drawable.game_dice_1,
     R.drawable.game_dice_2,
@@ -75,7 +77,6 @@ fun DiceResultDisplay(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Show each die with its actual face
         dice.forEach { value ->
             Image(
                 painter = painterResource(id = diceDrawableFor(value)),
@@ -99,6 +100,24 @@ fun DiceSection(
     onRollDice: (diceCount: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Local animation state — true while we're showing the roll animation
+    var isAnimating by remember { mutableStateOf(false) }
+    var showResult by remember { mutableStateOf(false) }
+
+    // When diceResult arrives, start local animation then show result
+    LaunchedEffect(state.diceResult) {
+        if (state.diceResult != null) {
+            isAnimating = true
+            showResult = false
+            delay(DICE_ANIMATION_DURATION_MS)
+            isAnimating = false
+            showResult = true
+        } else {
+            isAnimating = false
+            showResult = false
+        }
+    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -106,8 +125,7 @@ fun DiceSection(
     ) {
         // Dice display area
         when {
-            state.isRolling -> {
-                // Show one or two animated dice depending on selected count
+            state.isRolling || isAnimating -> {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     val diceCount = if (state.hasTrainStation) 2 else 1
                     repeat(diceCount) {
@@ -115,13 +133,14 @@ fun DiceSection(
                     }
                 }
             }
-            state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
+            showResult && state.diceResult != null -> {
+                DiceResultDisplay(dice = state.diceResult)
+            }
         }
 
         if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
             var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
 
-            // 1🎲 / 2🎲 toggle buttons when Train Station is built
             if (state.hasTrainStation) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(1, 2).forEach { count ->
@@ -144,12 +163,11 @@ fun DiceSection(
                 }
             }
 
-            // Roll Dice button with static dice image before rolling
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (!state.isRolling && state.diceResult == null) {
+                if (!state.isRolling && !isAnimating && state.diceResult == null) {
                     Image(
                         painter = painterResource(id = R.drawable.game_dice_perspective),
                         contentDescription = "Dice",
@@ -157,9 +175,12 @@ fun DiceSection(
                     )
                 }
                 ActionButton(
-                    onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
-                    enabled = !state.isRolling,
-                    label = if (state.diceResult == null) "Roll Dice" else "Roll Dice Again",
+                    onClick = {
+                        showResult = false
+                        onRollDice(if (state.hasTrainStation) selectedDiceCount else 1)
+                    },
+                    enabled = !state.isRolling && !isAnimating,
+                    label = if (!showResult && state.diceResult == null) "Roll Dice" else "Roll Dice Again",
                     modifier = Modifier.semantics {
                         contentDescription = "Roll Dice"
                     }
