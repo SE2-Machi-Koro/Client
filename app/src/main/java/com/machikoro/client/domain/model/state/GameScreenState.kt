@@ -18,6 +18,8 @@ data class GameScreenState(
     val winnerId: Int? = null,
     val myUserId: Int? = null,
     val purchaseState: PurchaseState,
+    // Shop item selected locally for the buy/build confirmation button.
+    val selectedPurchaseItemType: String? = null,
     // Tracks the one local buy/build request currently waiting for a server GAME_ACTION.
     val pendingPurchaseItemType: String? = null,
     // Keeps button feedback tied to the specific item that was bought or failed.
@@ -60,6 +62,7 @@ data class GameScreenState(
             activePlayerId = null,
             myUserId = null,
             purchaseState = PurchaseState.IDLE,
+            selectedPurchaseItemType = null,
             pendingPurchaseItemType = null,
             purchaseFeedbackItemType = null,
             purchaseMessage = null,
