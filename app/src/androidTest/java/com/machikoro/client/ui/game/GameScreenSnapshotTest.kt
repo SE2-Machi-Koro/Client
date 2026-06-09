@@ -3,9 +3,10 @@ package com.machikoro.client.ui.game
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.test.assertDoesNotExist
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -32,6 +33,10 @@ import org.junit.Test
 class GameScreenSnapshotTest {
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    private fun assertNoNodeWithContentDescription(contentDescription: String) {
+        composeTestRule.onAllNodesWithContentDescription(contentDescription).assertCountEquals(0)
+    }
 
     /** A mid-game snapshot with synchronized card and landmark ownership for each player. */
     private fun reconnectState() = GameScreenState(
@@ -103,8 +108,8 @@ class GameScreenSnapshotTest {
     fun doesNotRenderOwnedPlayerCardsInTopBar() {
         composeTestRule.setContent { ClientTheme { GameScreen(state = reconnectState()) } }
 
-        composeTestRule.onNodeWithContentDescription("Owned by You: Wheat Field, 1 card").assertDoesNotExist()
-        composeTestRule.onNodeWithContentDescription("Owned by You: Bakery, 2 cards").assertDoesNotExist()
+        assertNoNodeWithContentDescription("Owned by You: Wheat Field, 1 card")
+        assertNoNodeWithContentDescription("Owned by You: Bakery, 2 cards")
     }
 
     @Test
@@ -123,8 +128,8 @@ class GameScreenSnapshotTest {
             )
         }
 
-        composeTestRule.onNodeWithContentDescription("Owned by You: Wheat Field, 3 cards").assertDoesNotExist()
-        composeTestRule.onNodeWithContentDescription("Owned by You: Cafe, 1 card").assertDoesNotExist()
+        assertNoNodeWithContentDescription("Owned by You: Wheat Field, 3 cards")
+        assertNoNodeWithContentDescription("Owned by You: Cafe, 1 card")
     }
 
     @Test
@@ -136,16 +141,16 @@ class GameScreenSnapshotTest {
         composeTestRule.onNodeWithContentDescription("Player cards window for Opponent").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Opponent owns Cafe, quantity 2").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Opponent landmark Shopping Mall: built").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Inspect You in player cards window").assertDoesNotExist()
-        composeTestRule.onNodeWithContentDescription("You owns Bakery, quantity 2").assertDoesNotExist()
+        assertNoNodeWithContentDescription("Inspect You in player cards window")
+        assertNoNodeWithContentDescription("You owns Bakery, quantity 2")
     }
 
     @Test
     fun doesNotOpenPlayerCardWindowForCurrentPlayer() {
         composeTestRule.setContent { ClientTheme { GameScreen(state = reconnectState()) } }
 
-        composeTestRule.onNodeWithContentDescription("Inspect You").assertDoesNotExist()
-        composeTestRule.onNodeWithContentDescription("Player cards window for You").assertDoesNotExist()
+        assertNoNodeWithContentDescription("Inspect You")
+        assertNoNodeWithContentDescription("Player cards window for You")
     }
 
     @Test
