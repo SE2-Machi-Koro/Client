@@ -19,12 +19,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -52,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.LandmarkType
@@ -74,9 +77,10 @@ fun PlayersTopBar(
 ) {
     if (players.isEmpty()) return
 
+    val inspectablePlayers = players.filterNot { it.isCurrentPlayer }
     var inspectedPlayerId by remember { mutableStateOf<String?>(null) }
     val inspectedPlayer = inspectedPlayerId?.let { selectedId ->
-        players.firstOrNull { player -> player.id == selectedId }
+        inspectablePlayers.firstOrNull { player -> player.id == selectedId }
     }
 
     Surface(
@@ -102,7 +106,7 @@ fun PlayersTopBar(
                 PlayerCoinBadge(
                     player = player,
                     landmarks = playerLandmarks[playerSnapshotId].orEmpty(),
-                    cards = playerCards[playerSnapshotId].orEmpty(),
+                    canInspect = !player.isCurrentPlayer,
                     onInspect = { inspectedPlayerId = player.id }
                 )
             }
@@ -116,7 +120,7 @@ fun PlayersTopBar(
         }
 
         PlayerInventoryDialog(
-            players = players,
+            players = inspectablePlayers,
             selectedPlayer = selectedPlayer,
             playerLandmarks = playerLandmarks,
             playerCards = playerCards,
@@ -130,7 +134,7 @@ fun PlayersTopBar(
 private fun PlayerCoinBadge(
     player: PlayerCoinState,
     landmarks: List<PlayerLandmarkState>,
-    cards: List<PlayerCardState>,
+    canInspect: Boolean,
     onInspect: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -149,9 +153,14 @@ private fun PlayerCoinBadge(
             shadowElevation = 3.dp,
             modifier = Modifier
                 .wrapContentSize()
-                .widthIn(min = 150.dp, max = 232.dp)
+                .widthIn(min = 150.dp, max = 184.dp)
+                .clickable(enabled = canInspect, onClick = onInspect)
                 .semantics {
-                    contentDescription = "${player.displayName}, ${player.coins} coins"
+                    contentDescription = if (canInspect) {
+                        "Inspect ${player.displayName}"
+                    } else {
+                        "${player.displayName}, ${player.coins} coins"
+                    }
                 }
         ) {
             Column(
@@ -166,24 +175,12 @@ private fun PlayerCoinBadge(
                     color = Color(0xFF004E7E),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .clickable(onClick = onInspect)
-                        .semantics {
-                            contentDescription = "Inspect ${player.displayName}"
-                        }
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(2.dp))
 
                 LandmarkRow(landmarks)
-
-                if (cards.hasVisibleCards()) {
-                    OwnedCardRow(
-                        playerName = displayName,
-                        cards = cards,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
-                }
             }
         }
 
@@ -211,45 +208,59 @@ private fun PlayerInventoryDialog(
     val landmarks = playerLandmarks[selectedSnapshotId].orEmpty()
     val cards = playerCards[selectedSnapshotId].orEmpty()
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Surface(
             color = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shape = RoundedCornerShape(8.dp),
             tonalElevation = 8.dp,
             modifier = Modifier
-                .widthIn(min = 320.dp, max = 560.dp)
+                .fillMaxWidth(0.88f)
+                .widthIn(max = 840.dp)
                 .semantics {
                     contentDescription = "Player cards window for ${selectedPlayer.displayName}"
                 }
         ) {
             Column(
                 modifier = Modifier
-                    .padding(20.dp)
-                    .heightIn(max = 560.dp)
+                    .padding(24.dp)
+                    .heightIn(max = 680.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 PlayerInventoryHeader(
                     playerName = selectedPlayer.displayName,
                     onDismiss = onDismiss
                 )
 
-                PlayerSelectorRow(
-                    players = players,
-                    selectedPlayer = selectedPlayer,
-                    onPlayerSelected = onPlayerSelected
-                )
+                if (players.size > 1) {
+                    PlayerSelectorRow(
+                        players = players,
+                        selectedPlayer = selectedPlayer,
+                        onPlayerSelected = onPlayerSelected
+                    )
+                }
 
-                PlayerInventoryLandmarks(
-                    playerName = selectedPlayer.displayName,
-                    landmarks = landmarks
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    PlayerInventoryLandmarks(
+                        playerName = selectedPlayer.displayName,
+                        landmarks = landmarks,
+                        modifier = Modifier.weight(1f)
+                    )
 
-                PlayerInventoryCards(
-                    playerName = selectedPlayer.displayName,
-                    cards = cards
-                )
+                    PlayerInventoryCards(
+                        playerName = selectedPlayer.displayName,
+                        cards = cards,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
@@ -337,29 +348,28 @@ private fun PlayerSelectorButton(
 @Composable
 private fun PlayerInventoryLandmarks(
     playerName: String,
-    landmarks: List<PlayerLandmarkState>
+    landmarks: List<PlayerLandmarkState>,
+    modifier: Modifier = Modifier
 ) {
     val landmarksByType = landmarks.associateBy { it.landmarkType }
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         Text(
             text = "Landmarks",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
 
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            LandmarkType.entries.forEach { type ->
+        TwoColumnGrid(items = LandmarkType.entries) { type ->
                 val built = landmarksByType[type]?.isBuilt == true
                 PlayerInventoryLandmarkCard(
                     playerName = playerName,
                     landmarkType = type,
                     built = built
                 )
-            }
         }
     }
 }
@@ -373,55 +383,32 @@ private fun PlayerInventoryLandmarkCard(
     val landmarkName = landmarkType.toDisplayText()
     val stateLabel = if (built) "built" else "not built"
 
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        shape = RoundedCornerShape(8.dp),
+    Image(
+        painter = painterResource(landmarkDrawableFor(landmarkType, built)),
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
         modifier = Modifier
-            .widthIn(min = 112.dp, max = 128.dp)
+            .width(150.dp)
+            .height(176.dp)
+            .clip(RoundedCornerShape(8.dp))
             .semantics {
                 contentDescription = "$playerName landmark $landmarkName: $stateLabel"
             }
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(8.dp)
-        ) {
-            Image(
-                painter = painterResource(landmarkDrawableFor(landmarkType, built)),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .height(56.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(6.dp))
-            )
-
-            Text(
-                text = landmarkName,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 6.dp)
-            )
-
-            Text(
-                text = if (built) "Built" else "Locked",
-                style = MaterialTheme.typography.labelSmall,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
+    )
 }
 
 @Composable
 private fun PlayerInventoryCards(
     playerName: String,
-    cards: List<PlayerCardState>
+    cards: List<PlayerCardState>,
+    modifier: Modifier = Modifier
 ) {
     val visibleCards = cards.visibleInDisplayOrder()
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         Text(
             text = "Establishments",
             style = MaterialTheme.typography.titleMedium,
@@ -434,16 +421,11 @@ private fun PlayerInventoryCards(
                 style = MaterialTheme.typography.bodyMedium
             )
         } else {
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                visibleCards.forEach { card ->
-                    PlayerInventoryCard(
-                        playerName = playerName,
-                        card = card
-                    )
-                }
+            TwoColumnGrid(items = visibleCards) { card ->
+                PlayerInventoryCard(
+                    playerName = playerName,
+                    card = card
+                )
             }
         }
     }
@@ -456,113 +438,92 @@ private fun PlayerInventoryCard(
 ) {
     val cardName = card.cardType.toDisplayText()
 
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        shape = RoundedCornerShape(8.dp),
+    Box(
         modifier = Modifier
-            .widthIn(min = 120.dp, max = 136.dp)
+            .width(150.dp)
+            .height(176.dp)
             .semantics {
                 contentDescription = "$playerName owns $cardName, quantity ${card.quantity}"
             }
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(8.dp)
-        ) {
-            Image(
-                painter = painterResource(ShopImageResolver.drawableForCardType(card.cardType)),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .height(72.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(6.dp))
-            )
+        Image(
+            painter = painterResource(ShopImageResolver.drawableForCardType(card.cardType)),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(8.dp))
+        )
 
-            Text(
-                text = cardName,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 6.dp)
-            )
-
-            Text(
-                text = "x${card.quantity}",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-        }
+        CardQuantityBadge(
+            quantity = card.quantity,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = (-6).dp, y = (-8).dp)
+        )
     }
 }
 
 @Composable
-private fun OwnedCardRow(
-    playerName: String,
-    cards: List<PlayerCardState>,
+private fun CardQuantityBadge(
+    quantity: Int,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        cards.visibleInDisplayOrder().forEach { card ->
-            OwnedCardChip(
-                playerName = playerName,
-                card = card
+    Box(
+        modifier = modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .border(
+                width = 2.dp,
+                color = Color(0xFF004E7E),
+                shape = CircleShape
             )
-        }
+            .background(Color.White),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "${quantity}x",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color(0xFF004E7E),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
 @Composable
-private fun OwnedCardChip(
-    playerName: String,
-    card: PlayerCardState
+private fun <T> TwoColumnGrid(
+    items: List<T>,
+    modifier: Modifier = Modifier,
+    itemContent: @Composable (T) -> Unit
 ) {
-    val cardName = card.cardType.toDisplayText()
-    val cardUnit = if (card.quantity == 1) "card" else "cards"
-
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = RoundedCornerShape(6.dp),
-        tonalElevation = 1.dp,
-        modifier = Modifier
-            .widthIn(min = 58.dp, max = 72.dp)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
-            .semantics {
-                contentDescription = "Owned by $playerName: $cardName, ${card.quantity} $cardUnit"
-            }
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(4.dp)
-        ) {
-            Image(
-                painter = painterResource(ShopImageResolver.drawableForCardType(card.cardType)),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .height(34.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(4.dp))
-            )
+        items.chunked(2).forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                rowItems.forEach { item ->
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        itemContent(item)
+                    }
+                }
 
-            Text(
-                text = "x${card.quantity}",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
+                if (rowItems.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
         }
     }
 }
-
-private fun List<PlayerCardState>.hasVisibleCards(): Boolean =
-    any { it.quantity > 0 }
 
 private fun List<PlayerCardState>.visibleInDisplayOrder(): List<PlayerCardState> {
     val cardsByType = filter { it.quantity > 0 }.associateBy { it.cardType }
