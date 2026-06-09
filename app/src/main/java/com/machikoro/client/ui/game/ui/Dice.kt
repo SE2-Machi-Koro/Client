@@ -106,10 +106,13 @@ fun DiceSection(
 
     // When diceResult arrives, start local animation then show result
     LaunchedEffect(state.diceResult) {
+        android.util.Log.d("DICE_ANIM", "diceResult changed: ${state.diceResult}")
         if (state.diceResult != null) {
             isAnimating = true
             showResult = false
+            android.util.Log.d("DICE_ANIM", "Animation started")
             delay(DICE_ANIMATION_DURATION_MS)
+            android.util.Log.d("DICE_ANIM", "Animation finished")
             isAnimating = false
             showResult = true
         } else {
