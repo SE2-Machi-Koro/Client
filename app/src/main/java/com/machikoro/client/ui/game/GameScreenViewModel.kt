@@ -88,6 +88,7 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.diceResult.collect { diceResult ->
+                android.util.Log.d("DICE_VM", "diceResult received: $diceResult")
                 mutableState.update { it.copy(diceResult = diceResult, isRolling = false, rollingStartTime = null) }
             }
         }
