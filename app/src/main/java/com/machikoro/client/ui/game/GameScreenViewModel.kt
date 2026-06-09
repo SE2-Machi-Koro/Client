@@ -19,6 +19,7 @@ import com.machikoro.client.network.debug.DebugApi
 import com.machikoro.client.network.debug.EndGameRequest
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -87,7 +88,14 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.diceResult.collect { diceResult ->
-                mutableState.update { it.copy(diceResult = diceResult, isRolling = false) }
+                // Wait at least 1.5s from when rolling started before showing the result
+                val rollingStartTime = mutableState.value.rollingStartTime
+                if (rollingStartTime != null) {
+                    val elapsed = System.currentTimeMillis() - rollingStartTime
+                    val remaining = 1500L - elapsed
+                    if (remaining > 0) delay(remaining)
+                }
+                mutableState.update { it.copy(diceResult = diceResult, isRolling = false, rollingStartTime = null) }
             }
         }
         viewModelScope.launch {
@@ -102,6 +110,7 @@ class GameScreenViewModel(
                         activePlayerId = activePlayerId,
                         diceResult = if (playerChanged) null else state.diceResult,
                         isRolling = if (playerChanged) false else state.isRolling,
+                        rollingStartTime = if (playerChanged) null else state.rollingStartTime,
                     ).resetPurchaseFeedbackIf(playerChanged)
                 }
             }
@@ -174,7 +183,7 @@ class GameScreenViewModel(
         if (mutableState.value.gameStatus != GameStatus.IN_PROGRESS) return
         if (mutableState.value.gamePhase != GamePhase.ROLL_DICE) return
         if (!mutableState.value.isActivePlayer) return
-        mutableState.update { it.copy(isRolling = true) }
+        mutableState.update { it.copy(isRolling = true, rollingStartTime = System.currentTimeMillis()) }
         webSocketClient.rollDice(diceCount)
     }
 
