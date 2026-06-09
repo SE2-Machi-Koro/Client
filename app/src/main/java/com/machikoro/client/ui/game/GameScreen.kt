@@ -1,6 +1,5 @@
 package com.machikoro.client.ui.game
 
-import android.R.attr.contentDescription
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -205,6 +204,7 @@ fun GameScreen(
                         players = state.players,
                         playerLandmarks =
                             state.playerLandmarks,
+                        playerCards = state.playerCards,
                         modifier = Modifier.align(
                             Alignment.Center
                         ),
