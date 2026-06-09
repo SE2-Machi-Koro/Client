@@ -31,20 +31,19 @@ fun PlayerCoinField(
         firstOrNull() { it.isCurrentPlayer }
         ?.coins ?: 0
 
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+    Row(
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = "$coins",
             color = Color.White,
-            fontSize = 36.sp,
+            fontSize = 36.sp
         )
+
         Image(
-            painter = painterResource(id = R.drawable.player_coins),
+            painter = painterResource(R.drawable.game_coins_decor),
             contentDescription = "Coins",
-            modifier = Modifier.size(120.dp)
-                .offset(y = (-18).dp)
+            modifier = Modifier.size(75.dp)
         )
     }
 }

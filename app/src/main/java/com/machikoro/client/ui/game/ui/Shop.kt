@@ -6,11 +6,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
@@ -32,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -41,11 +44,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
+import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
@@ -232,28 +237,46 @@ private fun ShopImageTile(
     // Allow clicking if purchasable OR if already selected (to deselect/change selection)
     val isClickable = canPurchase || isSelected
 
-    Image(
-        painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
-        contentDescription = null,
-        contentScale = ContentScale.Fit,
+    Box(
         modifier = modifier
             .width(155.dp)
             .height(175.dp)
-            .alpha(if (state.canPurchaseItem(item)) 1f else 0.45f)
-            .border(2.dp, borderColor, SHOP_CARD_SHAPE)
-            .clip(SHOP_CARD_SHAPE)
             .clickable(
                 enabled = isClickable,
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
             ) {
                 onPurchaseClick(item.type)
-            }
-            .semantics {
-                contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
-                        if (isRecommended) ", recommended" else ""
-            }
-    )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+
+        Image(
+            painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(if (state.canPurchaseItem(item)) 1f else 0.45f)
+                .semantics {
+                    contentDescription =
+                        "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
+                                if (isRecommended) ", recommended" else ""
+                }
+        )
+
+        if (isSelected) {
+            Image(
+                painter = painterResource(R.drawable.card_frame),
+                contentDescription = null,
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier
+                    .width(148.dp)   // hier spielen
+                    .height(176.dp) // hier spielen
+                    .offset(y = (-5).dp)
+            )
+        }
+    }
 }
 
 internal fun GameScreenState.shouldShowBuyingPhaseShop(): Boolean =
@@ -323,3 +346,17 @@ private fun previewBuyingPhaseState() = GameScreenState(
         )
     )
 )
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun BuyingPhaseShopWithFramePreview() {
+    ClientTheme {
+        BuyingPhaseShop(
+            state = previewBuyingPhaseState().copy(
+                pendingPurchaseItemType = "SHOPPING_MALL"
+            ),
+            items = ShopCatalog.defaultItems,
+            onPurchaseClick = {}
+        )
+    }
+}
