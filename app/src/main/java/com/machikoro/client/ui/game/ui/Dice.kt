@@ -32,7 +32,7 @@ import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.ui.shared.ActionButton
 import kotlinx.coroutines.delay
 
-private const val DICE_ANIMATION_INTERVAL_MS = 100L
+private const val DICE_ANIMATION_INTERVAL_MS = 300L
 private val DICE_FACES = listOf(
     R.drawable.game_dice_1,
     R.drawable.game_dice_2,
@@ -41,6 +41,9 @@ private val DICE_FACES = listOf(
     R.drawable.game_dice_5,
     R.drawable.game_dice_6
 )
+
+fun diceDrawableFor(value: Int): Int =
+    DICE_FACES.getOrElse(value - 1) { R.drawable.game_dice_perspective }
 
 @Composable
 fun DiceAnimationDisplay(modifier: Modifier = Modifier) {
@@ -55,8 +58,8 @@ fun DiceAnimationDisplay(modifier: Modifier = Modifier) {
 
     Image(
         painter = painterResource(id = DICE_FACES[currentFaceIndex]),
-        contentDescription = "Dice",
-        modifier = modifier
+        contentDescription = "Dice rolling",
+        modifier = modifier.size(64.dp)
     )
 }
 
@@ -72,24 +75,18 @@ fun DiceResultDisplay(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.game_dice_perspective),
-            contentDescription = "Dice",
-            Modifier.size(56.dp)
-        )
-        // Removed for now
-        /*
+        // Show each die with its actual face
         dice.forEach { value ->
-            Text(
-                text = DICE_FACES.getOrElse(value - 1) { value.toString() },
-                style = MaterialTheme.typography.displaySmall
+            Image(
+                painter = painterResource(id = diceDrawableFor(value)),
+                contentDescription = "Dice showing $value",
+                modifier = Modifier.size(56.dp)
             )
         }
-         */
         Text(
-            text = "$sum",
+            text = "= $sum",
             style = MaterialTheme.typography.bodyLarge,
-            fontSize = 48.sp,
+            fontSize = 36.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
@@ -107,14 +104,24 @@ fun DiceSection(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier.padding(bottom = 32.dp)
     ) {
+        // Dice display area
         when {
-            state.isRolling -> DiceAnimationDisplay()
+            state.isRolling -> {
+                // Show one or two animated dice depending on selected count
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val diceCount = if (state.hasTrainStation) 2 else 1
+                    repeat(diceCount) {
+                        DiceAnimationDisplay()
+                    }
+                }
+            }
             state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
         }
 
         if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
             var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
 
+            // 1🎲 / 2🎲 toggle buttons when Train Station is built
             if (state.hasTrainStation) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(1, 2).forEach { count ->
@@ -137,14 +144,27 @@ fun DiceSection(
                 }
             }
 
-            ActionButton(
-                onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
-                enabled = !state.isRolling,
-                label = if (state.diceResult == null) "Roll Dice" else "Roll Dice Again",
-                modifier = Modifier.semantics {
-                    contentDescription = "Roll Dice"
+            // Roll Dice button with static dice image before rolling
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (!state.isRolling && state.diceResult == null) {
+                    Image(
+                        painter = painterResource(id = R.drawable.game_dice_perspective),
+                        contentDescription = "Dice",
+                        modifier = Modifier.size(48.dp)
+                    )
                 }
-            )
+                ActionButton(
+                    onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
+                    enabled = !state.isRolling,
+                    label = if (state.diceResult == null) "Roll Dice" else "Roll Dice Again",
+                    modifier = Modifier.semantics {
+                        contentDescription = "Roll Dice"
+                    }
+                )
+            }
         }
     }
 }
