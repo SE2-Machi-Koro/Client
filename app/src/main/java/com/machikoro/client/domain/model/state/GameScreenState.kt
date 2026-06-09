@@ -27,6 +27,7 @@ data class GameScreenState(
     // Short feedback text shown in the shop for pending, success, or retryable errors.
     val purchaseMessage: String? = null,
     val isRolling: Boolean = false,
+    val rollingStartTime: Long? = null,
     // Reconnect snapshot fields (from /app/game.sync).
     val gameStatus: GameStatus? = null,
     val roundNumber: Int? = null,
@@ -67,6 +68,7 @@ data class GameScreenState(
             purchaseFeedbackItemType = null,
             purchaseMessage = null,
             isRolling = false,
+            rollingStartTime = null,
             gameStatus = null,
             roundNumber = null,
             playerCards = emptyMap(),
