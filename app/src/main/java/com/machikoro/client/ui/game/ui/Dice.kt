@@ -186,7 +186,7 @@ fun DiceSection(
                         onRollDice(if (state.hasTrainStation) selectedDiceCount else 1)
                     },
                     enabled = !state.isRolling && !isAnimating,
-                    label = if (!showResult && state.diceResult == null) "Roll Dice" else "Roll Dice Again",
+                    label = if (showResult) "Roll Dice Again" else "Roll Dice",
                     modifier = Modifier.semantics {
                         contentDescription = "Roll Dice"
                     }
