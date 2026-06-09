@@ -93,12 +93,16 @@ class GameScreenViewModel(
         viewModelScope.launch {
             webSocketClient.activePlayerId.collect { activePlayerId ->
                 // The Insider Trading cheat is valid for one turn only — drop it when the turn rotates.
-                if (mutableState.value.activePlayerId != activePlayerId) {
+                val playerChanged = mutableState.value.activePlayerId != activePlayerId
+                if (playerChanged) {
                     mutableCheatRecommendation.value = null
                 }
                 mutableState.update { state ->
-                    state.copy(activePlayerId = activePlayerId)
-                        .resetPurchaseFeedbackIf(state.activePlayerId != activePlayerId)
+                    state.copy(
+                        activePlayerId = activePlayerId,
+                        diceResult = if (playerChanged) null else state.diceResult,
+                        isRolling = if (playerChanged) false else state.isRolling,
+                    ).resetPurchaseFeedbackIf(playerChanged)
                 }
             }
         }
@@ -254,23 +258,23 @@ class GameScreenViewModel(
 
     private fun GameScreenState.canSelectPurchaseItem(item: ShopItem): Boolean =
         gameStatus == GameStatus.IN_PROGRESS &&
-        isBuyingPhase &&
-            isActivePlayer &&
-            purchaseState != PurchaseState.PENDING &&
-            purchaseState != PurchaseState.SUCCESS &&
-            item.isAvailable &&
-            hasEnoughKnownCoinsFor(item) &&
-            !isKnownBuiltLandmark(item)
+                isBuyingPhase &&
+                isActivePlayer &&
+                purchaseState != PurchaseState.PENDING &&
+                purchaseState != PurchaseState.SUCCESS &&
+                item.isAvailable &&
+                hasEnoughKnownCoinsFor(item) &&
+                !isKnownBuiltLandmark(item)
 
     private fun GameScreenState.canStartPurchase(item: ShopItem): Boolean =
         gameStatus == GameStatus.IN_PROGRESS &&
-        isBuyingPhase &&
-            isActivePlayer &&
-            purchaseState != PurchaseState.PENDING &&
-            purchaseState != PurchaseState.SUCCESS &&
-            item.isAvailable &&
-            hasEnoughKnownCoinsFor(item) &&
-            !isKnownBuiltLandmark(item)
+                isBuyingPhase &&
+                isActivePlayer &&
+                purchaseState != PurchaseState.PENDING &&
+                purchaseState != PurchaseState.SUCCESS &&
+                item.isAvailable &&
+                hasEnoughKnownCoinsFor(item) &&
+                !isKnownBuiltLandmark(item)
 
     private fun GameScreenState.hasEnoughKnownCoinsFor(item: ShopItem): Boolean {
         val activePlayerCoins = players.firstOrNull { it.isActivePlayer }?.coins
@@ -289,7 +293,6 @@ class GameScreenViewModel(
     private fun GameScreenState.applyPurchaseEvent(event: PurchaseEvent): GameScreenState =
         when (event) {
             is PurchaseEvent.Success -> {
-                // Only finish the local pending action when the server confirms the same target.
                 val matchesPending = pendingPurchaseItemType == event.itemType
                 if (!matchesPending) {
                     this
@@ -304,7 +307,6 @@ class GameScreenViewModel(
                 }
             }
             is PurchaseEvent.Failure -> {
-                // Failed purchases are retryable; the backend stays authoritative for the reason.
                 if (purchaseState != PurchaseState.PENDING) {
                     this
                 } else {
@@ -331,12 +333,6 @@ class GameScreenViewModel(
             )
         }
 
-    /**
-     * Debug-only (#191): force-ends the current game with the local player as
-     * winner via the admin debug endpoint. On success the server's GAME_END
-     * broadcast drives the winner screen, so there is nothing else to do here;
-     * failures surface through [debugEndGameErrors] as a snackbar.
-     */
     // Guards against rapid double-taps queuing concurrent end-game calls (#191 review).
     private var endGameInFlight = false
 
