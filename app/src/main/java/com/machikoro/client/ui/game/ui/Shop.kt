@@ -218,7 +218,7 @@ private fun ShopImageTile(
     modifier: Modifier = Modifier
 ) {
     val canPurchase = state.canPurchaseItem(item)
-    val isSelected = state.pendingPurchaseItemType == item.type
+    val isSelected = state.selectedPurchaseItemType == item.type
     val isFeedbackItem = state.purchaseFeedbackItemType == item.type
 
     val borderColor = when {
@@ -264,6 +264,8 @@ internal fun GameScreenState.shouldShowBuyingPhaseShop(): Boolean =
 
 private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
     item.isAvailable &&
+            purchaseState != PurchaseState.PENDING &&
+            purchaseState != PurchaseState.SUCCESS &&
             hasEnoughKnownCoinsFor(item) &&
             !isKnownBuiltLandmark(item)
 
