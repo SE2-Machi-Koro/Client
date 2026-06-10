@@ -121,6 +121,28 @@ class HomeScreenViewModelTest {
     }
 
     @Test
+    fun setJoinLobbyErrorRaisesErrorFlag() {
+        val viewModel = HomeViewModel(FakeWebSocketClient())
+        assertFalse(viewModel.joinLobbyError.value)
+
+        viewModel.setJoinLobbyError("Lobby code is invalid")
+
+        assertTrue(viewModel.joinLobbyError.value)
+    }
+
+    @Test
+    fun changingJoinLobbyCodeClearsErrorFlag() {
+        val viewModel = HomeViewModel(FakeWebSocketClient())
+        viewModel.setJoinLobbyError("Lobby code is invalid")
+        assertTrue(viewModel.joinLobbyError.value)
+
+        viewModel.onJoinLobbyCodeChange("XYZ789")
+
+        assertFalse(viewModel.joinLobbyError.value)
+        assertEquals("XYZ789", viewModel.joinLobbyCode.value)
+    }
+
+    @Test
     fun startGameDelegatesToWebSocketClient() {
         val fakeClient = FakeWebSocketClient()
         val viewModel = HomeViewModel(fakeClient)
