@@ -217,7 +217,7 @@ fun GameScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        if (state.gamePhase != GamePhase.ROLL_DICE) {
+                        if (state.gamePhase != GamePhase.ROLL_DICE && state.gamePhase != GamePhase.RESOLVE_EFFECTS) {
                             state.diceResult?.let { DiceResultDisplay(dice = it) }
                         }
                         if (state.marketplace.isNotEmpty()) {
