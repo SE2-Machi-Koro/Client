@@ -199,6 +199,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Rejected accusation (#280): surface the server's reason (e.g.
+            // "You can only accuse once per turn") instead of dropping it.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.accusationErrors.collect { message ->
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            }
+
             // Debug End-game (#191): surface End-game button failures as a snackbar.
             LaunchedEffect(Unit) {
                 gameScreenViewModel.debugEndGameErrors.collect { message ->
