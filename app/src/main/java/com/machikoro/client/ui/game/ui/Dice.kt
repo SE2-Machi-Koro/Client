@@ -119,7 +119,6 @@ fun DiceSection(
             isAnimating = false
             showResult = false
             localDiceResult = null
-            pendingDiceCount = 1
         }
     }
 
@@ -132,7 +131,6 @@ fun DiceSection(
     ) {
         when {
             state.isRolling || isAnimating -> {
-                android.util.Log.d("DICE", "animationDiceCount=$animationDiceCount, diceResult=${state.diceResult}, pendingDiceCount=$pendingDiceCount")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     repeat(animationDiceCount) {
                         DiceAnimationDisplay()
@@ -188,7 +186,6 @@ fun DiceSection(
                         showResult = false
                         localDiceResult = null
                         pendingDiceCount = if (state.hasTrainStation) selectedDiceCount else 1
-                        android.util.Log.d("DICE", "pendingDiceCount=$pendingDiceCount, selectedDiceCount=$selectedDiceCount, hasTrainStation=${state.hasTrainStation}")
                         onRollDice(if (state.hasTrainStation) selectedDiceCount else 1)
                     },
                     enabled = true,
