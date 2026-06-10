@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -53,6 +54,8 @@ import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
+import com.machikoro.client.domain.model.state.isShopItemAvailableFromMarketplace
+import com.machikoro.client.domain.model.state.remainingMarketplaceQuantityFor
 import com.machikoro.client.ui.game.GameScreen
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.PrimaryOrange
@@ -221,6 +224,7 @@ private fun ShopImageTile(
     val canPurchase = state.canPurchaseItem(item)
     val isSelected = state.selectedPurchaseItemType == item.type
     val isFeedbackItem = state.purchaseFeedbackItemType == item.type
+    val remainingQuantity = state.remainingMarketplaceQuantityFor(item)
 
     val borderColor = when {
         isFeedbackItem && state.purchaseState == PurchaseState.SUCCESS -> PrimaryOrange
@@ -233,14 +237,10 @@ private fun ShopImageTile(
     // Allow clicking if purchasable OR if already selected (to deselect/change selection)
     val isClickable = canPurchase || isSelected
 
-    Image(
-        painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
-        contentDescription = null,
-        contentScale = ContentScale.Fit,
+    Box(
         modifier = modifier
             .width(155.dp)
             .height(175.dp)
-            .alpha(if (state.canPurchaseItem(item)) 1f else 0.45f)
             .border(2.dp, borderColor, SHOP_CARD_SHAPE)
             .clip(SHOP_CARD_SHAPE)
             .clickable(
@@ -252,9 +252,39 @@ private fun ShopImageTile(
             }
             .semantics {
                 contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
+                        remainingQuantity?.let { ", $it remaining" }.orEmpty() +
+                        if (remainingQuantity == 0) ", unavailable" else "" +
                         if (isRecommended) ", recommended" else ""
             }
-    )
+    ) {
+        Image(
+            painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(if (canPurchase) 1f else 0.45f)
+        )
+        remainingQuantity?.let { count ->
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = if (count > 0) TextBlueDark else MaterialTheme.colorScheme.error,
+                tonalElevation = 2.dp,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp)
+            ) {
+                Text(
+                    text = "×$count",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        }
+    }
 }
 
 internal fun GameScreenState.shouldShowBuyingPhaseShop(): Boolean =
@@ -264,7 +294,7 @@ internal fun GameScreenState.shouldShowBuyingPhaseShop(): Boolean =
             gameId != null
 
 private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
-    item.isAvailable &&
+    isShopItemAvailableFromMarketplace(item) &&
             purchaseState != PurchaseState.PENDING &&
             purchaseState != PurchaseState.SUCCESS &&
             hasEnoughKnownCoinsFor(item) &&
