@@ -1,7 +1,6 @@
 package com.machikoro.client.domain.model.shop
 
 import com.machikoro.client.domain.enums.PurchaseType
-import com.machikoro.client.network.error.ClientError
 
 /**
  * One-shot purchase feedback from the WebSocket layer.
@@ -17,6 +16,6 @@ sealed class PurchaseEvent {
     ) : PurchaseEvent()
 
     data class Failure(
-        val error: ClientError.WebSocket
+        val message: String
     ) : PurchaseEvent()
 }
