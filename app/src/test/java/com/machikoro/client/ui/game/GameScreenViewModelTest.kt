@@ -7,7 +7,9 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
+import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.model.shop.PurchaseEvent
+import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
@@ -275,6 +277,51 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun selectingPurchaseItemDoesNotSendPurchase() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.selectPurchaseItem("BAKERY")
+
+        assertEquals("BAKERY", viewModel.state.value.selectedPurchaseItemType)
+        assertNull(fakeClient.lastPurchase)
+        assertEquals(PurchaseState.IDLE, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun purchaseSelectedItemBuysSelectedCard() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.selectPurchaseItem("BAKERY")
+        viewModel.purchaseSelectedItem()
+
+        assertEquals(
+            FakeWebSocketClient.PurchaseCall(
+                gameId = 7,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                cardType = "BAKERY",
+                landmarkType = null
+            ),
+            fakeClient.lastPurchase
+        )
+        assertEquals(PurchaseState.PENDING, viewModel.state.value.purchaseState)
+        assertEquals("BAKERY", viewModel.state.value.pendingPurchaseItemType)
+    }
+
+    @Test
     fun activePlayerCanPurchaseEstablishmentDuringBuyOrBuild() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
@@ -406,9 +453,33 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         assertEquals(PurchaseState.SUCCESS, viewModel.state.value.purchaseState)
+        assertNull(viewModel.state.value.selectedPurchaseItemType)
         assertNull(viewModel.state.value.pendingPurchaseItemType)
         assertEquals("BAKERY", viewModel.state.value.purchaseFeedbackItemType)
         assertEquals("Bakery bought", viewModel.state.value.purchaseMessage)
+    }
+
+    @Test
+    fun matchingPurchaseSuccessEventEndsTurn() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+        fakeClient.emitPurchaseEvent(
+            PurchaseEvent.Success(
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                itemType = "BAKERY"
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(7, fakeClient.endedTurnGameId)
     }
 
     @Test
@@ -682,6 +753,237 @@ class GameScreenViewModelTest {
         assertNull(fakeClient.lastRolledDiceCount)
     }
 
+    @Test
+    fun playersWithStartingCoinsFromGameStartedAreReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        val players = listOf(
+            PlayerCoinState(id = "1", displayName = "Alice", coins = 4, isCurrentPlayer = true),
+            PlayerCoinState(id = "2", displayName = "Bob", coins = 4),
+            PlayerCoinState(id = "3", displayName = "Charlie", coins = 4),
+        )
+
+        fakeClient.emitPlayers(players)
+        advanceUntilIdle()
+
+        assertEquals(players, viewModel.state.value.players)
+        assertEquals(4, viewModel.state.value.players[0].coins)
+        assertEquals(4, viewModel.state.value.players[1].coins)
+    }
+
+    @Test
+    fun playerLandmarksAllStartUnbuiltFromGameStarted() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        val landmarks = mapOf(
+            1 to LandmarkType.entries.map { PlayerLandmarkState(it, isBuilt = false) },
+            2 to LandmarkType.entries.map { PlayerLandmarkState(it, isBuilt = false) },
+        )
+
+        fakeClient.emitPlayerLandmarks(landmarks)
+        advanceUntilIdle()
+
+        assertEquals(landmarks, viewModel.state.value.playerLandmarks)
+        // All should start unbuilt
+        viewModel.state.value.playerLandmarks[1]?.forEach { landmark ->
+            assertEquals(false, landmark.isBuilt)
+        }
+    }
+
+    @Test
+    fun marketplaceInitialSupplyFromGameStartedReflectsServerState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        val marketplace = mapOf(
+            CardType.WHEAT_FIELD to 6,
+            CardType.BAKERY to 6,
+            CardType.CAFE to 6,
+            CardType.CONVENIENCE_STORE to 4,
+            CardType.FOREST to 6,
+            CardType.MINE to 6,
+            CardType.APPLE_ORCHARD to 6
+        )
+
+        fakeClient.emitMarketplace(marketplace)
+        advanceUntilIdle()
+
+        assertEquals(marketplace, viewModel.state.value.marketplace)
+        assertEquals(6, viewModel.state.value.marketplace[CardType.WHEAT_FIELD])
+        assertEquals(4, viewModel.state.value.marketplace[CardType.CONVENIENCE_STORE])
+    }
+
+    @Test
+    fun shopItemsFromGameStartedAreReflectedInState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        val shopItems = listOf(
+            ShopItem(
+                type = "BAKERY",
+                displayName = "Bakery",
+                cost = 1,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                color = ShopItemColor.GREEN,
+                imageKey = "bakery",
+                establishmentType = "Bakery",
+                activationText = "2-3",
+                effectText = "Get 1 coin from the bank on your turn.",
+            ),
+            ShopItem(
+                type = "CAFE",
+                displayName = "Cafe",
+                cost = 2,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                color = ShopItemColor.RED,
+                imageKey = "cafe",
+                establishmentType = "Cafe",
+                activationText = "3",
+                effectText = "Take 1 coin from the active player.",
+            ),
+        )
+
+        fakeClient.emitShopItems(shopItems)
+        advanceUntilIdle()
+
+        assertEquals(shopItems, viewModel.state.value.shopItems)
+    }
+
+    @Test
+    fun reconnectSnapshotRestoresFullGameStateIncludingCoinsLandmarksMarketplaceShop() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 1)
+
+        val players = listOf(
+            PlayerCoinState(id = "1", displayName = "Alice", coins = 8, isCurrentPlayer = true, isActivePlayer = true),
+            PlayerCoinState(id = "2", displayName = "Bob", coins = 5),
+        )
+        val landmarks = mapOf(
+            1 to listOf(
+                PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
+                PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = false),
+            )
+        )
+        val marketplace = mapOf(
+            CardType.WHEAT_FIELD to 5,
+            CardType.BAKERY to 4,
+        )
+        val shopItems = listOf(
+            ShopItem(
+                type = "BAKERY",
+                displayName = "Bakery",
+                cost = 1,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                color = ShopItemColor.GREEN,
+                imageKey = "bakery",
+                establishmentType = "Bakery",
+                activationText = "2-3",
+                effectText = "Get 1 coin from the bank on your turn.",
+            ),
+        )
+
+        fakeClient.emitPlayers(players)
+        fakeClient.emitPlayerLandmarks(landmarks)
+        fakeClient.emitMarketplace(marketplace)
+        fakeClient.emitShopItems(shopItems)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitRoundNumber(3)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(players, state.players)
+        assertEquals(8, state.players[0].coins)
+        assertEquals(landmarks, state.playerLandmarks)
+        assertEquals(true, state.playerLandmarks[1]?.get(0)?.isBuilt)
+        assertEquals(false, state.playerLandmarks[1]?.get(1)?.isBuilt)
+        assertEquals(marketplace, state.marketplace)
+        assertEquals(shopItems, state.shopItems)
+        assertEquals(GameStatus.IN_PROGRESS, state.gameStatus)
+        assertEquals(3, state.roundNumber)
+    }
+
+    @Test
+    fun firstGameStartedPayloadWithStartingStateCompletesInitialization() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        // Simulate GAME_STARTED with starting state
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitPlayers(listOf(
+            PlayerCoinState(id = "42", displayName = "Player1", coins = 4, isCurrentPlayer = true, isActivePlayer = true),
+            PlayerCoinState(id = "99", displayName = "Player2", coins = 4),
+        ))
+        fakeClient.emitPlayerLandmarks(mapOf(
+            42 to LandmarkType.entries.map { PlayerLandmarkState(it, isBuilt = false) },
+            99 to LandmarkType.entries.map { PlayerLandmarkState(it, isBuilt = false) },
+        ))
+        fakeClient.emitMarketplace(mapOf(
+            CardType.WHEAT_FIELD to 6,
+            CardType.BAKERY to 6,
+        ))
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(7, state.gameId)
+        assertEquals(GamePhase.ROLL_DICE, state.gamePhase)
+        assertEquals(GameStatus.IN_PROGRESS, state.gameStatus)
+        assertEquals(2, state.players.size)
+        assertEquals(4, state.players[0].coins)
+        assertEquals(2, state.playerLandmarks.size)
+        assertEquals(4, state.playerLandmarks[42]?.size)  // 4 landmark types
+        assertEquals(2, state.marketplace.size)
+        assertEquals(true, viewModel.state.value.isActivePlayer)
+    }
+
+    @Test
+    fun playerCoinsDecreaseCorrectlyWhenReentering() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        fakeClient.emitPlayers(listOf(
+            PlayerCoinState(id = "1", displayName = "Alice", coins = 4),
+        ))
+        advanceUntilIdle()
+        assertEquals(4, viewModel.state.value.players[0].coins)
+
+        // Player buys something
+        fakeClient.emitPlayers(listOf(
+            PlayerCoinState(id = "1", displayName = "Alice", coins = 3),
+        ))
+        advanceUntilIdle()
+
+        assertEquals(3, viewModel.state.value.players[0].coins)
+    }
+
+    @Test
+    fun builtLandmarksDisplayCorrectlyWhenPurchased() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        val landmarks = mapOf(
+            1 to listOf(
+                PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
+                PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = false),
+                PlayerLandmarkState(LandmarkType.AMUSEMENT_PARK, isBuilt = false),
+                PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = false),
+            )
+        )
+
+        fakeClient.emitPlayerLandmarks(landmarks)
+        advanceUntilIdle()
+
+        val trainStationState = viewModel.state.value.playerLandmarks[1]?.find { it.landmarkType == LandmarkType.TRAIN_STATION }
+        val shoppingMallState = viewModel.state.value.playerLandmarks[1]?.find { it.landmarkType == LandmarkType.SHOPPING_MALL }
+
+        assertEquals(true, trainStationState?.isBuilt)
+        assertEquals(false, shoppingMallState?.isBuilt)
+    }
     // ── Insider Trading cheat (#203) ──────────────────────────────────────────
 
     private fun inProgressMyTurn(

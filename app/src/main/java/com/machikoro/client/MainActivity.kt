@@ -268,7 +268,8 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         },
-                        onPurchaseClick = gameScreenViewModel::purchase,
+                        onPurchaseClick = gameScreenViewModel::selectPurchaseItem,
+                        onBuySelectedClick = gameScreenViewModel::purchaseSelectedItem,
                         onBackHome = {
                             gameScreenViewModel.clearGameState()
                             navigationViewModel.returnHome()
