@@ -105,8 +105,11 @@ fun DiceSection(
     var showResult by remember { mutableStateOf(false) }
     var localDiceResult by remember { mutableStateOf<List<Int>?>(null) }
     var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
+    // I freeze the dice count at the moment Roll is clicked so the animation
+    // shows the correct number even after selectedDiceCount resets
+    var frozenDiceCount by remember { mutableIntStateOf(1) }
 
-    val animationDiceCount = state.diceResult?.size ?: selectedDiceCount
+    val animationDiceCount = state.diceResult?.size ?: frozenDiceCount
 
     LaunchedEffect(state.diceResult) {
         if (state.diceResult != null && state.diceResult != localDiceResult) {
@@ -182,6 +185,7 @@ fun DiceSection(
                 }
                 ActionButton(
                     onClick = {
+                        frozenDiceCount = if (state.hasTrainStation) selectedDiceCount else 1
                         showResult = false
                         localDiceResult = null
                         onRollDice(if (state.hasTrainStation) selectedDiceCount else 1)
