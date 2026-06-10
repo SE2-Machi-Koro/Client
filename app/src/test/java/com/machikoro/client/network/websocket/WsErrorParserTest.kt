@@ -48,6 +48,15 @@ class WsErrorParserTest {
     }
 
     @Test
+    fun parseUsesFallbackCodeFieldWhenErrorCodeIsAbsent() {
+        val json = JSONObject("""{"type":"ERROR","content":"Duplicate","payload":{"code":"DUPLICATE_PURPLE_ESTABLISHMENT","message":"Duplicate"}}""")
+
+        val error = WsErrorParser.parse(json)
+
+        assertEquals("DUPLICATE_PURPLE_ESTABLISHMENT", error.serverCode)
+    }
+
+    @Test
     fun parseHandlesMissingPayload() {
         val json = JSONObject("""{"type":"ERROR","content":"Unexpected failure"}""")
 
@@ -63,7 +72,7 @@ class WsErrorParserTest {
 
         val error = WsErrorParser.parse(json)
 
-        assert(error is ClientError.WebSocket)
+        assertEquals(ClientError.WebSocket::class, error::class)
     }
 
     @Test

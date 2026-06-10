@@ -172,9 +172,9 @@ class MainActivity : ComponentActivity() {
 
             }
             LaunchedEffect(Unit) {
-                webSocketClient.lobbyJoinErrors.collect { message ->
-                    Log.e("MainActivity", "Lobby join error received: $message")
-                    homeViewModel.setJoinLobbyError(message)
+                webSocketClient.lobbyJoinErrors.collect { error ->
+                    Log.e("MainActivity", "Lobby join error received: ${error.diagnosticMessage}")
+                    homeViewModel.setJoinLobbyError(error.userMessage)
                     // Return to HomeScreen so the error is visible
                     navigationViewModel.leaveLobby()
                 }

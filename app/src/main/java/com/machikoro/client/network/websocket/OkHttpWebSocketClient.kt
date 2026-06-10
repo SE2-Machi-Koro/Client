@@ -11,6 +11,7 @@ import com.machikoro.client.domain.model.shop.CardDefinition
 import com.machikoro.client.domain.model.shop.CardDefinitions
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopCatalog
+import com.machikoro.client.network.error.ClientError
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.shop.toActivationNumbers
 import com.machikoro.client.domain.model.state.ConnectionStatus
@@ -62,7 +63,7 @@ class OkHttpWebSocketClient(
     override val lobbyEntered: SharedFlow<Unit>
         get() = mutableLobbyEntered.asSharedFlow()
 
-    override val lobbyJoinErrors: SharedFlow<String>
+    override val lobbyJoinErrors: SharedFlow<ClientError.WebSocket>
         get() = mutableLobbyJoinErrors.asSharedFlow()
 
     override val hostLeftLobby: SharedFlow<Unit>
@@ -115,7 +116,7 @@ class OkHttpWebSocketClient(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
-    private val mutableLobbyJoinErrors = MutableSharedFlow<String>(
+    private val mutableLobbyJoinErrors = MutableSharedFlow<ClientError.WebSocket>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
@@ -590,9 +591,9 @@ class OkHttpWebSocketClient(
                     sessionStateHolder.signOut()
                     mutableAuthRejections.tryEmit(Unit)
                 } else {
-                    // Preserve legacy STOMP ERROR feedback without marking the transport failed.
+                    // Map the STOMP ERROR body to a typed error at this single boundary.
                     mutablePurchaseEvents.tryEmit(
-                        PurchaseEvent.Failure(frame.body.ifBlank { "Purchase failed" })
+                        PurchaseEvent.Failure(WsErrorParser.parseStompErrorBody(frame.body))
                     )
                 }
             }
@@ -726,7 +727,6 @@ class OkHttpWebSocketClient(
 
         val payload = json.optJSONObject("payload")
         val errorCode = payload?.optString("errorCode").orEmpty()
-        val message = json.optString("content").ifBlank { "Failed to join lobby" }
 
         if (
             errorCode == "INVALID_LOBBY_CODE" ||
@@ -735,8 +735,15 @@ class OkHttpWebSocketClient(
             errorCode == "GAME_FINISHED" ||
             errorCode == "LOBBY_FULL"
         ) {
-            Log.w(TAG, "Lobby join error received [$errorCode]: $message")
-            mutableLobbyJoinErrors.tryEmit(message)
+            val error = WsErrorParser.parse(json).let { parsed ->
+                if (parsed.userMessage == ClientError.UNKNOWN_USER_MESSAGE) {
+                    parsed.copy(userMessage = "Failed to join lobby")
+                } else {
+                    parsed
+                }
+            }
+            Log.w(TAG, "Lobby join error received [${error.serverCode}]: ${error.userMessage}")
+            mutableLobbyJoinErrors.tryEmit(error)
         }
     }
 
@@ -1056,9 +1063,14 @@ class OkHttpWebSocketClient(
         if (json.optString("type") != ERROR_TYPE) return null
         val payload = json.optJSONObject("payload") ?: return null
         if (payload.optString("event") != PURCHASE_FAILED_EVENT) return null
-        return PurchaseEvent.Failure(
-            payload.optString("message").ifBlank { "Purchase failed" }
-        )
+        val error = WsErrorParser.parse(json).let { parsed ->
+            if (parsed.userMessage == ClientError.UNKNOWN_USER_MESSAGE) {
+                parsed.copy(userMessage = "Purchase failed")
+            } else {
+                parsed
+            }
+        }
+        return PurchaseEvent.Failure(error)
     }
 
     /**
