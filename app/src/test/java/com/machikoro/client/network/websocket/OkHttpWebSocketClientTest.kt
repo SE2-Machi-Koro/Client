@@ -6,6 +6,7 @@ import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.PurchaseEvent
+import com.machikoro.client.domain.model.state.AccusationResult
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
@@ -3202,6 +3203,233 @@ class OkHttpWebSocketClientTest {
             }
         )
         assertEquals(1, enteredCount)
+    }
+
+    // ── Cheating accusations (#280) ──────────────────────────────────────────
+
+    private fun rosterFrame(): String =
+        gameActionFrame(
+            """{"type":"LOBBY_ROSTER","sender":"SERVER","gameId":1,"payload":{"players":[""" +
+                """{"playerId":5,"userId":20,"username":"Alice","coins":3},""" +
+                """{"playerId":6,"userId":21,"username":"Bob","coins":5}]}}"""
+        )
+
+    @Test
+    fun reportCheatSendsGameIdToReportCheatDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.reportCheat(7)
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND\n") &&
+                    it.contains("destination:${WebSocketContract.reportCheatDestination}") &&
+                    it.contains("\"gameId\":7")
+            }
+        )
+    }
+
+    @Test
+    fun accuseSendsGameIdAndAccusedPlayerId() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.accuse(7, 22)
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND\n") &&
+                    it.contains("destination:${WebSocketContract.accuseDestination}") &&
+                    it.contains("\"gameId\":7") &&
+                    it.contains("\"accusedPlayerId\":22")
+            }
+        )
+    }
+
+    @Test
+    fun accusationResultCaughtEmitsResolvedNamesAndPenalty() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val results = mutableListOf<AccusationResult>()
+        client.accusationResults.onEach { results += it }.launchIn(backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        runCurrent()
+
+        factory.simulateText(rosterFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ACCUSATION_RESULT","sender":"server","gameId":1,"payload":""" +
+                    """{"accuserPlayerId":5,"accusedPlayerId":6,"caught":true,""" +
+                    """"penalizedPlayerId":6,"penaltyCoins":2}}"""
+            )
+        )
+        runCurrent()
+
+        assertEquals(1, results.size)
+        val result = results.first()
+        assertTrue(result.caught)
+        assertEquals("Alice", result.accuserName)
+        assertEquals("Bob", result.accusedName)
+        assertEquals("Bob", result.penalizedName)
+        assertEquals(2, result.penaltyCoins)
+    }
+
+    @Test
+    fun accusationResultWrongPenalizesTheAccuser() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val results = mutableListOf<AccusationResult>()
+        client.accusationResults.onEach { results += it }.launchIn(backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        runCurrent()
+
+        factory.simulateText(rosterFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ACCUSATION_RESULT","sender":"server","gameId":1,"payload":""" +
+                    """{"accuserPlayerId":5,"accusedPlayerId":6,"caught":false,""" +
+                    """"penalizedPlayerId":5,"penaltyCoins":1}}"""
+            )
+        )
+        runCurrent()
+
+        assertEquals(1, results.size)
+        val result = results.first()
+        assertFalse(result.caught)
+        assertEquals("Alice", result.penalizedName)
+        assertEquals(1, result.penaltyCoins)
+    }
+
+    @Test
+    fun accusationResultWithoutCaughtKeyIsDroppedAsContractMismatch() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val results = mutableListOf<AccusationResult>()
+        client.accusationResults.onEach { results += it }.launchIn(backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        runCurrent()
+
+        // Legacy/diverged payload shape (the #353 failure mode): no `caught` key.
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ACCUSATION_RESULT","sender":"server","gameId":1,"payload":""" +
+                    """{"outcome":"CAUGHT","accuserPlayerId":5,"accusedPlayerId":6,""" +
+                    """"penalizedPlayerId":6}}"""
+            )
+        )
+        runCurrent()
+
+        assertTrue(results.isEmpty())
+    }
+
+    @Test
+    fun accusationResultFallsBackToPlaceholderNamesForUnknownIds() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val results = mutableListOf<AccusationResult>()
+        client.accusationResults.onEach { results += it }.launchIn(backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        runCurrent()
+
+        // No roster seeded — the ids cannot be resolved to display names.
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ACCUSATION_RESULT","sender":"server","gameId":1,"payload":""" +
+                    """{"accuserPlayerId":5,"accusedPlayerId":6,"caught":true,""" +
+                    """"penalizedPlayerId":6,"penaltyCoins":2}}"""
+            )
+        )
+        runCurrent()
+
+        assertEquals(1, results.size)
+        assertEquals("A player", results.first().accuserName)
+        assertEquals("A player", results.first().accusedName)
+    }
+
+    @Test
+    fun invalidAccusationErrorFrameEmitsTheServerMessage() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+        client.accusationErrors.onEach { errors += it }.launchIn(backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        runCurrent()
+
+        // WebSocketErrorDto on the private errors queue: no `type` field.
+        factory.simulateText(
+            gameActionFrame(
+                """{"code":"INVALID_ACCUSATION","message":"You can only accuse once per turn",""" +
+                    """"timestamp":"2026-06-10T12:00:00Z","context":null}"""
+            )
+        )
+        runCurrent()
+
+        assertEquals(listOf("You can only accuse once per turn"), errors)
+    }
+
+    @Test
+    fun otherErrorCodesDoNotEmitAccusationErrors() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<String>()
+        client.accusationErrors.onEach { errors += it }.launchIn(backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        runCurrent()
+
+        factory.simulateText(
+            gameActionFrame(
+                """{"code":"NOT_YOUR_TURN","message":"It is not your turn",""" +
+                    """"timestamp":"2026-06-10T12:00:00Z","context":null}"""
+            )
+        )
+        runCurrent()
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
+    fun accusationResultAppliesTheEmbeddedStateSnapshot() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ACCUSATION_RESULT","sender":"server","gameId":7,"payload":""" +
+                    """{"accuserPlayerId":11,"accusedPlayerId":22,"caught":true,""" +
+                    """"penalizedPlayerId":22,"penaltyCoins":2,""" +
+                    """"state":{"game":{"id":7,"status":"IN_PROGRESS","turnPhase":"BUY_OR_BUILD","currentTurnIndex":0},""" +
+                    """"players":[{"id":11,"userId":1,"coins":10},{"id":22,"userId":2,"coins":5}],""" +
+                    """"playerUsernames":{"11":"alice","22":"bob"},""" +
+                    """"playerLandmarks":{},"marketplace":{},"turnOrder":[1,2]}}}"""
+            )
+        )
+
+        // The embedded snapshot must update the roster (penalized coins included).
+        val bob = client.players.value.firstOrNull { it.displayName == "bob" }
+        assertNotNull(bob)
+        assertEquals(5, bob?.coins)
     }
 
     private fun newClient(
