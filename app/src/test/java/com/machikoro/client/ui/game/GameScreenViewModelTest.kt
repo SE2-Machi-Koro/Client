@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -34,7 +35,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import retrofit2.HttpException
 import retrofit2.Response
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameScreenViewModelTest {
@@ -1300,10 +1303,68 @@ class GameScreenViewModelTest {
         assertEquals(1, fakeDebugApi.endGameCallCount)
     }
 
+    @Test
+    fun endGameEmitsNetworkErrorMessageOnIoException() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val fakeDebugApi = FakeDebugApi(error = IOException("connect timed out"))
+        val viewModel = viewModel(fakeClient = fakeClient, userId = 42, fakeDebugApi = fakeDebugApi)
+        fakeClient.emitActiveGameId(7)
+        advanceUntilIdle()
+        val errors = mutableListOf<String>()
+        val job = launch { viewModel.debugEndGameErrors.collect { errors.add(it) } }
+        advanceUntilIdle()
+
+        viewModel.endGame()
+        advanceUntilIdle()
+
+        assertEquals(listOf("End game error: Network error: connect timed out"), errors)
+        job.cancel()
+    }
+
+    @Test
+    fun endGameEmitsParsedServerMessageOnHttpJsonError() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val errorBody = """{"errorCode":"GAME_NOT_FOUND","message":"Game does not exist"}"""
+            .toResponseBody("application/json".toMediaType())
+        val fakeDebugApi = FakeDebugApi(error = HttpException(Response.error<Unit>(404, errorBody)))
+        val viewModel = viewModel(fakeClient = fakeClient, userId = 42, fakeDebugApi = fakeDebugApi)
+        fakeClient.emitActiveGameId(7)
+        advanceUntilIdle()
+        val errors = mutableListOf<String>()
+        val job = launch { viewModel.debugEndGameErrors.collect { errors.add(it) } }
+        advanceUntilIdle()
+
+        viewModel.endGame()
+        advanceUntilIdle()
+
+        assertEquals(listOf("End game error: Game does not exist"), errors)
+        job.cancel()
+    }
+
+    @Test
+    fun purchaseFailureWithBlankMessageShowsFallbackMessage() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+        fakeClient.emitPurchaseEvent(PurchaseEvent.Failure(""))
+        advanceUntilIdle()
+
+        assertEquals(PurchaseState.ERROR, viewModel.state.value.purchaseState)
+        assertEquals("Purchase failed", viewModel.state.value.purchaseMessage)
+    }
+
     private class FakeDebugApi(
         private val response: Response<Unit> = Response.success(Unit),
         private val throwError: Boolean = false,
         private val errorMessage: String? = "Simulated network error",
+        private val error: Throwable? = null,
     ) : DebugApi {
         var endGameCallCount = 0
             private set
@@ -1317,6 +1378,7 @@ class GameScreenViewModelTest {
         override suspend fun endGame(body: EndGameRequest): Response<Unit> {
             endGameCallCount++
             lastEndGameRequest = body
+            error?.let { throw it }
             if (throwError) throw RuntimeException(errorMessage)
             return response
         }
