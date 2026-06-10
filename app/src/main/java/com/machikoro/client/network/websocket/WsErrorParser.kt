@@ -7,7 +7,9 @@ object WsErrorParser {
 
     fun parse(json: JSONObject): ClientError.WebSocket {
         val payload = json.optJSONObject("payload")
-        val serverCode = payload?.optString("errorCode").orEmpty().ifBlank { "UNKNOWN" }
+        val serverCode = payload?.optString("errorCode").orEmpty()
+            .ifBlank { payload?.optString("code").orEmpty() }
+            .ifBlank { "UNKNOWN" }
         val userMessage = json.optString("content")
             .ifBlank { payload?.optString("message").orEmpty() }
             .ifBlank { ClientError.UNKNOWN_USER_MESSAGE }

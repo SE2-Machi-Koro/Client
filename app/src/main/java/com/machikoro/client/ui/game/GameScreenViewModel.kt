@@ -332,7 +332,7 @@ class GameScreenViewModel(
                         purchaseState = PurchaseState.ERROR,
                         pendingPurchaseItemType = null,
                         purchaseFeedbackItemType = purchaseFeedbackItemType,
-                        purchaseMessage = event.message.ifBlank { "Purchase failed" }
+                        purchaseMessage = event.error.userMessage.ifBlank { "Purchase failed" }
                     )
                 }
             }

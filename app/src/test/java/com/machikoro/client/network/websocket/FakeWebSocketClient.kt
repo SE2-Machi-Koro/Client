@@ -10,6 +10,7 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopItem
+import com.machikoro.client.network.error.ClientError
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +30,7 @@ class FakeWebSocketClient : WebSocketClient {
     override val lobbyCode: StateFlow<String?>
         get() = mutableLobbyCode
 
-    override val lobbyJoinErrors: SharedFlow<String>
+    override val lobbyJoinErrors: SharedFlow<ClientError.WebSocket>
         get() = mutableLobbyJoinErrors
     override val hostLeftLobby: SharedFlow<Unit>
         get() = mutableHostLeftLobby
@@ -77,7 +78,7 @@ class FakeWebSocketClient : WebSocketClient {
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
-    private val mutableLobbyJoinErrors = MutableSharedFlow<String>(
+    private val mutableLobbyJoinErrors = MutableSharedFlow<ClientError.WebSocket>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
@@ -286,6 +287,10 @@ class FakeWebSocketClient : WebSocketClient {
 
     fun emitPurchaseEvent(event: PurchaseEvent) {
         mutablePurchaseEvents.tryEmit(event)
+    }
+
+    fun emitLobbyJoinError(error: ClientError.WebSocket) {
+        mutableLobbyJoinErrors.tryEmit(error)
     }
 
     fun emitAuthRejection() {

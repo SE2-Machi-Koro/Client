@@ -8,6 +8,7 @@ import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.state.AccusationResult
 import com.machikoro.client.domain.model.state.ConnectionStatus
+import com.machikoro.client.network.error.ClientError
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.session.Session
@@ -470,7 +471,7 @@ class OkHttpWebSocketClientTest {
     fun lobbyJoinErrorWithoutContentUsesFallbackMessage() = runTest {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-        val errors = mutableListOf<String>()
+        val errors = mutableListOf<ClientError.WebSocket>()
 
         client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
         runCurrent()
@@ -492,14 +493,16 @@ class OkHttpWebSocketClientTest {
 
         runCurrent()
 
-        assertEquals(listOf("Failed to join lobby"), errors)
+        assertEquals(1, errors.size)
+        assertEquals("LOBBY_FULL", errors.first().serverCode)
+        assertEquals("Failed to join lobby", errors.first().userMessage)
     }
 
     @Test
     fun allLobbyJoinErrorCodesEmitLobbyJoinError() = runTest {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-        val errors = mutableListOf<String>()
+        val errors = mutableListOf<ClientError.WebSocket>()
 
         client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
         runCurrent()
@@ -529,13 +532,14 @@ class OkHttpWebSocketClientTest {
         }
 
         assertEquals(5, errors.size)
+        assertEquals(listOf("INVALID_LOBBY_CODE", "GAME_NOT_FOUND", "GAME_STARTED", "GAME_FINISHED", "LOBBY_FULL"), errors.map { it.serverCode })
     }
 
     @Test
     fun nonLobbyJoinErrorCodeDoesNotEmitLobbyJoinError() = runTest {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-        val errors = mutableListOf<String>()
+        val errors = mutableListOf<ClientError.WebSocket>()
 
         client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
         runCurrent()
@@ -871,7 +875,7 @@ class OkHttpWebSocketClientTest {
     fun invalidLobbyCodeErrorEmitsLobbyJoinError() = runTest {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-        val errors = mutableListOf<String>()
+        val errors = mutableListOf<ClientError.WebSocket>()
 
         client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
         runCurrent()
@@ -888,7 +892,9 @@ class OkHttpWebSocketClientTest {
 
         runCurrent()
 
-        assertEquals(listOf("Lobby code is invalid"), errors)
+        assertEquals(1, errors.size)
+        assertEquals("INVALID_LOBBY_CODE", errors.first().serverCode)
+        assertEquals("Lobby code is invalid", errors.first().userMessage)
     }
 
     @Test
@@ -933,7 +939,7 @@ class OkHttpWebSocketClientTest {
     fun gameStartedLobbyErrorEmitsLobbyJoinError() = runTest {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
-        val errors = mutableListOf<String>()
+        val errors = mutableListOf<ClientError.WebSocket>()
 
         client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
         runCurrent()
@@ -955,7 +961,9 @@ class OkHttpWebSocketClientTest {
 
         runCurrent()
 
-        assertEquals(listOf("Could not join lobby"), errors)
+        assertEquals(1, errors.size)
+        assertEquals("GAME_STARTED", errors.first().serverCode)
+        assertEquals("Could not join lobby", errors.first().userMessage)
     }
 
     /*
@@ -1066,10 +1074,10 @@ class OkHttpWebSocketClientTest {
         )
         runCurrent()
 
-        assertEquals(
-            listOf(PurchaseEvent.Failure("Player already owns purple establishment STADIUM")),
-            purchaseEvents
-        )
+        assertEquals(1, purchaseEvents.size)
+        val failure = purchaseEvents.first() as PurchaseEvent.Failure
+        assertEquals("DUPLICATE_PURPLE_ESTABLISHMENT", failure.error.serverCode)
+        assertEquals("Player already owns purple establishment STADIUM", failure.error.userMessage)
     }
 
     @Test
@@ -1177,7 +1185,10 @@ class OkHttpWebSocketClientTest {
         factory.simulateText("ERROR\n\nSome other error\u0000")
         runCurrent()
         assertTrue(rejections.isEmpty())
-        assertEquals(listOf(PurchaseEvent.Failure("Some other error")), purchaseEvents)
+        assertEquals(1, purchaseEvents.size)
+        val failure = purchaseEvents.first() as PurchaseEvent.Failure
+        assertEquals("STOMP_ERROR", failure.error.serverCode)
+        assertEquals("Some other error", failure.error.userMessage)
         assertEquals(ConnectionStatus.CONNECTED, client.connectionStatus.value)
     }
 
