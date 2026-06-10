@@ -1073,10 +1073,10 @@ class OkHttpWebSocketClientTest {
         )
         runCurrent()
 
-        assertEquals(1, purchaseEvents.size)
-        val failure = purchaseEvents.first() as PurchaseEvent.Failure
-        assertEquals("DUPLICATE_PURPLE_ESTABLISHMENT", failure.error.serverCode)
-        assertEquals("Player already owns purple establishment STADIUM", failure.error.userMessage)
+        assertEquals(
+            listOf(PurchaseEvent.Failure("Player already owns purple establishment STADIUM")),
+            purchaseEvents
+        )
     }
 
     @Test
@@ -1184,10 +1184,7 @@ class OkHttpWebSocketClientTest {
         factory.simulateText("ERROR\n\nSome other error\u0000")
         runCurrent()
         assertTrue(rejections.isEmpty())
-        assertEquals(1, purchaseEvents.size)
-        val failure = purchaseEvents.first() as PurchaseEvent.Failure
-        assertEquals("STOMP_ERROR", failure.error.serverCode)
-        assertEquals("Some other error", failure.error.userMessage)
+        assertEquals(listOf(PurchaseEvent.Failure("Some other error")), purchaseEvents)
         assertEquals(ConnectionStatus.CONNECTED, client.connectionStatus.value)
     }
 

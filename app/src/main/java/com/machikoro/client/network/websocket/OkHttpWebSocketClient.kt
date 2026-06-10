@@ -591,9 +591,9 @@ class OkHttpWebSocketClient(
                     sessionStateHolder.signOut()
                     mutableAuthRejections.tryEmit(Unit)
                 } else {
-                    // Map the STOMP ERROR body to a typed error at this single boundary.
+                    // Map the STOMP ERROR body through WsErrorParser at this single boundary.
                     mutablePurchaseEvents.tryEmit(
-                        PurchaseEvent.Failure(WsErrorParser.parseStompErrorBody(frame.body))
+                        PurchaseEvent.Failure(WsErrorParser.parseStompErrorBody(frame.body).userMessage)
                     )
                 }
             }
@@ -1063,14 +1063,9 @@ class OkHttpWebSocketClient(
         if (json.optString("type") != ERROR_TYPE) return null
         val payload = json.optJSONObject("payload") ?: return null
         if (payload.optString("event") != PURCHASE_FAILED_EVENT) return null
-        val error = WsErrorParser.parse(json).let { parsed ->
-            if (parsed.userMessage == ClientError.UNKNOWN_USER_MESSAGE) {
-                parsed.copy(userMessage = "Purchase failed")
-            } else {
-                parsed
-            }
-        }
-        return PurchaseEvent.Failure(error)
+        val userMessage = WsErrorParser.parse(json).userMessage
+            .takeIf { it != ClientError.UNKNOWN_USER_MESSAGE } ?: "Purchase failed"
+        return PurchaseEvent.Failure(userMessage)
     }
 
     /**

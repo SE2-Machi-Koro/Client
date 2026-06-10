@@ -19,7 +19,6 @@ import com.machikoro.client.network.debug.DebugApi
 import com.machikoro.client.network.debug.EndGameRequest
 import com.machikoro.client.network.debug.FillLobbyRequest
 import com.machikoro.client.network.debug.ResetLobbyRequest
-import com.machikoro.client.network.error.ClientError
 import com.machikoro.client.network.websocket.FakeWebSocketClient
 import com.machikoro.client.ui.start.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -495,7 +494,7 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         viewModel.purchase("BAKERY")
-        fakeClient.emitPurchaseEvent(PurchaseEvent.Failure(ClientError.WebSocket(serverCode = "INSUFFICIENT_FUNDS", userMessage = "Not enough coins")))
+        fakeClient.emitPurchaseEvent(PurchaseEvent.Failure("Not enough coins"))
         advanceUntilIdle()
 
         assertEquals(PurchaseState.ERROR, viewModel.state.value.purchaseState)
