@@ -105,8 +105,8 @@ fun DiceSection(
     var showResult by remember { mutableStateOf(false) }
     var localDiceResult by remember { mutableStateOf<List<Int>?>(null) }
     var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
-    // I freeze the dice count at the moment Roll is clicked so the animation
-    // shows the correct number even after selectedDiceCount resets
+    // I freeze the count when the user picks 1 or 2 so the animation always
+    // shows the right number of dice even after state.isRolling triggers a recompose
     var frozenDiceCount by remember { mutableIntStateOf(1) }
 
     val animationDiceCount = state.diceResult?.size ?: frozenDiceCount
@@ -154,7 +154,10 @@ fun DiceSection(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(1, 2).forEach { count ->
                         Button(
-                            onClick = { selectedDiceCount = count },
+                            onClick = {
+                                selectedDiceCount = count
+                                frozenDiceCount = count
+                            },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (selectedDiceCount == count)
                                     MaterialTheme.colorScheme.primary
@@ -185,7 +188,6 @@ fun DiceSection(
                 }
                 ActionButton(
                     onClick = {
-                        frozenDiceCount = if (state.hasTrainStation) selectedDiceCount else 1
                         showResult = false
                         localDiceResult = null
                         onRollDice(if (state.hasTrainStation) selectedDiceCount else 1)
