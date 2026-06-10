@@ -829,7 +829,7 @@ class GameScreenViewModelTest {
                 color = ShopItemColor.GREEN,
                 imageKey = "bakery",
                 establishmentType = "Bakery",
-                activationText = "2-3",
+                activationNumbers = listOf(2, 3),
                 effectText = "Get 1 coin from the bank on your turn.",
             ),
             ShopItem(
@@ -840,7 +840,7 @@ class GameScreenViewModelTest {
                 color = ShopItemColor.RED,
                 imageKey = "cafe",
                 establishmentType = "Cafe",
-                activationText = "3",
+                activationNumbers = listOf(3),
                 effectText = "Take 1 coin from the active player.",
             ),
         )
@@ -879,7 +879,7 @@ class GameScreenViewModelTest {
                 color = ShopItemColor.GREEN,
                 imageKey = "bakery",
                 establishmentType = "Bakery",
-                activationText = "2-3",
+                activationNumbers = listOf(2, 3),
                 effectText = "Get 1 coin from the bank on your turn.",
             ),
         )

@@ -51,6 +51,7 @@ import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.model.shop.ShopCatalog
+import com.machikoro.client.domain.model.shop.CardDefinitions
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
@@ -87,9 +88,9 @@ internal fun BuyingPhaseShop(
     }
 
     val establishments = remember(items) {
-        items
-            .filter { it.purchaseType == PurchaseType.ESTABLISHMENT }
-            .sortedWith(compareBy<ShopItem> { it.cost }.thenBy { it.activationText }.thenBy { it.displayName })
+        CardDefinitions.sortShopItemsByActivation(
+            items.filter { it.purchaseType == PurchaseType.ESTABLISHMENT }
+        )
     }
 
     var selectedTab by remember {
