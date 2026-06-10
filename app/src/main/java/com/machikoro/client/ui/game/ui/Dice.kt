@@ -105,7 +105,8 @@ fun DiceSection(
     var showResult by remember { mutableStateOf(false) }
     var localDiceResult by remember { mutableStateOf<List<Int>?>(null) }
     var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
-    var pendingDiceCount by remember { mutableIntStateOf(1) }
+
+    val animationDiceCount = state.diceResult?.size ?: state.requestedDiceCount
 
     LaunchedEffect(state.diceResult) {
         if (state.diceResult != null && state.diceResult != localDiceResult) {
@@ -121,8 +122,6 @@ fun DiceSection(
             localDiceResult = null
         }
     }
-
-    val animationDiceCount = state.diceResult?.size ?: pendingDiceCount
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -185,7 +184,6 @@ fun DiceSection(
                     onClick = {
                         showResult = false
                         localDiceResult = null
-                        pendingDiceCount = if (state.hasTrainStation) selectedDiceCount else 1
                         onRollDice(if (state.hasTrainStation) selectedDiceCount else 1)
                     },
                     enabled = true,
