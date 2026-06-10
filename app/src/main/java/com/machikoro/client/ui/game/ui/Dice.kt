@@ -128,15 +128,17 @@ fun DiceSection(
     ) {
         when {
             state.isRolling || isAnimating -> {
+                // Use diceResult size if available, otherwise fall back to selectedDiceCount
+                val diceCount = state.diceResult?.size ?: if (state.hasTrainStation) selectedDiceCount else 1
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val diceCount = if (state.hasTrainStation) selectedDiceCount else 1
                     repeat(diceCount) {
                         DiceAnimationDisplay()
                     }
                 }
             }
-            showResult && state.diceResult != null -> {
-                DiceResultDisplay(dice = state.diceResult)
+            showResult && localDiceResult != null -> {
+                // Show result only after animation finishes using localDiceResult
+                DiceResultDisplay(dice = localDiceResult!!)
             }
         }
 
