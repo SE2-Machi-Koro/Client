@@ -52,13 +52,25 @@ class GameScreenViewModel(
     val accusationResults: SharedFlow<AccusationResult>
         get() = webSocketClient.accusationResults
 
+    /** One-shot server-side accusation rejection (#280) for a toast — pass-through. */
+    val accusationErrors: SharedFlow<String>
+        get() = webSocketClient.accusationErrors
+
     /**
      * True until the local player has accused someone this turn — mirrors the
-     * server's one-accusation-per-turn rule (#280). Resets when the turn rotates.
+     * server's one-accusation-per-turn rule (#280). Renews when the turn
+     * rotates or a new game starts.
+     *
+     * Turn rotation is detected via the last *non-null* active player / round:
+     * a disconnect (e.g. backgrounding the app) emits null and the reconnect
+     * snapshot restores the same in-progress turn, so null transitions must
+     * not renew a spent budget.
      */
     val canAccuseThisTurn: StateFlow<Boolean>
         get() = mutableCanAccuseThisTurn.asStateFlow()
     private val mutableCanAccuseThisTurn = MutableStateFlow(true)
+    private var lastTurnOwnerUserId: Int? = null
+    private var lastSeenRoundNumber: Int? = null
     private val mutableCheatActivations = MutableSharedFlow<CardType?>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -75,6 +87,10 @@ class GameScreenViewModel(
     init {
         viewModelScope.launch {
             webSocketClient.activeGameId.collect { gameId ->
+                // A different game means a fresh accusation budget (#280).
+                if (gameId != null && mutableState.value.gameId != gameId) {
+                    mutableCanAccuseThisTurn.value = true
+                }
                 mutableState.update { current ->
                     current.copy(gameId = gameId)
                 }
@@ -106,10 +122,16 @@ class GameScreenViewModel(
         viewModelScope.launch {
             webSocketClient.activePlayerId.collect { activePlayerId ->
                 // The Insider Trading cheat is valid for one turn only — drop it when the turn rotates.
-                // The accusation budget (one per turn, #280) renews on the same boundary.
                 if (mutableState.value.activePlayerId != activePlayerId) {
                     mutableCheatRecommendation.value = null
-                    mutableCanAccuseThisTurn.value = true
+                }
+                // The accusation budget (#280) renews only on a real rotation:
+                // a new non-null owner differing from the last non-null one.
+                if (activePlayerId != null) {
+                    if (lastTurnOwnerUserId != null && activePlayerId != lastTurnOwnerUserId) {
+                        mutableCanAccuseThisTurn.value = true
+                    }
+                    lastTurnOwnerUserId = activePlayerId
                 }
                 mutableState.update { state ->
                     state.copy(activePlayerId = activePlayerId)
@@ -131,7 +153,13 @@ class GameScreenViewModel(
             webSocketClient.roundNumber.collect { roundNumber ->
                 if (mutableState.value.roundNumber != roundNumber) {
                     mutableCheatRecommendation.value = null
-                    mutableCanAccuseThisTurn.value = true
+                }
+                // Same non-null discipline as the active-player reset above.
+                if (roundNumber != null) {
+                    if (lastSeenRoundNumber != null && roundNumber != lastSeenRoundNumber) {
+                        mutableCanAccuseThisTurn.value = true
+                    }
+                    lastSeenRoundNumber = roundNumber
                 }
                 mutableState.update { state ->
                     state.copy(roundNumber = roundNumber)

@@ -111,6 +111,9 @@ class OkHttpWebSocketClient(
     override val accusationResults: SharedFlow<AccusationResult>
         get() = mutableAccusationResults.asSharedFlow()
 
+    override val accusationErrors: SharedFlow<String>
+        get() = mutableAccusationErrors.asSharedFlow()
+
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
@@ -151,6 +154,10 @@ class OkHttpWebSocketClient(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     private val mutableAccusationResults = MutableSharedFlow<AccusationResult>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    private val mutableAccusationErrors = MutableSharedFlow<String>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
@@ -607,6 +614,7 @@ class OkHttpWebSocketClient(
                 handleSync(json)
                 handleAuthoritativeSnapshot(json)
                 handleAccusationResult(json)
+                handleAccusationError(json)
                 parseGameAction(json).let { (phase, activePlayerId) ->
                     phase?.let { mutableGamePhase.value = it }
                     activePlayerId?.let { mutableActivePlayerId.value = it }
@@ -878,6 +886,19 @@ class OkHttpWebSocketClient(
                 penaltyCoins = penaltyCoins,
             )
         )
+    }
+
+    /**
+     * Surfaces rejected accusations (#280). The server delivers them on the
+     * private errors queue as a `WebSocketErrorDto {code, message, ...}` — a
+     * payload with no `type` field, so no other handler matches it. Without
+     * this, a rejection (e.g. "once per turn" after the client gate diverged
+     * across a reconnect) would be silently dropped.
+     */
+    private fun handleAccusationError(json: JSONObject) {
+        if (json.optString("code") != INVALID_ACCUSATION_CODE) return
+        val message = json.optString("message").takeIf { it.isNotBlank() } ?: "Invalid accusation"
+        mutableAccusationErrors.tryEmit(message)
     }
 
     private fun handleAuthoritativeSnapshot(json: JSONObject) {
@@ -1413,6 +1434,7 @@ class OkHttpWebSocketClient(
         private val RECONNECT_DELAYS_MS = listOf(1_000L, 2_000L, 4_000L, 8_000L, 16_000L)
         private const val GAME_ACTION_TYPE = "GAME_ACTION"
         private const val ACCUSATION_RESULT_TYPE = "ACCUSATION_RESULT"
+        private const val INVALID_ACCUSATION_CODE = "INVALID_ACCUSATION"
         private const val GAME_END_TYPE = "GAME_END"
         private const val GAME_STARTED_TYPE = "GAME_STARTED"
         private const val GAME_ENDED_TYPE = "GAME_END"

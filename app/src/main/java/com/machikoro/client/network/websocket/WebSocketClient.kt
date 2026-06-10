@@ -53,6 +53,11 @@ interface WebSocketClient {
     // One-shot result of a cheating accusation (#280), for a toast.
     val accusationResults: SharedFlow<AccusationResult>
 
+    // One-shot server rejection of an accusation (INVALID_ACCUSATION on the
+    // private errors queue), e.g. "once per turn" when the local gate diverged
+    // across a reconnect. Carries the server's message, for a toast.
+    val accusationErrors: SharedFlow<String>
+
     // Fires when the server rejects the STOMP CONNECT for auth reasons (token
     // missing / invalid / server-side cleared). The UI layer is responsible for
     // calling SessionManager.signOut() and surfacing a "session expired"
