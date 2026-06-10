@@ -105,7 +105,7 @@ fun DiceSection(
     var showResult by remember { mutableStateOf(false) }
     var localDiceResult by remember { mutableStateOf<List<Int>?>(null) }
     var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
-    var selectedDiceCountForAnimation by remember { mutableIntStateOf(1) }
+    var pendingDiceCount by remember { mutableIntStateOf(1) }
 
     LaunchedEffect(state.diceResult) {
         if (state.diceResult != null && state.diceResult != localDiceResult) {
@@ -119,8 +119,11 @@ fun DiceSection(
             isAnimating = false
             showResult = false
             localDiceResult = null
+            pendingDiceCount = 1
         }
     }
+
+    val animationDiceCount = state.diceResult?.size ?: pendingDiceCount
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -129,9 +132,8 @@ fun DiceSection(
     ) {
         when {
             state.isRolling || isAnimating -> {
-                val diceCount = state.diceResult?.size ?: selectedDiceCountForAnimation
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    repeat(diceCount) {
+                    repeat(animationDiceCount) {
                         DiceAnimationDisplay()
                     }
                 }
@@ -173,7 +175,7 @@ fun DiceSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (state.diceResult == null) {
+                if (state.diceResult == null && localDiceResult == null) {
                     Image(
                         painter = painterResource(id = R.drawable.game_dice_perspective),
                         contentDescription = "Dice",
@@ -184,7 +186,7 @@ fun DiceSection(
                     onClick = {
                         showResult = false
                         localDiceResult = null
-                        selectedDiceCountForAnimation = if (state.hasTrainStation) selectedDiceCount else 1
+                        pendingDiceCount = if (state.hasTrainStation) selectedDiceCount else 1
                         onRollDice(if (state.hasTrainStation) selectedDiceCount else 1)
                     },
                     enabled = true,
