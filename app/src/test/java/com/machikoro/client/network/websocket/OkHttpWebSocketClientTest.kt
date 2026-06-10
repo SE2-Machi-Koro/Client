@@ -2559,6 +2559,31 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun parseCardDefinitionsStoresNumericActivationNumbersAndDerivesText() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            syncFrame(
+                """{"type":"SYNC","sender":"server","gameId":1,"payload":{"targetUserId":1,"state":{""" +
+                    """"game":{"id":1,"status":"IN_PROGRESS","turnPhase":"ROLL_DICE","currentTurnIndex":0},""" +
+                    """"players":[],"playerLandmarks":{},"marketplace":{"BAKERY":4},""" +
+                    """"cardDefinitions":[{"cardType":"BAKERY","cost":1,"color":"GREEN",""" +
+                    """"establishmentType":"BREAD","activationNumbers":[2,3],""" +
+                    """"effectText":"Get 1 coin from the bank on your turn."}],""" +
+                    """"landmarkDefinitions":[],"turnOrder":[]}}}"""
+            )
+        )
+
+        val bakery = client.shopItems.value.single { it.type == CardType.BAKERY.name }
+        assertEquals(listOf(2, 3), bakery.activationNumbers)
+        assertEquals("2-3", bakery.activationText)
+        assertTrue(bakery.isAvailable)
+    }
+
+    @Test
     fun parseLandmarkDefinitionsSkipsEntriesWithUnknownLandmarkType() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
