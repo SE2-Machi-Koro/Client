@@ -106,7 +106,7 @@ fun DiceSection(
     var localDiceResult by remember { mutableStateOf<List<Int>?>(null) }
     var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
 
-    val animationDiceCount = state.diceResult?.size ?: state.requestedDiceCount
+    val animationDiceCount = state.diceResult?.size ?: selectedDiceCount
 
     LaunchedEffect(state.diceResult) {
         if (state.diceResult != null && state.diceResult != localDiceResult) {
