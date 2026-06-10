@@ -222,6 +222,7 @@ class WebSocketClientTest {
         assertEquals("Server train station effect", trainStation.effectText)
     }
 
+    @Test
     fun twoClientsApplySameGameStartedBroadcast() {
         val playerA = okHttpClientFixture(userId = 101)
         val playerB = okHttpClientFixture(userId = 202)
@@ -236,6 +237,45 @@ class WebSocketClientTest {
         assertEquals(GameStatus.IN_PROGRESS, playerB.client.gameStatus.value)
         assertEquals(GamePhase.ROLL_DICE, playerA.client.gamePhase.value)
         assertEquals(GamePhase.ROLL_DICE, playerB.client.gamePhase.value)
+        assertEquals(2, playerA.client.roundNumber.value)
+        assertEquals(2, playerB.client.roundNumber.value)
+        assertEquals(202, playerA.client.activePlayerId.value)
+        assertEquals(202, playerB.client.activePlayerId.value)
+        assertEquals(
+            listOf(
+                Triple("11", "Alice", 1),
+                Triple("22", "Bob", 4),
+            ),
+            playerA.client.players.value.map { Triple(it.id, it.displayName, it.coins) }
+        )
+        assertEquals(
+            playerA.client.players.value.map { Triple(it.id, it.displayName, it.coins) },
+            playerB.client.players.value.map { Triple(it.id, it.displayName, it.coins) }
+        )
+        assertFalse(playerA.client.players.value.first { it.id == "11" }.isActivePlayer)
+        assertEquals(true, playerA.client.players.value.first { it.id == "22" }.isActivePlayer)
+        assertEquals(
+            mapOf(11 to listOf(PlayerCardState(CardType.WHEAT_FIELD, 1))),
+            playerA.client.playerCards.value
+        )
+        assertEquals(
+            mapOf(22 to listOf(PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true))),
+            playerA.client.playerLandmarks.value
+        )
+        assertEquals(
+            mapOf(CardType.WHEAT_FIELD to 0, CardType.BAKERY to 4),
+            playerA.client.marketplace.value
+        )
+        assertEquals(false, playerA.client.shopItems.value.first { it.type == "WHEAT_FIELD" }.isAvailable)
+        val bakery = playerA.client.shopItems.value.first { it.type == "BAKERY" }
+        assertEquals(PurchaseType.ESTABLISHMENT, bakery.purchaseType)
+        assertEquals("Bakery", bakery.displayName)
+        assertEquals(1, bakery.cost)
+        assertEquals(true, bakery.isAvailable)
+        val trainStation = playerA.client.shopItems.value.first { it.type == "TRAIN_STATION" }
+        assertEquals(PurchaseType.LANDMARK, trainStation.purchaseType)
+        assertEquals("Train Station", trainStation.displayName)
+        assertEquals(4, trainStation.cost)
     }
 
     @Test

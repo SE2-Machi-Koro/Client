@@ -46,6 +46,7 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
+import com.machikoro.client.domain.model.shop.CardDefinitions
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
@@ -82,9 +83,9 @@ internal fun BuyingPhaseShop(
     }
 
     val establishments = remember(items) {
-        items
-            .filter { it.purchaseType == PurchaseType.ESTABLISHMENT }
-            .sortedWith(compareBy<ShopItem> { it.cost }.thenBy { it.activationText }.thenBy { it.displayName })
+        CardDefinitions.sortShopItemsByActivation(
+            items.filter { it.purchaseType == PurchaseType.ESTABLISHMENT }
+        )
     }
 
     var selectedTab by remember {
@@ -218,7 +219,7 @@ private fun ShopImageTile(
     modifier: Modifier = Modifier
 ) {
     val canPurchase = state.canPurchaseItem(item)
-    val isSelected = state.pendingPurchaseItemType == item.type
+    val isSelected = state.selectedPurchaseItemType == item.type
     val isFeedbackItem = state.purchaseFeedbackItemType == item.type
 
     val borderColor = when {
@@ -264,6 +265,8 @@ internal fun GameScreenState.shouldShowBuyingPhaseShop(): Boolean =
 
 private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
     item.isAvailable &&
+            purchaseState != PurchaseState.PENDING &&
+            purchaseState != PurchaseState.SUCCESS &&
             hasEnoughKnownCoinsFor(item) &&
             !isKnownBuiltLandmark(item)
 

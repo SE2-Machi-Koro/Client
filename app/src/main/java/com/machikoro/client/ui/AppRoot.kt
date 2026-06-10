@@ -78,12 +78,14 @@ fun AppRoot(
     onRollDice: (diceCount: Int) -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
+    onBuySelectedClick: () -> Unit = {},
     onBackHome: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     onEndGame: () -> Unit = {},
     cheatRecommendation: CardType? = null,
     onShake: () -> Unit = {},
     onAccuse: (Int) -> Unit = {},
+    canAccuse: Boolean = true,
     hasActiveGame: Boolean = false,
     onResumeGameClick: () -> Unit = {},
     onPurgeClick: () -> Unit = {},
@@ -231,11 +233,13 @@ fun AppRoot(
                     onRollDice = onRollDice,
                     onTurnFlowAction = onTurnFlowAction,
                     onPurchaseClick = onPurchaseClick,
+                    onBuySelectedClick = onBuySelectedClick,
                     onLeaveGame = onLeaveGame,
                     onEndGame = onEndGame,
                     cheatRecommendation = cheatRecommendation,
                     onShake = onShake,
                     onAccuse = onAccuse,
+                    canAccuse = canAccuse,
                 )
             }
 

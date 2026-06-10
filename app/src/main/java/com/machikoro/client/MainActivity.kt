@@ -111,6 +111,7 @@ class MainActivity : ComponentActivity() {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val cheatRecommendation by gameScreenViewModel.cheatRecommendation.collectAsState()
+            val canAccuse by gameScreenViewModel.canAccuseThisTurn.collectAsState()
             val context = LocalContext.current
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
             val activeGameId by homeViewModel.activeGameId.collectAsState()
@@ -190,10 +191,11 @@ class MainActivity : ComponentActivity() {
             // Cheating accusation result (#280): toast the outcome.
             LaunchedEffect(Unit) {
                 gameScreenViewModel.accusationResults.collect { result ->
+                    val penalty = "${result.penalizedName} −${result.penaltyCoins}"
                     val message = if (result.caught) {
-                        "${result.accuserName} caught ${result.accusedName} cheating!"
+                        "${result.accuserName} caught ${result.accusedName} cheating — $penalty"
                     } else {
-                        "${result.accuserName} wrongly accused ${result.accusedName}"
+                        "${result.accuserName} wrongly accused ${result.accusedName} — $penalty"
                     }
                     Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                 }
@@ -245,6 +247,7 @@ class MainActivity : ComponentActivity() {
                         cheatRecommendation = cheatRecommendation,
                         onShake = gameScreenViewModel::onShake,
                         onAccuse = { gameScreenViewModel.accuse(it) },
+                        canAccuse = canAccuse,
                         onTurnFlowAction = gameScreenViewModel::performTurnFlowAction,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
@@ -281,7 +284,8 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         },
-                        onPurchaseClick = gameScreenViewModel::purchase,
+                        onPurchaseClick = gameScreenViewModel::selectPurchaseItem,
+                        onBuySelectedClick = gameScreenViewModel::purchaseSelectedItem,
                         onBackHome = {
                             gameScreenViewModel.clearGameState()
                             navigationViewModel.returnHome()

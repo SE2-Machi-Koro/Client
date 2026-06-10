@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
+import com.machikoro.client.domain.model.shop.CardDefinitions
 import com.machikoro.client.domain.model.state.toDisplayText
 import com.machikoro.client.ui.theme.White
 
@@ -40,7 +41,7 @@ fun MarketplaceSection(
     recommendedCardType: CardType? = null,
     modifier: Modifier = Modifier
 ) {
-    val entries = CardType.entries.mapNotNull { type ->
+    val entries = CardDefinitions.sortCardTypesByActivation(CardType.entries).mapNotNull { type ->
         marketplace[type]?.let { count -> type to count }
     }
     Surface(
@@ -136,4 +137,3 @@ fun MarketplaceButton(
         }
     }
 }
-

@@ -1,6 +1,5 @@
 package com.machikoro.client.ui.game
 
-import android.R.attr.contentDescription
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -75,6 +75,7 @@ import kotlinx.coroutines.delay
 fun GameScreen(
     state: GameScreenState,
     onPurchaseClick: (String) -> Unit = {},
+    onBuySelectedClick: () -> Unit = {},
     onRollDice: (diceCount: Int) -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
@@ -82,6 +83,7 @@ fun GameScreen(
     cheatRecommendation: CardType? = null,
     onShake: () -> Unit = {},
     onAccuse: (accusedPlayerId: Int) -> Unit = {},
+    canAccuse: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     ShakeDetector(
@@ -89,8 +91,9 @@ fun GameScreen(
         onShake = onShake,
     )
 
-    // Cheating accusation (#280): tapping another player's badge opens this
-    // confirmation. Accusing wrongly costs a coin, so we always confirm first.
+    // Cheating accusation (#280): the Accuse action in the player-inspection
+    // dialog opens this confirmation. Accusing wrongly costs a coin, so we
+    // always confirm first.
     var accuseTargetId by remember { mutableStateOf<String?>(null) }
     val accuseTarget = accuseTargetId?.let { id -> state.players.firstOrNull { it.id == id } }
     if (accuseTarget != null) {
@@ -237,7 +240,9 @@ fun GameScreen(
                         players = state.players,
                         playerLandmarks =
                             state.playerLandmarks,
+                        playerCards = state.playerCards,
                         onAccusePlayer = { accuseTargetId = it },
+                        canAccuse = canAccuse,
                         modifier = Modifier.align(
                             Alignment.Center
                         ),
@@ -275,7 +280,15 @@ fun GameScreen(
                     if(state.gamePhase != GamePhase.ROLL_DICE) {
                         state.diceResult?.let { DiceResultDisplay(dice = it) }
                     }
-                    MarketplaceButton()
+                    if (state.marketplace.isNotEmpty()) {
+                        MarketplaceSection(
+                            marketplace = state.marketplace,
+                            recommendedCardType = cheatRecommendation,
+                            modifier = Modifier.widthIn(max = 260.dp)
+                        )
+                    } else {
+                        MarketplaceButton()
+                    }
                 }
             }
         },
@@ -323,16 +336,6 @@ fun GameScreen(
                             modifier = Modifier.align(Alignment.Center)
                         )
                     } else RegularInfoText("Waiting for purchase")
-                }
-
-                if (false) {
-                    MarketplaceSection(
-                        marketplace = state.marketplace,
-                        recommendedCardType = cheatRecommendation,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(horizontal = 12.dp)
-                    )
                 }
 
                 if(state.gamePhase == GamePhase.ROLL_DICE) {
@@ -402,13 +405,26 @@ fun GameScreen(
                         state.isActivePlayer &&
                         state.gameStatus == GameStatus.IN_PROGRESS
                     ) {
+                        val isBuyPhase = state.gamePhase == GamePhase.BUY_OR_BUILD
                         ActionButton(
-                            onClick = onTurnFlowAction,
+                            onClick = if (isBuyPhase) onBuySelectedClick else onTurnFlowAction,
+                            enabled = !isBuyPhase || state.canConfirmSelectedPurchase(),
                             modifier = Modifier.semantics {
                                 contentDescription = turnFlowLabel
                             },
                             label = turnFlowLabel,
                         )
+
+                        if (isBuyPhase) {
+                            SecondaryActionButton(
+                                onClick = onTurnFlowAction,
+                                enabled = state.purchaseState != PurchaseState.PENDING,
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Skip"
+                                },
+                                label = "Skip",
+                            )
+                        }
                     }
 
                     PlayerCoinField(state)
@@ -450,11 +466,16 @@ fun GameScreen(
 
 private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
     GamePhase.RESOLVE_EFFECTS -> "Resolve effects"
-    GamePhase.BUY_OR_BUILD -> "End turn"
+    GamePhase.BUY_OR_BUILD -> "Buy card"
     GamePhase.NONE,
     GamePhase.ROLL_DICE,
     GamePhase.END_TURN -> null
 }
+
+private fun GameScreenState.canConfirmSelectedPurchase(): Boolean =
+    selectedPurchaseItemType != null &&
+        purchaseState != PurchaseState.PENDING &&
+        purchaseState != PurchaseState.SUCCESS
 
 // === PREVIEWS ===
 

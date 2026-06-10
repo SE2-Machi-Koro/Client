@@ -2559,6 +2559,31 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun parseCardDefinitionsStoresNumericActivationNumbersAndDerivesText() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            syncFrame(
+                """{"type":"SYNC","sender":"server","gameId":1,"payload":{"targetUserId":1,"state":{""" +
+                    """"game":{"id":1,"status":"IN_PROGRESS","turnPhase":"ROLL_DICE","currentTurnIndex":0},""" +
+                    """"players":[],"playerLandmarks":{},"marketplace":{"BAKERY":4},""" +
+                    """"cardDefinitions":[{"cardType":"BAKERY","cost":1,"color":"GREEN",""" +
+                    """"establishmentType":"BREAD","activationNumbers":[2,3],""" +
+                    """"effectText":"Get 1 coin from the bank on your turn."}],""" +
+                    """"landmarkDefinitions":[],"turnOrder":[]}}}"""
+            )
+        )
+
+        val bakery = client.shopItems.value.single { it.type == CardType.BAKERY.name }
+        assertEquals(listOf(2, 3), bakery.activationNumbers)
+        assertEquals("2-3", bakery.activationText)
+        assertTrue(bakery.isAvailable)
+    }
+
+    @Test
     fun parseLandmarkDefinitionsSkipsEntriesWithUnknownLandmarkType() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -2777,12 +2802,41 @@ class OkHttpWebSocketClientTest {
         assertEquals(harness.playerA.marketplace.value, harness.playerB.marketplace.value)
         assertEquals(harness.playerA.playerLandmarks.value, harness.playerB.playerLandmarks.value)
         assertEquals(listOf(9), harness.playerB.diceResult.value)
+        assertFalse(harness.playerB.players.value.first { it.id == "11" }.isCurrentPlayer)
+        assertFalse(harness.playerB.players.value.first { it.id == "11" }.isActivePlayer)
+        assertTrue(harness.playerB.players.value.first { it.id == "22" }.isCurrentPlayer)
+        assertTrue(harness.playerB.players.value.first { it.id == "22" }.isActivePlayer)
         assertTrue(
             harness.playerBFactory.socket.sentFrames().any {
                 it.command == "SUBSCRIBE" &&
                     it.headers["destination"] == WebSocketContract.gameSyncQueue
             }
         )
+    }
+
+    @Test
+    fun syncKeepsLocalPlayerCurrentWhenDifferentPlayerIsActive() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(
+            factory,
+            sessionStateHolder = FakeSessionStateHolder(Session("token-a", "alice", 1)),
+        )
+        val latestState = twoPlayerState(
+            turnPhase = "BUY_OR_BUILD",
+            activeUserId = 2,
+        )
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(syncFrame(syncBody(latestState, targetUserId = 1)))
+
+        val alice = client.players.value.first { it.id == "11" }
+        val bob = client.players.value.first { it.id == "22" }
+        assertTrue(alice.isCurrentPlayer)
+        assertFalse(alice.isActivePlayer)
+        assertFalse(bob.isCurrentPlayer)
+        assertTrue(bob.isActivePlayer)
     }
 
     // ── resetGameState ────────────────────────────────────────────────

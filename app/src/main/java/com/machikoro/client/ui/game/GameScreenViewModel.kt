@@ -51,6 +51,14 @@ class GameScreenViewModel(
     /** One-shot cheating-accusation result (#280) for a toast — pass-through from the WS client. */
     val accusationResults: SharedFlow<AccusationResult>
         get() = webSocketClient.accusationResults
+
+    /**
+     * True until the local player has accused someone this turn — mirrors the
+     * server's one-accusation-per-turn rule (#280). Resets when the turn rotates.
+     */
+    val canAccuseThisTurn: StateFlow<Boolean>
+        get() = mutableCanAccuseThisTurn.asStateFlow()
+    private val mutableCanAccuseThisTurn = MutableStateFlow(true)
     private val mutableCheatActivations = MutableSharedFlow<CardType?>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -98,8 +106,10 @@ class GameScreenViewModel(
         viewModelScope.launch {
             webSocketClient.activePlayerId.collect { activePlayerId ->
                 // The Insider Trading cheat is valid for one turn only — drop it when the turn rotates.
+                // The accusation budget (one per turn, #280) renews on the same boundary.
                 if (mutableState.value.activePlayerId != activePlayerId) {
                     mutableCheatRecommendation.value = null
+                    mutableCanAccuseThisTurn.value = true
                 }
                 mutableState.update { state ->
                     state.copy(activePlayerId = activePlayerId)
@@ -121,6 +131,7 @@ class GameScreenViewModel(
             webSocketClient.roundNumber.collect { roundNumber ->
                 if (mutableState.value.roundNumber != roundNumber) {
                     mutableCheatRecommendation.value = null
+                    mutableCanAccuseThisTurn.value = true
                 }
                 mutableState.update { state ->
                     state.copy(roundNumber = roundNumber)
@@ -150,7 +161,18 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.purchaseEvents.collect { event ->
+                val before = mutableState.value
                 mutableState.update { state -> state.applyPurchaseEvent(event) }
+                if (
+                    event is PurchaseEvent.Success &&
+                    before.pendingPurchaseItemType == event.itemType &&
+                    before.gameId != null &&
+                    before.gameStatus == GameStatus.IN_PROGRESS &&
+                    before.gamePhase == GamePhase.BUY_OR_BUILD &&
+                    before.isActivePlayer
+                ) {
+                    webSocketClient.endTurn(before.gameId)
+                }
             }
         }
         viewModelScope.launch {
@@ -183,18 +205,27 @@ class GameScreenViewModel(
         val recommendation = recommendBestBuy(current, me)
         mutableCheatRecommendation.value = recommendation
         mutableCheatActivations.tryEmit(recommendation)
-        current.gameId?.let { webSocketClient.reportCheat(it) }
+        // Only an actual recommendation counts as cheat usage (#280): a null
+        // result means the cheat produced nothing, so the player must not
+        // become catchable for it.
+        if (recommendation != null) {
+            current.gameId?.let { webSocketClient.reportCheat(it) }
+        }
     }
 
     /**
      * Accuse [accusedPlayerId] (a PlayerModel.id) of cheating (#280). The server
      * adjudicates and the outcome arrives via [accusationResults]; coin changes
-     * arrive through the normal authoritative snapshot.
+     * arrive through the normal authoritative snapshot. At most one accusation
+     * per turn (mirrors the server rule); the budget renews when the turn
+     * rotates.
      */
     fun accuse(accusedPlayerId: Int) {
         val current = mutableState.value
         if (current.gameStatus != GameStatus.IN_PROGRESS) return
+        if (!mutableCanAccuseThisTurn.value) return
         val gameId = current.gameId ?: return
+        mutableCanAccuseThisTurn.value = false
         webSocketClient.accuse(gameId, accusedPlayerId)
     }
 
@@ -213,6 +244,26 @@ class GameScreenViewModel(
         }
     }
 
+    fun selectPurchaseItem(itemType: String) {
+        val current = mutableState.value
+        val availableItems = current.shopItems.ifEmpty { ShopCatalog.defaultItems }
+        val item = availableItems.firstOrNull { it.type == itemType && it.isAvailable } ?: return
+        if (!current.canSelectPurchaseItem(item)) return
+
+        mutableState.update { state ->
+            state.copy(
+                selectedPurchaseItemType = item.type,
+                purchaseFeedbackItemType = null,
+                purchaseMessage = null
+            )
+        }
+    }
+
+    fun purchaseSelectedItem() {
+        val selectedItemType = mutableState.value.selectedPurchaseItemType ?: return
+        purchase(selectedItemType)
+    }
+
     fun clearGameState() {
         webSocketClient.clearGameState()
     }
@@ -227,6 +278,7 @@ class GameScreenViewModel(
         mutableState.update { state ->
             state.copy(
                 purchaseState = PurchaseState.PENDING,
+                selectedPurchaseItemType = item.type,
                 pendingPurchaseItemType = item.type,
                 purchaseFeedbackItemType = item.type,
                 purchaseMessage = "Buying ${item.displayName}..."
@@ -239,6 +291,16 @@ class GameScreenViewModel(
             landmarkType = item.type.takeIf { item.purchaseType == PurchaseType.LANDMARK }
         )
     }
+
+    private fun GameScreenState.canSelectPurchaseItem(item: ShopItem): Boolean =
+        gameStatus == GameStatus.IN_PROGRESS &&
+        isBuyingPhase &&
+            isActivePlayer &&
+            purchaseState != PurchaseState.PENDING &&
+            purchaseState != PurchaseState.SUCCESS &&
+            item.isAvailable &&
+            hasEnoughKnownCoinsFor(item) &&
+            !isKnownBuiltLandmark(item)
 
     private fun GameScreenState.canStartPurchase(item: ShopItem): Boolean =
         gameStatus == GameStatus.IN_PROGRESS &&
@@ -274,6 +336,7 @@ class GameScreenViewModel(
                 } else {
                     copy(
                         purchaseState = PurchaseState.SUCCESS,
+                        selectedPurchaseItemType = null,
                         pendingPurchaseItemType = null,
                         purchaseFeedbackItemType = event.itemType,
                         purchaseMessage = "${event.itemType.toDisplayName()} bought"
@@ -302,6 +365,7 @@ class GameScreenViewModel(
             copy(
                 purchaseState = PurchaseState.IDLE,
                 pendingPurchaseItemType = null,
+                selectedPurchaseItemType = null,
                 purchaseFeedbackItemType = null,
                 purchaseMessage = null
             )

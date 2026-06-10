@@ -9,4 +9,6 @@ data class AccusationResult(
     val caught: Boolean,
     val accuserName: String,
     val accusedName: String,
+    val penalizedName: String,
+    val penaltyCoins: Int,
 )

@@ -7,9 +7,12 @@ import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.ShopItemColor
+import com.machikoro.client.domain.model.shop.CardDefinition
+import com.machikoro.client.domain.model.shop.CardDefinitions
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.shop.ShopItem
+import com.machikoro.client.domain.model.shop.toActivationNumbers
 import com.machikoro.client.domain.model.state.AccusationResult
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCardState
@@ -843,12 +846,26 @@ class OkHttpWebSocketClient(
      * [handleAuthoritativeSnapshot] (so coin penalties show up); here we just emit a
      * one-shot result for the toast, resolving names from the freshly-applied roster.
      */
+    /**
+     * Parses the ACCUSATION_RESULT payload
+     * `{accuserPlayerId, accusedPlayerId, caught, penalizedPlayerId,
+     * penaltyCoins}` — the wire contract agreed in #280 / Server#361. Keep the
+     * keys in lockstep with the server broadcast (see the #353 post-mortem); a
+     * frame without `caught` is dropped loudly instead of being misread as a
+     * wrong accusation.
+     */
     private fun handleAccusationResult(json: JSONObject) {
         if (json.optString("type") != ACCUSATION_RESULT_TYPE) return
         val payload = json.optJSONObject("payload") ?: return
-        val caught = payload.optString("outcome") == "CAUGHT"
+        if (!payload.has("caught")) {
+            Log.w(TAG, "ACCUSATION_RESULT without 'caught' — server/client contract mismatch")
+            return
+        }
+        val caught = payload.optBoolean("caught")
         val accuserId = payload.optIntOrNull("accuserPlayerId")
         val accusedId = payload.optIntOrNull("accusedPlayerId")
+        val penalizedId = payload.optIntOrNull("penalizedPlayerId")
+        val penaltyCoins = payload.optIntOrNull("penaltyCoins") ?: 0
         val roster = mutablePlayers.value
         fun nameOf(id: Int?): String =
             roster.firstOrNull { it.id == id?.toString() }?.displayName ?: "A player"
@@ -857,6 +874,8 @@ class OkHttpWebSocketClient(
                 caught = caught,
                 accuserName = nameOf(accuserId),
                 accusedName = nameOf(accusedId),
+                penalizedName = nameOf(penalizedId),
+                penaltyCoins = penaltyCoins,
             )
         )
     }
@@ -922,18 +941,8 @@ class OkHttpWebSocketClient(
             val definition = array.optJSONObject(index) ?: return@mapNotNull null
             val cardType = runCatching { CardType.valueOf(definition.optString("cardType")) }
                 .getOrNull() ?: return@mapNotNull null
-            ShopItem(
-                purchaseType = PurchaseType.ESTABLISHMENT,
-                type = cardType.name,
-                displayName = cardType.displayName(),
-                cost = definition.optInt("cost"),
-                color = definition.optString("color").toShopItemColor(),
-                establishmentType = definition.optString("establishmentType"),
-                activationText = definition.activationText(cardType),
-                effectText = definition.effectText(cardType),
-                imageKey = "card_${cardType.name.lowercase()}",
-                isAvailable = (marketplace[cardType] ?: 0) > 0
-            )
+            definition.toCardDefinition(cardType)
+                .toShopItem(isAvailable = (marketplace[cardType] ?: 0) > 0)
         }
     }
 
@@ -951,7 +960,7 @@ class OkHttpWebSocketClient(
                 cost = definition.optInt("cost"),
                 color = ShopItemColor.LANDMARK,
                 establishmentType = "LANDMARK",
-                activationText = "Permanent",
+                activationNumbers = emptyList(),
                 effectText = definition.effectText(landmarkType),
                 imageKey = "landmark_${landmarkType.name.lowercase()}",
                 isAvailable = true
@@ -959,11 +968,32 @@ class OkHttpWebSocketClient(
         }
     }
 
-    private fun JSONObject.activationText(cardType: CardType): String =
-        optString("activationText")
-            .ifBlank { optString("activationRange") }
-            .ifBlank { optJSONArray("activationNumbers")?.toRangeText().orEmpty() }
-            .ifBlank { defaultShopItem(cardType.name)?.activationText.orEmpty() }
+    private fun JSONObject.toCardDefinition(cardType: CardType): CardDefinition {
+        val fallback = CardDefinitions.forType(cardType)
+        return CardDefinition(
+            cardType = cardType,
+            displayName = optString("displayName").ifBlank {
+                fallback?.displayName ?: cardType.displayName()
+            },
+            cost = optIntOrNull("cost") ?: fallback?.cost ?: 0,
+            color = optString("color").toShopItemColor(fallback?.color),
+            establishmentType = optString("establishmentType").ifBlank {
+                fallback?.establishmentType.orEmpty()
+            },
+            activationNumbers = activationNumbers().ifEmpty {
+                fallback?.activationNumbers.orEmpty()
+            },
+            effectText = effectText(cardType),
+            imageKey = optString("imageKey").ifBlank {
+                fallback?.imageKey ?: "card_${cardType.name.lowercase()}"
+            },
+        )
+    }
+
+    private fun JSONObject.activationNumbers(): List<Int> =
+        optJSONArray("activationNumbers")?.toActivationNumbers().orEmpty()
+            .ifEmpty { optString("activationRange").toActivationNumbers() }
+            .ifEmpty { optString("activationText").toActivationNumbers() }
 
     private fun JSONObject.effectText(cardType: CardType): String =
         optString("effectText")
@@ -977,20 +1007,13 @@ class OkHttpWebSocketClient(
             .ifBlank { optString("description") }
             .ifBlank { defaultShopItem(landmarkType.name)?.effectText.orEmpty() }
 
-    private fun JSONArray.toRangeText(): String {
-        val numbers = (0 until length()).mapNotNull { index ->
+    private fun JSONArray.toActivationNumbers(): List<Int> =
+        (0 until length()).mapNotNull { index ->
             runCatching { getInt(index) }.getOrNull()
-        }.sorted()
-        if (numbers.isEmpty()) return ""
-        return if (numbers.size == 1) {
-            numbers.first().toString()
-        } else {
-            "${numbers.first()}-${numbers.last()}"
-        }
-    }
+        }.distinct().sorted()
 
-    private fun String.toShopItemColor(): ShopItemColor =
-        runCatching { ShopItemColor.valueOf(this) }.getOrDefault(ShopItemColor.BLUE)
+    private fun String.toShopItemColor(fallback: ShopItemColor? = null): ShopItemColor =
+        runCatching { ShopItemColor.valueOf(this) }.getOrDefault(fallback ?: ShopItemColor.BLUE)
 
     private fun CardType.displayName(): String = name.toDisplayName()
 
@@ -1312,16 +1335,11 @@ class OkHttpWebSocketClient(
     private fun JSONArray?.toPlayerCoinStates(payload: JSONObject, game: JSONObject, playerUsernames: Map<Int, String> = emptyMap()): List<PlayerCoinState> {
         if (this == null) return emptyList()
 
-        val activeUserId = payload.optIntOrNull("activePlayerId")
-        val currentTurnIndex = game.optIntOrNull("currentTurnIndex")
-        val currentTurnUserId = payload.optJSONArray("turnOrder")
-            ?.takeIf { currentTurnIndex != null && currentTurnIndex in 0 until it.length() }
-            ?.let { turnOrder -> currentTurnIndex?.let(turnOrder::optInt) }
-        val resolvedActiveUserId = activeUserId ?: currentTurnUserId
         val localUserId = sessionStateHolder.session.value?.userId
+        val activeUserId = resolveActiveUserId(payload, game)
 
         return List(length()) { index ->
-            getJSONObject(index).toPlayerCoinState(localUserId, resolvedActiveUserId, playerUsernames)
+            getJSONObject(index).toPlayerCoinState(localUserId, activeUserId, playerUsernames)
         }
     }
 

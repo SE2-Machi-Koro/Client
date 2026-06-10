@@ -2,7 +2,7 @@ package com.machikoro.client.domain.cheat
 
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.LandmarkType
-import com.machikoro.client.domain.model.shop.ShopCatalog
+import com.machikoro.client.domain.model.shop.CardDefinitions
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import kotlin.math.sqrt
@@ -46,31 +46,27 @@ private sealed interface Payout {
     }
 }
 
-private data class Economics(val activationNumbers: Set<Int>, val payout: Payout)
+private data class Economics(val payout: Payout)
 
-/** Base-game establishment data, hardcoded because the server snapshot omits it. */
+/** Payout logic for the EV estimate; card metadata comes from [CardDefinitions]. */
 private val establishmentEconomics: Map<CardType, Economics> = mapOf(
-    CardType.WHEAT_FIELD to Economics(setOf(1), Payout.Fixed(1)),
-    CardType.RANCH to Economics(setOf(2), Payout.Fixed(1)),
-    CardType.BAKERY to Economics(setOf(2, 3), Payout.Fixed(1)),
-    CardType.CAFE to Economics(setOf(3), Payout.Fixed(1)),
-    CardType.CONVENIENCE_STORE to Economics(setOf(4), Payout.Fixed(3)),
-    CardType.FOREST to Economics(setOf(5), Payout.Fixed(1)),
-    CardType.CHEESE_FACTORY to Economics(setOf(7), Payout.PerOwnedIcon(3, setOf(CardType.RANCH))),
-    CardType.FURNITURE_FACTORY to Economics(
-        setOf(8),
-        Payout.PerOwnedIcon(3, setOf(CardType.FOREST, CardType.MINE)),
-    ),
-    CardType.MINE to Economics(setOf(9), Payout.Fixed(5)),
-    CardType.FAMILY_RESTAURANT to Economics(setOf(9, 10), Payout.Fixed(2)),
-    CardType.APPLE_ORCHARD to Economics(setOf(10), Payout.Fixed(3)),
+    CardType.WHEAT_FIELD to Economics(Payout.Fixed(1)),
+    CardType.RANCH to Economics(Payout.Fixed(1)),
+    CardType.BAKERY to Economics(Payout.Fixed(1)),
+    CardType.CAFE to Economics(Payout.Fixed(1)),
+    CardType.CONVENIENCE_STORE to Economics(Payout.Fixed(3)),
+    CardType.FOREST to Economics(Payout.Fixed(1)),
+    CardType.CHEESE_FACTORY to Economics(Payout.PerOwnedIcon(3, setOf(CardType.RANCH))),
+    CardType.FURNITURE_FACTORY to Economics(Payout.PerOwnedIcon(3, setOf(CardType.FOREST, CardType.MINE))),
+    CardType.MINE to Economics(Payout.Fixed(5)),
+    CardType.FAMILY_RESTAURANT to Economics(Payout.Fixed(2)),
+    CardType.APPLE_ORCHARD to Economics(Payout.Fixed(3)),
     CardType.FRUIT_AND_VEGETABLE_MARKET to Economics(
-        setOf(11, 12),
         Payout.PerOwnedIcon(2, setOf(CardType.WHEAT_FIELD, CardType.APPLE_ORCHARD)),
     ),
-    CardType.STADIUM to Economics(setOf(6), Payout.PerOpponent(2)),
-    CardType.TV_STATION to Economics(setOf(6), Payout.Fixed(5)),
-    CardType.BUSINESS_CENTER to Economics(setOf(6), Payout.Fixed(0)),
+    CardType.STADIUM to Economics(Payout.PerOpponent(2)),
+    CardType.TV_STATION to Economics(Payout.Fixed(5)),
+    CardType.BUSINESS_CENTER to Economics(Payout.Fixed(0)),
 )
 
 private val oneDieDistribution: Map<Int, Double> = (1..6).associateWith { 1.0 / 6.0 }
@@ -107,7 +103,8 @@ fun recommendBestBuy(state: GameScreenState, player: PlayerCoinState): CardType?
         .mapNotNull { (type, econ) ->
             val cost = costOf(type, state)
             if (cost > player.coins) return@mapNotNull null
-            val expectedValue = activationProbability(econ.activationNumbers, twoDice) *
+            val activationNumbers = activationNumbersOf(type, state)
+            val expectedValue = activationProbability(activationNumbers, twoDice) *
                 econ.payout.amount(ownedCounts, opponentCount)
             if (expectedValue <= 0.0) return@mapNotNull null
             Candidate(type, expectedValue, cost)
@@ -126,7 +123,12 @@ private data class Candidate(val type: CardType, val expectedValue: Double, val 
 /** Card cost from the server-provided shop items, falling back to the local catalog. */
 private fun costOf(type: CardType, state: GameScreenState): Int {
     state.shopItems.firstOrNull { it.type == type.name }?.cost?.let { return it }
-    return ShopCatalog.defaultItems.firstOrNull { it.type == type.name }?.cost ?: Int.MAX_VALUE
+    return CardDefinitions.forType(type)?.cost ?: Int.MAX_VALUE
+}
+
+private fun activationNumbersOf(type: CardType, state: GameScreenState): Set<Int> {
+    state.shopItems.firstOrNull { it.type == type.name }?.activationNumbers?.let { return it.toSet() }
+    return CardDefinitions.forType(type)?.activationNumbers.orEmpty().toSet()
 }
 
 private const val GRAVITY = 9.80665f
