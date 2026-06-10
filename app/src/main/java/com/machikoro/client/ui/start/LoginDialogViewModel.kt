@@ -6,14 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.machikoro.client.domain.model.state.LoginDialogState
 import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.auth.AuthApi
+import com.machikoro.client.network.toClientError
+import com.machikoro.client.network.toUserMessage
 import com.machikoro.client.network.auth.LoginRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
-import java.io.IOException
 
 class LoginDialogViewModel(
     private val authApi: AuthApi,
@@ -59,7 +59,7 @@ class LoginDialogViewModel(
                     onFailure = { throwable ->
                         previous.copy(
                             submitting = false,
-                            errorMessage = throwable.toUserMessage(),
+                            errorMessage = throwable.toClientError().toUserMessage(),
                         )
                     },
                 )
@@ -69,13 +69,6 @@ class LoginDialogViewModel(
 
     fun reset() {
         mutableState.value = LoginDialogState()
-    }
-
-    private fun Throwable.toUserMessage(): String = when (this) {
-        is HttpException -> response()?.errorBody()?.string()?.takeIf { it.isNotBlank() }
-            ?: "Login failed (HTTP ${code()})"
-        is IOException -> "Network error: ${message ?: "could not reach server"}"
-        else -> message ?: "Login failed"
     }
 
     class Factory(
