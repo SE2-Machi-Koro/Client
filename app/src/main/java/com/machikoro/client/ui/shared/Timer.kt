@@ -89,7 +89,7 @@ fun DecreasingLineTimer(
         Box(
             modifier = Modifier
                 .width(220.dp)
-                .height(4.dp)
+                .height(3.dp)
                 .clip(RoundedCornerShape(50))
                 .background(Color.Gray)
         ) {
@@ -110,7 +110,7 @@ fun DecreasingLineTimer(
         Text(
             text = "$timeLeft",
             color = color,
-            fontSize = 20.sp,
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(32.dp)
