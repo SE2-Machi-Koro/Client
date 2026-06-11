@@ -428,10 +428,11 @@ fun GameScreen(
 
 
 private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
-    GamePhase.RESOLVE_EFFECTS -> "Resolve effects"
     GamePhase.BUY_OR_BUILD -> "Buy card"
+    // RESOLVE_EFFECTS auto-advances now (#302) — no manual "Resolve effects" button.
     GamePhase.NONE,
     GamePhase.ROLL_DICE,
+    GamePhase.RESOLVE_EFFECTS,
     GamePhase.END_TURN -> null
 }
 
