@@ -110,7 +110,7 @@ fun DecreasingLineTimer(
         Text(
             text = "$timeLeft",
             color = color,
-            fontSize = 24.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(32.dp)
