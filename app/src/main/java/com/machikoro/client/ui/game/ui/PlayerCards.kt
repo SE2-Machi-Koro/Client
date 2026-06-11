@@ -163,15 +163,11 @@ private fun LandmarkDisplay(
     width: Dp = 90.dp,
     height: Dp = 110.dp
 ) {
-    Image(
-        painter = painterResource(id = drawableForPlayerLandmark(item)),
-        contentDescription = null,
-        contentScale = ContentScale.Fit,
+    CardArtImage(
+        drawableResId = drawableForPlayerLandmark(item),
+        width = width,
+        height = height,
         modifier = modifier
-            .width(width)
-            .height(height)
-            .clip(SHOP_CARD_SHAPE)
-            .semantics {}
     )
 }
 
@@ -187,42 +183,69 @@ private fun CardDisplay(
         modifier = modifier.wrapContentSize()
     ) {
 
-        Image(
-            painter = painterResource(id = drawableForPlayerCard(item)),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .width(width)
-                .height(height)
-                .clip(SHOP_CARD_SHAPE)
-                .semantics { }
+        CardArtImage(
+            drawableResId = drawableForPlayerCard(item),
+            width = width,
+            height = height
         )
         if(showCounter) {
-            val alpha = if (item.quantity > 1) 1f else 0f // if more that 1 card
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .size(30.dp)
-                    .alpha(alpha)
-                    .offset(x = (-6).dp, y = (-8).dp)
-                    .clip(CircleShape)
-                    .border(
-                        width = 2.dp,
-                        color = TextBlueDark,
-                        shape = CircleShape
-                    )
-                    .background(Color.White),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = item.quantity.toString() + "x",
-                    color = TextBlueDark,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.labelSmall
-                )
-            }
+            CardQuantityIndicator(
+                quantity = item.quantity,
+                isVisible = item.quantity > 1,
+                modifier = Modifier.align(Alignment.TopStart)
+            )
         }
+    }
+}
+
+@Composable
+internal fun CardArtImage(
+    drawableResId: Int,
+    width: Dp,
+    height: Dp,
+    modifier: Modifier = Modifier,
+    alpha: Float = 1f,
+) {
+    Image(
+        painter = painterResource(id = drawableResId),
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        modifier = modifier
+            .width(width)
+            .height(height)
+            .alpha(alpha)
+            .clip(SHOP_CARD_SHAPE)
+            .semantics {}
+    )
+}
+
+@Composable
+internal fun CardQuantityIndicator(
+    quantity: Int,
+    modifier: Modifier = Modifier,
+    isVisible: Boolean = true,
+) {
+    Box(
+        modifier = modifier
+            .size(30.dp)
+            .alpha(if (isVisible) 1f else 0f)
+            .offset(x = (-6).dp, y = (-8).dp)
+            .clip(CircleShape)
+            .border(
+                width = 2.dp,
+                color = TextBlueDark,
+                shape = CircleShape
+            )
+            .background(Color.White),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = quantity.toString() + "x",
+            color = TextBlueDark,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelSmall
+        )
     }
 }
 

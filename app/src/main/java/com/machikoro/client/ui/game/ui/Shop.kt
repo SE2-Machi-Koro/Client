@@ -1,6 +1,5 @@
 package com.machikoro.client.ui.game.ui
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -30,11 +29,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -184,12 +180,14 @@ internal fun BuyingPhaseShop(
                         key = { it.type }
                     ) { item ->
 
-                        ShopImageTile(
-                            item = item,
-                            state = state,
-                            onPurchaseClick = onPurchaseClick,
-                            isRecommended = item.type == recommendedCardType?.name
-                        )
+                        Box(modifier = Modifier.padding(top = 8.dp)) {
+                            ShopImageTile(
+                                item = item,
+                                state = state,
+                                onPurchaseClick = onPurchaseClick,
+                                isRecommended = item.type == recommendedCardType?.name
+                            )
+                        }
                     }
                 }
             }
@@ -238,51 +236,40 @@ private fun ShopImageTile(
     val isClickable = canPurchase || isSelected
 
     Box(
-        modifier = modifier
-            .width(155.dp)
-            .height(175.dp)
-            .border(2.dp, borderColor, SHOP_CARD_SHAPE)
-            .clip(SHOP_CARD_SHAPE)
-            .clickable(
-                enabled = isClickable,
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ) {
-                onPurchaseClick(item.type)
-            }
-            .semantics {
-                contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
-                        remainingQuantity?.let { ", $it remaining" }.orEmpty() +
-                        if (remainingQuantity == 0) ", unavailable" else "" +
-                        if (isRecommended) ", recommended" else ""
-            }
+        modifier = modifier.wrapContentSize()
     ) {
-        Image(
-            painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .alpha(if (canPurchase) 1f else 0.45f)
-        )
+                .width(155.dp)
+                .height(175.dp)
+                .border(2.dp, borderColor, SHOP_CARD_SHAPE)
+                .clip(SHOP_CARD_SHAPE)
+                .clickable(
+                    enabled = isClickable,
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) {
+                    onPurchaseClick(item.type)
+                }
+                .semantics {
+                    contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
+                            remainingQuantity?.let { ", $it remaining" }.orEmpty() +
+                            if (remainingQuantity == 0) ", unavailable" else "" +
+                            if (isRecommended) ", recommended" else ""
+                }
+        ) {
+            CardArtImage(
+                drawableResId = ShopImageResolver.drawableForShopItem(item),
+                width = 155.dp,
+                height = 175.dp,
+                alpha = if (canPurchase) 1f else 0.45f
+            )
+        }
         remainingQuantity?.let { count ->
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = if (count > 0) TextBlueDark else MaterialTheme.colorScheme.error,
-                tonalElevation = 2.dp,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(6.dp)
-            ) {
-                Text(
-                    text = "×$count",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
+            CardQuantityIndicator(
+                quantity = count,
+                modifier = Modifier.align(Alignment.TopStart)
+            )
         }
     }
 }
