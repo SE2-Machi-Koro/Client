@@ -18,7 +18,9 @@ import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.debug.DebugApi
 import com.machikoro.client.network.debug.EndGameRequest
 import com.machikoro.client.network.websocket.WebSocketClient
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.machikoro.client.domain.model.state.AccusationResult
@@ -26,6 +28,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -33,6 +37,7 @@ class GameScreenViewModel(
     private val webSocketClient: WebSocketClient,
     private val sessionStateHolder: SessionStateHolder,
     private val debugApi: DebugApi,
+    private val resolveEffectsDwellMillis: Long = DEFAULT_RESOLVE_EFFECTS_DWELL_MS,
 ) : ViewModel() {
     val state: StateFlow<GameScreenState>
         get() = mutableState.asStateFlow()
@@ -63,6 +68,13 @@ class GameScreenViewModel(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
+
+    /**
+     * Pending auto-advance out of RESOLVE_EFFECTS (#302). Cancelled when the
+     * auto-resolve condition stops holding (see the observer in [init]) so a
+     * stale timer never fires after the turn has moved on.
+     */
+    private var resolveEffectsJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -169,6 +181,28 @@ class GameScreenViewModel(
                 mutableState.update { it.copy(myUserId = session?.userId) }
             }
         }
+        // #302: auto-advance the Resolving Effects phase. Driven off the
+        // aggregated state (not a single flow) so it is immune to the order in
+        // which phase/activePlayer/status/gameId settle. distinctUntilChanged
+        // means the timer is (re)scheduled exactly once per entry into the
+        // condition and cancelled exactly once on leaving it.
+        viewModelScope.launch {
+            mutableState
+                .map { it.isInResolveEffectsAsActivePlayer() }
+                .distinctUntilChanged()
+                .collect { inResolveEffects ->
+                    resolveEffectsJob?.cancel()
+                    if (inResolveEffects) {
+                        resolveEffectsJob = viewModelScope.launch {
+                            delay(resolveEffectsDwellMillis)
+                            val now = mutableState.value
+                            if (now.isInResolveEffectsAsActivePlayer()) {
+                                now.gameId?.let { webSocketClient.resolveEffects(it) }
+                            }
+                        }
+                    }
+                }
+        }
     }
 
     fun rollDice(diceCount: Int = 1) {
@@ -216,13 +250,27 @@ class GameScreenViewModel(
         if (!current.isActivePlayer) return
 
         when (current.gamePhase) {
-            GamePhase.RESOLVE_EFFECTS -> webSocketClient.resolveEffects(gameId)
             GamePhase.BUY_OR_BUILD -> webSocketClient.endTurn(gameId)
+            // RESOLVE_EFFECTS advances automatically (#302) — no manual action.
             GamePhase.NONE,
             GamePhase.ROLL_DICE,
+            GamePhase.RESOLVE_EFFECTS,
             GamePhase.END_TURN -> Unit
         }
     }
+
+    /**
+     * #302: true when the local player is the active player and the game is in
+     * the Resolving Effects phase — the condition under which the client
+     * auto-advances (see the collector in [init]). Only the active player sends
+     * resolveEffects; everyone else waits for the server's next snapshot, so all
+     * clients dwell on the phase together.
+     */
+    private fun GameScreenState.isInResolveEffectsAsActivePlayer(): Boolean =
+        gameStatus == GameStatus.IN_PROGRESS &&
+        gamePhase == GamePhase.RESOLVE_EFFECTS &&
+        isActivePlayer &&
+        gameId != null
 
     fun selectPurchaseItem(itemType: String) {
         val current = mutableState.value
@@ -382,6 +430,15 @@ class GameScreenViewModel(
         lowercase()
             .split("_")
             .joinToString(" ") { part -> part.replaceFirstChar { it.titlecase() } }
+
+    companion object {
+        /**
+         * #302: how long the client dwells on RESOLVE_EFFECTS before auto-sending
+         * resolveEffects. Configurable; ~20s per the issue. A placeholder constant
+         * for now — a visible timer will replace it later.
+         */
+        const val DEFAULT_RESOLVE_EFFECTS_DWELL_MS = 20_000L
+    }
 
     class Factory(
         private val webSocketClient: WebSocketClient,
