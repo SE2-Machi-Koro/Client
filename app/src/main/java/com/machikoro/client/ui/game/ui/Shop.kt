@@ -2,7 +2,6 @@ package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalOverscrollFactory
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -33,11 +32,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -53,7 +49,6 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
-import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.shop.CardDefinitions
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
@@ -63,8 +58,6 @@ import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.game.GameScreen
 import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.ui.theme.GreenDark
-import com.machikoro.client.ui.theme.GreenLight
 import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 
@@ -243,63 +236,28 @@ private fun ShopImageTile(
     // Allow clicking if purchasable OR if already selected (to deselect/change selection)
     val isClickable = canPurchase || isSelected
 
-    Box(
+    Image(
+        painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
         modifier = modifier
-            .wrapContentSize()
+            .width(155.dp)
+            .height(175.dp)
+            .alpha(if (state.canPurchaseItem(item)) 1f else 0.45f)
+            .border(2.dp, borderColor, SHOP_CARD_SHAPE)
+            .clip(SHOP_CARD_SHAPE)
             .clickable(
                 enabled = isClickable,
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
             ) {
                 onPurchaseClick(item.type)
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .width(155.dp)
-                .height(175.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isRecommended && !isSelected) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .width(155.dp)
-                        .height(175.dp)
-                        .shadow(
-                            elevation = 30.dp,
-                            shape = SHOP_CARD_SHAPE,
-                            ambientColor = Color(0xFF39FF14),
-                            spotColor = Color(0xFF39FF14)
-                        )
-                )
             }
-
-            Image(
-                painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(if (canPurchase) 1f else 0.45f)
-                    .semantics {
-                        contentDescription =
-                            "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
-                                    if (isRecommended) ", recommended" else ""
-                    }
-            )
-
-            if (isSelected) {
-                Image(
-                    painter = painterResource(R.drawable.card_frame),
-                    contentDescription = null,
-                    contentScale = ContentScale.FillBounds,
-                    modifier = Modifier.matchParentSize().padding(2.dp)
-                )
+            .semantics {
+                contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
+                        if (isRecommended) ", recommended" else ""
             }
-        }
-    }
+    )
 }
 
 internal fun GameScreenState.shouldShowBuyingPhaseShop(): Boolean =
@@ -371,43 +329,3 @@ private fun previewBuyingPhaseState() = GameScreenState(
         )
     )
 )
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun BuyingPhaseShopWithFramePreview() {
-    ClientTheme {
-        BuyingPhaseShop(
-            state = previewBuyingPhaseState().copy(
-                pendingPurchaseItemType = "SHOPPING_MALL"
-            ),
-            items = ShopCatalog.defaultItems,
-            onPurchaseClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 400)
-@Composable
-private fun ShopCardStatesPreview() {
-    ClientTheme {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(30.dp)
-        ) {
-            ShopImageTile(
-                item = ShopCatalog.defaultItems[0],
-                state = previewBuyingPhaseState(),
-                onPurchaseClick = {},
-                isRecommended = true
-            )
-
-            ShopImageTile(
-                item = ShopCatalog.defaultItems[1],
-                state = previewBuyingPhaseState().copy(
-                    selectedPurchaseItemType =
-                        ShopCatalog.defaultItems[1].type
-                ),
-                onPurchaseClick = {}
-            )
-        }
-    }
-}
