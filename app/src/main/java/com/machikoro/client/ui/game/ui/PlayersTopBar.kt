@@ -143,6 +143,9 @@ private fun PlayerCoinBadge(
         player.isActivePlayer -> Color(0xFFFFFFFF)
         else -> Color(0xB3FFFFFF)
     }
+
+    val textColor = Color(0xFF004E7E)
+
     val displayName = if (player.isCurrentPlayer) "You" else player.displayName
     val scale = if (player.isActivePlayer) 1.0f else 0.95f
     val fontSize = if (player.isActivePlayer) 18.sp else 16.sp
@@ -154,8 +157,8 @@ private fun PlayerCoinBadge(
             shadowElevation = 3.dp,
             modifier = Modifier
                 .wrapContentSize()
-                .widthIn(min = 150.dp, max = 184.dp)
                 .clickable(enabled = canInspect, onClick = onInspect)
+                .widthIn(max = 140.dp)
                 .semantics {
                     contentDescription = if (canInspect) {
                         "Inspect ${player.displayName}"
@@ -165,7 +168,8 @@ private fun PlayerCoinBadge(
                 }
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                modifier = modifier
+                    .padding(horizontal = 28.dp, vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -173,7 +177,7 @@ private fun PlayerCoinBadge(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     fontSize = fontSize,
-                    color = Color(0xFF004E7E),
+                    color = textColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,

@@ -35,6 +35,19 @@ fun RegularInfoText(label: String, modifier: Modifier = Modifier) = (
         )
 )
 
+@Composable
+fun BasicText(label: String, modifier: Modifier = Modifier) = (
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
+            textAlign = TextAlign.Center,
+            overflow = TextOverflow.Ellipsis,
+            modifier = modifier
+        )
+    )
 /**
  * Displays a styled header text with an outline effect.
  *

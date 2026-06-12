@@ -67,8 +67,11 @@ fun GameScreenLayout(
                 // LEFT
                 Box(
                     modifier = Modifier.wrapContentWidth()
-                        .offset(y = (-20).dp)
-                        .padding(end = 8.dp)
+                        .fillMaxHeight()
+                        .padding(
+                            end = 8.dp,
+                            bottom = 32.dp,
+                        )
                 ) {
                     leftContent()
                 }
@@ -86,10 +89,11 @@ fun GameScreenLayout(
                 // RIGHT
                 Box(
                     modifier = Modifier.wrapContentWidth()
-                        .offset(y = (-20).dp)
+                        .fillMaxHeight()
                         .padding(
                             end = 12.dp,
-                            start = 8.dp
+                            start = 8.dp,
+                            bottom = 24.dp,
                         )
 
                 ) {
