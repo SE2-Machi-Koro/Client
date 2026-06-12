@@ -20,13 +20,18 @@ import com.machikoro.client.network.debug.EndGameRequest
 import com.machikoro.client.network.toClientError
 import com.machikoro.client.network.toUserMessage
 import com.machikoro.client.network.websocket.WebSocketClient
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import com.machikoro.client.domain.model.state.AccusationResult
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -34,6 +39,7 @@ class GameScreenViewModel(
     private val webSocketClient: WebSocketClient,
     private val sessionStateHolder: SessionStateHolder,
     private val debugApi: DebugApi,
+    private val resolveEffectsDwellMillis: Long = DEFAULT_RESOLVE_EFFECTS_DWELL_MS,
 ) : ViewModel() {
     val state: StateFlow<GameScreenState>
         get() = mutableState.asStateFlow()
@@ -48,6 +54,30 @@ class GameScreenViewModel(
     /** One-shot signal each time a shake produces a recommendation (drives the toast). */
     val cheatActivations: SharedFlow<CardType?>
         get() = mutableCheatActivations.asSharedFlow()
+
+    /** One-shot cheating-accusation result (#280) for a toast — pass-through from the WS client. */
+    val accusationResults: SharedFlow<AccusationResult>
+        get() = webSocketClient.accusationResults
+
+    /** One-shot server-side accusation rejection (#280) for a toast — pass-through. */
+    val accusationErrors: SharedFlow<String>
+        get() = webSocketClient.accusationErrors
+
+    /**
+     * True until the local player has accused someone this turn — mirrors the
+     * server's one-accusation-per-turn rule (#280). Renews when the turn
+     * rotates or a new game starts.
+     *
+     * Turn rotation is detected via the last *non-null* active player / round:
+     * a disconnect (e.g. backgrounding the app) emits null and the reconnect
+     * snapshot restores the same in-progress turn, so null transitions must
+     * not renew a spent budget.
+     */
+    val canAccuseThisTurn: StateFlow<Boolean>
+        get() = mutableCanAccuseThisTurn.asStateFlow()
+    private val mutableCanAccuseThisTurn = MutableStateFlow(true)
+    private var lastTurnOwnerUserId: Int? = null
+    private var lastSeenRoundNumber: Int? = null
     private val mutableCheatActivations = MutableSharedFlow<CardType?>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -61,9 +91,20 @@ class GameScreenViewModel(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
 
+    /**
+     * Pending auto-advance out of RESOLVE_EFFECTS (#302). Cancelled when the
+     * auto-resolve condition stops holding (see the observer in [init]) so a
+     * stale timer never fires after the turn has moved on.
+     */
+    private var resolveEffectsJob: Job? = null
+
     init {
         viewModelScope.launch {
             webSocketClient.activeGameId.collect { gameId ->
+                // A different game means a fresh accusation budget (#280).
+                if (gameId != null && mutableState.value.gameId != gameId) {
+                    mutableCanAccuseThisTurn.value = true
+                }
                 mutableState.update { current ->
                     current.copy(gameId = gameId)
                 }
@@ -98,6 +139,14 @@ class GameScreenViewModel(
                 if (mutableState.value.activePlayerId != activePlayerId) {
                     mutableCheatRecommendation.value = null
                 }
+                // The accusation budget (#280) renews only on a real rotation:
+                // a new non-null owner differing from the last non-null one.
+                if (activePlayerId != null) {
+                    if (lastTurnOwnerUserId != null && activePlayerId != lastTurnOwnerUserId) {
+                        mutableCanAccuseThisTurn.value = true
+                    }
+                    lastTurnOwnerUserId = activePlayerId
+                }
                 mutableState.update { state ->
                     state.copy(activePlayerId = activePlayerId)
                         .resetPurchaseFeedbackIf(state.activePlayerId != activePlayerId)
@@ -118,6 +167,13 @@ class GameScreenViewModel(
             webSocketClient.roundNumber.collect { roundNumber ->
                 if (mutableState.value.roundNumber != roundNumber) {
                     mutableCheatRecommendation.value = null
+                }
+                // Same non-null discipline as the active-player reset above.
+                if (roundNumber != null) {
+                    if (lastSeenRoundNumber != null && roundNumber != lastSeenRoundNumber) {
+                        mutableCanAccuseThisTurn.value = true
+                    }
+                    lastSeenRoundNumber = roundNumber
                 }
                 mutableState.update { state ->
                     state.copy(roundNumber = roundNumber)
@@ -166,6 +222,28 @@ class GameScreenViewModel(
                 mutableState.update { it.copy(myUserId = session?.userId) }
             }
         }
+        // #302: auto-advance the Resolving Effects phase. Driven off the
+        // aggregated state (not a single flow) so it is immune to the order in
+        // which phase/activePlayer/status/gameId settle. distinctUntilChanged
+        // means the timer is (re)scheduled exactly once per entry into the
+        // condition and cancelled exactly once on leaving it.
+        viewModelScope.launch {
+            mutableState
+                .map { it.isInResolveEffectsAsActivePlayer() }
+                .distinctUntilChanged()
+                .collect { inResolveEffects ->
+                    resolveEffectsJob?.cancel()
+                    if (inResolveEffects) {
+                        resolveEffectsJob = viewModelScope.launch {
+                            delay(resolveEffectsDwellMillis)
+                            val now = mutableState.value
+                            if (now.isInResolveEffectsAsActivePlayer()) {
+                                now.gameId?.let { webSocketClient.resolveEffects(it) }
+                            }
+                        }
+                    }
+                }
+        }
     }
 
     fun rollDice(diceCount: Int = 1) {
@@ -179,8 +257,10 @@ class GameScreenViewModel(
     /**
      * Insider Trading cheat (#203). On a shake during the local player's turn,
      * computes a local best-buy recommendation and emits a one-shot activation
-     * signal for the toast. No-op off-turn or before the game is running; never
-     * contacts the server.
+     * signal for the toast. No-op off-turn or before the game is running.
+     *
+     * Also silently reports the cheat usage to the server (#280 / server #361) so
+     * other players can later accuse this player of cheating.
      */
     fun onShake() {
         val current = mutableState.value
@@ -189,6 +269,28 @@ class GameScreenViewModel(
         val recommendation = recommendBestBuy(current, me)
         mutableCheatRecommendation.value = recommendation
         mutableCheatActivations.tryEmit(recommendation)
+        // Only an actual recommendation counts as cheat usage (#280): a null
+        // result means the cheat produced nothing, so the player must not
+        // become catchable for it.
+        if (recommendation != null) {
+            current.gameId?.let { webSocketClient.reportCheat(it) }
+        }
+    }
+
+    /**
+     * Accuse [accusedPlayerId] (a PlayerModel.id) of cheating (#280). The server
+     * adjudicates and the outcome arrives via [accusationResults]; coin changes
+     * arrive through the normal authoritative snapshot. At most one accusation
+     * per turn (mirrors the server rule); the budget renews when the turn
+     * rotates.
+     */
+    fun accuse(accusedPlayerId: Int) {
+        val current = mutableState.value
+        if (current.gameStatus != GameStatus.IN_PROGRESS) return
+        if (!mutableCanAccuseThisTurn.value) return
+        val gameId = current.gameId ?: return
+        mutableCanAccuseThisTurn.value = false
+        webSocketClient.accuse(gameId, accusedPlayerId)
     }
 
     fun performTurnFlowAction() {
@@ -198,13 +300,27 @@ class GameScreenViewModel(
         if (!current.isActivePlayer) return
 
         when (current.gamePhase) {
-            GamePhase.RESOLVE_EFFECTS -> webSocketClient.resolveEffects(gameId)
             GamePhase.BUY_OR_BUILD -> webSocketClient.endTurn(gameId)
+            // RESOLVE_EFFECTS advances automatically (#302) — no manual action.
             GamePhase.NONE,
             GamePhase.ROLL_DICE,
+            GamePhase.RESOLVE_EFFECTS,
             GamePhase.END_TURN -> Unit
         }
     }
+
+    /**
+     * #302: true when the local player is the active player and the game is in
+     * the Resolving Effects phase — the condition under which the client
+     * auto-advances (see the collector in [init]). Only the active player sends
+     * resolveEffects; everyone else waits for the server's next snapshot, so all
+     * clients dwell on the phase together.
+     */
+    private fun GameScreenState.isInResolveEffectsAsActivePlayer(): Boolean =
+        gameStatus == GameStatus.IN_PROGRESS &&
+        gamePhase == GamePhase.RESOLVE_EFFECTS &&
+        isActivePlayer &&
+        gameId != null
 
     fun selectPurchaseItem(itemType: String) {
         val current = mutableState.value
@@ -364,6 +480,15 @@ class GameScreenViewModel(
         lowercase()
             .split("_")
             .joinToString(" ") { part -> part.replaceFirstChar { it.titlecase() } }
+
+    companion object {
+        /**
+         * #302: how long the client dwells on RESOLVE_EFFECTS before auto-sending
+         * resolveEffects. Configurable; ~20s per the issue. A placeholder constant
+         * for now — a visible timer will replace it later.
+         */
+        const val DEFAULT_RESOLVE_EFFECTS_DWELL_MS = 20_000L
+    }
 
     class Factory(
         private val webSocketClient: WebSocketClient,

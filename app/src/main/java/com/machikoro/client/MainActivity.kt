@@ -111,6 +111,7 @@ class MainActivity : ComponentActivity() {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val cheatRecommendation by gameScreenViewModel.cheatRecommendation.collectAsState()
+            val canAccuse by gameScreenViewModel.canAccuseThisTurn.collectAsState()
             val context = LocalContext.current
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
             val activeGameId by homeViewModel.activeGameId.collectAsState()
@@ -187,6 +188,27 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Cheating accusation result (#280): toast the outcome.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.accusationResults.collect { result ->
+                    val penalty = "${result.penalizedName} −${result.penaltyCoins}"
+                    val message = if (result.caught) {
+                        "${result.accuserName} caught ${result.accusedName} cheating — $penalty"
+                    } else {
+                        "${result.accuserName} wrongly accused ${result.accusedName} — $penalty"
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            }
+
+            // Rejected accusation (#280): surface the server's reason (e.g.
+            // "You can only accuse once per turn") instead of dropping it.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.accusationErrors.collect { message ->
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            }
+
             // Debug End-game (#191): surface End-game button failures as a snackbar.
             LaunchedEffect(Unit) {
                 gameScreenViewModel.debugEndGameErrors.collect { message ->
@@ -232,6 +254,8 @@ class MainActivity : ComponentActivity() {
                         onRollDice = gameScreenViewModel::rollDice,
                         cheatRecommendation = cheatRecommendation,
                         onShake = gameScreenViewModel::onShake,
+                        onAccuse = { gameScreenViewModel.accuse(it) },
+                        canAccuse = canAccuse,
                         onTurnFlowAction = gameScreenViewModel::performTurnFlowAction,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
