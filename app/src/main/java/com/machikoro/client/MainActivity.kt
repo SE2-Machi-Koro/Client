@@ -169,8 +169,8 @@ class MainActivity : ComponentActivity() {
                         "Lobby closed. Choose another one."
                     )
                 }
-
             }
+
             LaunchedEffect(Unit) {
                 webSocketClient.lobbyJoinErrors.collect { message ->
                     Log.e("MainActivity", "Lobby join error received: $message")
@@ -273,6 +273,9 @@ class MainActivity : ComponentActivity() {
                         onBackHome = {
                             gameScreenViewModel.clearGameState()
                             navigationViewModel.returnHome()
+                        },
+                        onClearGameState = {
+                            gameScreenViewModel.clearGameState()
                         },
                         onJoinLobbyClick = {
                             homeViewModel.clearLobbyCode()
