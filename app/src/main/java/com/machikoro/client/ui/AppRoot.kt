@@ -173,7 +173,7 @@ fun AppRoot(
                     onResumeGameClick = onResumeGameClick,
                     onPurgeClick = onPurgeClick,
                     onLogoutClick = onLogoutSubmit,
-                    // I navigate to the global leaderboard keeping Home in the back stack
+                    // Navigate to the global leaderboard keeping Home in the back stack
                     onRankingClick = {
                         navController.navigate(AppRoute.Leaderboard.route) {
                             launchSingleTop = true
@@ -247,10 +247,11 @@ fun AppRoot(
                     rankedPlayers = resolveRankedPlayers(gameScreenState),
                     onBackHome = onBackHome,
                     onViewLeaderboard = {
-                        // I navigate to the global leaderboard; pop winner so back goes to home
+                        // Clear game state and navigate to the global leaderboard;
+                        // back from leaderboard returns to Home, not Winner
+                        onBackHome()
                         navController.navigate(AppRoute.Leaderboard.route) {
                             launchSingleTop = true
-                            popUpTo(AppRoute.Winner.route) { inclusive = true }
                         }
                     },
                 )
