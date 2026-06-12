@@ -240,8 +240,7 @@ private fun ShopImageTile(
 
     Box(
         modifier = modifier
-            .width(155.dp)
-            .height(175.dp)
+            .wrapContentSize()
             .clickable(
                 enabled = isClickable,
                 indication = null,
@@ -251,31 +250,34 @@ private fun ShopImageTile(
             },
         contentAlignment = Alignment.Center
     ) {
-
-        Image(
-            painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .alpha(if (state.canPurchaseItem(item)) 1f else 0.45f)
-                .semantics {
-                    contentDescription =
-                        "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
-                                if (isRecommended) ", recommended" else ""
-                }
-        )
-
-        if (isSelected) {
+                .width(155.dp)
+                .height(175.dp),
+            contentAlignment = Alignment.Center
+        ) {
             Image(
-                painter = painterResource(R.drawable.card_frame),
+                painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
                 contentDescription = null,
-                contentScale = ContentScale.FillBounds,
+                contentScale = ContentScale.Fit,
                 modifier = Modifier
-                    .width(148.dp)   // hier spielen
-                    .height(176.dp) // hier spielen
-                    .offset(y = (-5).dp)
+                    .fillMaxSize()
+                    .alpha(if (canPurchase) 1f else 0.45f)
+                    .semantics {
+                        contentDescription =
+                            "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
+                                    if (isRecommended) ", recommended" else ""
+                    }
             )
+
+            if (isSelected) {
+                Image(
+                    painter = painterResource(R.drawable.card_frame),
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier.matchParentSize()
+                )
+            }
         }
     }
 }
