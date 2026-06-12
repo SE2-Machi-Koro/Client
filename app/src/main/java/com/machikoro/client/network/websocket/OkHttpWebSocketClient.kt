@@ -592,8 +592,10 @@ class OkHttpWebSocketClient(
                     mutableAuthRejections.tryEmit(Unit)
                 } else {
                     // Map the STOMP ERROR body through WsErrorParser at this single boundary.
+                    val userMessage = WsErrorParser.parseStompErrorBody(frame.body).userMessage
+                        .takeIf { it != ClientError.UNKNOWN_USER_MESSAGE } ?: "Purchase failed"
                     mutablePurchaseEvents.tryEmit(
-                        PurchaseEvent.Failure(WsErrorParser.parseStompErrorBody(frame.body).userMessage)
+                        PurchaseEvent.Failure(userMessage)
                     )
                 }
             }
