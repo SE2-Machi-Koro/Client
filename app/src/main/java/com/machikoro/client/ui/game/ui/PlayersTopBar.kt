@@ -147,35 +147,31 @@ private fun PlayerCoinBadge(
     onInspect: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val backgroundColor = when {
-        player.isActivePlayer -> ButtonColor
-        else -> White
-    }
+    val backgroundColor = White
+    val textColor = TextOnLight
 
-    val textColor = when {
-        player.isActivePlayer -> TextOnOrange
-        else -> TextOnLight
-    }
     
     val displayName = if (player.isCurrentPlayer) "You" else player.displayName
-    val scale = if (player.isActivePlayer) 1.0f else 0.95f
+    val scale = if (player.isActivePlayer) 1.0f else 0.92f
     val fontSize = if (player.isActivePlayer) 18.sp else 16.sp
+    val inactiveAlpha = if (player.isActivePlayer) 1f else 0.65f
     
     Box(modifier = Modifier.scale(scale)
         ) {
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = backgroundColor,
-                shadowElevation = 3.dp,
-                modifier = modifier
-                    .wrapContentSize()
-                    .widthIn(max = 140.dp)
-                    .semantics {
-                        contentDescription =
-                            "${player.displayName}, ${player.coins} coins"
-                    },
-
-                ) {
+        Surface(
+            shape = RoundedCornerShape(10.dp),
+            color = backgroundColor,
+            shadowElevation = 3.dp,
+            modifier = modifier
+                .scale(scale)
+                .alpha(inactiveAlpha)
+                .wrapContentSize()
+                .widthIn(max = 140.dp)
+                .clickable(enabled = canInspect, onClick = onInspect)
+                .semantics {
+                    contentDescription = "${player.displayName}, ${player.coins} coins"
+                }
+        ) {
                 Column(
                     modifier = modifier
                         .padding(horizontal = 28.dp, vertical = 6.dp),
