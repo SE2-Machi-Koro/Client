@@ -262,6 +262,11 @@ fun AppRoot(
                 GameLeaderboardScreen(
                     rankedPlayers = resolveGameRankedPlayers(gameScreenState),
                     onBackHome = onBackHome,
+                    onViewGlobalLeaderboard = {
+                        navController.navigate(AppRoute.Leaderboard.route) {
+                            launchSingleTop = true
+                        }
+                    },
                 )
             }
         }
