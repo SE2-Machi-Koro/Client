@@ -2,6 +2,7 @@ package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalOverscrollFactory
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -32,7 +33,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -60,6 +63,8 @@ import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.game.GameScreen
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.GreenDark
+import com.machikoro.client.ui.theme.GreenLight
 import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 
@@ -256,6 +261,21 @@ private fun ShopImageTile(
                 .height(175.dp),
             contentAlignment = Alignment.Center
         ) {
+            if (isRecommended && !isSelected) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .width(155.dp)
+                        .height(175.dp)
+                        .shadow(
+                            elevation = 30.dp,
+                            shape = SHOP_CARD_SHAPE,
+                            ambientColor = Color(0xFF39FF14),
+                            spotColor = Color(0xFF39FF14)
+                        )
+                )
+            }
+
             Image(
                 painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
                 contentDescription = null,
@@ -275,7 +295,7 @@ private fun ShopImageTile(
                     painter = painterResource(R.drawable.card_frame),
                     contentDescription = null,
                     contentScale = ContentScale.FillBounds,
-                    modifier = Modifier.matchParentSize()
+                    modifier = Modifier.matchParentSize().padding(2.dp)
                 )
             }
         }
@@ -363,5 +383,31 @@ private fun BuyingPhaseShopWithFramePreview() {
             items = ShopCatalog.defaultItems,
             onPurchaseClick = {}
         )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 400)
+@Composable
+private fun ShopCardStatesPreview() {
+    ClientTheme {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(30.dp)
+        ) {
+            ShopImageTile(
+                item = ShopCatalog.defaultItems[0],
+                state = previewBuyingPhaseState(),
+                onPurchaseClick = {},
+                isRecommended = true
+            )
+
+            ShopImageTile(
+                item = ShopCatalog.defaultItems[1],
+                state = previewBuyingPhaseState().copy(
+                    selectedPurchaseItemType =
+                        ShopCatalog.defaultItems[1].type
+                ),
+                onPurchaseClick = {}
+            )
+        }
     }
 }
