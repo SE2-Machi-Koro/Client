@@ -25,7 +25,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
@@ -53,7 +55,8 @@ class GameScreenViewModelTest {
         fakeClient: FakeWebSocketClient = FakeWebSocketClient(),
         userId: Int = 1,
         fakeDebugApi: FakeDebugApi = FakeDebugApi(),
-    ) = GameScreenViewModel(fakeClient, fakeSession(userId), fakeDebugApi)
+        resolveEffectsDwellMillis: Long = GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS,
+    ) = GameScreenViewModel(fakeClient, fakeSession(userId), fakeDebugApi, resolveEffectsDwellMillis)
 
     @Test
     fun initialStateUsesInitialValues() = runTest {
@@ -1094,22 +1097,115 @@ class GameScreenViewModelTest {
         job.cancel()
     }
 
+    // ── Resolving Effects auto-transition (#302) ─────────────────────────────
+
+    private fun FakeWebSocketClient.enterResolveEffects(activeUserId: Int, gameId: Int = 7) {
+        emitGameStatus(GameStatus.IN_PROGRESS)
+        emitActiveGameId(gameId)
+        emitActivePlayerId(activeUserId)
+        emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+    }
+
     @Test
-    fun resolveEffectsPhaseActionIsSentByActivePlayer() = runTest {
+    fun performTurnFlowActionNoLongerResolvesEffectsManually() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
 
-        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
-        fakeClient.emitActiveGameId(7)
-        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
-        fakeClient.emitActivePlayerId(42)
-        advanceUntilIdle()
+        fakeClient.enterResolveEffects(activeUserId = 42)
+        runCurrent() // settle collectors + schedule the dwell, but do NOT elapse it
 
         viewModel.performTurnFlowAction()
 
+        // The manual button path is gone; the auto-timer has not fired yet either.
+        assertNull(fakeClient.resolvedEffectsGameId)
+        assertEquals(0, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
+    fun resolveEffectsAutoSendsAfterDwellForActivePlayer() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.enterResolveEffects(activeUserId = 42)
+        advanceUntilIdle()
+
         assertEquals(7, fakeClient.resolvedEffectsGameId)
-        assertNull(fakeClient.advancedPhaseGameId)
+        assertEquals(1, fakeClient.resolveEffectsCallCount)
         assertNull(fakeClient.endedTurnGameId)
+        assertNull(fakeClient.advancedPhaseGameId)
+    }
+
+    @Test
+    fun resolveEffectsDoesNotAutoSendBeforeDwellElapses() = runTest {
+        val dwell = GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42, resolveEffectsDwellMillis = dwell)
+
+        fakeClient.enterResolveEffects(activeUserId = 42)
+        runCurrent()
+        advanceTimeBy(dwell - 1)
+        runCurrent()
+
+        assertEquals(0, fakeClient.resolveEffectsCallCount)
+
+        advanceUntilIdle() // cross the boundary
+
+        assertEquals(1, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
+    fun resolveEffectsDoesNotAutoSendForNonActivePlayer() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 1) // local player is not the active one
+
+        fakeClient.enterResolveEffects(activeUserId = 42)
+        advanceUntilIdle()
+
+        assertEquals(0, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
+    fun resolveEffectsDoesNotAutoSendWhenGameIsNotInProgress() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.WAITING)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+        advanceUntilIdle()
+
+        assertEquals(0, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
+    fun resolveEffectsAutoSendIsCancelledWhenPhaseLeavesResolveEffectsMidDwell() = runTest {
+        val dwell = GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42, resolveEffectsDwellMillis = dwell)
+
+        fakeClient.enterResolveEffects(activeUserId = 42)
+        runCurrent()
+        advanceTimeBy(dwell / 2)
+        // Server moves on before the dwell completes (e.g. another action advanced it).
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        advanceUntilIdle()
+
+        assertEquals(0, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
+    fun resolveEffectsAutoSendFiresOnlyOncePerEntry() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.enterResolveEffects(activeUserId = 42)
+        advanceUntilIdle()
+        // A redundant same-phase snapshot must not re-arm the timer.
+        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+        advanceUntilIdle()
+
+        assertEquals(1, fakeClient.resolveEffectsCallCount)
     }
 
     @Test

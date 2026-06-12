@@ -117,6 +117,8 @@ class FakeWebSocketClient : WebSocketClient {
         private set
     var resolvedEffectsGameId: Int? = null
         private set
+    var resolveEffectsCallCount = 0
+        private set
     var endedTurnGameId: Int? = null
         private set
 
@@ -199,6 +201,7 @@ class FakeWebSocketClient : WebSocketClient {
 
     override fun resolveEffects(gameId: Int) {
         resolvedEffectsGameId = gameId
+        resolveEffectsCallCount++
     }
 
     override fun endTurn(gameId: Int) {
