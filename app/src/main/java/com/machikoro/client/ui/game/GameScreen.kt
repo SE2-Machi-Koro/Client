@@ -273,7 +273,7 @@ fun GameScreen(
                         }
                     }
 
-                    if (state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
+                    if (state.gamePhase == GamePhase.ROLL_DICE) {
                         DiceSection(
                             state = state,
                             onRollDice = onRollDice,
