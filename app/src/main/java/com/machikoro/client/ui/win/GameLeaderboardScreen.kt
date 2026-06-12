@@ -20,6 +20,7 @@ import com.machikoro.client.ui.shared.AnimatedItem
 import com.machikoro.client.ui.shared.AnimationType
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.Header
+import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ClientTheme
 
 /*
@@ -32,6 +33,7 @@ import com.machikoro.client.ui.theme.ClientTheme
 fun GameLeaderboardScreen(
     rankedPlayers: List<RankedGamePlayer>,
     onBackHome: () -> Unit,
+    onViewGlobalLeaderboard: () -> Unit = {},
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         Background(R.drawable.game_end)
@@ -87,7 +89,16 @@ fun GameLeaderboardScreen(
                 delayMillis = 500 + 400 * rankedPlayers.size,
                 animationType = AnimationType.SlideUp,
             ) {
-                ActionButton(label = "Back to home screen", onClick = onBackHome)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ActionButton(label = "Back to home screen", onClick = onBackHome)
+                    SecondaryActionButton(
+                        label = "View Global Leaderboard",
+                        onClick = onViewGlobalLeaderboard,
+                    )
+                }
             }
         }
     }
@@ -105,6 +116,7 @@ private fun GameLeaderboardScreenFourPlayersPreview() {
                 RankedGamePlayer(placement = 4, displayName = "Diana", builtLandmarks = 1),
             ),
             onBackHome = {},
+            onViewGlobalLeaderboard = {},
         )
     }
 }
@@ -119,6 +131,7 @@ private fun GameLeaderboardScreenTwoPlayersPreview() {
                 RankedGamePlayer(placement = 2, displayName = "Bob", builtLandmarks = 2),
             ),
             onBackHome = {},
+            onViewGlobalLeaderboard = {},
         )
     }
 }
