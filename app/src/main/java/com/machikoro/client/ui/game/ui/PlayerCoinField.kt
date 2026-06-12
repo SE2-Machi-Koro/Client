@@ -32,7 +32,9 @@ fun PlayerCoinField(
         ?.coins ?: 0
 
     Row(
-        verticalAlignment = Alignment.CenterVertically
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy((-8).dp)
     ) {
         Text(
             text = "$coins",
