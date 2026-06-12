@@ -1189,6 +1189,25 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun blankStompErrorFrameEmitsPurchaseFailedFallback() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
+
+        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText("ERROR\n\n   \u0000")
+        runCurrent()
+
+        assertEquals(listOf(PurchaseEvent.Failure("Purchase failed")), purchaseEvents)
+        assertEquals(ConnectionStatus.CONNECTED, client.connectionStatus.value)
+    }
+
+    @Test
     fun disconnectClearsLobbyCode() {
         // Regression: a stale lobby code must not persist across a sign-out/
         // sign-in cycle within the same app session. Same contract applies to
