@@ -22,7 +22,7 @@ object WsErrorParser {
             runCatching { parse(JSONObject(trimmed)) }.getOrElse {
                 ClientError.WebSocket(
                     serverCode = "STOMP_ERROR",
-                    userMessage = trimmed.ifBlank { ClientError.UNKNOWN_USER_MESSAGE },
+                    userMessage = ClientError.UNKNOWN_USER_MESSAGE,
                 )
             }
         } else {

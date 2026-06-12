@@ -106,6 +106,6 @@ class WsErrorParserTest {
         val error = WsErrorParser.parseStompErrorBody("{not valid json}")
 
         assertEquals("STOMP_ERROR", error.serverCode)
-        assertEquals("{not valid json}", error.userMessage)
+        assertEquals(ClientError.UNKNOWN_USER_MESSAGE, error.userMessage)
     }
 }
