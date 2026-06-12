@@ -1396,6 +1396,198 @@ class GameScreenViewModelTest {
         assertEquals(1, fakeDebugApi.endGameCallCount)
     }
 
+    // ── Cheating accusations (#280) ──────────────────────────────────────────
+
+    @Test
+    fun accuseForwardsGameIdAndAccusedPlayerIdToClient() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        advanceUntilIdle()
+
+        viewModel.accuse(22)
+
+        assertEquals(listOf(7 to 22), fakeClient.accusations)
+    }
+
+    @Test
+    fun accuseIsIgnoredWhenGameIsNotInProgress() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.WAITING)
+        advanceUntilIdle()
+
+        viewModel.accuse(22)
+
+        assertTrue(fakeClient.accusations.isEmpty())
+    }
+
+    @Test
+    fun secondAccusationInTheSameTurnIsIgnored() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        advanceUntilIdle()
+
+        viewModel.accuse(22)
+        viewModel.accuse(33) // same turn — must be swallowed (one-per-turn rule)
+
+        assertEquals(listOf(7 to 22), fakeClient.accusations)
+        assertFalse(viewModel.canAccuseThisTurn.value)
+    }
+
+    @Test
+    fun accusationBudgetRenewsWhenTheActivePlayerRotates() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.accuse(22)
+        fakeClient.emitActivePlayerId(99) // turn rotates
+        advanceUntilIdle()
+
+        assertTrue(viewModel.canAccuseThisTurn.value)
+        viewModel.accuse(33)
+        assertEquals(listOf(7 to 22, 7 to 33), fakeClient.accusations)
+    }
+
+    @Test
+    fun accusationBudgetRenewsWhenTheRoundAdvances() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitRoundNumber(1)
+        advanceUntilIdle()
+
+        viewModel.accuse(22)
+        fakeClient.emitRoundNumber(2)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.canAccuseThisTurn.value)
+        viewModel.accuse(33)
+        assertEquals(listOf(7 to 22, 7 to 33), fakeClient.accusations)
+    }
+
+    @Test
+    fun accusationBudgetSurvivesADisconnectNullEmissionWithinTheSameTurn() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.accuse(22)
+        // Disconnect (e.g. app backgrounded) nulls the active player; the
+        // reconnect snapshot restores the SAME turn — the spent budget must
+        // not renew.
+        fakeClient.emitActivePlayerId(null)
+        advanceUntilIdle()
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.canAccuseThisTurn.value)
+        viewModel.accuse(33)
+        assertEquals(listOf(7 to 22), fakeClient.accusations)
+    }
+
+    @Test
+    fun accusationBudgetSurvivesADisconnectNullRoundEmission() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitRoundNumber(3)
+        advanceUntilIdle()
+
+        viewModel.accuse(22)
+        fakeClient.emitRoundNumber(null)
+        advanceUntilIdle()
+        fakeClient.emitRoundNumber(3) // reconnect restores the same round
+        advanceUntilIdle()
+
+        assertFalse(viewModel.canAccuseThisTurn.value)
+    }
+
+    @Test
+    fun accusationBudgetRenewsInAFreshGame() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        advanceUntilIdle()
+
+        viewModel.accuse(22)
+        assertFalse(viewModel.canAccuseThisTurn.value)
+
+        fakeClient.emitActiveGameId(8) // new game
+        advanceUntilIdle()
+
+        assertTrue(viewModel.canAccuseThisTurn.value)
+    }
+
+    @Test
+    fun onShakeReportsCheatWhenARecommendationIsProduced() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "11",
+                    displayName = "alice",
+                    coins = 3,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true,
+                )
+            )
+        )
+        // Affordable card in stock with positive expected value → recommendation.
+        fakeClient.emitMarketplace(mapOf(CardType.WHEAT_FIELD to 6))
+        advanceUntilIdle()
+
+        viewModel.onShake()
+
+        assertEquals(1, fakeClient.reportCheatCalls)
+    }
+
+    @Test
+    fun onShakeDoesNotReportCheatWhenNoRecommendationIsProduced() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "11",
+                    displayName = "alice",
+                    coins = 3,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true,
+                )
+            )
+        )
+        // Empty marketplace → recommendBestBuy returns null → the cheat produced
+        // nothing, so the player must not become catchable (#280).
+        fakeClient.emitMarketplace(emptyMap())
+        advanceUntilIdle()
+
+        viewModel.onShake()
+
+        assertEquals(0, fakeClient.reportCheatCalls)
+    }
+
     private class FakeDebugApi(
         private val response: Response<Unit> = Response.success(Unit),
         private val throwError: Boolean = false,

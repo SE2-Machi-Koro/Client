@@ -23,6 +23,7 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import com.machikoro.client.domain.model.state.AccusationResult
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -51,6 +52,30 @@ class GameScreenViewModel(
     /** One-shot signal each time a shake produces a recommendation (drives the toast). */
     val cheatActivations: SharedFlow<CardType?>
         get() = mutableCheatActivations.asSharedFlow()
+
+    /** One-shot cheating-accusation result (#280) for a toast — pass-through from the WS client. */
+    val accusationResults: SharedFlow<AccusationResult>
+        get() = webSocketClient.accusationResults
+
+    /** One-shot server-side accusation rejection (#280) for a toast — pass-through. */
+    val accusationErrors: SharedFlow<String>
+        get() = webSocketClient.accusationErrors
+
+    /**
+     * True until the local player has accused someone this turn — mirrors the
+     * server's one-accusation-per-turn rule (#280). Renews when the turn
+     * rotates or a new game starts.
+     *
+     * Turn rotation is detected via the last *non-null* active player / round:
+     * a disconnect (e.g. backgrounding the app) emits null and the reconnect
+     * snapshot restores the same in-progress turn, so null transitions must
+     * not renew a spent budget.
+     */
+    val canAccuseThisTurn: StateFlow<Boolean>
+        get() = mutableCanAccuseThisTurn.asStateFlow()
+    private val mutableCanAccuseThisTurn = MutableStateFlow(true)
+    private var lastTurnOwnerUserId: Int? = null
+    private var lastSeenRoundNumber: Int? = null
     private val mutableCheatActivations = MutableSharedFlow<CardType?>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -74,6 +99,10 @@ class GameScreenViewModel(
     init {
         viewModelScope.launch {
             webSocketClient.activeGameId.collect { gameId ->
+                // A different game means a fresh accusation budget (#280).
+                if (gameId != null && mutableState.value.gameId != gameId) {
+                    mutableCanAccuseThisTurn.value = true
+                }
                 mutableState.update { current ->
                     current.copy(gameId = gameId)
                 }
@@ -108,6 +137,14 @@ class GameScreenViewModel(
                 if (mutableState.value.activePlayerId != activePlayerId) {
                     mutableCheatRecommendation.value = null
                 }
+                // The accusation budget (#280) renews only on a real rotation:
+                // a new non-null owner differing from the last non-null one.
+                if (activePlayerId != null) {
+                    if (lastTurnOwnerUserId != null && activePlayerId != lastTurnOwnerUserId) {
+                        mutableCanAccuseThisTurn.value = true
+                    }
+                    lastTurnOwnerUserId = activePlayerId
+                }
                 mutableState.update { state ->
                     state.copy(activePlayerId = activePlayerId)
                         .resetPurchaseFeedbackIf(state.activePlayerId != activePlayerId)
@@ -128,6 +165,13 @@ class GameScreenViewModel(
             webSocketClient.roundNumber.collect { roundNumber ->
                 if (mutableState.value.roundNumber != roundNumber) {
                     mutableCheatRecommendation.value = null
+                }
+                // Same non-null discipline as the active-player reset above.
+                if (roundNumber != null) {
+                    if (lastSeenRoundNumber != null && roundNumber != lastSeenRoundNumber) {
+                        mutableCanAccuseThisTurn.value = true
+                    }
+                    lastSeenRoundNumber = roundNumber
                 }
                 mutableState.update { state ->
                     state.copy(roundNumber = roundNumber)
@@ -211,8 +255,10 @@ class GameScreenViewModel(
     /**
      * Insider Trading cheat (#203). On a shake during the local player's turn,
      * computes a local best-buy recommendation and emits a one-shot activation
-     * signal for the toast. No-op off-turn or before the game is running; never
-     * contacts the server.
+     * signal for the toast. No-op off-turn or before the game is running.
+     *
+     * Also silently reports the cheat usage to the server (#280 / server #361) so
+     * other players can later accuse this player of cheating.
      */
     fun onShake() {
         val current = mutableState.value
@@ -221,6 +267,28 @@ class GameScreenViewModel(
         val recommendation = recommendBestBuy(current, me)
         mutableCheatRecommendation.value = recommendation
         mutableCheatActivations.tryEmit(recommendation)
+        // Only an actual recommendation counts as cheat usage (#280): a null
+        // result means the cheat produced nothing, so the player must not
+        // become catchable for it.
+        if (recommendation != null) {
+            current.gameId?.let { webSocketClient.reportCheat(it) }
+        }
+    }
+
+    /**
+     * Accuse [accusedPlayerId] (a PlayerModel.id) of cheating (#280). The server
+     * adjudicates and the outcome arrives via [accusationResults]; coin changes
+     * arrive through the normal authoritative snapshot. At most one accusation
+     * per turn (mirrors the server rule); the budget renews when the turn
+     * rotates.
+     */
+    fun accuse(accusedPlayerId: Int) {
+        val current = mutableState.value
+        if (current.gameStatus != GameStatus.IN_PROGRESS) return
+        if (!mutableCanAccuseThisTurn.value) return
+        val gameId = current.gameId ?: return
+        mutableCanAccuseThisTurn.value = false
+        webSocketClient.accuse(gameId, accusedPlayerId)
     }
 
     fun performTurnFlowAction() {
