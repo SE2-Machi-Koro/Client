@@ -120,11 +120,12 @@ object HttpErrorParser {
     private fun decodeServerBody(rawBody: String): ParsedErrorBody =
         try {
             val body = json.decodeFromString(ServerErrorBody.serializer(), rawBody)
-            if (body.code.isBlank() && body.message.isBlank()) {
+            val serverCode = body.code.ifBlank { body.errorCode }
+            if (serverCode.isBlank() && body.message.isBlank()) {
                 ParsedErrorBody.Empty
             } else {
                 ParsedErrorBody.Server(
-                    code = body.code,
+                    code = serverCode,
                     message = body.message,
                     timestampMillis = body.timestamp,
                 )
@@ -152,6 +153,7 @@ object HttpErrorParser {
     @Serializable
     private data class ServerErrorBody(
         val code: String = "",
+        val errorCode: String = "",
         val message: String = "",
         val timestamp: Long = ClientError.UNKNOWN_TIMESTAMP,
     )

@@ -52,6 +52,25 @@ class HttpErrorParserTest {
     }
 
     @Test
+    fun legacyErrorCodeFieldPreservesServerCode() {
+        val errorBody = """
+            {"errorCode":"USER_NOT_FOUND","message":"No such user","timestamp":1714000000002}
+        """.trimIndent().toResponseBody(JSON_MEDIA_TYPE.toMediaType())
+
+        val error = HttpErrorParser.fromResponse(
+            Response.error<Unit>(404, errorBody),
+            fallbackMessage = "Request failed. Please try again.",
+        )
+
+        assertTrue(error is ClientError.Api)
+        val apiError = error as ClientError.Api
+        assertEquals(404, apiError.statusCode)
+        assertEquals("USER_NOT_FOUND", apiError.serverCode)
+        assertEquals("No such user", apiError.userMessage)
+        assertEquals(1714000000002, apiError.timestampMillis)
+    }
+
+    @Test
     fun plainTextBodyIsPreservedForLegacyServerResponses() {
         val errorBody = "Username 'alice' is already taken".toResponseBody(TEXT_MEDIA_TYPE.toMediaType())
 
