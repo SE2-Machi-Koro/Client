@@ -37,6 +37,8 @@ sealed class AppRoute(val route: String) {
 
     data object Leaderboard : AppRoute("leaderboard")
 
+    data object GameLeaderboard : AppRoute("game-leaderboard")
+
     /**
      * Builds the concrete destination used by NavController.navigate(...).
      * Routes without arguments return their route unchanged.
