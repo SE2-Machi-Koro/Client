@@ -4,7 +4,6 @@ import com.machikoro.client.domain.model.state.GameScreenState
 
 fun resolveWinnerName(state: GameScreenState): String {
     val winnerId = state.winnerId ?: return "Winner"
-
     return state.players
         .find { it.id == winnerId.toString() }
         ?.displayName
@@ -19,7 +18,6 @@ fun resolveWinnerName(state: GameScreenState): String {
  */
 fun resolveRankedPlayers(state: GameScreenState): List<Pair<String, Int>> {
     val winnerId = state.winnerId?.toString()
-
     val winner = state.players.find { it.id == winnerId }
     val others = state.players
         .filter { it.id != winnerId }
@@ -28,13 +26,42 @@ fun resolveRankedPlayers(state: GameScreenState): List<Pair<String, Int>> {
                 ?.count { it.isBuilt }
                 ?: 0
         }
-
     val ranked = listOfNotNull(winner) + others
-
     return ranked.map { player ->
         val builtCount = state.playerLandmarks[player.id.toIntOrNull()]
             ?.count { it.isBuilt }
             ?: 0
         player.displayName to builtCount
+    }
+}
+
+/**
+ * Returns all players ranked for the game-specific leaderboard screen.
+ * Rank 1 = winner (via winnerId), always first.
+ * Remaining players are sorted by number of built landmarks (descending),
+ * since the goal of Machi Koro is to build all 4 landmarks first.
+ */
+data class RankedGamePlayer(
+    val placement: Int,
+    val displayName: String,
+    val builtLandmarks: Int,
+)
+
+fun resolveGameRankedPlayers(state: GameScreenState): List<RankedGamePlayer> {
+    val winnerId = state.winnerId?.toString()
+    val winner = state.players.find { it.id == winnerId }
+    val others = state.players
+        .filter { it.id != winnerId }
+        .sortedByDescending { player ->
+            state.playerLandmarks[player.id.toIntOrNull()]?.count { it.isBuilt } ?: 0
+        }
+    val ranked = listOfNotNull(winner) + others
+    return ranked.mapIndexed { index, player ->
+        RankedGamePlayer(
+            placement = index + 1,
+            displayName = player.displayName,
+            builtLandmarks = state.playerLandmarks[player.id.toIntOrNull()]
+                ?.count { it.isBuilt } ?: 0,
+        )
     }
 }
