@@ -39,9 +39,7 @@ import com.machikoro.client.ui.leaderboard.LeaderboardScreen
 import com.machikoro.client.ui.leaderboard.LeaderboardState
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.ui.win.GameLeaderboardScreen
 import com.machikoro.client.ui.win.GameOverOneWinner
-import com.machikoro.client.ui.win.resolveGameRankedPlayers
 import com.machikoro.client.ui.win.resolveRankedPlayers
 import com.machikoro.client.ui.win.resolveWinnerName
 import kotlinx.coroutines.flow.collectLatest
@@ -175,7 +173,7 @@ fun AppRoot(
                     onResumeGameClick = onResumeGameClick,
                     onPurgeClick = onPurgeClick,
                     onLogoutClick = onLogoutSubmit,
-                    // Navigate to leaderboard keeping Home in the back stack
+                    // I navigate to the global leaderboard keeping Home in the back stack
                     onRankingClick = {
                         navController.navigate(AppRoute.Leaderboard.route) {
                             launchSingleTop = true
@@ -249,22 +247,10 @@ fun AppRoot(
                     rankedPlayers = resolveRankedPlayers(gameScreenState),
                     onBackHome = onBackHome,
                     onViewLeaderboard = {
-                        // I pop the winner screen so back from game leaderboard goes to home, not winner
-                        navController.navigate(AppRoute.GameLeaderboard.route) {
-                            launchSingleTop = true
-                            popUpTo(AppRoute.Winner.route) { inclusive = true }
-                        }
-                    },
-                )
-            }
-
-            composable(AppRoute.GameLeaderboard.route) {
-                GameLeaderboardScreen(
-                    rankedPlayers = resolveGameRankedPlayers(gameScreenState),
-                    onBackHome = onBackHome,
-                    onViewGlobalLeaderboard = {
+                        // I navigate to the global leaderboard; pop winner so back goes to home
                         navController.navigate(AppRoute.Leaderboard.route) {
                             launchSingleTop = true
+                            popUpTo(AppRoute.Winner.route) { inclusive = true }
                         }
                     },
                 )
