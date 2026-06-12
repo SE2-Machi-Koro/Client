@@ -1,6 +1,5 @@
 package com.machikoro.client.ui.game
 
-import android.R.attr.contentDescription
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -205,6 +205,7 @@ fun GameScreen(
                         players = state.players,
                         playerLandmarks =
                             state.playerLandmarks,
+                        playerCards = state.playerCards,
                         modifier = Modifier.align(
                             Alignment.Center
                         ),
@@ -242,7 +243,15 @@ fun GameScreen(
                     if(state.gamePhase != GamePhase.ROLL_DICE) {
                         state.diceResult?.let { DiceResultDisplay(dice = it) }
                     }
-                    MarketplaceButton()
+                    if (state.marketplace.isNotEmpty()) {
+                        MarketplaceSection(
+                            marketplace = state.marketplace,
+                            recommendedCardType = cheatRecommendation,
+                            modifier = Modifier.widthIn(max = 260.dp)
+                        )
+                    } else {
+                        MarketplaceButton()
+                    }
                 }
             }
         },
@@ -290,16 +299,6 @@ fun GameScreen(
                             modifier = Modifier.align(Alignment.Center)
                         )
                     } else RegularInfoText("Waiting for purchase")
-                }
-
-                if (false) {
-                    MarketplaceSection(
-                        marketplace = state.marketplace,
-                        recommendedCardType = cheatRecommendation,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(horizontal = 12.dp)
-                    )
                 }
 
                 if(state.gamePhase == GamePhase.ROLL_DICE) {

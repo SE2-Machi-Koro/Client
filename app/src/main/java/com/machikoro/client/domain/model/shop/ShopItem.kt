@@ -18,232 +18,297 @@ data class ShopItem(
     val cost: Int,
     val color: ShopItemColor,
     val establishmentType: String,
-    val activationText: String,
+    val activationNumbers: List<Int>,
     val effectText: String,
     val imageKey: String,
     val isAvailable: Boolean = true
-)
+) {
+    val activationText: String
+        get() = activationNumbers.toActivationText() ?: "Permanent"
+}
 
-object ShopCatalog {
-    private const val ONE_COIN_ON_ANY_TURN = "Get 1 coin from the bank on anyone's turn."
+data class CardDefinition(
+    val cardType: CardType,
+    val displayName: String,
+    val cost: Int,
+    val color: ShopItemColor,
+    val establishmentType: String,
+    val activationNumbers: List<Int>,
+    val effectText: String,
+    val imageKey: String,
+) {
+    val activationText: String
+        get() = activationNumbers.toActivationText().orEmpty()
 
-    /**
-     * Temporary local catalog for issue #38.
-     *
-     * The server already owns the real card/landmark database. Until the client
-     * consumes server-provided shop definitions, this list gives the UI all
-     * current server enum values so every purchase button can send a valid
-     * request. Availability/error feedback stays with #39 and server #228.
-     */
-    val defaultItems = listOf(
+    fun toShopItem(isAvailable: Boolean = true): ShopItem =
         ShopItem(
             purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.WHEAT_FIELD.name,
+            type = cardType.name,
+            displayName = displayName,
+            cost = cost,
+            color = color,
+            establishmentType = establishmentType,
+            activationNumbers = activationNumbers,
+            effectText = effectText,
+            imageKey = imageKey,
+            isAvailable = isAvailable,
+        )
+}
+
+object CardDefinitions {
+    private const val ONE_COIN_ON_ANY_TURN = "Get 1 coin from the bank on anyone's turn."
+
+    val defaultCards = listOf(
+        CardDefinition(
+            cardType = CardType.WHEAT_FIELD,
             displayName = "Wheat Field",
             cost = 1,
             color = ShopItemColor.BLUE,
             establishmentType = "WHEAT",
-            activationText = "1",
+            activationNumbers = listOf(1),
             effectText = ONE_COIN_ON_ANY_TURN,
             imageKey = "card_wheat_field"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.RANCH.name,
+        CardDefinition(
+            cardType = CardType.RANCH,
             displayName = "Ranch",
             cost = 1,
             color = ShopItemColor.BLUE,
             establishmentType = "COW",
-            activationText = "2",
+            activationNumbers = listOf(2),
             effectText = ONE_COIN_ON_ANY_TURN,
             imageKey = "card_ranch"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.FOREST.name,
+        CardDefinition(
+            cardType = CardType.FOREST,
             displayName = "Forest",
             cost = 3,
             color = ShopItemColor.BLUE,
             establishmentType = "GEAR",
-            activationText = "5",
+            activationNumbers = listOf(5),
             effectText = ONE_COIN_ON_ANY_TURN,
             imageKey = "card_forest"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.MINE.name,
+        CardDefinition(
+            cardType = CardType.MINE,
             displayName = "Mine",
             cost = 6,
             color = ShopItemColor.BLUE,
             establishmentType = "GEAR",
-            activationText = "9",
+            activationNumbers = listOf(9),
             effectText = "Get 5 coins from the bank on anyone's turn.",
             imageKey = "card_mine"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.APPLE_ORCHARD.name,
+        CardDefinition(
+            cardType = CardType.APPLE_ORCHARD,
             displayName = "Apple Orchard",
             cost = 3,
             color = ShopItemColor.BLUE,
             establishmentType = "WHEAT",
-            activationText = "10",
+            activationNumbers = listOf(10),
             effectText = "Get 3 coins from the bank on anyone's turn.",
             imageKey = "card_apple_orchard"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.BAKERY.name,
+        CardDefinition(
+            cardType = CardType.BAKERY,
             displayName = "Bakery",
             cost = 1,
             color = ShopItemColor.GREEN,
             establishmentType = "BREAD",
-            activationText = "2-3",
+            activationNumbers = listOf(2, 3),
             effectText = "Get 1 coin from the bank on your turn.",
             imageKey = "card_bakery"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.CONVENIENCE_STORE.name,
+        CardDefinition(
+            cardType = CardType.CONVENIENCE_STORE,
             displayName = "Convenience Store",
             cost = 2,
             color = ShopItemColor.GREEN,
             establishmentType = "BREAD",
-            activationText = "4",
+            activationNumbers = listOf(4),
             effectText = "Get 3 coins from the bank on your turn.",
             imageKey = "card_convenience_store"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.CHEESE_FACTORY.name,
+        CardDefinition(
+            cardType = CardType.CHEESE_FACTORY,
             displayName = "Cheese Factory",
             cost = 5,
             color = ShopItemColor.GREEN,
             establishmentType = "FACTORY",
-            activationText = "7",
+            activationNumbers = listOf(7),
             effectText = "Get 3 coins from the bank for each cow establishment you own.",
             imageKey = "card_cheese_factory"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.FURNITURE_FACTORY.name,
+        CardDefinition(
+            cardType = CardType.FURNITURE_FACTORY,
             displayName = "Furniture Factory",
             cost = 3,
             color = ShopItemColor.GREEN,
             establishmentType = "FACTORY",
-            activationText = "8",
+            activationNumbers = listOf(8),
             effectText = "Get 3 coins from the bank for each gear establishment you own.",
             imageKey = "card_furniture_factory"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.FRUIT_AND_VEGETABLE_MARKET.name,
+        CardDefinition(
+            cardType = CardType.FRUIT_AND_VEGETABLE_MARKET,
             displayName = "Fruit and Vegetable Market",
             cost = 2,
             color = ShopItemColor.GREEN,
             establishmentType = "FRUIT",
-            activationText = "11-12",
+            activationNumbers = listOf(11, 12),
             effectText = "Get 2 coins from the bank for each wheat establishment you own.",
             imageKey = "card_fruit_and_vegetable_market"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.CAFE.name,
+        CardDefinition(
+            cardType = CardType.CAFE,
             displayName = "Cafe",
             cost = 2,
             color = ShopItemColor.RED,
             establishmentType = "CUP",
-            activationText = "3",
+            activationNumbers = listOf(3),
             effectText = "Take 1 coin from the player who rolled the dice.",
             imageKey = "card_cafe"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.FAMILY_RESTAURANT.name,
+        CardDefinition(
+            cardType = CardType.FAMILY_RESTAURANT,
             displayName = "Family Restaurant",
             cost = 3,
             color = ShopItemColor.RED,
             establishmentType = "CUP",
-            activationText = "9-10",
+            activationNumbers = listOf(9, 10),
             effectText = "Take 2 coins from the player who rolled the dice.",
             imageKey = "card_family_restaurant"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.STADIUM.name,
+        CardDefinition(
+            cardType = CardType.STADIUM,
             displayName = "Stadium",
             cost = 6,
             color = ShopItemColor.PURPLE,
             establishmentType = "MAJOR",
-            activationText = "6",
+            activationNumbers = listOf(6),
             effectText = "Take 2 coins from every opponent on your turn.",
             imageKey = "card_stadium"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.TV_STATION.name,
+        CardDefinition(
+            cardType = CardType.TV_STATION,
             displayName = "TV Station",
             cost = 7,
             color = ShopItemColor.PURPLE,
             establishmentType = "MAJOR",
-            activationText = "6",
+            activationNumbers = listOf(6),
             effectText = "Take 5 coins from one opponent on your turn.",
             imageKey = "card_tv_station"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.ESTABLISHMENT,
-            type = CardType.BUSINESS_CENTER.name,
+        CardDefinition(
+            cardType = CardType.BUSINESS_CENTER,
             displayName = "Business Center",
             cost = 8,
             color = ShopItemColor.PURPLE,
             establishmentType = "MAJOR",
-            activationText = "6",
+            activationNumbers = listOf(6),
             effectText = "Exchange one non-major establishment with an opponent.",
             imageKey = "card_business_center"
         ),
-        ShopItem(
-            purchaseType = PurchaseType.LANDMARK,
-            type = LandmarkType.TRAIN_STATION.name,
-            displayName = "Train Station",
-            cost = 4,
-            color = ShopItemColor.LANDMARK,
-            establishmentType = "LANDMARK",
-            activationText = "Permanent",
-            effectText = "You may roll one or two dice.",
-            imageKey = "landmark_train_station"
-        ),
-        ShopItem(
-            purchaseType = PurchaseType.LANDMARK,
-            type = LandmarkType.SHOPPING_MALL.name,
-            displayName = "Shopping Mall",
-            cost = 10,
-            color = ShopItemColor.LANDMARK,
-            establishmentType = "LANDMARK",
-            activationText = "Permanent",
-            effectText = "Your cup and bread establishments earn 1 extra coin.",
-            imageKey = "landmark_shopping_mall"
-        ),
-        ShopItem(
-            purchaseType = PurchaseType.LANDMARK,
-            type = LandmarkType.AMUSEMENT_PARK.name,
-            displayName = "Amusement Park",
-            cost = 16,
-            color = ShopItemColor.LANDMARK,
-            establishmentType = "LANDMARK",
-            activationText = "Permanent",
-            effectText = "If you roll doubles, take another turn after this one.",
-            imageKey = "landmark_amusement_park"
-        ),
-        ShopItem(
-            purchaseType = PurchaseType.LANDMARK,
-            type = LandmarkType.RADIO_TOWER.name,
-            displayName = "Radio Tower",
-            cost = 22,
-            color = ShopItemColor.LANDMARK,
-            establishmentType = "LANDMARK",
-            activationText = "Permanent",
-            effectText = "Once every turn, you can reroll your dice.",
-            imageKey = "landmark_radio_tower"
-        )
     )
+
+    private val byType = defaultCards.associateBy { it.cardType }
+
+    fun forType(cardType: CardType): CardDefinition? = byType[cardType]
+
+    fun sortShopItemsByActivation(items: List<ShopItem>): List<ShopItem> =
+        items.sortedWith(
+            compareBy<ShopItem> { it.activationSortStart }
+                .thenBy { it.activationSortEnd }
+                .thenBy { it.cost }
+                .thenBy { it.displayName },
+        )
+
+    fun sortCardTypesByActivation(types: Iterable<CardType>): List<CardType> =
+        types.sortedWith(
+            compareBy<CardType> { forType(it)?.activationNumbers?.firstOrNull() ?: Int.MAX_VALUE }
+                .thenBy { forType(it)?.activationNumbers?.lastOrNull() ?: Int.MAX_VALUE }
+                .thenBy { forType(it)?.cost ?: Int.MAX_VALUE }
+                .thenBy { forType(it)?.displayName ?: it.name },
+        )
+}
+
+object ShopCatalog {
+    /** Local fallback catalog used until a snapshot supplies server definitions. */
+    val defaultItems = listOf(
+        CardDefinitions.defaultCards.map { it.toShopItem() },
+        listOf(
+            ShopItem(
+                purchaseType = PurchaseType.LANDMARK,
+                type = LandmarkType.TRAIN_STATION.name,
+                displayName = "Train Station",
+                cost = 4,
+                color = ShopItemColor.LANDMARK,
+                establishmentType = "LANDMARK",
+                activationNumbers = emptyList(),
+                effectText = "You may roll one or two dice.",
+                imageKey = "landmark_train_station"
+            ),
+            ShopItem(
+                purchaseType = PurchaseType.LANDMARK,
+                type = LandmarkType.SHOPPING_MALL.name,
+                displayName = "Shopping Mall",
+                cost = 10,
+                color = ShopItemColor.LANDMARK,
+                establishmentType = "LANDMARK",
+                activationNumbers = emptyList(),
+                effectText = "Your cup and bread establishments earn 1 extra coin.",
+                imageKey = "landmark_shopping_mall"
+            ),
+            ShopItem(
+                purchaseType = PurchaseType.LANDMARK,
+                type = LandmarkType.AMUSEMENT_PARK.name,
+                displayName = "Amusement Park",
+                cost = 16,
+                color = ShopItemColor.LANDMARK,
+                establishmentType = "LANDMARK",
+                activationNumbers = emptyList(),
+                effectText = "If you roll doubles, take another turn after this one.",
+                imageKey = "landmark_amusement_park"
+            ),
+            ShopItem(
+                purchaseType = PurchaseType.LANDMARK,
+                type = LandmarkType.RADIO_TOWER.name,
+                displayName = "Radio Tower",
+                cost = 22,
+                color = ShopItemColor.LANDMARK,
+                establishmentType = "LANDMARK",
+                activationNumbers = emptyList(),
+                effectText = "Once every turn, you can reroll your dice.",
+                imageKey = "landmark_radio_tower"
+            )
+        )
+    ).flatten()
+}
+
+private val ShopItem.activationSortStart: Int
+    get() = activationNumbers.firstOrNull() ?: Int.MAX_VALUE
+
+private val ShopItem.activationSortEnd: Int
+    get() = activationNumbers.lastOrNull() ?: Int.MAX_VALUE
+
+fun List<Int>.toActivationText(): String? {
+    val numbers = distinct().sorted()
+    if (numbers.isEmpty()) return null
+    return if (numbers.size == 1) {
+        numbers.first().toString()
+    } else {
+        "${numbers.first()}-${numbers.last()}"
+    }
+}
+
+fun String.toActivationNumbers(): List<Int> {
+    val trimmed = trim()
+    if (trimmed.isBlank() || trimmed.equals("Permanent", ignoreCase = true)) return emptyList()
+    val rangeParts = trimmed.split("-", limit = 2).map { it.trim().toIntOrNull() }
+    if (rangeParts.size == 2 && rangeParts.all { it != null }) {
+        val start = rangeParts[0] ?: return emptyList()
+        val end = rangeParts[1] ?: return emptyList()
+        return (minOf(start, end)..maxOf(start, end)).toList()
+    }
+    return Regex("\\d+").findAll(trimmed).map { it.value.toInt() }.toList().distinct().sorted()
 }
