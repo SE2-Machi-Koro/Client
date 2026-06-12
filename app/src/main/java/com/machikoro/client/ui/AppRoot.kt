@@ -81,6 +81,7 @@ fun AppRoot(
     onPurchaseClick: (String) -> Unit = {},
     onBuySelectedClick: () -> Unit = {},
     onBackHome: () -> Unit = {},
+    onClearGameState: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     onEndGame: () -> Unit = {},
     cheatRecommendation: CardType? = null,
@@ -247,9 +248,8 @@ fun AppRoot(
                     rankedPlayers = resolveRankedPlayers(gameScreenState),
                     onBackHome = onBackHome,
                     onViewLeaderboard = {
-                        // Clear game state and navigate to the global leaderboard;
-                        // back from leaderboard returns to Home, not Winner
-                        onBackHome()
+                        // Clear finished game state, then navigate to the global leaderboard
+                        onClearGameState()
                         navController.navigate(AppRoute.Leaderboard.route) {
                             launchSingleTop = true
                         }
