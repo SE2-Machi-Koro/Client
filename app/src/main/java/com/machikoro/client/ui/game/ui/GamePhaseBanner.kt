@@ -81,7 +81,7 @@ fun PhaseField(
             text = text,
             style = MaterialTheme.typography.bodyLarge.copy(
                 fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
+                fontSize = 16.sp,
                 color = Color(0xFF004E7E).copy(
                     alpha = if (isActive) 1f else 0.65f
                 )
