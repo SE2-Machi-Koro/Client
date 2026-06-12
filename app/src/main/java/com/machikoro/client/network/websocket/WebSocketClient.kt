@@ -10,6 +10,7 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.shop.PurchaseEvent
+import com.machikoro.client.network.error.ClientError
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -23,7 +24,7 @@ interface WebSocketClient {
     // Fires once when the user successfully enters a lobby (create or join), NOT on reconnect.
     val lobbyEntered: SharedFlow<Unit>
     // Fires when joining a lobby fails, e.g. because the lobby code is invalid.
-    val lobbyJoinErrors: SharedFlow<String>
+    val lobbyJoinErrors: SharedFlow<ClientError.WebSocket>
     val hostLeftLobby: SharedFlow<Unit>
     val activeGameId: StateFlow<Int?>
     val isLobbyHost: StateFlow<Boolean>
