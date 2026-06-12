@@ -35,7 +35,7 @@ the winner. It also displays the number of rounds
 it took for the winner to win the game. Runner-up
 players are shown with a staggered animation after
 the winner card appears. Buttons are displayed in a
-row to prevent overflow on narrow screens.
+column to prevent overflow on narrow screens.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -120,10 +120,10 @@ fun GameOverOneWinner(
                 delayMillis = 5000,
                 animationType = AnimationType.SlideUp
             ) {
-                // Buttons in a Row to prevent overflow on narrow screens
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                // Buttons in a Column to prevent overflow on narrow screens
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     ActionButton("Back to home", onBackHome)
                     SecondaryActionButton("View Leaderboard", onViewLeaderboard)
