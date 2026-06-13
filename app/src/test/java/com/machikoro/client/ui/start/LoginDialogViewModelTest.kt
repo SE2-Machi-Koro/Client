@@ -72,6 +72,26 @@ class LoginDialogViewModelTest {
     }
 
     @Test
+    fun submitHttpExceptionWithEmptyBodyUsesLoginFallback() = runTest {
+        val sessionHolder = FakeSessionStateHolder()
+        val errorBody = "".toResponseBody("text/plain".toMediaType())
+        val api = FakeAuthApi(loginHandler = {
+            throw HttpException(Response.error<LoginResponse>(401, errorBody))
+        })
+        val viewModel = LoginDialogViewModel(api, sessionHolder)
+        viewModel.usernameChanged("alice")
+        viewModel.passwordChanged("wrong")
+
+        viewModel.submit()
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals("Login failed (HTTP 401)", state.errorMessage)
+        assertNull(state.loggedInAs)
+        assertNull(sessionHolder.session.value)
+    }
+
+    @Test
     fun submitIoExceptionSurfacesNetworkErrorMessage() = runTest {
         val sessionHolder = FakeSessionStateHolder()
         val api = FakeAuthApi(loginHandler = { throw IOException("connect timed out") })
