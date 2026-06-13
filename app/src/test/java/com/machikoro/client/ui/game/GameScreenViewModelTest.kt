@@ -247,6 +247,116 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun rerollForwardsDiceCountWhenActivePlayerHasRadioTowerInResolveEffects() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        setUpRerollableTurn(fakeClient)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 2)
+
+        assertEquals(2, fakeClient.lastRerolledDiceCount)
+    }
+
+    @Test
+    fun rerollIsIgnoredOutsideResolveEffectsPhase() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        setUpRerollableTurn(fakeClient)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 1)
+
+        assertNull(fakeClient.lastRerolledDiceCount)
+    }
+
+    @Test
+    fun rerollIsIgnoredWhenActivePlayerHasNoRadioTower() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        setUpRerollableTurn(fakeClient, radioTowerBuilt = false)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 1)
+
+        assertNull(fakeClient.lastRerolledDiceCount)
+    }
+
+    @Test
+    fun rerollIsIgnoredWhenNotActivePlayer() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 1)
+        setUpRerollableTurn(fakeClient, activePlayerId = 99)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 1)
+
+        assertNull(fakeClient.lastRerolledDiceCount)
+    }
+
+    @Test
+    fun rerollIsLimitedToOncePerTurn() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        setUpRerollableTurn(fakeClient)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 1)
+        viewModel.rerollDice(diceCount = 1)
+
+        assertEquals(1, fakeClient.rerollCallCount)
+        assertFalse(viewModel.canRerollThisTurn.value)
+    }
+
+    @Test
+    fun rerollBudgetRenewsWhenTurnRotates() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        setUpRerollableTurn(fakeClient)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 1)
+        // Turn rotates to another player and back to us. advanceUntilIdle between
+        // emits so the conflating StateFlow actually surfaces the intermediate
+        // owner (99) to the rotation observer rather than collapsing to 42.
+        fakeClient.emitActivePlayerId(99)
+        advanceUntilIdle()
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.canRerollThisTurn.value)
+
+        viewModel.rerollDice(diceCount = 1)
+
+        assertEquals(2, fakeClient.rerollCallCount)
+    }
+
+    /**
+     * Drives the fake client into a state where the local player (user id 42,
+     * database id 7) is the active player in RESOLVE_EFFECTS after a roll, with a
+     * built Radio Tower — the precondition for [GameScreenViewModel.rerollDice].
+     */
+    private fun setUpRerollableTurn(
+        client: FakeWebSocketClient,
+        activePlayerId: Int = 42,
+        radioTowerBuilt: Boolean = true,
+    ) {
+        client.emitGameStatus(GameStatus.IN_PROGRESS)
+        client.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+        client.emitActivePlayerId(activePlayerId)
+        client.emitPlayers(
+            listOf(
+                PlayerCoinState(id = "7", displayName = "alice", coins = 5, isActivePlayer = true),
+            )
+        )
+        client.emitPlayerLandmarks(
+            mapOf(7 to listOf(PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = radioTowerBuilt)))
+        )
+        client.emitDiceResult(listOf(4))
+    }
+
+    @Test
     fun activePlayerIdFromClientIsReflectedInState() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient)
