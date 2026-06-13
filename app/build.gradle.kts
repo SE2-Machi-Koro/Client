@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -23,8 +25,20 @@ val coverageExclusions = listOf(
     "**/*Kt$*.*"
 )
 
-val backendBaseUrl = providers.gradleProperty("backendBaseUrl").orElse("http://10.0.2.2:8080")
-val websocketUrl = providers.gradleProperty("websocketUrl").orElse("ws://10.0.2.2:8080/ws")
+val localProperties = Properties().apply {
+    rootProject.file("local.properties")
+        .takeIf { it.isFile }
+        ?.inputStream()
+        ?.use(::load)
+}
+
+fun buildProperty(name: String, defaultValue: String) =
+    providers.gradleProperty(name)
+        .orElse(providers.provider { localProperties.getProperty(name) })
+        .orElse(defaultValue)
+
+val backendBaseUrl = buildProperty("backendBaseUrl", "http://10.0.2.2:8080")
+val websocketUrl = buildProperty("websocketUrl", "ws://10.0.2.2:8080/ws")
 
 android {
     namespace = "com.machikoro.client"
