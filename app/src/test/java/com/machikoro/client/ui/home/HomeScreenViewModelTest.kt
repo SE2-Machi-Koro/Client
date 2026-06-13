@@ -212,6 +212,7 @@ class HomeScreenViewModelTest {
         override fun connect() { connectCalled = true }
         override fun disconnect() { disconnectCalled = true }
         override fun rollDice(diceCount: Int) = Unit
+        override fun rerollDice(diceCount: Int) = Unit
         override fun advancePhase(gameId: Int) = Unit
         override fun resolveEffects(gameId: Int) = Unit
         override fun endTurn(gameId: Int) = Unit

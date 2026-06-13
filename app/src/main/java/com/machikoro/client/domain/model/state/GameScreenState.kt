@@ -39,13 +39,32 @@ data class GameScreenState(
         get() = gamePhase == GamePhase.BUY_OR_BUILD
 
     val hasTrainStation: Boolean
-        get() {
-            val activePlayerDatabaseId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
-                ?: return false
-            return playerLandmarks[activePlayerDatabaseId].orEmpty().any {
-                it.landmarkType == LandmarkType.TRAIN_STATION && it.isBuilt
-            }
+        get() = activePlayerHasBuiltLandmark(LandmarkType.TRAIN_STATION)
+
+    // Radio Tower (#326) unlocks the once-per-turn reroll during RESOLVE_EFFECTS.
+    val hasRadioTower: Boolean
+        get() = activePlayerHasBuiltLandmark(LandmarkType.RADIO_TOWER)
+
+    /**
+     * Radio Tower reroll gate (#326): the active player may reroll the dice
+     * during RESOLVE_EFFECTS once they have built a Radio Tower and a roll
+     * already exists this turn. The server stays authoritative for the
+     * once-per-turn rule; this only drives the client action and its button.
+     */
+    val canReroll: Boolean
+        get() = gameStatus == GameStatus.IN_PROGRESS &&
+            gamePhase == GamePhase.RESOLVE_EFFECTS &&
+            isActivePlayer &&
+            hasRadioTower &&
+            diceResult != null
+
+    private fun activePlayerHasBuiltLandmark(landmarkType: LandmarkType): Boolean {
+        val activePlayerDatabaseId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
+            ?: return false
+        return playerLandmarks[activePlayerDatabaseId].orEmpty().any {
+            it.landmarkType == landmarkType && it.isBuilt
         }
+    }
 
     val hasRadioTower: Boolean
         get() {

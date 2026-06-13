@@ -85,6 +85,11 @@ interface WebSocketClient {
     )
 
     fun rollDice(diceCount: Int = 1)
+
+    // Radio Tower reroll (#326). Re-rolls the active player's dice during
+    // RESOLVE_EFFECTS; the server gates it on a built Radio Tower and the
+    // once-per-turn rule, and broadcasts the result as a ROLL_DICE / DICE_REROLLED.
+    fun rerollDice(diceCount: Int = 1)
     fun advancePhase(gameId: Int)
     fun resolveEffects(gameId: Int)
     fun endTurn(gameId: Int)
