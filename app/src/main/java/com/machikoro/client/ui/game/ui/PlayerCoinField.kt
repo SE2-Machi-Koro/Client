@@ -39,7 +39,7 @@ fun PlayerCoinField(
         Text(
             text = "$coins",
             color = Color.White,
-            fontSize = 36.sp
+            fontSize = 30.sp
         )
 
         Image(

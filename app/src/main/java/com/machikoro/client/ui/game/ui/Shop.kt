@@ -2,7 +2,6 @@ package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalOverscrollFactory
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -16,30 +15,22 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,6 +40,7 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
+import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.shop.CardDefinitions
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
@@ -57,7 +49,10 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.game.GameScreen
+import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.GreenDark
+import com.machikoro.client.ui.theme.GreenLight
 import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 
@@ -91,99 +86,47 @@ internal fun BuyingPhaseShop(
         )
     }
 
-    var selectedTab by remember {
-            mutableStateOf("Landmarks")
-    }
-
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    CompositionLocalProvider(
+        LocalOverscrollFactory provides null
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(
-                24.dp,
-                Alignment.CenterHorizontally
-            ),
-            verticalAlignment = Alignment.CenterVertically
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top buttons
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = if(selectedTab == "Landmarks") TextBlueDark else Color.White,
-                shadowElevation = 3.dp,
-                modifier = modifier
-                    .wrapContentSize()
 
-                ) {
-                    Text(
-                        text = "Landmarks",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if(selectedTab == "Landmarks") Color.White else TextBlueDark,
-                        maxLines = 1,
-                        fontSize = 18.sp,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                            .clickable(
-                                onClick = { selectedTab = "Landmarks"},
-                    )
-                )
+            // LANDMARKS TITLE
+            item {
+                BasicText("Landmarks")
             }
 
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = if(selectedTab == "Establishments") TextBlueDark else Color.White,
-                shadowElevation = 3.dp,
-                modifier = modifier
-                    .wrapContentSize()
-                    .border(
-                        width = if(selectedTab == "Establishments") 3.dp else 0.dp,
-                        color = TextBlueDark,
-                        shape = RoundedCornerShape(16.dp)
-                    ),
-
+            // LANDMARKS ROW
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                Text(
-                    text = "Establishments",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if(selectedTab == "Establishments") Color.White else TextBlueDark,
-                    maxLines = 1,
-                    fontSize = 18.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                        .clickable(
-                        onClick = { selectedTab = "Establishments"},
-                    )
-                )
-            }
-        }
-
-        if (selectedTab == "Landmarks") {
-            // Cards grid
-            Row(
-                modifier = Modifier.weight(1f),
-            ) {
-                landmarks.forEach { item ->
-                    ShopImageTile(
-                        item = item,
-                        state = state,
-                        onPurchaseClick = onPurchaseClick,
-                        isRecommended = item.type == recommendedCardType?.name
-                    )
+                    landmarks.forEach { item ->
+                        ShopImageTile(
+                            item = item,
+                            state = state,
+                            onPurchaseClick = onPurchaseClick,
+                            isRecommended = item.type == recommendedCardType?.name
+                        )
+                    }
                 }
             }
-        } else {
-            // Cards grid
-            CompositionLocalProvider(
-                LocalOverscrollFactory provides null
-            ) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(
-                        items = establishments,
-                        key = { it.type }
-                    ) { item ->
 
+            // ESTABLISHMENTS TITLE
+            item {
+                BasicText("Establishments")
+            }
+
+            // GRID
+            items(establishments.chunked(4)) { rowItems ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    rowItems.forEach { item ->
                         ShopImageTile(
                             item = item,
                             state = state,
@@ -194,21 +137,9 @@ internal fun BuyingPhaseShop(
                 }
             }
         }
-
-        // Purchase message
-        state.purchaseMessage?.let { message ->
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = state.purchaseState.toFeedbackColor(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
     }
 }
+
 
 
 
@@ -236,29 +167,75 @@ private fun ShopImageTile(
     // Allow clicking if purchasable OR if already selected (to deselect/change selection)
     val isClickable = canPurchase || isSelected
 
-    Image(
-        painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
-        contentDescription = null,
-        contentScale = ContentScale.Fit,
+    val framePadding = Modifier.padding(
+        start = 6.dp,
+        end = 6.dp,
+        bottom = 9.dp
+    )
+
+    Box(
         modifier = modifier
-            .width(155.dp)
-            .height(175.dp)
-            .alpha(if (state.canPurchaseItem(item)) 1f else 0.45f)
-            .border(2.dp, borderColor, SHOP_CARD_SHAPE)
-            .clip(SHOP_CARD_SHAPE)
+            .wrapContentSize()
             .clickable(
                 enabled = isClickable,
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
             ) {
                 onPurchaseClick(item.type)
-            }
-            .semantics {
+            } .semantics {
                 contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
                         if (isRecommended) ", recommended" else ""
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .width(155.dp)
+                .height(175.dp),
+            contentAlignment = Alignment.Center
+        ) {
+
+            Image(
+                painter = painterResource(
+                    id = ShopImageResolver.drawableForShopItem(item)
+                ),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(if (canPurchase) 1f else 0.45f)
+                    .semantics {
+                        contentDescription =
+                            "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
+                                    if (isRecommended) ", recommended" else ""
+                    }
+            )
+
+            if (isRecommended && !isSelected) {
+                Image(
+                    painter = painterResource(R.drawable.card_frame_green),
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .then(framePadding)
+                )
             }
-    )
+
+            if (isSelected) {
+                Image(
+                    painter = painterResource(R.drawable.card_frame),
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .then(framePadding)
+                )
+            }
+        }
+    }
 }
+
 
 internal fun GameScreenState.shouldShowBuyingPhaseShop(): Boolean =
     isBuyingPhase &&
@@ -329,3 +306,43 @@ private fun previewBuyingPhaseState() = GameScreenState(
         )
     )
 )
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun BuyingPhaseShopWithFramePreview() {
+    ClientTheme {
+        BuyingPhaseShop(
+            state = previewBuyingPhaseState().copy(
+                pendingPurchaseItemType = "SHOPPING_MALL"
+            ),
+            items = ShopCatalog.defaultItems,
+            onPurchaseClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 400)
+@Composable
+private fun ShopCardStatesPreview() {
+    ClientTheme {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(30.dp)
+        ) {
+            ShopImageTile(
+                item = ShopCatalog.defaultItems[0],
+                state = previewBuyingPhaseState(),
+                onPurchaseClick = {},
+                isRecommended = true
+            )
+
+            ShopImageTile(
+                item = ShopCatalog.defaultItems[1],
+                state = previewBuyingPhaseState().copy(
+                    selectedPurchaseItemType =
+                        ShopCatalog.defaultItems[1].type
+                ),
+                onPurchaseClick = {}
+            )
+        }
+    }
+}

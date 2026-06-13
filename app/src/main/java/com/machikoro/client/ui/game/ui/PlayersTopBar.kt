@@ -56,7 +56,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.machikoro.client.R
-import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.CardDefinitions
 import com.machikoro.client.domain.model.state.PlayerCardState
@@ -65,12 +64,10 @@ import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.toDisplayText
 import kotlin.collections.get
 import androidx.compose.ui.tooling.preview.Preview
-import com.machikoro.client.ui.theme.ButtonColor
 import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.ui.theme.OrangeDark
 import com.machikoro.client.ui.theme.PanelBackgroundBeigeDark
+import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextOnLight
-import com.machikoro.client.ui.theme.TextOnOrange
 import com.machikoro.client.ui.theme.White
 import kotlinx.coroutines.delay
 
@@ -580,7 +577,7 @@ private fun LandmarkPip(
     built: Boolean
 ) {
     val pipColor = if (built) {
-        OrangeDark
+        TextBlueDark
     } else {
         MaterialTheme.colorScheme.outline
     }

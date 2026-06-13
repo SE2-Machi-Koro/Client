@@ -80,7 +80,7 @@ fun DiceResultDisplay(
             Text(
                 text = "$sum",
                 style = MaterialTheme.typography.bodyLarge,
-                fontSize = 48.sp,
+                fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
