@@ -110,7 +110,7 @@ fun GameScreen(
             text = {
                 Text(
                     "Bet that ${accuseTarget.displayName} used the Insider Trading cheat. " +
-                            "If you're wrong, you lose a coin."
+                        "If you're wrong, you lose a coin."
                 )
             },
             confirmButton = {
@@ -149,8 +149,6 @@ fun GameScreen(
         when {
             showOwnCards -> 10
             showMarketplace -> 10
-            state.isBuyingPhase -> 30
-            state.gamePhase == GamePhase.ROLL_DICE -> 20
             else -> 0
         }
 
