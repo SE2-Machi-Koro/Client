@@ -85,6 +85,77 @@ class BuyingPhaseShopStateTest {
     }
 
     @Test
+    fun unownedPurpleEstablishmentIsAvailableForPurchase() {
+        val item = shopItem("STADIUM", isAvailable = true, color = ShopItemColor.PURPLE)
+        val state = buyingPhaseState(activePlayerId = 42, myUserId = 42).copy(
+            players = listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 6,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            ),
+            playerCards = mapOf(100 to listOf(PlayerCardState(CardType.TV_STATION, quantity = 1))),
+            marketplace = mapOf(CardType.STADIUM to 1)
+        )
+
+        assertFalse(state.isAlreadyOwnedPurpleEstablishment(item))
+        assertTrue(state.isShopItemAvailableFromMarketplace(item))
+    }
+
+    @Test
+    fun zeroQuantityPurpleEstablishmentIsNotTreatedAsOwned() {
+        val item = shopItem("STADIUM", isAvailable = true, color = ShopItemColor.PURPLE)
+        val state = buyingPhaseState(activePlayerId = 42, myUserId = 42).copy(
+            players = listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 6,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            ),
+            playerCards = mapOf(100 to listOf(PlayerCardState(CardType.STADIUM, quantity = 0))),
+            marketplace = mapOf(CardType.STADIUM to 1)
+        )
+
+        assertFalse(state.isAlreadyOwnedPurpleEstablishment(item))
+    }
+
+    @Test
+    fun purpleEstablishmentWithUnknownCardTypeIsNotTreatedAsOwned() {
+        val item = shopItem("UNKNOWN_CARD", isAvailable = true, color = ShopItemColor.PURPLE)
+        val state = buyingPhaseState(activePlayerId = 42, myUserId = 42).copy(
+            players = listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 6,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            ),
+            playerCards = mapOf(100 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1)))
+        )
+
+        assertFalse(state.isAlreadyOwnedPurpleEstablishment(item))
+    }
+
+    @Test
+    fun purpleEstablishmentWithoutKnownActivePlayerCardsIsNotTreatedAsOwned() {
+        val item = shopItem("STADIUM", isAvailable = true, color = ShopItemColor.PURPLE)
+        val state = buyingPhaseState(activePlayerId = 42, myUserId = 42).copy(
+            players = emptyList(),
+            playerCards = mapOf(100 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1)))
+        )
+
+        assertFalse(state.isAlreadyOwnedPurpleEstablishment(item))
+    }
+
+    @Test
     fun ownedNonPurpleEstablishmentIsStillAvailableForDuplicates() {
         val item = shopItem("BAKERY", isAvailable = true, color = ShopItemColor.GREEN)
         val state = buyingPhaseState(activePlayerId = 42, myUserId = 42).copy(
