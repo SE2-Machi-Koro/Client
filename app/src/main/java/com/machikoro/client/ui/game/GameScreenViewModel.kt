@@ -77,6 +77,16 @@ class GameScreenViewModel(
     val canAccuseThisTurn: StateFlow<Boolean>
         get() = mutableCanAccuseThisTurn.asStateFlow()
     private val mutableCanAccuseThisTurn = MutableStateFlow(true)
+
+    /**
+     * Radio Tower reroll budget (#326). True until the active player spends their
+     * once-per-turn reroll; renews when the turn rotates or a new game starts,
+     * using the same non-null discipline as the accusation budget. The server is
+     * authoritative — this just stops the client re-sending within a turn.
+     */
+    val canRerollThisTurn: StateFlow<Boolean>
+        get() = mutableCanRerollThisTurn.asStateFlow()
+    private val mutableCanRerollThisTurn = MutableStateFlow(true)
     private var lastTurnOwnerUserId: Int? = null
     private var lastSeenRoundNumber: Int? = null
     private val mutableCheatActivations = MutableSharedFlow<CardType?>(
@@ -102,9 +112,11 @@ class GameScreenViewModel(
     init {
         viewModelScope.launch {
             webSocketClient.activeGameId.collect { gameId ->
-                // A different game means a fresh accusation budget (#280).
+                // A different game means a fresh accusation budget (#280) and a
+                // fresh reroll budget (#326).
                 if (gameId != null && mutableState.value.gameId != gameId) {
                     mutableCanAccuseThisTurn.value = true
+                    mutableCanRerollThisTurn.value = true
                 }
                 mutableState.update { current ->
                     current.copy(gameId = gameId)
@@ -145,6 +157,7 @@ class GameScreenViewModel(
                 if (activePlayerId != null) {
                     if (lastTurnOwnerUserId != null && activePlayerId != lastTurnOwnerUserId) {
                         mutableCanAccuseThisTurn.value = true
+                        mutableCanRerollThisTurn.value = true
                     }
                     lastTurnOwnerUserId = activePlayerId
                 }
@@ -173,6 +186,7 @@ class GameScreenViewModel(
                 if (roundNumber != null) {
                     if (lastSeenRoundNumber != null && roundNumber != lastSeenRoundNumber) {
                         mutableCanAccuseThisTurn.value = true
+                        mutableCanRerollThisTurn.value = true
                     }
                     lastSeenRoundNumber = roundNumber
                 }
@@ -253,6 +267,20 @@ class GameScreenViewModel(
         if (!mutableState.value.isActivePlayer) return
         mutableState.update { it.copy(isRolling = true) }
         webSocketClient.rollDice(diceCount)
+    }
+
+    /**
+     * Radio Tower reroll (#326). Re-rolls the active player's dice during
+     * RESOLVE_EFFECTS when they have built a Radio Tower ([GameScreenState.canReroll])
+     * and still have their once-per-turn budget ([canRerollThisTurn]). No-op
+     * otherwise; the server stays authoritative for the result and phase.
+     */
+    fun rerollDice(diceCount: Int = 1) {
+        if (!mutableState.value.canReroll) return
+        if (!mutableCanRerollThisTurn.value) return
+        mutableCanRerollThisTurn.value = false
+        mutableState.update { it.copy(isRolling = true) }
+        webSocketClient.rerollDice(diceCount)
     }
 
     /**

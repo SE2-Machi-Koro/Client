@@ -77,6 +77,7 @@ fun AppRoot(
     onFillWithDummies: () -> Unit = {},
     onResetLobby: () -> Unit = {},
     onRollDice: (diceCount: Int) -> Unit = {},
+    onReroll: (diceCount: Int) -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
     onBuySelectedClick: () -> Unit = {},
@@ -88,6 +89,7 @@ fun AppRoot(
     onShake: () -> Unit = {},
     onAccuse: (Int) -> Unit = {},
     canAccuse: Boolean = true,
+    canReroll: Boolean = true,
     hasActiveGame: Boolean = false,
     onResumeGameClick: () -> Unit = {},
     onPurgeClick: () -> Unit = {},
@@ -233,6 +235,7 @@ fun AppRoot(
                 GameScreen(
                     state = gameScreenState.copy(gameId = routedGameId ?: gameScreenState.gameId),
                     onRollDice = onRollDice,
+                    onReroll = onReroll,
                     onTurnFlowAction = onTurnFlowAction,
                     onPurchaseClick = onPurchaseClick,
                     onBuySelectedClick = onBuySelectedClick,
@@ -242,6 +245,7 @@ fun AppRoot(
                     onShake = onShake,
                     onAccuse = onAccuse,
                     canAccuse = canAccuse,
+                    canReroll = canReroll,
                 )
             }
 
