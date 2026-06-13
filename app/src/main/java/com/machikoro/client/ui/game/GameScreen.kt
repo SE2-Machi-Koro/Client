@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -130,12 +131,17 @@ fun GameScreen(
     var showLeaveDialog by remember { mutableStateOf(false) }
     var showOwnCards by remember { mutableStateOf(false) }
     var showMarketplace by remember { mutableStateOf(false) }
-    val timerTime =
+    val phaseTimerTime =
+        when {
+            state.isBuyingPhase -> 30
+            state.gamePhase == GamePhase.ROLL_DICE -> 20
+            else -> 0
+        }
+
+    val cardsTimerTime =
         when {
             showOwnCards -> 10
             showMarketplace -> 10
-            state.isBuyingPhase -> 30
-            state.gamePhase == GamePhase.ROLL_DICE -> 20
             else -> 0
         }
 
@@ -295,14 +301,27 @@ fun GameScreen(
                         phase = state.gamePhase,
                         text = state.customDisplayText
                     )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
+                    ) {
 
-                    if (timerTime > 0) {
-                        DecreasingLineTimer(
-                            timerTime,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 4.dp)
-                        )
+                        // phase timer stays alive
+                        if (phaseTimerTime > 0) {
+                            Box(
+                                modifier = Modifier.alpha(
+                                    if (cardsTimerTime > 0) 0f else 1f
+                                )
+                            ) {
+                                DecreasingLineTimer(phaseTimerTime)
+                            }
+                        }
+
+                        // cards timer overlay
+                        if (cardsTimerTime > 0) {
+                            DecreasingLineTimer(cardsTimerTime)
+                        }
                     }
                 }
             }
@@ -345,7 +364,8 @@ fun GameScreen(
                     && !showMarketplace
                 ) {
                     Column(
-                        modifier = Modifier.align(Alignment.Center)
+                        modifier = Modifier
+                            .align(Alignment.Center)
                             .fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -353,9 +373,10 @@ fun GameScreen(
                         Image(
                             painter = painterResource(id = R.drawable.rotated_arrow),
                             contentDescription = "Arrow",
-                            modifier = Modifier.clickable {
-                                showOwnCards = false
-                            }
+                            modifier = Modifier
+                                .clickable {
+                                    showOwnCards = false
+                                }
                                 .size(35.dp)
                             )
                         BigPlayerCardsDisplay(
@@ -370,7 +391,8 @@ fun GameScreen(
                     && !showOwnCards
                 ) {
                     Column(
-                        modifier = Modifier.align(Alignment.Center)
+                        modifier = Modifier
+                            .align(Alignment.Center)
                             .fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -447,13 +469,15 @@ fun GameScreen(
 // RIGHT
 // =====================================
         rightContent = {
-            Box(modifier = Modifier.fillMaxHeight()
+            Box(modifier = Modifier
+                .fillMaxHeight()
                 .width(140.dp)
             ) {
 
             PlayerCoinField(
                state = state,
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier
+                    .align(Alignment.Center)
                     .offset(y = 45.dp)
             )
 
@@ -471,9 +495,10 @@ fun GameScreen(
                             ActionButton(
                                 onClick = if (state.isBuyingPhase) onBuySelectedClick else onTurnFlowAction,
                                 enabled = !state.isBuyingPhase || state.canConfirmSelectedPurchase(),
-                                modifier = Modifier.semantics {
-                                    contentDescription = turnFlowLabel
-                                }
+                                modifier = Modifier
+                                    .semantics {
+                                        contentDescription = turnFlowLabel
+                                    }
                                     .fillMaxWidth(),
                                 label = turnFlowLabel,
                             )
@@ -483,9 +508,10 @@ fun GameScreen(
                                SecondaryActionButton(
                                    onClick = onTurnFlowAction,
                                    enabled = state.purchaseState != PurchaseState.PENDING,
-                                   modifier = Modifier.semantics {
-                                       contentDescription = "Skip"
-                                   }
+                                   modifier = Modifier
+                                       .semantics {
+                                           contentDescription = "Skip"
+                                       }
                                        .fillMaxWidth(),
                                    label = "Skip",
                            )
@@ -499,7 +525,8 @@ fun GameScreen(
         //Small own cards at the button
         if(isCardViewPossible && !showOwnCards && !showMarketplace) {
             Column(
-                modifier = Modifier.align(Alignment.BottomCenter)
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .offset(y = 90.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
 
@@ -507,9 +534,10 @@ fun GameScreen(
                 Image(
                     painter = painterResource(id = R.drawable.arrow_button),
                     contentDescription = "Arrow",
-                    modifier = Modifier.clickable {
-                        showOwnCards = true
-                    }
+                    modifier = Modifier
+                        .clickable {
+                            showOwnCards = true
+                        }
                         .size(35.dp),
 
                 )
