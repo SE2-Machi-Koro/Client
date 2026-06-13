@@ -67,6 +67,10 @@ fun PdfViewerScreen(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val currentPage = remember { mutableIntStateOf(0) }
+    // Number of real PDF pages. The viewer appends one synthetic native page
+    // after these for the cheat/accusation tutorial (issue #336), so the
+    // displayed [totalPages] is pdfPageCount + 1 once the PDF has loaded.
+    val pdfPageCount = remember { mutableIntStateOf(0) }
     val totalPages = remember { mutableIntStateOf(0) }
     val currentBitmap = remember { mutableStateOf<Bitmap?>(null) }
     val pdfRendererRef = remember { mutableStateOf<PdfRenderer?>(null) }
@@ -98,7 +102,9 @@ fun PdfViewerScreen(
 
             fileDescriptorRef.value = fileDescriptor
             pdfRendererRef.value = pdfRenderer
-            totalPages.intValue = pdfRenderer.pageCount
+            pdfPageCount.intValue = pdfRenderer.pageCount
+            // +1 for the appended native "Cheating & Accusations" page (#336).
+            totalPages.intValue = pdfRenderer.pageCount + 1
 
             // Render first page
             renderPage(pdfRenderer, 0, currentBitmap)
@@ -107,17 +113,21 @@ fun PdfViewerScreen(
         }
     }
 
-    // Update bitmap when page changes
+    // Update bitmap when page changes (skip the appended native cheat page).
     LaunchedEffect(currentPage.intValue) {
-        pdfRendererRef.value?.let { renderer ->
-            renderPage(renderer, currentPage.intValue, currentBitmap)
+        if (currentPage.intValue < pdfPageCount.intValue) {
+            pdfRendererRef.value?.let { renderer ->
+                renderPage(renderer, currentPage.intValue, currentBitmap)
+            }
         }
     }
 
     // Re-render when orientation changes
     LaunchedEffect(configuration.orientation) {
-        pdfRendererRef.value?.let { renderer ->
-            renderPage(renderer, currentPage.intValue, currentBitmap)
+        if (currentPage.intValue < pdfPageCount.intValue) {
+            pdfRendererRef.value?.let { renderer ->
+                renderPage(renderer, currentPage.intValue, currentBitmap)
+            }
         }
     }
 
@@ -145,7 +155,10 @@ fun PdfViewerScreen(
                 .padding(top = 56.dp, bottom = if (totalPages.intValue > 1) 56.dp else 0.dp)
         ) {
             // PDF content
-            if (isLandscape) {
+            if (pdfPageCount.intValue > 0 && currentPage.intValue >= pdfPageCount.intValue) {
+                // Appended native tutorial page: Insider Trading cheat + accusations (#336).
+                CheatRulesContent(modifier = Modifier.fillMaxSize())
+            } else if (isLandscape) {
                 // Landscape: fit to height, centered
                 Box(
                     modifier = Modifier.fillMaxSize(),
