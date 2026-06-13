@@ -178,8 +178,8 @@ private fun ShopImageTile(
                 .semantics {
                     contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
                             remainingQuantity?.let { ", $it remaining" }.orEmpty() +
-                            if (remainingQuantity == 0) ", unavailable" else "" +
-                            if (isRecommended) ", recommended" else ""
+                            (if (remainingQuantity == 0) ", unavailable" else "") +
+                            (if (isRecommended) ", recommended" else "")
                 }
         ) {
             CardArtImage(
