@@ -351,7 +351,7 @@ fun GameScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         when {
-                            state.isRolling -> DiceAnimationDisplay()
+                            state.isRolling -> DiceAnimationDisplay(animating = true)
                             state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
                         }
 
