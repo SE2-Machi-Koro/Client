@@ -1,16 +1,17 @@
 package com.machikoro.client.ui.game.ui
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,11 +21,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
@@ -41,6 +39,8 @@ import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
+import com.machikoro.client.domain.model.state.isShopItemAvailableFromMarketplace
+import com.machikoro.client.domain.model.state.remainingMarketplaceQuantityFor
 import com.machikoro.client.ui.game.GameScreen
 import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.theme.ClientTheme
@@ -146,6 +146,7 @@ private fun ShopImageTile(
     val canPurchase = state.canPurchaseItem(item)
     val isSelected = state.selectedPurchaseItemType == item.type
     val isFeedbackItem = state.purchaseFeedbackItemType == item.type
+    val remainingQuantity = state.remainingMarketplaceQuantityFor(item)
 
     val borderColor = when {
         isFeedbackItem && state.purchaseState == PurchaseState.SUCCESS -> PrimaryOrange
@@ -158,28 +159,43 @@ private fun ShopImageTile(
     // Allow clicking if purchasable OR if already selected (to deselect/change selection)
     val isClickable = canPurchase || isSelected
 
-    Image(
-        painter = painterResource(id = ShopImageResolver.drawableForShopItem(item)),
-        contentDescription = null,
-        contentScale = ContentScale.Fit,
-        modifier = modifier
-            .width(155.dp)
-            .height(175.dp)
-            .alpha(if (state.canPurchaseItem(item)) 1f else 0.45f)
-            .border(2.dp, borderColor, SHOP_CARD_SHAPE)
-            .clip(SHOP_CARD_SHAPE)
-            .clickable(
-                enabled = isClickable,
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ) {
-                onPurchaseClick(item.type)
-            }
-            .semantics {
-                contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
-                        if (isRecommended) ", recommended" else ""
-            }
-    )
+    Box(
+        modifier = modifier.wrapContentSize()
+    ) {
+        Box(
+            modifier = Modifier
+                .width(155.dp)
+                .height(175.dp)
+                .border(2.dp, borderColor, SHOP_CARD_SHAPE)
+                .clip(SHOP_CARD_SHAPE)
+                .clickable(
+                    enabled = isClickable,
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) {
+                    onPurchaseClick(item.type)
+                }
+                .semantics {
+                    contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
+                            remainingQuantity?.let { ", $it remaining" }.orEmpty() +
+                            (if (remainingQuantity == 0) ", unavailable" else "") +
+                            (if (isRecommended) ", recommended" else "")
+                }
+        ) {
+            CardArtImage(
+                drawableResId = ShopImageResolver.drawableForShopItem(item),
+                width = 155.dp,
+                height = 175.dp,
+                alpha = if (canPurchase) 1f else 0.45f
+            )
+        }
+        remainingQuantity?.let { count ->
+            CardQuantityIndicator(
+                quantity = count,
+                modifier = Modifier.align(Alignment.TopStart)
+            )
+        }
+    }
 }
 
 internal fun GameScreenState.shouldShowBuyingPhaseShop(): Boolean =
@@ -189,7 +205,7 @@ internal fun GameScreenState.shouldShowBuyingPhaseShop(): Boolean =
             gameId != null
 
 private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
-    item.isAvailable &&
+    isShopItemAvailableFromMarketplace(item) &&
             purchaseState != PurchaseState.PENDING &&
             purchaseState != PurchaseState.SUCCESS &&
             hasEnoughKnownCoinsFor(item) &&

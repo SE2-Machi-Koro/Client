@@ -122,6 +122,28 @@ class HomeScreenViewModelTest {
     }
 
     @Test
+    fun setJoinLobbyErrorRaisesErrorFlag() {
+        val viewModel = HomeViewModel(FakeWebSocketClient())
+        assertFalse(viewModel.joinLobbyError.value)
+
+        viewModel.setJoinLobbyError("Lobby code is invalid")
+
+        assertTrue(viewModel.joinLobbyError.value)
+    }
+
+    @Test
+    fun changingJoinLobbyCodeClearsErrorFlag() {
+        val viewModel = HomeViewModel(FakeWebSocketClient())
+        viewModel.setJoinLobbyError("Lobby code is invalid")
+        assertTrue(viewModel.joinLobbyError.value)
+
+        viewModel.onJoinLobbyCodeChange("XYZ789")
+
+        assertFalse(viewModel.joinLobbyError.value)
+        assertEquals("XYZ789", viewModel.joinLobbyCode.value)
+    }
+
+    @Test
     fun startGameDelegatesToWebSocketClient() {
         val fakeClient = FakeWebSocketClient()
         val viewModel = HomeViewModel(fakeClient)
@@ -212,6 +234,7 @@ class HomeScreenViewModelTest {
         override fun connect() { connectCalled = true }
         override fun disconnect() { disconnectCalled = true }
         override fun rollDice(diceCount: Int) = Unit
+        override fun rerollDice(diceCount: Int) = Unit
         override fun advancePhase(gameId: Int) = Unit
         override fun resolveEffects(gameId: Int) = Unit
         override fun endTurn(gameId: Int) = Unit

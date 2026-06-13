@@ -1,6 +1,7 @@
 package com.machikoro.client.domain.model.state
 
 import com.machikoro.client.domain.enums.GamePhase
+import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -149,6 +150,89 @@ class GameScreenStateTest {
 
         assertFalse(state.hasTrainStation)
     }
+
+    @Test
+    fun hasRadioTowerIsTrueWhenActivePlayerHasBuiltRadioTower() {
+        val state = trainStationState(
+            playerLandmarks = mapOf(
+                ACTIVE_PLAYER_DATABASE_ID to listOf(
+                    PlayerLandmarkState(
+                        landmarkType = LandmarkType.RADIO_TOWER,
+                        isBuilt = true,
+                    ),
+                ),
+            ),
+        )
+
+        assertTrue(state.hasRadioTower)
+    }
+
+    @Test
+    fun hasRadioTowerIsFalseWhenRadioTowerIsNotBuilt() {
+        val state = trainStationState(
+            playerLandmarks = mapOf(
+                ACTIVE_PLAYER_DATABASE_ID to listOf(
+                    PlayerLandmarkState(
+                        landmarkType = LandmarkType.RADIO_TOWER,
+                        isBuilt = false,
+                    ),
+                ),
+            ),
+        )
+
+        assertFalse(state.hasRadioTower)
+    }
+
+    @Test
+    fun canRerollIsTrueForActivePlayerWithRadioTowerDuringResolveEffectsWithDice() {
+        assertTrue(rerollState().canReroll)
+    }
+
+    @Test
+    fun canRerollIsFalseOutsideResolveEffectsPhase() {
+        assertFalse(rerollState(gamePhase = GamePhase.BUY_OR_BUILD).canReroll)
+    }
+
+    @Test
+    fun canRerollIsFalseWithoutBuiltRadioTower() {
+        assertFalse(rerollState(radioTowerBuilt = false).canReroll)
+    }
+
+    @Test
+    fun canRerollIsFalseBeforeAnyDiceRollExists() {
+        assertFalse(rerollState(diceResult = null).canReroll)
+    }
+
+    @Test
+    fun canRerollIsFalseWhenGameIsNotInProgress() {
+        assertFalse(rerollState(gameStatus = GameStatus.FINISHED).canReroll)
+    }
+
+    /**
+     * State where the local active player (database id [ACTIVE_PLAYER_DATABASE_ID])
+     * is in RESOLVE_EFFECTS after a roll, optionally owning a built Radio Tower —
+     * the baseline for the [GameScreenState.canReroll] gate (#326).
+     */
+    private fun rerollState(
+        gamePhase: GamePhase = GamePhase.RESOLVE_EFFECTS,
+        gameStatus: GameStatus = GameStatus.IN_PROGRESS,
+        radioTowerBuilt: Boolean = true,
+        diceResult: List<Int>? = listOf(4),
+    ): GameScreenState =
+        trainStationState(
+            playerLandmarks = mapOf(
+                ACTIVE_PLAYER_DATABASE_ID to listOf(
+                    PlayerLandmarkState(
+                        landmarkType = LandmarkType.RADIO_TOWER,
+                        isBuilt = radioTowerBuilt,
+                    ),
+                ),
+            ),
+        ).copy(
+            gamePhase = gamePhase,
+            gameStatus = gameStatus,
+            diceResult = diceResult,
+        )
 
     private fun trainStationState(
         playerLandmarks: Map<Int, List<PlayerLandmarkState>>,

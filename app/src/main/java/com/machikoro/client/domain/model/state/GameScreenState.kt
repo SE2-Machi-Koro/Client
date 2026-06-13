@@ -4,6 +4,7 @@ import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
+import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.model.shop.ShopItem
 
 data class GameScreenState(
@@ -43,13 +44,32 @@ data class GameScreenState(
         get() = gamePhase == GamePhase.BUY_OR_BUILD
 
     val hasTrainStation: Boolean
-        get() {
-            val activePlayerDatabaseId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
-                ?: return false
-            return playerLandmarks[activePlayerDatabaseId].orEmpty().any {
-                it.landmarkType == LandmarkType.TRAIN_STATION && it.isBuilt
-            }
+        get() = activePlayerHasBuiltLandmark(LandmarkType.TRAIN_STATION)
+
+    // Radio Tower (#326) unlocks the once-per-turn reroll during RESOLVE_EFFECTS.
+    val hasRadioTower: Boolean
+        get() = activePlayerHasBuiltLandmark(LandmarkType.RADIO_TOWER)
+
+    /**
+     * Radio Tower reroll gate (#326): the active player may reroll the dice
+     * during RESOLVE_EFFECTS once they have built a Radio Tower and a roll
+     * already exists this turn. The server stays authoritative for the
+     * once-per-turn rule; this only drives the client action and its button.
+     */
+    val canReroll: Boolean
+        get() = gameStatus == GameStatus.IN_PROGRESS &&
+            gamePhase == GamePhase.RESOLVE_EFFECTS &&
+            isActivePlayer &&
+            hasRadioTower &&
+            diceResult != null
+
+    private fun activePlayerHasBuiltLandmark(landmarkType: LandmarkType): Boolean {
+        val activePlayerDatabaseId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
+            ?: return false
+        return playerLandmarks[activePlayerDatabaseId].orEmpty().any {
+            it.landmarkType == landmarkType && it.isBuilt
         }
+    }
 
     companion object {
         fun initial() = GameScreenState(
@@ -76,3 +96,12 @@ data class GameScreenState(
         )
     }
 }
+
+fun GameScreenState.remainingMarketplaceQuantityFor(item: ShopItem): Int? {
+    if (item.purchaseType != PurchaseType.ESTABLISHMENT || marketplace.isEmpty()) return null
+    val cardType = runCatching { CardType.valueOf(item.type) }.getOrNull() ?: return null
+    return marketplace[cardType] ?: 0
+}
+
+fun GameScreenState.isShopItemAvailableFromMarketplace(item: ShopItem): Boolean =
+    remainingMarketplaceQuantityFor(item)?.let { it > 0 } ?: item.isAvailable
