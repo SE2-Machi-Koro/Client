@@ -471,7 +471,7 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         val errors = mutableListOf<String>()
 
-        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        client.lobbyJoinErrors.onEach { errors += it.userMessage }.launchIn(backgroundScope)
         runCurrent()
 
         client.connect()
@@ -500,7 +500,7 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         val errors = mutableListOf<String>()
 
-        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        client.lobbyJoinErrors.onEach { errors += it.userMessage }.launchIn(backgroundScope)
         runCurrent()
 
         client.connect()
@@ -536,7 +536,7 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         val errors = mutableListOf<String>()
 
-        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        client.lobbyJoinErrors.onEach { errors += it.userMessage }.launchIn(backgroundScope)
         runCurrent()
 
         client.connect()
@@ -872,7 +872,7 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         val errors = mutableListOf<String>()
 
-        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        client.lobbyJoinErrors.onEach { errors += it.userMessage }.launchIn(backgroundScope)
         runCurrent()
 
         client.connect()
@@ -934,7 +934,7 @@ class OkHttpWebSocketClientTest {
         val client = newClient(factory)
         val errors = mutableListOf<String>()
 
-        client.lobbyJoinErrors.onEach { errors += it }.launchIn(backgroundScope)
+        client.lobbyJoinErrors.onEach { errors += it.userMessage }.launchIn(backgroundScope)
         runCurrent()
 
         client.connect()

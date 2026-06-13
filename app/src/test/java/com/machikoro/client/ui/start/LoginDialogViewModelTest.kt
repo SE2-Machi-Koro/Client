@@ -141,7 +141,7 @@ class LoginDialogViewModelTest {
         viewModel.submit()
         advanceUntilIdle()
 
-        assertEquals("An error occurred (HTTP 500)", viewModel.state.value.errorMessage)
+        assertEquals("Login failed (HTTP 500)", viewModel.state.value.errorMessage)
     }
 
     @Test

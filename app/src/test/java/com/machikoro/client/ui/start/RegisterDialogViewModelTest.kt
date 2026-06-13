@@ -108,7 +108,7 @@ class RegisterDialogViewModelTest {
         viewModel.passwordChanged("hunter2")
         viewModel.submit()
         advanceUntilIdle()
-        assertEquals("An error occurred (HTTP 500)", viewModel.state.value.errorMessage)
+        assertEquals("Registration failed (HTTP 500)", viewModel.state.value.errorMessage)
     }
 
     @Test
