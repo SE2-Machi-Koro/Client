@@ -13,7 +13,6 @@ import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.network.error.ClientError
 import com.machikoro.client.domain.model.shop.ShopItem
-import com.machikoro.client.domain.model.shop.toActivationNumbers
 import com.machikoro.client.domain.model.state.AccusationResult
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCardState
@@ -1033,8 +1032,6 @@ class OkHttpWebSocketClient(
 
     private fun JSONObject.activationNumbers(): List<Int> =
         optJSONArray("activationNumbers")?.toActivationNumbers().orEmpty()
-            .ifEmpty { optString("activationRange").toActivationNumbers() }
-            .ifEmpty { optString("activationText").toActivationNumbers() }
 
     private fun JSONObject.effectText(cardType: CardType): String =
         optString("effectText")
