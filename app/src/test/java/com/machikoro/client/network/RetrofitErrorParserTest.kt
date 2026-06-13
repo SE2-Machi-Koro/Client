@@ -98,4 +98,25 @@ class RetrofitErrorParserTest {
             cancel.toClientError("fallback")
         }
     }
+
+    @Test
+    fun toUserMessageReturnsMessageForHttpError() {
+        val error = ClientError.Http(statusCode = 401, serverErrorCode = null, message = "Invalid credentials")
+
+        assertEquals("Invalid credentials", error.toUserMessage())
+    }
+
+    @Test
+    fun toUserMessagePrefixesNetworkError() {
+        val error = ClientError.Network("connect timed out")
+
+        assertEquals("Network error: connect timed out", error.toUserMessage())
+    }
+
+    @Test
+    fun toUserMessageReturnsMessageForUnknownError() {
+        val error = ClientError.Unknown("something exploded")
+
+        assertEquals("something exploded", error.toUserMessage())
+    }
 }
