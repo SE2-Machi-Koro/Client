@@ -300,15 +300,3 @@ fun List<Int>.toActivationText(): String? {
         "${numbers.first()}-${numbers.last()}"
     }
 }
-
-fun String.toActivationNumbers(): List<Int> {
-    val trimmed = trim()
-    if (trimmed.isBlank() || trimmed.equals("Permanent", ignoreCase = true)) return emptyList()
-    val rangeParts = trimmed.split("-", limit = 2).map { it.trim().toIntOrNull() }
-    if (rangeParts.size == 2 && rangeParts.all { it != null }) {
-        val start = rangeParts[0] ?: return emptyList()
-        val end = rangeParts[1] ?: return emptyList()
-        return (minOf(start, end)..maxOf(start, end)).toList()
-    }
-    return Regex("\\d+").findAll(trimmed).map { it.value.toInt() }.toList().distinct().sorted()
-}
