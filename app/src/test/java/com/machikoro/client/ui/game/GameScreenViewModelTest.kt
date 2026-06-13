@@ -29,6 +29,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -36,7 +37,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import retrofit2.HttpException
 import retrofit2.Response
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameScreenViewModelTest {
@@ -247,6 +250,116 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun rerollForwardsDiceCountWhenActivePlayerHasRadioTowerInResolveEffects() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        setUpRerollableTurn(fakeClient)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 2)
+
+        assertEquals(2, fakeClient.lastRerolledDiceCount)
+    }
+
+    @Test
+    fun rerollIsIgnoredOutsideResolveEffectsPhase() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        setUpRerollableTurn(fakeClient)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 1)
+
+        assertNull(fakeClient.lastRerolledDiceCount)
+    }
+
+    @Test
+    fun rerollIsIgnoredWhenActivePlayerHasNoRadioTower() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        setUpRerollableTurn(fakeClient, radioTowerBuilt = false)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 1)
+
+        assertNull(fakeClient.lastRerolledDiceCount)
+    }
+
+    @Test
+    fun rerollIsIgnoredWhenNotActivePlayer() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 1)
+        setUpRerollableTurn(fakeClient, activePlayerId = 99)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 1)
+
+        assertNull(fakeClient.lastRerolledDiceCount)
+    }
+
+    @Test
+    fun rerollIsLimitedToOncePerTurn() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        setUpRerollableTurn(fakeClient)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 1)
+        viewModel.rerollDice(diceCount = 1)
+
+        assertEquals(1, fakeClient.rerollCallCount)
+        assertFalse(viewModel.canRerollThisTurn.value)
+    }
+
+    @Test
+    fun rerollBudgetRenewsWhenTurnRotates() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        setUpRerollableTurn(fakeClient)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 1)
+        // Turn rotates to another player and back to us. advanceUntilIdle between
+        // emits so the conflating StateFlow actually surfaces the intermediate
+        // owner (99) to the rotation observer rather than collapsing to 42.
+        fakeClient.emitActivePlayerId(99)
+        advanceUntilIdle()
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.canRerollThisTurn.value)
+
+        viewModel.rerollDice(diceCount = 1)
+
+        assertEquals(2, fakeClient.rerollCallCount)
+    }
+
+    /**
+     * Drives the fake client into a state where the local player (user id 42,
+     * database id 7) is the active player in RESOLVE_EFFECTS after a roll, with a
+     * built Radio Tower — the precondition for [GameScreenViewModel.rerollDice].
+     */
+    private fun setUpRerollableTurn(
+        client: FakeWebSocketClient,
+        activePlayerId: Int = 42,
+        radioTowerBuilt: Boolean = true,
+    ) {
+        client.emitGameStatus(GameStatus.IN_PROGRESS)
+        client.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+        client.emitActivePlayerId(activePlayerId)
+        client.emitPlayers(
+            listOf(
+                PlayerCoinState(id = "7", displayName = "alice", coins = 5, isActivePlayer = true),
+            )
+        )
+        client.emitPlayerLandmarks(
+            mapOf(7 to listOf(PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = radioTowerBuilt)))
+        )
+        client.emitDiceResult(listOf(4))
+    }
+
+    @Test
     fun activePlayerIdFromClientIsReflectedInState() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient)
@@ -399,6 +512,142 @@ class GameScreenViewModelTest {
         viewModel.selectPurchaseItem("BAKERY")
 
         assertEquals("BAKERY", viewModel.state.value.selectedPurchaseItemType)
+    }
+
+    @Test
+    fun selectingAlreadyOwnedPurpleEstablishmentIsIgnored() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 10,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            )
+        )
+        fakeClient.emitPlayerCards(mapOf(100 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1))))
+        fakeClient.emitMarketplace(mapOf(CardType.STADIUM to 1))
+        advanceUntilIdle()
+
+        viewModel.selectPurchaseItem("STADIUM")
+
+        assertNull(viewModel.state.value.selectedPurchaseItemType)
+        assertNull(fakeClient.lastPurchase)
+    }
+
+    @Test
+    fun purchaseAlreadyOwnedPurpleEstablishmentIsIgnored() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 10,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            )
+        )
+        fakeClient.emitPlayerCards(mapOf(100 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1))))
+        fakeClient.emitMarketplace(mapOf(CardType.STADIUM to 1))
+        advanceUntilIdle()
+
+        viewModel.purchase("STADIUM")
+
+        assertNull(fakeClient.lastPurchase)
+        assertEquals(PurchaseState.IDLE, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun ownedNonPurpleEstablishmentCanStillBePurchasedAsDuplicate() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 10,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            )
+        )
+        fakeClient.emitPlayerCards(mapOf(100 to listOf(PlayerCardState(CardType.BAKERY, quantity = 1))))
+        fakeClient.emitMarketplace(mapOf(CardType.BAKERY to 5))
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+
+        assertEquals(
+            FakeWebSocketClient.PurchaseCall(
+                gameId = 7,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                cardType = "BAKERY",
+                landmarkType = null
+            ),
+            fakeClient.lastPurchase
+        )
+        assertEquals(PurchaseState.PENDING, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun unownedPurpleEstablishmentCanBePurchased() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 10,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            )
+        )
+        fakeClient.emitPlayerCards(mapOf(100 to listOf(PlayerCardState(CardType.BAKERY, quantity = 1))))
+        fakeClient.emitMarketplace(mapOf(CardType.STADIUM to 1))
+        advanceUntilIdle()
+
+        viewModel.purchase("STADIUM")
+
+        assertEquals(
+            FakeWebSocketClient.PurchaseCall(
+                gameId = 7,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                cardType = "STADIUM",
+                landmarkType = null
+            ),
+            fakeClient.lastPurchase
+        )
+        assertEquals(PurchaseState.PENDING, viewModel.state.value.purchaseState)
     }
 
     @Test
@@ -1148,7 +1397,7 @@ class GameScreenViewModelTest {
         job.cancel()
     }
 
-    // ── Resolving Effects auto-transition (#302) ─────────────────────────────
+    // -- Resolving Effects auto-transition (#302) ------------------------------
 
     private fun FakeWebSocketClient.enterResolveEffects(activeUserId: Int, gameId: Int = 7) {
         emitGameStatus(GameStatus.IN_PROGRESS)
@@ -1163,11 +1412,10 @@ class GameScreenViewModelTest {
         val viewModel = viewModel(fakeClient, userId = 42)
 
         fakeClient.enterResolveEffects(activeUserId = 42)
-        runCurrent() // settle collectors + schedule the dwell, but do NOT elapse it
+        runCurrent()
 
         viewModel.performTurnFlowAction()
 
-        // The manual button path is gone; the auto-timer has not fired yet either.
         assertNull(fakeClient.resolvedEffectsGameId)
         assertEquals(0, fakeClient.resolveEffectsCallCount)
     }
@@ -1175,7 +1423,7 @@ class GameScreenViewModelTest {
     @Test
     fun resolveEffectsAutoSendsAfterDwellForActivePlayer() = runTest {
         val fakeClient = FakeWebSocketClient()
-        val viewModel = viewModel(fakeClient, userId = 42)
+        viewModel(fakeClient, userId = 42)
 
         fakeClient.enterResolveEffects(activeUserId = 42)
         advanceUntilIdle()
@@ -1190,7 +1438,7 @@ class GameScreenViewModelTest {
     fun resolveEffectsDoesNotAutoSendBeforeDwellElapses() = runTest {
         val dwell = GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS
         val fakeClient = FakeWebSocketClient()
-        val viewModel = viewModel(fakeClient, userId = 42, resolveEffectsDwellMillis = dwell)
+        viewModel(fakeClient, userId = 42, resolveEffectsDwellMillis = dwell)
 
         fakeClient.enterResolveEffects(activeUserId = 42)
         runCurrent()
@@ -1199,7 +1447,7 @@ class GameScreenViewModelTest {
 
         assertEquals(0, fakeClient.resolveEffectsCallCount)
 
-        advanceUntilIdle() // cross the boundary
+        advanceUntilIdle()
 
         assertEquals(1, fakeClient.resolveEffectsCallCount)
     }
@@ -1207,7 +1455,7 @@ class GameScreenViewModelTest {
     @Test
     fun resolveEffectsDoesNotAutoSendForNonActivePlayer() = runTest {
         val fakeClient = FakeWebSocketClient()
-        val viewModel = viewModel(fakeClient, userId = 1) // local player is not the active one
+        viewModel(fakeClient, userId = 1)
 
         fakeClient.enterResolveEffects(activeUserId = 42)
         advanceUntilIdle()
@@ -1218,7 +1466,7 @@ class GameScreenViewModelTest {
     @Test
     fun resolveEffectsDoesNotAutoSendWhenGameIsNotInProgress() = runTest {
         val fakeClient = FakeWebSocketClient()
-        val viewModel = viewModel(fakeClient, userId = 42)
+        viewModel(fakeClient, userId = 42)
 
         fakeClient.emitGameStatus(GameStatus.WAITING)
         fakeClient.emitActiveGameId(7)
@@ -1233,12 +1481,11 @@ class GameScreenViewModelTest {
     fun resolveEffectsAutoSendIsCancelledWhenPhaseLeavesResolveEffectsMidDwell() = runTest {
         val dwell = GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS
         val fakeClient = FakeWebSocketClient()
-        val viewModel = viewModel(fakeClient, userId = 42, resolveEffectsDwellMillis = dwell)
+        viewModel(fakeClient, userId = 42, resolveEffectsDwellMillis = dwell)
 
         fakeClient.enterResolveEffects(activeUserId = 42)
         runCurrent()
         advanceTimeBy(dwell / 2)
-        // Server moves on before the dwell completes (e.g. another action advanced it).
         fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
         advanceUntilIdle()
 
@@ -1248,11 +1495,10 @@ class GameScreenViewModelTest {
     @Test
     fun resolveEffectsAutoSendFiresOnlyOncePerEntry() = runTest {
         val fakeClient = FakeWebSocketClient()
-        val viewModel = viewModel(fakeClient, userId = 42)
+        viewModel(fakeClient, userId = 42)
 
         fakeClient.enterResolveEffects(activeUserId = 42)
         advanceUntilIdle()
-        // A redundant same-phase snapshot must not re-arm the timer.
         fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
         advanceUntilIdle()
 
@@ -1447,7 +1693,7 @@ class GameScreenViewModelTest {
         assertEquals(1, fakeDebugApi.endGameCallCount)
     }
 
-    // ── Cheating accusations (#280) ──────────────────────────────────────────
+    // -- Cheating accusations (#280) ------------------------------------------
 
     @Test
     fun accuseForwardsGameIdAndAccusedPlayerIdToClient() = runTest {
@@ -1484,7 +1730,7 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         viewModel.accuse(22)
-        viewModel.accuse(33) // same turn — must be swallowed (one-per-turn rule)
+        viewModel.accuse(33)
 
         assertEquals(listOf(7 to 22), fakeClient.accusations)
         assertFalse(viewModel.canAccuseThisTurn.value)
@@ -1500,7 +1746,7 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         viewModel.accuse(22)
-        fakeClient.emitActivePlayerId(99) // turn rotates
+        fakeClient.emitActivePlayerId(99)
         advanceUntilIdle()
 
         assertTrue(viewModel.canAccuseThisTurn.value)
@@ -1536,9 +1782,6 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         viewModel.accuse(22)
-        // Disconnect (e.g. app backgrounded) nulls the active player; the
-        // reconnect snapshot restores the SAME turn — the spent budget must
-        // not renew.
         fakeClient.emitActivePlayerId(null)
         advanceUntilIdle()
         fakeClient.emitActivePlayerId(42)
@@ -1561,7 +1804,7 @@ class GameScreenViewModelTest {
         viewModel.accuse(22)
         fakeClient.emitRoundNumber(null)
         advanceUntilIdle()
-        fakeClient.emitRoundNumber(3) // reconnect restores the same round
+        fakeClient.emitRoundNumber(3)
         advanceUntilIdle()
 
         assertFalse(viewModel.canAccuseThisTurn.value)
@@ -1578,7 +1821,7 @@ class GameScreenViewModelTest {
         viewModel.accuse(22)
         assertFalse(viewModel.canAccuseThisTurn.value)
 
-        fakeClient.emitActiveGameId(8) // new game
+        fakeClient.emitActiveGameId(8)
         advanceUntilIdle()
 
         assertTrue(viewModel.canAccuseThisTurn.value)
@@ -1602,7 +1845,6 @@ class GameScreenViewModelTest {
                 )
             )
         )
-        // Affordable card in stock with positive expected value → recommendation.
         fakeClient.emitMarketplace(mapOf(CardType.WHEAT_FIELD to 6))
         advanceUntilIdle()
 
@@ -1629,8 +1871,6 @@ class GameScreenViewModelTest {
                 )
             )
         )
-        // Empty marketplace → recommendBestBuy returns null → the cheat produced
-        // nothing, so the player must not become catchable (#280).
         fakeClient.emitMarketplace(emptyMap())
         advanceUntilIdle()
 
@@ -1639,10 +1879,68 @@ class GameScreenViewModelTest {
         assertEquals(0, fakeClient.reportCheatCalls)
     }
 
+    @Test
+    fun endGameEmitsNetworkErrorMessageOnIoException() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val fakeDebugApi = FakeDebugApi(error = IOException("connect timed out"))
+        val viewModel = viewModel(fakeClient = fakeClient, userId = 42, fakeDebugApi = fakeDebugApi)
+        fakeClient.emitActiveGameId(7)
+        advanceUntilIdle()
+        val errors = mutableListOf<String>()
+        val job = launch { viewModel.debugEndGameErrors.collect { errors.add(it) } }
+        advanceUntilIdle()
+
+        viewModel.endGame()
+        advanceUntilIdle()
+
+        assertEquals(listOf("End game error: Network error: connect timed out"), errors)
+        job.cancel()
+    }
+
+    @Test
+    fun endGameEmitsParsedServerMessageOnHttpJsonError() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val errorBody = """{"errorCode":"GAME_NOT_FOUND","message":"Game does not exist"}"""
+            .toResponseBody("application/json".toMediaType())
+        val fakeDebugApi = FakeDebugApi(error = HttpException(Response.error<Unit>(404, errorBody)))
+        val viewModel = viewModel(fakeClient = fakeClient, userId = 42, fakeDebugApi = fakeDebugApi)
+        fakeClient.emitActiveGameId(7)
+        advanceUntilIdle()
+        val errors = mutableListOf<String>()
+        val job = launch { viewModel.debugEndGameErrors.collect { errors.add(it) } }
+        advanceUntilIdle()
+
+        viewModel.endGame()
+        advanceUntilIdle()
+
+        assertEquals(listOf("End game error: Game does not exist"), errors)
+        job.cancel()
+    }
+
+    @Test
+    fun purchaseFailureWithBlankMessageShowsFallbackMessage() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+        fakeClient.emitPurchaseEvent(PurchaseEvent.Failure(""))
+        advanceUntilIdle()
+
+        assertEquals(PurchaseState.ERROR, viewModel.state.value.purchaseState)
+        assertEquals("Purchase failed", viewModel.state.value.purchaseMessage)
+    }
+
     private class FakeDebugApi(
         private val response: Response<Unit> = Response.success(Unit),
         private val throwError: Boolean = false,
         private val errorMessage: String? = "Simulated network error",
+        private val error: Throwable? = null,
     ) : DebugApi {
         var endGameCallCount = 0
             private set
@@ -1656,6 +1954,7 @@ class GameScreenViewModelTest {
         override suspend fun endGame(body: EndGameRequest): Response<Unit> {
             endGameCallCount++
             lastEndGameRequest = body
+            error?.let { throw it }
             if (throwError) throw RuntimeException(errorMessage)
             return response
         }

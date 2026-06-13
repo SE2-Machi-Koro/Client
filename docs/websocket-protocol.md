@@ -46,6 +46,7 @@ topic before subscribing to the new one.
 | `/app/lobby.leave` | `sendLeaveLobby` | Leave envelope with `payload.gameId`. |
 | `/app/game.start` | `sendGameStart` | `gameId`, `lobbyCode`, both, or `{}` depending on known state. |
 | `/app/game.rollDice` | `rollDice` | Envelope with top-level `gameId` and `payload.gameId`/`payload.diceCount`. |
+| `/app/game.rerollDice` | `rerollDice` | Same envelope as `rollDice`; Radio Tower reroll (#326). |
 | `/app/game.purchase` | `sendPurchase` | `{"gameId":...,"purchaseType":"...","cardType":"..."}` or `landmarkType`. |
 | `/app/game.advancePhase` | `advancePhase` | `{"gameId":...}` |
 | `/app/game.resolveEffects` | `resolveEffects` | `{"gameId":...}` |
@@ -58,6 +59,12 @@ during `BUY_OR_BUILD`; `END_TURN` is treated as a server-side transition phase
 and does not expose a client action. Server broadcasts remain authoritative for
 the resulting phase and game state.
 
+During `RESOLVE_EFFECTS`, the active player may additionally send
+`/app/game.rerollDice` (#326) when they have built a `RADIO_TOWER` and a roll
+already exists this turn. The client gates this to the active player with a
+Radio Tower and limits it to once per turn (renewed on turn rotation); the
+server stays authoritative for the once-per-turn rule and the result.
+
 ## Handled Message Types
 
 | Type | Effect |
@@ -68,7 +75,7 @@ the resulting phase and game state.
 | `LOBBY_ROSTER` | Replaces the local lobby roster with the server roster. |
 | `GAME_STARTED` | Applies initial game state, player list, phase, active player, and shop data. |
 | `GAME_ACTION` | Applies authoritative state snapshots and purchase success events. |
-| `ROLL_DICE` | Applies authoritative state snapshots and the individual dice result. |
+| `ROLL_DICE` | Applies authoritative state snapshots and the individual dice result. Covers both the initial roll (`payload.event == DICE_ROLLED`) and the Radio Tower reroll (`payload.event == DICE_REROLLED`, #326), which share `payload.result`. |
 | `GAME_END` | Marks the game finished, stores winner/round data, and unsubscribes from the game topic. |
 | `SYNC` | Restores a full reconnect snapshot from `/user/queue/game-sync`. |
 | `ERROR` | Emits lobby or purchase errors; auth failures sign the user out. |

@@ -532,7 +532,10 @@ class OkHttpWebSocketClientTest {
         }
 
         assertEquals(5, errors.size)
-        assertEquals(listOf("INVALID_LOBBY_CODE", "GAME_NOT_FOUND", "GAME_STARTED", "GAME_FINISHED", "LOBBY_FULL"), errors.map { it.serverCode })
+        assertEquals(
+            listOf("INVALID_LOBBY_CODE", "GAME_NOT_FOUND", "GAME_STARTED", "GAME_FINISHED", "LOBBY_FULL"),
+            errors.map { it.serverCode }
+        )
     }
 
     @Test
@@ -728,6 +731,83 @@ class OkHttpWebSocketClientTest {
         client.rollDice(diceCount = 1)
 
         assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
+    @Test
+    fun rerollDiceSendsStompFrameToRerollDiceDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
+
+        client.rerollDice(diceCount = 1)
+
+        assertTrue(factory.socket.sentMessages.any {
+            it.startsWith("SEND\n") &&
+                it.contains("destination:/app/game.rerollDice") &&
+                it.contains("\"gameId\":7") &&
+                it.contains("\"diceCount\":1")
+        })
+    }
+
+    @Test
+    fun rerollDiceReusesRollDiceEnvelopeWithGameIdInTopLevelAndPayload() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
+
+        client.rerollDice(diceCount = 2)
+
+        val body = JSONObject(factory.socket.rerollDiceFrames().last().body)
+        assertEquals("ROLL_DICE", body.getString("type"))
+        assertEquals(7, body.getInt("gameId"))
+        assertEquals(7, body.getJSONObject("payload").getInt("gameId"))
+        assertEquals(2, body.getJSONObject("payload").getInt("diceCount"))
+    }
+
+    @Test
+    fun rerollDiceWithoutActiveGameIdIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.rerollDice(diceCount = 1)
+
+        assertTrue(factory.socket.rerollDiceFrames().isEmpty())
+    }
+
+    @Test
+    fun rerollDiceWithoutConnectionIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.rerollDice(diceCount = 1)
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
+    @Test
+    fun rerolledDiceMessageFromServerUpdatesDiceResult() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        // Backward compatibility: the reroll reuses the ROLL_DICE type, tagged
+        // with event DICE_REROLLED, and carries dice in payload.result (#326).
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ROLL_DICE","payload":{"event":"DICE_REROLLED","playerId":"p1","result":[2,4],"timestamp":123}}"""
+            )
+        )
+        assertEquals(listOf(2, 4), client.diceResult.value)
     }
 
     @Test
@@ -1190,7 +1270,25 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
-    fun blankStompErrorFrameEmitsPurchaseFailedFallback() = runTest {
+    fun stompErrorFrameWithBlankBodyEmitsDefaultPurchaseFailureMessage() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
+        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText("ERROR\n\n\u0000")
+        runCurrent()
+
+        assertEquals(listOf(PurchaseEvent.Failure("Purchase failed")), purchaseEvents)
+        assertEquals(ConnectionStatus.CONNECTED, client.connectionStatus.value)
+    }
+
+    @Test
+    fun purchaseFailureWithBlankMessageFallsBackToDefaultMessage() = runTest {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
         val purchaseEvents = mutableListOf<PurchaseEvent>()
@@ -1200,12 +1298,15 @@ class OkHttpWebSocketClientTest {
 
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText("ERROR\n\n   \u0000")
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ERROR","sender":"server","payload":{"event":"PURCHASE_FAILED","message":"","purchaseType":"ESTABLISHMENT","cardType":"STADIUM"},"gameId":42}"""
+            )
+        )
         runCurrent()
 
         assertEquals(listOf(PurchaseEvent.Failure("Purchase failed")), purchaseEvents)
-        assertEquals(ConnectionStatus.CONNECTED, client.connectionStatus.value)
     }
 
     @Test
@@ -3039,6 +3140,10 @@ class OkHttpWebSocketClientTest {
         sentFrames()
             .filter { it.headers["destination"] == WebSocketContract.rollDiceDestination }
 
+    private fun FakeWebSocket.rerollDiceFrames(): List<StompFrame> =
+        sentFrames()
+            .filter { it.headers["destination"] == WebSocketContract.rerollDiceDestination }
+
     private fun FakeWebSocket.sentFrames(): List<StompFrame> =
         sentMessages.flatMap { parseFrames(StringBuilder(it)) }
 
@@ -3256,7 +3361,7 @@ class OkHttpWebSocketClientTest {
         assertEquals(1, enteredCount)
     }
 
-    // ── Cheating accusations (#280) ──────────────────────────────────────────
+    // -- Cheating accusations (#280) ------------------------------------------
 
     private fun rosterFrame(): String =
         gameActionFrame(
@@ -3373,7 +3478,6 @@ class OkHttpWebSocketClientTest {
         factory.simulateText(connectedFrame())
         runCurrent()
 
-        // Legacy/diverged payload shape (the #353 failure mode): no `caught` key.
         factory.simulateText(
             gameActionFrame(
                 """{"type":"ACCUSATION_RESULT","sender":"server","gameId":1,"payload":""" +
@@ -3397,7 +3501,6 @@ class OkHttpWebSocketClientTest {
         factory.simulateText(connectedFrame())
         runCurrent()
 
-        // No roster seeded — the ids cannot be resolved to display names.
         factory.simulateText(
             gameActionFrame(
                 """{"type":"ACCUSATION_RESULT","sender":"server","gameId":1,"payload":""" +
@@ -3423,7 +3526,6 @@ class OkHttpWebSocketClientTest {
         factory.simulateText(connectedFrame())
         runCurrent()
 
-        // WebSocketErrorDto on the private errors queue: no `type` field.
         factory.simulateText(
             gameActionFrame(
                 """{"code":"INVALID_ACCUSATION","message":"You can only accuse once per turn",""" +
@@ -3477,7 +3579,6 @@ class OkHttpWebSocketClientTest {
             )
         )
 
-        // The embedded snapshot must update the roster (penalized coins included).
         val bob = client.players.value.firstOrNull { it.displayName == "bob" }
         assertNotNull(bob)
         assertEquals(5, bob?.coins)
