@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -71,7 +71,8 @@ import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ClientTheme
 import kotlinx.coroutines.delay
 
-private val SIDE_CENTER_CONTENT_OFFSET = (-35).dp
+private val OWN_CARDS_VIEW_DELAY = 10000L
+private val MARKETPLACE_VIEW_DELAY = 10000L
 
 @Composable
 fun GameScreen(
@@ -93,18 +94,39 @@ fun GameScreen(
 
     var showLeaveDialog by remember { mutableStateOf(false) }
     var showOwnCards by remember { mutableStateOf(false) }
+    var showMarketplace by remember { mutableStateOf(false) }
+    val timerTime =
+        when {
+            showOwnCards -> 10
+            showMarketplace -> 10
+            state.isBuyingPhase -> 30
+            state.gamePhase == GamePhase.ROLL_DICE -> 20
+            else -> 0
+        }
 
-
-    var isOwnCardsDisplayPermitted = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
+    val isCardViewPossible = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
             && !state.isActivePlayer)
 
-    LaunchedEffect(isOwnCardsDisplayPermitted) {
-        if (!isOwnCardsDisplayPermitted) {
+    LaunchedEffect(showOwnCards) {
+        if (showOwnCards) {
+            showMarketplace = false
+            delay(OWN_CARDS_VIEW_DELAY)
             showOwnCards = false
         }
     }
-
-
+    LaunchedEffect(showMarketplace) {
+        if (showMarketplace) {
+            showOwnCards = false
+            delay(MARKETPLACE_VIEW_DELAY)
+            showMarketplace = false
+        }
+    }
+    LaunchedEffect(isCardViewPossible) {
+        if (!isCardViewPossible) {
+            showOwnCards = false
+            showMarketplace = false
+        }
+    }
 
     if (showLeaveDialog) {
         AlertDialog(
@@ -225,11 +247,27 @@ fun GameScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                GamePhaseBanner(
-                    phase = state.gamePhase,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    text = state.customDisplayText
-                )
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .width(IntrinsicSize.Max),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+
+                    GamePhaseBanner(
+                        phase = state.gamePhase,
+                        text = state.customDisplayText
+                    )
+
+                    if (timerTime > 0) {
+                        DecreasingLineTimer(
+                            timerTime,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp)
+                        )
+                    }
+                }
             }
         },
 
@@ -240,7 +278,6 @@ fun GameScreen(
             Box(modifier = Modifier.fillMaxHeight()) {
 
                 Box(modifier = Modifier.align(Alignment.Center)
-                    .offset(y = SIDE_CENTER_CONTENT_OFFSET)
                 ) {
                     if(state.gamePhase != GamePhase.ROLL_DICE) {
                         state.diceResult?.let { DiceResultDisplay(dice = it) }
@@ -248,7 +285,13 @@ fun GameScreen(
                 }
 
                 Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-                    MarketplaceButton()
+                      MarketplaceButton(
+                          onClick = {
+                              showMarketplace = !showMarketplace
+                          },
+                          enabled = isCardViewPossible
+                      )
+
                 }
             }
         },
@@ -259,18 +302,17 @@ fun GameScreen(
         centerContent = {
 
             Box(modifier = Modifier.align(Alignment.Center)) {
-
-                if(showOwnCards && isOwnCardsDisplayPermitted) {
-                    LaunchedEffect(Unit) {
-                        delay(10000)
-                        showOwnCards = false
-                    }
+                if(
+                    showOwnCards
+                    && isCardViewPossible
+                    && !showMarketplace
+                ) {
                     Column(
                         modifier = Modifier.align(Alignment.Center)
                             .fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        DecreasingLineTimer(10)
+
                         Image(
                             painter = painterResource(id = R.drawable.rotated_arrow),
                             contentDescription = "Arrow",
@@ -285,12 +327,19 @@ fun GameScreen(
                     }
                 }
 
-                else if (false) {
-                    MarketplaceSection(
-                        marketplace = state.marketplace,
-                        recommendedCardType = cheatRecommendation,
-                        modifier = Modifier.widthIn(max = 260.dp)
-                    )
+                else if(
+                    showMarketplace
+                    && isCardViewPossible
+                    && !showOwnCards
+                ) {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center)
+                            .fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+
+                        MarketplaceSection(state.marketplace)
+                    }
                 }
 
                 else if (state.isBuyingPhase) {
@@ -367,8 +416,8 @@ fun GameScreen(
 
             PlayerCoinField(
                state = state,
-                modifier = Modifier.align(Alignment.CenterEnd)
-                    .offset(y = SIDE_CENTER_CONTENT_OFFSET)
+                modifier = Modifier.align(Alignment.Center)
+                    .offset(y = 45.dp)
             )
 
             Column(
@@ -410,7 +459,8 @@ fun GameScreen(
         }
     )
 
-        if(isOwnCardsDisplayPermitted && !showOwnCards) {
+        //Small own cards at the button
+        if(isCardViewPossible && !showOwnCards && !showMarketplace) {
             Column(
                 modifier = Modifier.align(Alignment.BottomCenter)
                     .offset(y = 90.dp),
