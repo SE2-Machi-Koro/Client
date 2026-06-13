@@ -4,6 +4,7 @@ import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
+import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.model.shop.ShopItem
 
 data class GameScreenState(
@@ -95,3 +96,12 @@ data class GameScreenState(
         )
     }
 }
+
+fun GameScreenState.remainingMarketplaceQuantityFor(item: ShopItem): Int? {
+    if (item.purchaseType != PurchaseType.ESTABLISHMENT || marketplace.isEmpty()) return null
+    val cardType = runCatching { CardType.valueOf(item.type) }.getOrNull() ?: return null
+    return marketplace[cardType] ?: 0
+}
+
+fun GameScreenState.isShopItemAvailableFromMarketplace(item: ShopItem): Boolean =
+    remainingMarketplaceQuantityFor(item)?.let { it > 0 } ?: item.isAvailable

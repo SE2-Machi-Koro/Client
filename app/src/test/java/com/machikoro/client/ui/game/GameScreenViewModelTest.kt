@@ -461,6 +461,57 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun purchaseIsIgnoredWhenMarketplaceHasNoRemainingCopies() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitMarketplace(mapOf(CardType.BAKERY to 0))
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+
+        assertNull(fakeClient.lastPurchase)
+        assertEquals(PurchaseState.IDLE, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun selectingPurchaseItemUsesMarketplaceAvailabilityOverShopItemAvailability() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitShopItems(
+            listOf(
+                ShopItem(
+                    type = "BAKERY",
+                    displayName = "Bakery",
+                    cost = 1,
+                    purchaseType = PurchaseType.ESTABLISHMENT,
+                    color = ShopItemColor.GREEN,
+                    imageKey = "bakery",
+                    establishmentType = "BREAD",
+                    activationNumbers = listOf(2, 3),
+                    effectText = "Get 1 coin from the bank on your turn.",
+                    isAvailable = false
+                )
+            )
+        )
+        fakeClient.emitMarketplace(mapOf(CardType.BAKERY to 2))
+        advanceUntilIdle()
+
+        viewModel.selectPurchaseItem("BAKERY")
+
+        assertEquals("BAKERY", viewModel.state.value.selectedPurchaseItemType)
+    }
+
+    @Test
     fun activePlayerCanPurchaseLandmarkDuringBuyOrBuild() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)

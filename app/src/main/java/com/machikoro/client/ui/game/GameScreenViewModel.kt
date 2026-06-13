@@ -15,6 +15,7 @@ import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.session.SessionStateHolder
+import com.machikoro.client.domain.model.state.isShopItemAvailableFromMarketplace
 import com.machikoro.client.network.debug.DebugApi
 import com.machikoro.client.network.debug.EndGameRequest
 import com.machikoro.client.network.toClientError
@@ -353,7 +354,9 @@ class GameScreenViewModel(
     fun selectPurchaseItem(itemType: String) {
         val current = mutableState.value
         val availableItems = current.shopItems.ifEmpty { ShopCatalog.defaultItems }
-        val item = availableItems.firstOrNull { it.type == itemType && it.isAvailable } ?: return
+        val item = availableItems.firstOrNull {
+            it.type == itemType && current.isShopItemAvailableFromMarketplace(it)
+        } ?: return
         if (!current.canSelectPurchaseItem(item)) return
 
         mutableState.update { state ->
@@ -378,7 +381,9 @@ class GameScreenViewModel(
         val current = mutableState.value
         val gameId = current.gameId ?: return
         val availableItems = current.shopItems.ifEmpty { ShopCatalog.defaultItems }
-        val item = availableItems.firstOrNull { it.type == itemType && it.isAvailable } ?: return
+        val item = availableItems.firstOrNull {
+            it.type == itemType && current.isShopItemAvailableFromMarketplace(it)
+        } ?: return
         if (!current.canStartPurchase(item)) return
 
         mutableState.update { state ->
@@ -404,7 +409,7 @@ class GameScreenViewModel(
             isActivePlayer &&
             purchaseState != PurchaseState.PENDING &&
             purchaseState != PurchaseState.SUCCESS &&
-            item.isAvailable &&
+            isShopItemAvailableFromMarketplace(item) &&
             hasEnoughKnownCoinsFor(item) &&
             !isKnownBuiltLandmark(item)
 
@@ -414,7 +419,7 @@ class GameScreenViewModel(
             isActivePlayer &&
             purchaseState != PurchaseState.PENDING &&
             purchaseState != PurchaseState.SUCCESS &&
-            item.isAvailable &&
+            isShopItemAvailableFromMarketplace(item) &&
             hasEnoughKnownCoinsFor(item) &&
             !isKnownBuiltLandmark(item)
 
