@@ -10,6 +10,7 @@ import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.debug.DebugApi
 import com.machikoro.client.network.debug.FillLobbyRequest
 import com.machikoro.client.network.debug.ResetLobbyRequest
+import com.machikoro.client.network.toClientError
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -127,7 +128,7 @@ class LobbyScreenViewModel(
                 debugApi.fillLobby(FillLobbyRequest(lobbyCode = code, count = count))
                 Log.d("LobbyScreenViewModel", "fillWithDummies succeeded for lobby $code")
             } catch (e: Exception) {
-                Log.e("LobbyScreenViewModel", "fillWithDummies failed: ${e.message}")
+                Log.e("LobbyScreenViewModel", "fillWithDummies failed: ${e.toClientError().message}")
             }
         }
     }
@@ -140,7 +141,7 @@ class LobbyScreenViewModel(
                 debugApi.resetLobby(ResetLobbyRequest(lobbyCode = code))
                 Log.d("LobbyScreenViewModel", "resetLobby succeeded for lobby $code")
             } catch (e: Exception) {
-                Log.e("LobbyScreenViewModel", "resetLobby failed: ${e.message}")
+                Log.e("LobbyScreenViewModel", "resetLobby failed: ${e.toClientError().message}")
             }
         }
     }
