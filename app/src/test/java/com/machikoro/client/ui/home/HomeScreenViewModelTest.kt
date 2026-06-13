@@ -206,12 +206,17 @@ class HomeScreenViewModelTest {
         }
 
         override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow()
+        override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> =
+            MutableSharedFlow(extraBufferCapacity = 1)
+        override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
         override fun connect() { connectCalled = true }
         override fun disconnect() { disconnectCalled = true }
         override fun rollDice(diceCount: Int) = Unit
         override fun advancePhase(gameId: Int) = Unit
         override fun resolveEffects(gameId: Int) = Unit
         override fun endTurn(gameId: Int) = Unit
+        override fun reportCheat(gameId: Int) = Unit
+        override fun accuse(gameId: Int, accusedPlayerId: Int) = Unit
         override fun sendGameStart() { sendGameStartCalled = true }
         override fun sendCreateLobby() { sendCreateLobbyCalled = true }
         override fun sendPurchase(
