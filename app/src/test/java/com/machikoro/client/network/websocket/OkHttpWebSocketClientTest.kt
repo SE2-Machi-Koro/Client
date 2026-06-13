@@ -734,6 +734,83 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun rerollDiceSendsStompFrameToRerollDiceDestination() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
+
+        client.rerollDice(diceCount = 1)
+
+        assertTrue(factory.socket.sentMessages.any {
+            it.startsWith("SEND\n") &&
+                it.contains("destination:/app/game.rerollDice") &&
+                it.contains("\"gameId\":7") &&
+                it.contains("\"diceCount\":1")
+        })
+    }
+
+    @Test
+    fun rerollDiceReusesRollDiceEnvelopeWithGameIdInTopLevelAndPayload() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
+
+        client.rerollDice(diceCount = 2)
+
+        val body = JSONObject(factory.socket.rerollDiceFrames().last().body)
+        assertEquals("ROLL_DICE", body.getString("type"))
+        assertEquals(7, body.getInt("gameId"))
+        assertEquals(7, body.getJSONObject("payload").getInt("gameId"))
+        assertEquals(2, body.getJSONObject("payload").getInt("diceCount"))
+    }
+
+    @Test
+    fun rerollDiceWithoutActiveGameIdIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        client.rerollDice(diceCount = 1)
+
+        assertTrue(factory.socket.rerollDiceFrames().isEmpty())
+    }
+
+    @Test
+    fun rerollDiceWithoutConnectionIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        client.rerollDice(diceCount = 1)
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
+    }
+
+    @Test
+    fun rerolledDiceMessageFromServerUpdatesDiceResult() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n ")
+        // Backward compatibility: the reroll reuses the ROLL_DICE type, tagged
+        // with event DICE_REROLLED, and carries dice in payload.result (#326).
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ROLL_DICE","payload":{"event":"DICE_REROLLED","playerId":"p1","result":[2,4],"timestamp":123}}"""
+            )
+        )
+        assertEquals(listOf(2, 4), client.diceResult.value)
+    }
+
+    @Test
     fun advancePhaseSendsGameIdPayloadToAdvancePhaseDestination() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -3062,6 +3139,10 @@ class OkHttpWebSocketClientTest {
     private fun FakeWebSocket.rollDiceFrames(): List<StompFrame> =
         sentFrames()
             .filter { it.headers["destination"] == WebSocketContract.rollDiceDestination }
+
+    private fun FakeWebSocket.rerollDiceFrames(): List<StompFrame> =
+        sentFrames()
+            .filter { it.headers["destination"] == WebSocketContract.rerollDiceDestination }
 
     private fun FakeWebSocket.sentFrames(): List<StompFrame> =
         sentMessages.flatMap { parseFrames(StringBuilder(it)) }

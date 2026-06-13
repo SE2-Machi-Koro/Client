@@ -69,6 +69,7 @@ class DummyWebSocketClient : WebSocketClient {
     override fun clearGameState() {}
     override fun sendGameStart() {}
     override fun rollDice(diceCount: Int) {}
+    override fun rerollDice(diceCount: Int) {}
     override fun advancePhase(gameId: Int) {}
     override fun resolveEffects(gameId: Int) {}
     override fun endTurn(gameId: Int) {}

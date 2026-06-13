@@ -12,6 +12,9 @@ object WebSocketContract {
     const val addUserDestination: String = "/app/chat.addUser"
     const val chatSendDestination: String = "/app/chat.send"
     const val rollDiceDestination: String = "/app/game.rollDice"
+    // Radio Tower reroll (#326 / server #359). Reuses the ROLL_DICE broadcast,
+    // distinguished by payload.event == DICE_REROLLED.
+    const val rerollDiceDestination: String = "/app/game.rerollDice"
     const val advancePhaseDestination: String = "/app/game.advancePhase"
     const val resolveEffectsDestination: String = "/app/game.resolveEffects"
     const val endTurnDestination: String = "/app/game.endTurn"
