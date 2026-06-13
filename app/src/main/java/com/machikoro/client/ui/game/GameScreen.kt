@@ -137,8 +137,6 @@ fun GameScreen(
 
     val phaseTimerTime =
         when {
-            showOwnCards -> 10
-            showMarketplace -> 10
             state.isBuyingPhase -> 30
             state.gamePhase == GamePhase.ROLL_DICE -> 20
             state.gamePhase == GamePhase.RESOLVE_EFFECTS -> 25
