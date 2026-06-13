@@ -10,6 +10,8 @@ A modern, reactive Android frontend for the Machi Koro board game. This applicat
 
 - **Modern Declarative UI**: Built entirely with **Jetpack Compose** for a fluid and responsive user experience.
 - **Real-time Synchronization**: Native WebSocket integration with STOMP protocol for live game state updates.
+- **REST Integration**: Retrofit-based clients for authentication, leaderboard, backend health checks, and debug endpoints.
+- **Persistent Sessions**: Login session and token persistence backed by Jetpack DataStore.
 - **Material 3 Design**: Adheres to the latest Android design standards for a clean, modern aesthetic.
 - **Reactive State Management**: Utilizes `ViewModel` and `StateFlow` to ensure a single source of truth and predictable UI transitions.
 - **Configurable Environment**: Flexible build-time configuration for different backend environments.
@@ -18,12 +20,16 @@ A modern, reactive Android frontend for the Machi Koro board game. This applicat
 
 | Category | Technology |
 | :--- | :--- |
-| **Language** | Kotlin |
+| **Language** | Kotlin 2.2 |
 | **UI Framework** | Jetpack Compose (Material 3) |
+| **Navigation** | Navigation Compose |
 | **State Management** | Android ViewModel + StateFlow |
-| **Networking** | OkHttp + Custom STOMP Client |
-| **JSON Parsing** | org.json |
-| **Build System** | Gradle (Kotlin DSL) |
+| **WebSocket** | OkHttp + custom STOMP client |
+| **REST** | Retrofit + kotlinx.serialization |
+| **JSON Parsing** | kotlinx.serialization (REST) + org.json (STOMP payloads) |
+| **Persistence** | Jetpack DataStore (Preferences) |
+| **Testing** | JUnit 4, Mockito, Coroutines Test, Espresso, Compose UI Test |
+| **Build System** | Gradle (Kotlin DSL) + Version Catalog |
 | **Architecture** | Clean Architecture / MVVM |
 
 ## 📂 Project Structure
@@ -31,21 +37,31 @@ A modern, reactive Android frontend for the Machi Koro board game. This applicat
 The project follows a modularized directory structure within `app/src/main/java/com/machikoro/client/` to ensure scalability and maintainability:
 
 ```text
-├── config/           # Application-level configurations (AppConfig)
+├── config/           # Application-level configuration (AppConfig)
 ├── domain/           # Business logic and domain models
-│   ├── model/state/  # Immutable UI and Game state models
-│   └── enums/        # Game constants (GamePhase, etc.)
+│   ├── model/        # Domain models (incl. model/state UI+game state, model/shop)
+│   ├── enums/        # Game constants (GamePhase, etc.)
+│   ├── cheat/        # Cheat-mode logic (e.g. insider trading)
+│   └── session/      # Session management and DataStore-backed storage
 ├── network/          # Communication layer
-│   └── websocket/    # STOMP protocol implementation and WebSocket client
+│   ├── websocket/    # STOMP protocol, WebSocket client, and contract constants
+│   ├── auth/         # Authentication API (login/register) and DTOs
+│   ├── health/       # Backend health-check API and repository
+│   ├── leaderboard/  # Leaderboard API and entry models
+│   ├── debug/        # Debug/dev-only API and DTOs
+│   └── error/        # Client error model and HTTP error parsing
 ├── ui/               # Presentation layer
 │   ├── game/         # Game board and active gameplay UI
 │   ├── home/         # Home screen UI and logic
 │   ├── lobby/        # Lobby screen UI and multiplayer setup
+│   ├── connection/   # Connection-status banner and its ViewModel
+│   ├── leaderboard/  # Leaderboard screen and ViewModel
+│   ├── win/          # Winner / end-of-game screens
+│   ├── cheat/        # Cheat-mode UI helpers (e.g. shake detector)
+│   ├── shared/       # Reusable composables (buttons, text, background, timer)
 │   ├── navigation/   # Top-level routes, navigator, and navigation ViewModel
 │   ├── start/        # Entry screens, login/register, and PDF viewer
 │   └── theme/        # Material 3 colors, typography, and theme definitions
-├── network/
-│   └── websocket/    # STOMP protocol, WebSocket client, and contract constants
 └── MainActivity.kt   # Single activity entry point
 ```
 
@@ -154,4 +170,4 @@ We use **Jacoco** for coverage reporting. The build will fail if line coverage f
   
 ---
 
-Last updated 15.05.2026
+Last updated 13.06.2026
