@@ -31,7 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -148,6 +147,8 @@ fun GameScreen(
         when {
             showOwnCards -> 10
             showMarketplace -> 10
+            state.isBuyingPhase -> 30
+            state.gamePhase == GamePhase.ROLL_DICE -> 20
             else -> 0
         }
 
