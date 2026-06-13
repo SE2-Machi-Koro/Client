@@ -84,6 +84,48 @@ class RegisterDialogViewModelTest {
     }
 
     @Test
+    fun submitJsonErrorBodySurfacesParsedServerMessage() = runTest {
+        val errorBody = """{"errorCode":"USERNAME_TAKEN","message":"Username 'alice' is already taken"}"""
+            .toResponseBody("application/json".toMediaType())
+        val api = FakeAuthApi(response = { throw HttpException(Response.error<RegisterResponse>(409, errorBody)) })
+        val viewModel = RegisterDialogViewModel(api)
+        viewModel.usernameChanged("alice")
+        viewModel.passwordChanged("hunter2")
+        viewModel.submit()
+        advanceUntilIdle()
+        val state = viewModel.state.value
+        assertEquals("Username 'alice' is already taken", state.errorMessage)
+        assertNull(state.registeredUsername)
+        assertFalse(state.submitting)
+    }
+
+    @Test
+    fun submitEmptyErrorBodySurfacesFallbackWithStatusCode() = runTest {
+        val errorBody = "".toResponseBody("text/plain".toMediaType())
+        val api = FakeAuthApi(response = { throw HttpException(Response.error<RegisterResponse>(500, errorBody)) })
+        val viewModel = RegisterDialogViewModel(api)
+        viewModel.usernameChanged("alice")
+        viewModel.passwordChanged("hunter2")
+        viewModel.submit()
+        advanceUntilIdle()
+        assertEquals("Registration failed (HTTP 500)", viewModel.state.value.errorMessage)
+    }
+
+    @Test
+    fun submitUnknownExceptionSurfacesItsMessage() = runTest {
+        val api = FakeAuthApi(response = { throw IllegalStateException("unexpected failure") })
+        val viewModel = RegisterDialogViewModel(api)
+        viewModel.usernameChanged("alice")
+        viewModel.passwordChanged("hunter2")
+        viewModel.submit()
+        advanceUntilIdle()
+        val state = viewModel.state.value
+        assertEquals("unexpected failure", state.errorMessage)
+        assertNull(state.registeredUsername)
+        assertFalse(state.submitting)
+    }
+
+    @Test
     fun usernameAndPasswordChangedUpdateState() = runTest {
         val viewModel = RegisterDialogViewModel(FakeAuthApi())
         viewModel.usernameChanged("alice")
