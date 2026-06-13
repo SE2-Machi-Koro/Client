@@ -1,11 +1,13 @@
 package com.machikoro.client.ui.game.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -27,6 +30,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
@@ -45,6 +49,8 @@ import com.machikoro.client.domain.model.state.remainingMarketplaceQuantityFor
 import com.machikoro.client.ui.game.GameScreen
 import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.CardPurpleBackground
+import com.machikoro.client.ui.theme.CardPurpleText
 import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 
@@ -198,7 +204,31 @@ private fun ShopImageTile(
                 modifier = Modifier.align(Alignment.TopStart)
             )
         }
+        if (isAlreadyOwnedPurple) {
+            OwnedCardIndicator(
+                modifier = Modifier.align(Alignment.TopEnd)
+            )
+        }
     }
+}
+
+@Composable
+private fun OwnedCardIndicator(modifier: Modifier = Modifier) {
+    Text(
+        text = "Owned",
+        color = CardPurpleText,
+        fontSize = 12.sp,
+        style = MaterialTheme.typography.labelSmall,
+        modifier = modifier
+            .padding(top = 6.dp, end = 6.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(CardPurpleBackground)
+            .border(1.dp, CardPurpleText, RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+            .semantics {
+                contentDescription = "Already owned card indicator"
+            }
+    )
 }
 
 internal fun GameScreenState.shouldShowBuyingPhaseShop(): Boolean =

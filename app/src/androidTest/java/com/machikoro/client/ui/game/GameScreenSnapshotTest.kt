@@ -328,5 +328,7 @@ class GameScreenSnapshotTest {
                 "Stadium: 6 coins, activates on 6. Take 2 coins from every opponent on your turn., 1 remaining, already owned"
             )
             .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Owned").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Already owned card indicator").assertIsDisplayed()
     }
 }
