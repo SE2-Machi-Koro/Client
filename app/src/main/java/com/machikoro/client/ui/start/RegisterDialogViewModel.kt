@@ -52,7 +52,7 @@ class RegisterDialogViewModel(
                     onFailure = { throwable ->
                         previous.copy(
                             submitting = false,
-                            errorMessage = throwable.toClientError().toUserMessage(),
+                            errorMessage = throwable.toClientError("Registration failed").toUserMessage(),
                         )
                     },
                 )

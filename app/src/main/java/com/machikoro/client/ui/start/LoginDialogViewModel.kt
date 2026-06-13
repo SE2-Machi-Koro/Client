@@ -59,7 +59,7 @@ class LoginDialogViewModel(
                     onFailure = { throwable ->
                         previous.copy(
                             submitting = false,
-                            errorMessage = throwable.toClientError().toUserMessage(),
+                            errorMessage = throwable.toClientError("Login failed").toUserMessage(),
                         )
                     },
                 )
