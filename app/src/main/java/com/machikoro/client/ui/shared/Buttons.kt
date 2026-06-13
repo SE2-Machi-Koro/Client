@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.sp
 import com.machikoro.client.R
 import com.machikoro.client.ui.theme.ButtonBeigeDark
 import com.machikoro.client.ui.theme.ButtonBeigeLight
-import com.machikoro.client.ui.theme.ButtonBorderBeige
 import com.machikoro.client.ui.theme.ButtonColor
 import com.machikoro.client.ui.theme.ButtonTextColor
 import com.machikoro.client.ui.theme.ClientTheme
@@ -84,20 +83,20 @@ fun ActionButton(
     fontSize: Int = 22,
 ) {
     Box(
-        modifier = modifier
-            .wrapContentSize()
+       modifier = modifier
     ) {
 
-    // Bottom shadow
-    Box(
-        modifier = Modifier
-            .matchParentSize()
-            .offset(y = 4.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(color = OrangeButtonShadowColor)
-    )
+        // Bottom shadow
+        Box(
+            modifier = Modifier
+                .widthIn(min = 100.dp)
+                .matchParentSize()
+                .offset(y = 4.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(OrangeButtonShadowColor)
+        )
 
-        // Main button
+        // Main button SECOND
         Button(
             onClick = { onClick?.invoke() },
             enabled = enabled,
@@ -105,6 +104,7 @@ fun ActionButton(
             colors = ButtonDefaults.buttonColors(
                 containerColor = ButtonColor
             ),
+            modifier = modifier.widthIn(100.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically
@@ -118,6 +118,7 @@ fun ActionButton(
                     )
                     Spacer(modifier = Modifier.width(BUTTONS_ICON_SPACER))
                 }
+
                 Text(
                     text = label,
                     style = MaterialTheme.typography.bodyMedium,
@@ -148,20 +149,20 @@ fun SecondaryActionButton(
     @DrawableRes leftIcon: Int? = null,
     @DrawableRes rightIcon: Int? = null,
     fontSize: Int = 22,
-    ) {
+) {
     Box(
-        modifier = modifier.wrapContentSize()
+        modifier = modifier
     ) {
         // Bottom shadow
         Box(
             modifier = Modifier
-                .matchParentSize()
+            .widthIn(min = 100.dp) // min
+            .matchParentSize()
                 .offset(y = 4.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(ButtonBorderBeige)
+                .background(ButtonBeigeDark)
         )
 
-        // Main button
         Button(
             onClick = { onClick?.invoke() },
             enabled = enabled,
@@ -171,7 +172,8 @@ fun SecondaryActionButton(
                 contentColor = TextBlueDark,
                 disabledContainerColor = ButtonBeigeLight.copy(alpha = 0.7f),
                 disabledContentColor = TextBlueDark.copy(alpha = 0.7f)
-            )
+            ),
+            modifier = modifier.widthIn(min = 100.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically
@@ -221,7 +223,7 @@ fun ButtonsPreview() {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                ActionButton("Some text", null)
+                ActionButton("a", null)
                 ActionButton("Some text but long", null)
                 SecondaryActionButton("text", null)
                 ArrowTextButton("Back",{})

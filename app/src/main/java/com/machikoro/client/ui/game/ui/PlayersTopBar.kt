@@ -74,6 +74,8 @@ fun PlayersTopBar(
     players: List<PlayerCoinState>,
     playerLandmarks: Map<Int, List<PlayerLandmarkState>>,
     playerCards: Map<Int, List<PlayerCardState>>,
+    onAccusePlayer: (playerId: String) -> Unit = {},
+    canAccuse: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     if (players.isEmpty()) return
@@ -126,7 +128,12 @@ fun PlayersTopBar(
             playerLandmarks = playerLandmarks,
             playerCards = playerCards,
             onPlayerSelected = { inspectedPlayerId = it.id },
-            onDismiss = { inspectedPlayerId = null }
+            onDismiss = { inspectedPlayerId = null },
+            canAccuse = canAccuse,
+            onAccuse = {
+                inspectedPlayerId = null
+                onAccusePlayer(selectedPlayer.id)
+            }
         )
     }
 }
@@ -143,6 +150,9 @@ private fun PlayerCoinBadge(
         player.isActivePlayer -> Color(0xFFFFFFFF)
         else -> Color(0xB3FFFFFF)
     }
+
+    val textColor = Color(0xFF004E7E)
+
     val displayName = if (player.isCurrentPlayer) "You" else player.displayName
     val scale = if (player.isActivePlayer) 1.0f else 0.95f
     val fontSize = if (player.isActivePlayer) 18.sp else 16.sp
@@ -154,8 +164,8 @@ private fun PlayerCoinBadge(
             shadowElevation = 3.dp,
             modifier = Modifier
                 .wrapContentSize()
-                .widthIn(min = 150.dp, max = 184.dp)
                 .clickable(enabled = canInspect, onClick = onInspect)
+                .widthIn(max = 140.dp)
                 .semantics {
                     contentDescription = if (canInspect) {
                         "Inspect ${player.displayName}"
@@ -165,7 +175,8 @@ private fun PlayerCoinBadge(
                 }
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                modifier = modifier
+                    .padding(horizontal = 28.dp, vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -173,7 +184,7 @@ private fun PlayerCoinBadge(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     fontSize = fontSize,
-                    color = Color(0xFF004E7E),
+                    color = textColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
@@ -204,7 +215,9 @@ private fun PlayerInventoryDialog(
     playerLandmarks: Map<Int, List<PlayerLandmarkState>>,
     playerCards: Map<Int, List<PlayerCardState>>,
     onPlayerSelected: (PlayerCoinState) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    canAccuse: Boolean = true,
+    onAccuse: () -> Unit = {}
 ) {
     val selectedSnapshotId = selectedPlayer.snapshotId()
     val landmarks = playerLandmarks[selectedSnapshotId].orEmpty()
@@ -235,7 +248,9 @@ private fun PlayerInventoryDialog(
             ) {
                 PlayerInventoryHeader(
                     playerName = selectedPlayer.displayName,
-                    onDismiss = onDismiss
+                    onDismiss = onDismiss,
+                    canAccuse = canAccuse,
+                    onAccuse = onAccuse
                 )
 
                 if (players.size > 1) {
@@ -271,7 +286,9 @@ private fun PlayerInventoryDialog(
 @Composable
 private fun PlayerInventoryHeader(
     playerName: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    canAccuse: Boolean = true,
+    onAccuse: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -284,8 +301,22 @@ private fun PlayerInventoryHeader(
             fontWeight = FontWeight.Bold
         )
 
-        TextButton(onClick = onDismiss) {
-            Text("Close")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // One accusation per turn (issue #280) — disabled until the next
+            // turn once the local player has used theirs.
+            TextButton(
+                onClick = onAccuse,
+                enabled = canAccuse,
+                modifier = Modifier.semantics {
+                    contentDescription = "Accuse $playerName of cheating"
+                }
+            ) {
+                Text(if (canAccuse) "Accuse of cheating" else "Accused this turn")
+            }
+
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
         }
     }
 }

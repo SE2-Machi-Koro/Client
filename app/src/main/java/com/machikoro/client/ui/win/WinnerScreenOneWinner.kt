@@ -3,6 +3,8 @@ package com.machikoro.client.ui.win
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,17 +32,19 @@ which displays the end-of-game screen when there is
 only one winner. The screen includes a background,
 a header, and an animated player profile card for
 the winner. It also displays the number of rounds
-it took for the winner to win the game. Finally,
-it includes buttons for navigating back to the home
-screen or starting a new game, which are also animated
-for visibility.
+it took for the winner to win the game. Runner-up
+players are shown with a staggered animation after
+the winner card appears. Buttons are displayed in a
+column to prevent overflow on narrow screens.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GameOverOneWinner(
     winnerName: String,
     roundsNumber: Int,
     onBackHome: () -> Unit,
     onViewLeaderboard: () -> Unit = {},
+    rankedPlayers: List<Pair<String, Int>> = emptyList(),
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         Background(R.drawable.game_end)
@@ -54,6 +58,7 @@ fun GameOverOneWinner(
 
             Spacer(modifier = Modifier.padding(17.dp))
 
+            // Winner card with crown and round info
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(
@@ -70,7 +75,7 @@ fun GameOverOneWinner(
                         PlayerProfileCard(winnerName, 1)
                     }
                     AnimatedItem(
-                        delayMillis = 1000, // show crown after all cards are shown
+                        delayMillis = 1000,
                         animationType = AnimationType.Bounce
                     ) {
                         Box(modifier = Modifier.offset(y = (-28).dp)) {
@@ -87,17 +92,40 @@ fun GameOverOneWinner(
                 }
             }
 
+            // Runner-up players appear with staggered delay after winner card
+            if (rankedPlayers.size > 1) {
+                Spacer(modifier = Modifier.padding(8.dp))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(
+                        16.dp,
+                        Alignment.CenterHorizontally
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    rankedPlayers.drop(1).forEachIndexed { index, (name, _) ->
+                        AnimatedItem(
+                            delayMillis = 3000 + index * 500,
+                            animationType = AnimationType.Bounce
+                        ) {
+                            PlayerProfileCard(name, index + 2)
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.weight(1f))
 
             AnimatedItem(
                 delayMillis = 5000,
                 animationType = AnimationType.SlideUp
             ) {
+                // Buttons in a Column to prevent overflow on narrow screens
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    ActionButton("Back to home screen", onBackHome)
+                    ActionButton("Back to home", onBackHome)
                     SecondaryActionButton("View Leaderboard", onViewLeaderboard)
                 }
             }
@@ -114,6 +142,12 @@ fun GameOverOnePlayerPreview() {
             roundsNumber = 5,
             onBackHome = {},
             onViewLeaderboard = {},
+            rankedPlayers = listOf(
+                "Alice" to 4,
+                "Bob" to 2,
+                "Charlie" to 1,
+                "Diana" to 0,
+            )
         )
     }
 }

@@ -7,6 +7,7 @@ import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopItem
+import com.machikoro.client.network.error.ClientError
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.session.Session
@@ -48,7 +49,7 @@ class DummyWebSocketClient : WebSocketClient {
     override val diceResult: StateFlow<List<Int>?> = MutableStateFlow(null)
     override val activePlayerId: StateFlow<Int?> = MutableStateFlow(null)
     override val authRejections = kotlinx.coroutines.flow.MutableSharedFlow<Unit>()
-    override val lobbyJoinErrors: SharedFlow<String> = MutableSharedFlow(
+    override val lobbyJoinErrors: SharedFlow<ClientError.WebSocket> = MutableSharedFlow(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
@@ -58,6 +59,8 @@ class DummyWebSocketClient : WebSocketClient {
     )
 
     override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow()
+    override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> = MutableSharedFlow(extraBufferCapacity = 1)
+    override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
     override fun connect() {}
     override fun disconnect() {}
     override fun sendCreateLobby() {}
@@ -69,6 +72,8 @@ class DummyWebSocketClient : WebSocketClient {
     override fun advancePhase(gameId: Int) {}
     override fun resolveEffects(gameId: Int) {}
     override fun endTurn(gameId: Int) {}
+    override fun reportCheat(gameId: Int) {}
+    override fun accuse(gameId: Int, accusedPlayerId: Int) {}
     override fun sendLeaveLobby(gameId: Int) {}
     override fun sendReadyToggle(isReady: Boolean) {}
     override fun sendPurchase(
