@@ -250,27 +250,27 @@ fun GameScreen(
     Box {
 
 
-        GameScreenLayout(
-            // =====================================
-            // TOP BAR
-            // =====================================
-            topBar = {
-                Column(
+    GameScreenLayout(
+        // =====================================
+        // TOP BAR
+        // =====================================
+        topBar = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
 
-                        SecondaryActionButton(
-                            label = "Leave",
-                            modifier = Modifier.align(
-                                Alignment.CenterStart
-                            ),
-                            onClick = {
-                                showLeaveDialog = true
-                            }
-                        )
+                    SecondaryActionButton(
+                        label = "Leave",
+                        modifier = Modifier.align(
+                            Alignment.CenterStart
+                        ),
+                        onClick = {
+                            showLeaveDialog = true
+                        }
+                    )
 
                         PlayersTopBar(
                             players = state.players,
@@ -284,24 +284,24 @@ fun GameScreen(
                             ),
                         )
 
-                        state.roundNumber?.let { round ->
-                            RoundIndicator(
-                                round = round,
-                                modifier = Modifier.align(
-                                    Alignment.CenterEnd
-                                )
+                    state.roundNumber?.let { round ->
+                        RoundIndicator(
+                            round = round,
+                            modifier = Modifier.align(
+                                Alignment.CenterEnd
                             )
-                        }
+                        )
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .width(IntrinsicSize.Max),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .width(IntrinsicSize.Max),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
 
                         GamePhaseBanner(
                             phase = state.gamePhase,
@@ -333,35 +333,35 @@ fun GameScreen(
                 }
             },
 
-            // =====================================
-            // LEFT
-            // =====================================
-            leftContent = {
-                Box(modifier = Modifier.fillMaxHeight()) {
+        // =====================================
+        // LEFT
+        // =====================================
+        leftContent = {
+            Box(modifier = Modifier.fillMaxHeight()) {
 
-                    Box(modifier = Modifier.align(Alignment.Center)
-                    ) {
-                        if(state.gamePhase != GamePhase.ROLL_DICE) {
-                            state.diceResult?.let { DiceResultDisplay(dice = it) }
-                        }
-                    }
-
-                    Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-                        MarketplaceButton(
-                            onClick = {
-                                showMarketplace = !showMarketplace
-                            },
-                            enabled = isCardViewPossible
-                        )
-
+                Box(modifier = Modifier.align(Alignment.Center)
+                ) {
+                    if(state.gamePhase != GamePhase.ROLL_DICE) {
+                        state.diceResult?.let { DiceResultDisplay(dice = it) }
                     }
                 }
-            },
 
-            // =====================================
-            // CENTER
-            // =====================================
-            centerContent = {
+                Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                      MarketplaceButton(
+                          onClick = {
+                              showMarketplace = !showMarketplace
+                          },
+                          enabled = isCardViewPossible
+                      )
+
+                }
+            }
+        },
+
+        // =====================================
+        // CENTER
+        // =====================================
+        centerContent = {
 
                 Box(modifier = Modifier.align(Alignment.Center)) {
                     if(
@@ -385,11 +385,11 @@ fun GameScreen(
                                     }
                                     .size(35.dp)
                             )
-                            BigPlayerCardsDisplay(
-                                state
-                            )
-                        }
+                        BigPlayerCardsDisplay(
+                            state
+                        )
                     }
+                }
 
                     else if(
                         showMarketplace
@@ -403,59 +403,59 @@ fun GameScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
 
-                            MarketplaceSection(state.marketplace)
+                        MarketplaceSection(state.marketplace)
+                    }
+                }
+
+                else if (state.isBuyingPhase) {
+                    if(state.isActivePlayer) {
+                        BuyingPhaseShop(
+                            state = state,
+                            items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
+                            onPurchaseClick = onPurchaseClick,
+                            recommendedCardType = cheatRecommendation,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    } else BasicText("Waiting for purchase")
+                }
+
+                else if (state.gamePhase == GamePhase.ROLL_DICE) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(bottom = 32.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        when {
+                            state.isRolling -> DiceAnimationDisplay()
+                            state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
                         }
-                    }
 
-                    else if (state.isBuyingPhase) {
-                        if(state.isActivePlayer) {
-                            BuyingPhaseShop(
-                                state = state,
-                                items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
-                                onPurchaseClick = onPurchaseClick,
-                                recommendedCardType = cheatRecommendation,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
-                        } else BasicText("Waiting for purchase")
-                    }
+                        if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
+                            var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
 
-                    else if (state.gamePhase == GamePhase.ROLL_DICE) {
-                        Row(
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(bottom = 32.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            when {
-                                state.isRolling -> DiceAnimationDisplay()
-                                state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
-                            }
-
-                            if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
-                                var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
-
-                                if (state.hasTrainStation) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        listOf(1, 2).forEach { count ->
-                                            Button(
-                                                onClick = { selectedDiceCount = count },
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = if (selectedDiceCount == count)
-                                                        MaterialTheme.colorScheme.primary
-                                                    else
-                                                        MaterialTheme.colorScheme.surfaceVariant,
-                                                    contentColor = if (selectedDiceCount == count)
-                                                        MaterialTheme.colorScheme.onPrimary
-                                                    else
-                                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            ) {
-                                                Text("$count 🎲")
-                                            }
+                            if (state.hasTrainStation) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    listOf(1, 2).forEach { count ->
+                                        Button(
+                                            onClick = { selectedDiceCount = count },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (selectedDiceCount == count)
+                                                    MaterialTheme.colorScheme.primary
+                                                else
+                                                    MaterialTheme.colorScheme.surfaceVariant,
+                                                contentColor = if (selectedDiceCount == count)
+                                                    MaterialTheme.colorScheme.onPrimary
+                                                else
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        ) {
+                                            Text("$count 🎲")
                                         }
                                     }
                                 }
+                            }
 
                             ActionButton(
                                 onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
@@ -569,7 +569,7 @@ fun GameScreen(
                         }
                         .size(35.dp),
 
-                    )
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 PlayerCardsDisplay(
                     state,
