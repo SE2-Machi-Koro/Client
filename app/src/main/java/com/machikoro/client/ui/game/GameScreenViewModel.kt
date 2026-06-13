@@ -15,6 +15,7 @@ import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.session.SessionStateHolder
+import com.machikoro.client.domain.model.state.isAlreadyOwnedPurpleEstablishment
 import com.machikoro.client.domain.model.state.isShopItemAvailableFromMarketplace
 import com.machikoro.client.network.debug.DebugApi
 import com.machikoro.client.network.debug.EndGameRequest
@@ -411,6 +412,7 @@ class GameScreenViewModel(
             purchaseState != PurchaseState.SUCCESS &&
             isShopItemAvailableFromMarketplace(item) &&
             hasEnoughKnownCoinsFor(item) &&
+            !isAlreadyOwnedPurpleEstablishment(item) &&
             !isKnownBuiltLandmark(item)
 
     private fun GameScreenState.canStartPurchase(item: ShopItem): Boolean =
@@ -421,6 +423,7 @@ class GameScreenViewModel(
             purchaseState != PurchaseState.SUCCESS &&
             isShopItemAvailableFromMarketplace(item) &&
             hasEnoughKnownCoinsFor(item) &&
+            !isAlreadyOwnedPurpleEstablishment(item) &&
             !isKnownBuiltLandmark(item)
 
     private fun GameScreenState.hasEnoughKnownCoinsFor(item: ShopItem): Boolean {

@@ -3,13 +3,19 @@ package com.machikoro.client.ui.leaderboard
 import com.machikoro.client.network.leaderboard.LeaderboardApi
 import com.machikoro.client.network.leaderboard.LeaderboardEntry
 import com.machikoro.client.ui.start.MainDispatcherRule
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import retrofit2.HttpException
+import retrofit2.Response
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LeaderboardViewModelTest {
@@ -117,6 +123,43 @@ class LeaderboardViewModelTest {
 
         val state = vm.state.value as LeaderboardState.Error
         assertEquals("Failed to load leaderboard", state.message)
+    }
+
+    @Test
+    fun loadSetsErrorWithParsedServerMessageOnHttpJsonError() = runTest {
+        val errorBody = """{"errorCode":"LEADERBOARD_UNAVAILABLE","message":"Leaderboard temporarily unavailable"}"""
+            .toResponseBody("application/json".toMediaType())
+        val vm = LeaderboardViewModel(
+            FakeLeaderboardApi(error = HttpException(Response.error<List<LeaderboardEntry>>(503, errorBody)))
+        )
+
+        vm.load()
+        advanceUntilIdle()
+
+        val state = vm.state.value as LeaderboardState.Error
+        assertEquals("Leaderboard temporarily unavailable", state.message)
+    }
+
+    @Test
+    fun loadSetsErrorWithNetworkPrefixOnIoException() = runTest {
+        val vm = LeaderboardViewModel(FakeLeaderboardApi(error = IOException("connect timed out")))
+
+        vm.load()
+        advanceUntilIdle()
+
+        val state = vm.state.value as LeaderboardState.Error
+        assertEquals("Network error: connect timed out", state.message)
+    }
+
+    @Test
+    fun loadCancellationLeavesStateLoadingInsteadOfError() = runTest {
+        // Cancellation must be rethrown by the error parser, not converted into an Error state.
+        val vm = LeaderboardViewModel(FakeLeaderboardApi(error = CancellationException("cancelled")))
+
+        vm.load()
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value is LeaderboardState.Loading)
     }
 
     @Test

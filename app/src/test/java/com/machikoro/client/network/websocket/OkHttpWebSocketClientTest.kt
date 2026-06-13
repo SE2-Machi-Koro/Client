@@ -532,7 +532,10 @@ class OkHttpWebSocketClientTest {
         }
 
         assertEquals(5, errors.size)
-        assertEquals(listOf("INVALID_LOBBY_CODE", "GAME_NOT_FOUND", "GAME_STARTED", "GAME_FINISHED", "LOBBY_FULL"), errors.map { it.serverCode })
+        assertEquals(
+            listOf("INVALID_LOBBY_CODE", "GAME_NOT_FOUND", "GAME_STARTED", "GAME_FINISHED", "LOBBY_FULL"),
+            errors.map { it.serverCode }
+        )
     }
 
     @Test
@@ -1267,7 +1270,25 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
-    fun blankStompErrorFrameEmitsPurchaseFailedFallback() = runTest {
+    fun stompErrorFrameWithBlankBodyEmitsDefaultPurchaseFailureMessage() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
+        client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
+        factory.simulateText("ERROR\n\n\u0000")
+        runCurrent()
+
+        assertEquals(listOf(PurchaseEvent.Failure("Purchase failed")), purchaseEvents)
+        assertEquals(ConnectionStatus.CONNECTED, client.connectionStatus.value)
+    }
+
+    @Test
+    fun purchaseFailureWithBlankMessageFallsBackToDefaultMessage() = runTest {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
         val purchaseEvents = mutableListOf<PurchaseEvent>()
@@ -1277,12 +1298,15 @@ class OkHttpWebSocketClientTest {
 
         client.connect()
         factory.simulateOpen()
-        factory.simulateText("CONNECTED\nversion:1.2\n\n\u0000")
-        factory.simulateText("ERROR\n\n   \u0000")
+        factory.simulateText(connectedFrame())
+        factory.simulateText(
+            gameActionFrame(
+                """{"type":"ERROR","sender":"server","payload":{"event":"PURCHASE_FAILED","message":"","purchaseType":"ESTABLISHMENT","cardType":"STADIUM"},"gameId":42}"""
+            )
+        )
         runCurrent()
 
         assertEquals(listOf(PurchaseEvent.Failure("Purchase failed")), purchaseEvents)
-        assertEquals(ConnectionStatus.CONNECTED, client.connectionStatus.value)
     }
 
     @Test
@@ -3337,7 +3361,7 @@ class OkHttpWebSocketClientTest {
         assertEquals(1, enteredCount)
     }
 
-    // ── Cheating accusations (#280) ──────────────────────────────────────────
+    // -- Cheating accusations (#280) ------------------------------------------
 
     private fun rosterFrame(): String =
         gameActionFrame(
@@ -3454,7 +3478,6 @@ class OkHttpWebSocketClientTest {
         factory.simulateText(connectedFrame())
         runCurrent()
 
-        // Legacy/diverged payload shape (the #353 failure mode): no `caught` key.
         factory.simulateText(
             gameActionFrame(
                 """{"type":"ACCUSATION_RESULT","sender":"server","gameId":1,"payload":""" +
@@ -3478,7 +3501,6 @@ class OkHttpWebSocketClientTest {
         factory.simulateText(connectedFrame())
         runCurrent()
 
-        // No roster seeded — the ids cannot be resolved to display names.
         factory.simulateText(
             gameActionFrame(
                 """{"type":"ACCUSATION_RESULT","sender":"server","gameId":1,"payload":""" +
@@ -3504,7 +3526,6 @@ class OkHttpWebSocketClientTest {
         factory.simulateText(connectedFrame())
         runCurrent()
 
-        // WebSocketErrorDto on the private errors queue: no `type` field.
         factory.simulateText(
             gameActionFrame(
                 """{"code":"INVALID_ACCUSATION","message":"You can only accuse once per turn",""" +
@@ -3558,7 +3579,6 @@ class OkHttpWebSocketClientTest {
             )
         )
 
-        // The embedded snapshot must update the roster (penalized coins included).
         val bob = client.players.value.firstOrNull { it.displayName == "bob" }
         assertNotNull(bob)
         assertEquals(5, bob?.coins)
