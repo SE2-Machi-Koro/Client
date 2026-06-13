@@ -17,6 +17,8 @@ import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.session.SessionStateHolder
 import com.machikoro.client.network.debug.DebugApi
 import com.machikoro.client.network.debug.EndGameRequest
+import com.machikoro.client.network.toClientError
+import com.machikoro.client.network.toUserMessage
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
@@ -495,7 +497,7 @@ class GameScreenViewModel(
                     mutableDebugEndGameErrors.tryEmit("End game failed (${response.code()})")
                 }
             } catch (e: Exception) {
-                mutableDebugEndGameErrors.tryEmit("End game error: ${e.message ?: "unknown error"}")
+                mutableDebugEndGameErrors.tryEmit("End game error: ${e.toClientError("unknown error").toUserMessage()}")
             } finally {
                 endGameInFlight = false
             }

@@ -56,6 +56,21 @@ class RegisterDialogViewModelTest {
     }
 
     @Test
+    fun submitHttpExceptionWithEmptyBodyUsesRegistrationFallback() = runTest {
+        val errorBody = "".toResponseBody("text/plain".toMediaType())
+        val api = FakeAuthApi(response = { throw HttpException(Response.error<RegisterResponse>(400, errorBody)) })
+        val viewModel = RegisterDialogViewModel(api)
+        viewModel.usernameChanged("alice")
+        viewModel.passwordChanged("hunter2")
+        viewModel.submit()
+        advanceUntilIdle()
+        val state = viewModel.state.value
+        assertEquals("Registration failed (HTTP 400)", state.errorMessage)
+        assertNull(state.registeredUsername)
+        assertFalse(state.submitting)
+    }
+
+    @Test
     fun submitIoExceptionSurfacesNetworkErrorMessage() = runTest {
         val api = FakeAuthApi(response = { throw IOException("connect timed out") })
         val viewModel = RegisterDialogViewModel(api)

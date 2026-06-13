@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.machikoro.client.network.leaderboard.LeaderboardApi
 import com.machikoro.client.network.leaderboard.LeaderboardEntry
+import com.machikoro.client.network.toClientError
+import com.machikoro.client.network.toUserMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -28,7 +30,9 @@ class LeaderboardViewModel(private val api: LeaderboardApi) : ViewModel() {
                 val entries = api.getLeaderboard(limit = 50).filter { it.totalWins > 0 }
                 mutableState.value = LeaderboardState.Success(entries)
             } catch (e: Exception) {
-                mutableState.value = LeaderboardState.Error(e.message ?: "Failed to load leaderboard")
+                mutableState.value = LeaderboardState.Error(
+                    e.toClientError("Failed to load leaderboard").toUserMessage()
+                )
             }
         }
     }
