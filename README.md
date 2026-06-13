@@ -70,7 +70,7 @@ navigation flow and the implementation map for issue #29.
 
 #### Local Development (Client)
 - **Android Studio**: Ladybug (2024.2.1) or newer recommended.
-- **JDK**: version 11 or higher.
+- **JDK**: version 21.
 - **Android SDK**: API Level 29 (Android 10) minimum, API 36 (target).
 
 #### Backend Infrastructure
@@ -96,7 +96,7 @@ To enable full game functionality, a running instance of the Machi Koro Backend 
 
 ## ⚙️ Environment Variables
 
-The application uses Gradle properties to configure the backend connection. These can be defined in your `local.properties` or passed via command line.
+The application uses Gradle properties to configure the backend connection. These can be defined in your root `local.properties`, project or user Gradle properties, or passed via command line. Command-line `-P` values take precedence over `local.properties`.
 
 | Property Name | Default Value (Emulator) | Description |
 | :--- | :--- | :--- |
@@ -106,6 +106,12 @@ The application uses Gradle properties to configure the backend connection. Thes
 **Example CLI build with custom URLs:**
 ```bash
 ./gradlew assembleDebug -PbackendBaseUrl=http://api.myapp.com -PwebsocketUrl=ws://api.myapp.com/ws
+```
+
+**Example `local.properties` configuration:**
+```properties
+backendBaseUrl=http://api.myapp.com
+websocketUrl=ws://api.myapp.com/ws
 ```
 
 ## 📦 Build & Deployment
