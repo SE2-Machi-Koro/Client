@@ -81,6 +81,7 @@ fun GameScreen(
     onPurchaseClick: (String) -> Unit = {},
     onBuySelectedClick: () -> Unit = {},
     onRollDice: (diceCount: Int) -> Unit = {},
+    onReroll: (diceCount: Int) -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     onEndGame: () -> Unit = {},
@@ -88,6 +89,9 @@ fun GameScreen(
     onShake: () -> Unit = {},
     onAccuse: (accusedPlayerId: Int) -> Unit = {},
     canAccuse: Boolean = true,
+    // Radio Tower reroll budget (#326): false once the active player has rerolled
+    // this turn. Combined with [GameScreenState.canReroll] to show the button.
+    canReroll: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     ShakeDetector(
@@ -371,7 +375,6 @@ fun GameScreen(
                                 .fillMaxSize(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-
                             Image(
                                 painter = painterResource(id = R.drawable.rotated_arrow),
                                 contentDescription = "Arrow",
@@ -466,7 +469,31 @@ fun GameScreen(
                         }
                     }
                 }
-            },
+
+                // Radio Tower reroll (#326): only the active player who built a
+                // Radio Tower may reroll, once, during RESOLVE_EFFECTS.
+                else if (state.canReroll && canReroll) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(bottom = 32.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        state.diceResult?.let { DiceResultDisplay(dice = it) }
+                        ActionButton(
+                            onClick = { onReroll(state.diceResult?.size ?: 1) },
+                            enabled = !state.isRolling,
+                            label = "Nochmal würfeln",
+                            leftIcon = R.drawable.game_dice_perspective,
+                            modifier = Modifier.semantics {
+                                contentDescription = "Nochmal würfeln"
+                            }
+                        )
+                    }
+                }
+            }
+        },
 // =====================================
 // RIGHT
 // =====================================
