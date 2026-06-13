@@ -5,6 +5,7 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
+import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.model.shop.ShopItem
 
 data class GameScreenState(
@@ -105,3 +106,12 @@ fun GameScreenState.remainingMarketplaceQuantityFor(item: ShopItem): Int? {
 
 fun GameScreenState.isShopItemAvailableFromMarketplace(item: ShopItem): Boolean =
     remainingMarketplaceQuantityFor(item)?.let { it > 0 } ?: item.isAvailable
+
+fun GameScreenState.isAlreadyOwnedPurpleEstablishment(item: ShopItem): Boolean {
+    if (item.purchaseType != PurchaseType.ESTABLISHMENT || item.color != ShopItemColor.PURPLE) {
+        return false
+    }
+    val activePlayerId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull() ?: return false
+    val cardType = runCatching { CardType.valueOf(item.type) }.getOrNull() ?: return false
+    return playerCards[activePlayerId].orEmpty().any { it.cardType == cardType && it.quantity > 0 }
+}

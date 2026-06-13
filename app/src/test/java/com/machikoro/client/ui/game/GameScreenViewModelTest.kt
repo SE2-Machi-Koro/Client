@@ -515,6 +515,142 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun selectingAlreadyOwnedPurpleEstablishmentIsIgnored() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 10,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            )
+        )
+        fakeClient.emitPlayerCards(mapOf(100 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1))))
+        fakeClient.emitMarketplace(mapOf(CardType.STADIUM to 1))
+        advanceUntilIdle()
+
+        viewModel.selectPurchaseItem("STADIUM")
+
+        assertNull(viewModel.state.value.selectedPurchaseItemType)
+        assertNull(fakeClient.lastPurchase)
+    }
+
+    @Test
+    fun purchaseAlreadyOwnedPurpleEstablishmentIsIgnored() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 10,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            )
+        )
+        fakeClient.emitPlayerCards(mapOf(100 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1))))
+        fakeClient.emitMarketplace(mapOf(CardType.STADIUM to 1))
+        advanceUntilIdle()
+
+        viewModel.purchase("STADIUM")
+
+        assertNull(fakeClient.lastPurchase)
+        assertEquals(PurchaseState.IDLE, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun ownedNonPurpleEstablishmentCanStillBePurchasedAsDuplicate() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 10,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            )
+        )
+        fakeClient.emitPlayerCards(mapOf(100 to listOf(PlayerCardState(CardType.BAKERY, quantity = 1))))
+        fakeClient.emitMarketplace(mapOf(CardType.BAKERY to 5))
+        advanceUntilIdle()
+
+        viewModel.purchase("BAKERY")
+
+        assertEquals(
+            FakeWebSocketClient.PurchaseCall(
+                gameId = 7,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                cardType = "BAKERY",
+                landmarkType = null
+            ),
+            fakeClient.lastPurchase
+        )
+        assertEquals(PurchaseState.PENDING, viewModel.state.value.purchaseState)
+    }
+
+    @Test
+    fun unownedPurpleEstablishmentCanBePurchased() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 10,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            )
+        )
+        fakeClient.emitPlayerCards(mapOf(100 to listOf(PlayerCardState(CardType.BAKERY, quantity = 1))))
+        fakeClient.emitMarketplace(mapOf(CardType.STADIUM to 1))
+        advanceUntilIdle()
+
+        viewModel.purchase("STADIUM")
+
+        assertEquals(
+            FakeWebSocketClient.PurchaseCall(
+                gameId = 7,
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                cardType = "STADIUM",
+                landmarkType = null
+            ),
+            fakeClient.lastPurchase
+        )
+        assertEquals(PurchaseState.PENDING, viewModel.state.value.purchaseState)
+    }
+
+    @Test
     fun activePlayerCanPurchaseLandmarkDuringBuyOrBuild() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
