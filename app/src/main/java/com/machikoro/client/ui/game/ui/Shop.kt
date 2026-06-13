@@ -39,6 +39,7 @@ import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
+import com.machikoro.client.domain.model.state.isAlreadyOwnedPurpleEstablishment
 import com.machikoro.client.domain.model.state.isShopItemAvailableFromMarketplace
 import com.machikoro.client.domain.model.state.remainingMarketplaceQuantityFor
 import com.machikoro.client.ui.game.GameScreen
@@ -147,6 +148,7 @@ private fun ShopImageTile(
     val isSelected = state.selectedPurchaseItemType == item.type
     val isFeedbackItem = state.purchaseFeedbackItemType == item.type
     val remainingQuantity = state.remainingMarketplaceQuantityFor(item)
+    val isAlreadyOwnedPurple = state.isAlreadyOwnedPurpleEstablishment(item)
 
     val borderColor = when {
         isFeedbackItem && state.purchaseState == PurchaseState.SUCCESS -> PrimaryOrange
@@ -179,6 +181,7 @@ private fun ShopImageTile(
                     contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
                             remainingQuantity?.let { ", $it remaining" }.orEmpty() +
                             (if (remainingQuantity == 0) ", unavailable" else "") +
+                            (if (isAlreadyOwnedPurple) ", already owned" else "") +
                             (if (isRecommended) ", recommended" else "")
                 }
         ) {
@@ -209,6 +212,7 @@ private fun GameScreenState.canPurchaseItem(item: ShopItem): Boolean =
             purchaseState != PurchaseState.PENDING &&
             purchaseState != PurchaseState.SUCCESS &&
             hasEnoughKnownCoinsFor(item) &&
+            !isAlreadyOwnedPurpleEstablishment(item) &&
             !isKnownBuiltLandmark(item)
 
 private fun GameScreenState.hasEnoughKnownCoinsFor(item: ShopItem): Boolean {
