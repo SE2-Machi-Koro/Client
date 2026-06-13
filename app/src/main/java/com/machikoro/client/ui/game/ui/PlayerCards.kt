@@ -127,7 +127,7 @@ fun BigPlayerCardsDisplay(
                     landmarks.forEach {
                         LandmarkDisplay(it,
                             width = 155.dp,
-                            height = 180.dp
+                            height = 175.dp
                         )
                     }
                 }
@@ -146,7 +146,7 @@ fun BigPlayerCardsDisplay(
                     rowItems.forEach {
                         CardDisplay(it,
                         width = 155.dp,
-                        height = 180.dp,
+                        height = 175.dp,
                         showCounter = true
                         )
                     }
