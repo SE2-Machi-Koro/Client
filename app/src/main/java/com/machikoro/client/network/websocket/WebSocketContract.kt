@@ -15,6 +15,9 @@ object WebSocketContract {
     const val advancePhaseDestination: String = "/app/game.advancePhase"
     const val resolveEffectsDestination: String = "/app/game.resolveEffects"
     const val endTurnDestination: String = "/app/game.endTurn"
+    // Cheating accusations (#280 / server #361)
+    const val reportCheatDestination: String = "/app/game.reportCheat"
+    const val accuseDestination: String = "/app/game.accuse"
     const val createLobbyDestination: String = "/app/lobby.create"
     const val joinLobbyDestination = "/app/lobby.join"
     const val leaveLobbyDestination = "/app/lobby.leave"

@@ -59,6 +59,8 @@ class DummyWebSocketClient : WebSocketClient {
     )
 
     override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow()
+    override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> = MutableSharedFlow(extraBufferCapacity = 1)
+    override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
     override fun connect() {}
     override fun disconnect() {}
     override fun sendCreateLobby() {}
@@ -70,6 +72,8 @@ class DummyWebSocketClient : WebSocketClient {
     override fun advancePhase(gameId: Int) {}
     override fun resolveEffects(gameId: Int) {}
     override fun endTurn(gameId: Int) {}
+    override fun reportCheat(gameId: Int) {}
+    override fun accuse(gameId: Int, accusedPlayerId: Int) {}
     override fun sendLeaveLobby(gameId: Int) {}
     override fun sendReadyToggle(isReady: Boolean) {}
     override fun sendPurchase(

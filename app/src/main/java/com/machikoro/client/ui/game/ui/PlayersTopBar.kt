@@ -74,6 +74,8 @@ fun PlayersTopBar(
     players: List<PlayerCoinState>,
     playerLandmarks: Map<Int, List<PlayerLandmarkState>>,
     playerCards: Map<Int, List<PlayerCardState>>,
+    onAccusePlayer: (playerId: String) -> Unit = {},
+    canAccuse: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     if (players.isEmpty()) return
@@ -126,7 +128,12 @@ fun PlayersTopBar(
             playerLandmarks = playerLandmarks,
             playerCards = playerCards,
             onPlayerSelected = { inspectedPlayerId = it.id },
-            onDismiss = { inspectedPlayerId = null }
+            onDismiss = { inspectedPlayerId = null },
+            canAccuse = canAccuse,
+            onAccuse = {
+                inspectedPlayerId = null
+                onAccusePlayer(selectedPlayer.id)
+            }
         )
     }
 }
@@ -208,7 +215,9 @@ private fun PlayerInventoryDialog(
     playerLandmarks: Map<Int, List<PlayerLandmarkState>>,
     playerCards: Map<Int, List<PlayerCardState>>,
     onPlayerSelected: (PlayerCoinState) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    canAccuse: Boolean = true,
+    onAccuse: () -> Unit = {}
 ) {
     val selectedSnapshotId = selectedPlayer.snapshotId()
     val landmarks = playerLandmarks[selectedSnapshotId].orEmpty()
@@ -239,7 +248,9 @@ private fun PlayerInventoryDialog(
             ) {
                 PlayerInventoryHeader(
                     playerName = selectedPlayer.displayName,
-                    onDismiss = onDismiss
+                    onDismiss = onDismiss,
+                    canAccuse = canAccuse,
+                    onAccuse = onAccuse
                 )
 
                 if (players.size > 1) {
@@ -275,7 +286,9 @@ private fun PlayerInventoryDialog(
 @Composable
 private fun PlayerInventoryHeader(
     playerName: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    canAccuse: Boolean = true,
+    onAccuse: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -288,8 +301,22 @@ private fun PlayerInventoryHeader(
             fontWeight = FontWeight.Bold
         )
 
-        TextButton(onClick = onDismiss) {
-            Text("Close")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // One accusation per turn (issue #280) — disabled until the next
+            // turn once the local player has used theirs.
+            TextButton(
+                onClick = onAccuse,
+                enabled = canAccuse,
+                modifier = Modifier.semantics {
+                    contentDescription = "Accuse $playerName of cheating"
+                }
+            ) {
+                Text(if (canAccuse) "Accuse of cheating" else "Accused this turn")
+            }
+
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
         }
     }
 }
