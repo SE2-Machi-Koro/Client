@@ -2,6 +2,7 @@ package com.machikoro.client
 
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -20,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import com.machikoro.client.config.AppConfig
 import com.machikoro.client.domain.session.DataStoreSessionStorage
@@ -28,11 +30,13 @@ import com.machikoro.client.network.auth.AuthApiFactory
 import com.machikoro.client.network.debug.DebugApiFactory
 import com.machikoro.client.network.health.BackendHealthRepository
 import com.machikoro.client.network.health.HealthApiFactory
+import com.machikoro.client.network.leaderboard.LeaderboardApiFactory
 import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.AppRoot
 import com.machikoro.client.ui.connection.ConnectionBannerViewModel
 import com.machikoro.client.ui.game.GameScreenViewModel
 import com.machikoro.client.ui.home.HomeViewModel
+import com.machikoro.client.ui.leaderboard.LeaderboardViewModel
 import com.machikoro.client.ui.lobby.LobbyScreenViewModel
 import com.machikoro.client.ui.navigation.NavigationViewModel
 import com.machikoro.client.ui.start.LoginDialogViewModel
@@ -53,7 +57,7 @@ class MainActivity : ComponentActivity() {
         AuthApiFactory.create(AppConfig.backendBaseUrl)
     }
     private val debugApi by lazy {
-        DebugApiFactory.create(AppConfig.backendBaseUrl)
+        DebugApiFactory.create(AppConfig.backendBaseUrl) { SessionManager.session.value?.sessionToken }
     }
     private val healthApi by lazy {
         HealthApiFactory.create(AppConfig.backendBaseUrl)
@@ -65,7 +69,7 @@ class MainActivity : ComponentActivity() {
         StartScreenViewModel.Factory(webSocketClient, SessionManager, healthRepository)
     }
     private val gameScreenViewModel by viewModels<GameScreenViewModel> {
-        GameScreenViewModel.Factory(webSocketClient, SessionManager)
+        GameScreenViewModel.Factory(webSocketClient, SessionManager, debugApi)
     }
     private val homeViewModel by viewModels<HomeViewModel> {
         HomeViewModel.Factory(webSocketClient)
@@ -90,6 +94,12 @@ class MainActivity : ComponentActivity() {
     private val connectionBannerViewModel by viewModels<ConnectionBannerViewModel> {
         ConnectionBannerViewModel.Factory(webSocketClient, SessionManager)
     }
+    private val leaderboardApi by lazy {
+        LeaderboardApiFactory.create(AppConfig.backendBaseUrl) { SessionManager.session.value?.sessionToken }
+    }
+    private val leaderboardViewModel by viewModels<LeaderboardViewModel> {
+        LeaderboardViewModel.Factory(leaderboardApi)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,6 +110,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val startScreenState by startScreenViewModel.state.collectAsState()
             val gameScreenState by gameScreenViewModel.state.collectAsState()
+            val cheatRecommendation by gameScreenViewModel.cheatRecommendation.collectAsState()
+            val canAccuse by gameScreenViewModel.canAccuseThisTurn.collectAsState()
+            val context = LocalContext.current
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
             val activeGameId by homeViewModel.activeGameId.collectAsState()
             val joinLobbyCode by homeViewModel.joinLobbyCode.collectAsState()
@@ -109,6 +122,7 @@ class MainActivity : ComponentActivity() {
             val loginDialogState by loginDialogViewModel.state.collectAsState()
             val logoutState by logoutViewModel.state.collectAsState()
             val connectionBannerState by connectionBannerViewModel.state.collectAsState()
+            val leaderboardState by leaderboardViewModel.state.collectAsState()
             var showJoinLobbyInput by remember { mutableStateOf(false) }
             val snackbarHostState = remember { SnackbarHostState() }
             val hasActiveGame = activeGameId != null && gameScreenState.gamePhase != GamePhase.NONE
@@ -145,11 +159,57 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(Unit) {
-                webSocketClient.lobbyJoinErrors.collect { message ->
-                    Log.e("MainActivity", "Lobby join error received: $message")
-                    homeViewModel.setJoinLobbyError(message)
+                webSocketClient.hostLeftLobby.collect {
+                    navigationViewModel.leaveLobby()
+                    homeViewModel.clearLobbyCode()
+
+                    snackbarHostState.showSnackbar(
+                        "Lobby closed. Choose another one."
+                    )
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                webSocketClient.lobbyJoinErrors.collect { error ->
+                    Log.e("MainActivity", "Lobby join error received: ${error.diagnosticMessage}")
+                    homeViewModel.setJoinLobbyError(error.userMessage)
                     // Return to HomeScreen so the error is visible
                     navigationViewModel.leaveLobby()
+                }
+            }
+
+            // Insider Trading cheat (#203): brief toast each time a shake activates it.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.cheatActivations.collect {
+                    Toast.makeText(context, "Insider Trading active", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            // Cheating accusation result (#280): toast the outcome.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.accusationResults.collect { result ->
+                    val penalty = "${result.penalizedName} −${result.penaltyCoins}"
+                    val message = if (result.caught) {
+                        "${result.accuserName} caught ${result.accusedName} cheating — $penalty"
+                    } else {
+                        "${result.accuserName} wrongly accused ${result.accusedName} — $penalty"
+                    }
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            }
+
+            // Rejected accusation (#280): surface the server's reason (e.g.
+            // "You can only accuse once per turn") instead of dropping it.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.accusationErrors.collect { message ->
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            }
+
+            // Debug End-game (#191): surface End-game button failures as a snackbar.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.debugEndGameErrors.collect { message ->
+                    snackbarHostState.showSnackbar(message)
                 }
             }
 
@@ -168,6 +228,8 @@ class MainActivity : ComponentActivity() {
                         loginDialogState = loginDialogState,
                         logoutState = logoutState,
                         connectionBannerState = connectionBannerState,
+                        leaderboardState = leaderboardState,
+                        onLeaderboardRetry = leaderboardViewModel::load,
                         onRegisterUsernameChange = registerDialogViewModel::usernameChanged,
                         onRegisterPasswordChange = registerDialogViewModel::passwordChanged,
                         onRegisterSubmit = registerDialogViewModel::submit,
@@ -198,6 +260,11 @@ class MainActivity : ComponentActivity() {
                             homeViewModel.clearLobbyCode()
                         },
                         onRollDice = gameScreenViewModel::rollDice,
+                        cheatRecommendation = cheatRecommendation,
+                        onShake = gameScreenViewModel::onShake,
+                        onAccuse = { gameScreenViewModel.accuse(it) },
+                        canAccuse = canAccuse,
+                        onTurnFlowAction = gameScreenViewModel::performTurnFlowAction,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
                         joinLobbyCode = joinLobbyCode,
@@ -210,6 +277,9 @@ class MainActivity : ComponentActivity() {
                         },
                         onLeaveGame = {
                             navigationViewModel.leaveLobby()
+                        },
+                        onEndGame = {
+                            gameScreenViewModel.endGame()
                         },
                         hasActiveGame = hasActiveGame,
                         onResumeGameClick = {
@@ -231,10 +301,14 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         },
-                        onPurchaseClick = gameScreenViewModel::purchase,
+                        onPurchaseClick = gameScreenViewModel::selectPurchaseItem,
+                        onBuySelectedClick = gameScreenViewModel::purchaseSelectedItem,
                         onBackHome = {
                             gameScreenViewModel.clearGameState()
                             navigationViewModel.returnHome()
+                        },
+                        onClearGameState = {
+                            gameScreenViewModel.clearGameState()
                         },
                         onJoinLobbyClick = {
                             homeViewModel.clearLobbyCode()

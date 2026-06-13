@@ -18,6 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.LoginDialogState
@@ -34,9 +35,12 @@ import com.machikoro.client.ui.navigation.AppNavigator
 import com.machikoro.client.ui.navigation.AppRoute
 import com.machikoro.client.ui.navigation.NavigationEvent
 import com.machikoro.client.ui.navigation.NavigationViewModel
+import com.machikoro.client.ui.leaderboard.LeaderboardScreen
+import com.machikoro.client.ui.leaderboard.LeaderboardState
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.win.GameOverOneWinner
+import com.machikoro.client.ui.win.resolveRankedPlayers
 import com.machikoro.client.ui.win.resolveWinnerName
 import kotlinx.coroutines.flow.collectLatest
 
@@ -72,13 +76,23 @@ fun AppRoot(
     onLeaveLobby: () -> Unit = {},
     onFillWithDummies: () -> Unit = {},
     onResetLobby: () -> Unit = {},
-    onRollDice: () -> Unit = {},
+    onRollDice: (diceCount: Int) -> Unit = {},
+    onTurnFlowAction: () -> Unit = {},
     onPurchaseClick: (String) -> Unit = {},
+    onBuySelectedClick: () -> Unit = {},
     onBackHome: () -> Unit = {},
+    onClearGameState: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
+    onEndGame: () -> Unit = {},
+    cheatRecommendation: CardType? = null,
+    onShake: () -> Unit = {},
+    onAccuse: (Int) -> Unit = {},
+    canAccuse: Boolean = true,
     hasActiveGame: Boolean = false,
     onResumeGameClick: () -> Unit = {},
     onPurgeClick: () -> Unit = {},
+    leaderboardState: LeaderboardState = LeaderboardState.Loading,
+    onLeaderboardRetry: () -> Unit = {},
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
 ) {
     val navController = rememberNavController()
@@ -88,12 +102,6 @@ fun AppRoot(
     val currentRoute = currentBackStackEntry?.destination?.route
     val showConnectionBanner = currentRoute != null && currentRoute != AppRoute.Main.route
 
-    // AppRoot owns the NavHost lifecycle, but route decisions are delegated to
-    // NavigationViewModel so navigation state has one source of truth.
-
-    // Reset NavigationViewModel idempotency cache when the NavController actually
-    // changes destination, so the same navigation can be re-emitted later if
-    // needed.
     DisposableEffect(navController) {
         val listener = NavController.OnDestinationChangedListener { _, _, _ ->
             navigationViewModel.clearLastNavigation()
@@ -104,7 +112,6 @@ fun AppRoot(
         }
     }
 
-    // Listen to navigation events from ViewModel and apply them
     LaunchedEffect(navigationViewModel) {
         navigationViewModel.navigationEvent.collectLatest { event ->
             when (event) {
@@ -114,7 +121,6 @@ fun AppRoot(
         }
     }
 
-    // Delegate state-based route decisions to NavigationViewModel
     LaunchedEffect(
         gameScreenState,
         startScreenState,
@@ -158,6 +164,7 @@ fun AppRoot(
 
             composable(AppRoute.Home.route) {
                 HomeScreen(
+                    username = startScreenState.loggedInAs,
                     joinLobbyCode = joinLobbyCode,
                     showJoinLobbyInput = showJoinLobbyInput && lobbyCode == null,
                     onJoinLobbyClick = onJoinLobbyClick,
@@ -169,7 +176,21 @@ fun AppRoot(
                     onResumeGameClick = onResumeGameClick,
                     onPurgeClick = onPurgeClick,
                     onLogoutClick = onLogoutSubmit,
+                    // Navigate to the global leaderboard keeping Home in the back stack
+                    onRankingClick = {
+                        navController.navigate(AppRoute.Leaderboard.route) {
+                            launchSingleTop = true
+                        }
+                    },
                     modifier = modifier,
+                )
+            }
+
+            composable(AppRoute.Leaderboard.route) {
+                LeaderboardScreen(
+                    state = leaderboardState,
+                    onBackClick = { navController.popBackStack() },
+                    onRetry = onLeaderboardRetry,
                 )
             }
 
@@ -212,8 +233,15 @@ fun AppRoot(
                 GameScreen(
                     state = gameScreenState.copy(gameId = routedGameId ?: gameScreenState.gameId),
                     onRollDice = onRollDice,
+                    onTurnFlowAction = onTurnFlowAction,
                     onPurchaseClick = onPurchaseClick,
+                    onBuySelectedClick = onBuySelectedClick,
                     onLeaveGame = onLeaveGame,
+                    onEndGame = onEndGame,
+                    cheatRecommendation = cheatRecommendation,
+                    onShake = onShake,
+                    onAccuse = onAccuse,
+                    canAccuse = canAccuse,
                 )
             }
 
@@ -221,7 +249,15 @@ fun AppRoot(
                 GameOverOneWinner(
                     winnerName = resolveWinnerName(gameScreenState),
                     roundsNumber = gameScreenState.roundNumber ?: 0,
+                    rankedPlayers = resolveRankedPlayers(gameScreenState),
                     onBackHome = onBackHome,
+                    onViewLeaderboard = {
+                        // Clear finished game state, then navigate to the global leaderboard
+                        onClearGameState()
+                        navController.navigate(AppRoute.Leaderboard.route) {
+                            launchSingleTop = true
+                        }
+                    },
                 )
             }
         }

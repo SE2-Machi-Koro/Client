@@ -7,11 +7,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.StartScreenState
@@ -120,8 +118,8 @@ class NavigationViewModel(
                 }
                 gameScreenState.gameStatus == GameStatus.FINISHED -> AppRoute.Winner
                 // Gate on hasBeenInLobby: reconnect snapshots alone must not skip HomeScreen.
-                hasBeenInLobby && gameScreenState.gamePhase != GamePhase.NONE -> AppRoute.Game
-                uiState.value.showLobbyScreen -> AppRoute.Lobby
+                hasBeenInLobby && gameScreenState.gameStatus == GameStatus.IN_PROGRESS -> AppRoute.Game
+                uiState.value.showLobbyScreen && (gameScreenState.gameStatus == GameStatus.WAITING || gameScreenState.gameStatus == null)-> AppRoute.Lobby
                 else -> AppRoute.Home
             }
 

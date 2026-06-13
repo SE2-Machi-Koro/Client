@@ -7,6 +7,7 @@ import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopItem
+import com.machikoro.client.network.error.ClientError
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.session.Session
@@ -48,11 +49,18 @@ class DummyWebSocketClient : WebSocketClient {
     override val diceResult: StateFlow<List<Int>?> = MutableStateFlow(null)
     override val activePlayerId: StateFlow<Int?> = MutableStateFlow(null)
     override val authRejections = kotlinx.coroutines.flow.MutableSharedFlow<Unit>()
-    override val lobbyJoinErrors: SharedFlow<String> = MutableSharedFlow(
+    override val lobbyJoinErrors: SharedFlow<ClientError.WebSocket> = MutableSharedFlow(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
+    override val hostLeftLobby: SharedFlow<Unit> = MutableSharedFlow(
+            extraBufferCapacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
     override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow()
+    override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> = MutableSharedFlow(extraBufferCapacity = 1)
+    override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
     override fun connect() {}
     override fun disconnect() {}
     override fun sendCreateLobby() {}
@@ -61,7 +69,13 @@ class DummyWebSocketClient : WebSocketClient {
     override fun clearGameState() {}
     override fun sendGameStart() {}
     override fun rollDice(diceCount: Int) {}
+    override fun advancePhase(gameId: Int) {}
+    override fun resolveEffects(gameId: Int) {}
+    override fun endTurn(gameId: Int) {}
+    override fun reportCheat(gameId: Int) {}
+    override fun accuse(gameId: Int, accusedPlayerId: Int) {}
     override fun sendLeaveLobby(gameId: Int) {}
+    override fun sendReadyToggle(isReady: Boolean) {}
     override fun sendPurchase(
         gameId: Int,
         purchaseType: PurchaseType,
@@ -106,7 +120,9 @@ class WebSocketClientTest {
             fixture.client.players.value.map { it.id to it.coins }
         )
         assertFalse(fixture.client.players.value.first { it.id == "11" }.isActivePlayer)
+        assertEquals(true, fixture.client.players.value.first { it.id == "11" }.isCurrentPlayer)
         assertEquals(true, fixture.client.players.value.first { it.id == "22" }.isActivePlayer)
+        assertFalse(fixture.client.players.value.first { it.id == "22" }.isCurrentPlayer)
         assertEquals(
             mapOf(11 to listOf(PlayerCardState(CardType.WHEAT_FIELD, 1))),
             fixture.client.playerCards.value
@@ -120,7 +136,13 @@ class WebSocketClientTest {
             fixture.client.marketplace.value
         )
         assertEquals(false, fixture.client.shopItems.value.first { it.type == "WHEAT_FIELD" }.isAvailable)
-        assertEquals(true, fixture.client.shopItems.value.first { it.type == "BAKERY" }.isAvailable)
+        val bakery = fixture.client.shopItems.value.first { it.type == "BAKERY" }
+        assertEquals(true, bakery.isAvailable)
+        assertEquals("2-3", bakery.activationText)
+        assertEquals("Get 1 coin from the bank on your turn.", bakery.effectText)
+        val trainStation = fixture.client.shopItems.value.first { it.type == "TRAIN_STATION" }
+        assertEquals("Permanent", trainStation.activationText)
+        assertEquals("You may roll one or two dice.", trainStation.effectText)
     }
 
     @Test
@@ -183,14 +205,144 @@ class WebSocketClientTest {
 
         assertEquals(202, fixture.client.activePlayerId.value)
         assertFalse(fixture.client.players.value.first { it.id == "202" }.isActivePlayer)
+        assertEquals(true, fixture.client.players.value.first { it.id == "202" }.isCurrentPlayer)
         assertEquals(true, fixture.client.players.value.first { it.id == "22" }.isActivePlayer)
+        assertFalse(fixture.client.players.value.first { it.id == "22" }.isCurrentPlayer)
     }
 
-    private fun okHttpClientFixture(): OkHttpClientFixture {
+    @Test
+    fun shopDefinitionsPreferServerProvidedActivationAndEffectText() {
+        val fixture = okHttpClientFixture()
+
+        fixture.deliverMessage(syncMessage(snapshotWithDetailedShopDefinitions()))
+
+        val bakery = fixture.client.shopItems.value.first { it.type == "BAKERY" }
+        assertEquals("2-3", bakery.activationText)
+        assertEquals("Server bakery effect", bakery.effectText)
+        val trainStation = fixture.client.shopItems.value.first { it.type == "TRAIN_STATION" }
+        assertEquals("Permanent", trainStation.activationText)
+        assertEquals("Server train station effect", trainStation.effectText)
+    }
+
+    @Test
+    fun twoClientsApplySameGameStartedBroadcast() {
+        val playerA = okHttpClientFixture(userId = 101)
+        val playerB = okHttpClientFixture(userId = 202)
+        val started = gameStartedMessage()
+
+        playerA.deliverMessage(started)
+        playerB.deliverMessage(started)
+
+        assertEquals(77, playerA.client.activeGameId.value)
+        assertEquals(77, playerB.client.activeGameId.value)
+        assertEquals(GameStatus.IN_PROGRESS, playerA.client.gameStatus.value)
+        assertEquals(GameStatus.IN_PROGRESS, playerB.client.gameStatus.value)
+        assertEquals(GamePhase.ROLL_DICE, playerA.client.gamePhase.value)
+        assertEquals(GamePhase.ROLL_DICE, playerB.client.gamePhase.value)
+        assertEquals(2, playerA.client.roundNumber.value)
+        assertEquals(2, playerB.client.roundNumber.value)
+        assertEquals(202, playerA.client.activePlayerId.value)
+        assertEquals(202, playerB.client.activePlayerId.value)
+        assertEquals(
+            listOf(
+                Triple("11", "Alice", 1),
+                Triple("22", "Bob", 4),
+            ),
+            playerA.client.players.value.map { Triple(it.id, it.displayName, it.coins) }
+        )
+        assertEquals(
+            playerA.client.players.value.map { Triple(it.id, it.displayName, it.coins) },
+            playerB.client.players.value.map { Triple(it.id, it.displayName, it.coins) }
+        )
+        assertFalse(playerA.client.players.value.first { it.id == "11" }.isActivePlayer)
+        assertEquals(true, playerA.client.players.value.first { it.id == "22" }.isActivePlayer)
+        assertEquals(
+            mapOf(11 to listOf(PlayerCardState(CardType.WHEAT_FIELD, 1))),
+            playerA.client.playerCards.value
+        )
+        assertEquals(
+            mapOf(22 to listOf(PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true))),
+            playerA.client.playerLandmarks.value
+        )
+        assertEquals(
+            mapOf(CardType.WHEAT_FIELD to 0, CardType.BAKERY to 4),
+            playerA.client.marketplace.value
+        )
+        assertEquals(false, playerA.client.shopItems.value.first { it.type == "WHEAT_FIELD" }.isAvailable)
+        val bakery = playerA.client.shopItems.value.first { it.type == "BAKERY" }
+        assertEquals(PurchaseType.ESTABLISHMENT, bakery.purchaseType)
+        assertEquals("Bakery", bakery.displayName)
+        assertEquals(1, bakery.cost)
+        assertEquals(true, bakery.isAvailable)
+        val trainStation = playerA.client.shopItems.value.first { it.type == "TRAIN_STATION" }
+        assertEquals(PurchaseType.LANDMARK, trainStation.purchaseType)
+        assertEquals("Train Station", trainStation.displayName)
+        assertEquals(4, trainStation.cost)
+    }
+
+    @Test
+    fun actionSentByOneClientUpdatesOtherClientFromBroadcast() {
+        val playerA = okHttpClientFixture(userId = 101)
+        val playerB = okHttpClientFixture(userId = 202)
+
+        playerA.client.advancePhase(gameId = 77)
+        playerB.deliverMessage(gameActionMessage())
+
+        assertEquals(
+            WebSocketContract.advancePhaseDestination,
+            playerA.sentFrames().last().headers["destination"]
+        )
+        assertEquals(GamePhase.BUY_OR_BUILD, playerB.client.gamePhase.value)
+        assertEquals(202, playerB.client.activePlayerId.value)
+        assertEquals(4, playerB.client.players.value.first { it.id == "22" }.coins)
+    }
+
+    @Test
+    fun rollDiceBroadcastUpdatesNonSenderClient() {
+        val playerB = okHttpClientFixture(userId = 202)
+
+        playerB.deliverMessage(rollDiceMessage())
+
+        assertEquals(listOf(2, 6), playerB.client.diceResult.value)
+        assertEquals(GamePhase.RESOLVE_EFFECTS, playerB.client.gamePhase.value)
+        assertEquals(202, playerB.client.activePlayerId.value)
+    }
+
+    @Test
+    fun purchaseBroadcastUpdatesNonSenderSnapshotAndPurchaseEvent() = runTest {
+        val playerB = okHttpClientFixture(userId = 202)
+        val purchaseEvents = mutableListOf<PurchaseEvent>()
+        playerB.client.purchaseEvents.onEach { purchaseEvents += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        playerB.deliverMessage(gameActionMessage(purchaseFields = true))
+        runCurrent()
+
+        assertEquals(
+            listOf(PurchaseEvent.Success(PurchaseType.ESTABLISHMENT, "BAKERY")),
+            purchaseEvents
+        )
+        assertEquals(mapOf(CardType.WHEAT_FIELD to 0, CardType.BAKERY to 4), playerB.client.marketplace.value)
+        assertEquals(4, playerB.client.players.value.first { it.id == "22" }.coins)
+    }
+
+    @Test
+    fun reconnectSyncRestoresNonSenderClient() {
+        val playerB = okHttpClientFixture(userId = 202)
+
+        playerB.deliverMessage(syncMessage())
+
+        assertEquals(GameStatus.IN_PROGRESS, playerB.client.gameStatus.value)
+        assertEquals(GamePhase.BUY_OR_BUILD, playerB.client.gamePhase.value)
+        assertEquals(mapOf(CardType.WHEAT_FIELD to 0, CardType.BAKERY to 4), playerB.client.marketplace.value)
+        assertEquals(202, playerB.client.activePlayerId.value)
+    }
+
+    private fun okHttpClientFixture(userId: Int = 101): OkHttpClientFixture {
         val factory = CapturingWebSocketFactory()
         val sessionHolder = object : SessionStateHolder {
             override val session: StateFlow<Session?> = MutableStateFlow(
-                Session(sessionToken = "token", username = "alice", userId = 101)
+                Session(sessionToken = "token", username = "user-$userId", userId = userId)
             )
             override fun signIn(token: String, username: String, userId: Int) = Unit
             override fun signOut() = Unit
@@ -214,6 +366,9 @@ class WebSocketClientTest {
             val socket = factory.socket
             listener.onMessage(socket, StompFrame(command = "MESSAGE", body = body).serialize())
         }
+
+        fun sentFrames(): List<StompFrame> =
+            factory.socket.sent.flatMap { parseFrames(StringBuilder(it)) }
     }
 
     private class CapturingWebSocketFactory : WebSocketFactory {
@@ -276,6 +431,16 @@ class WebSocketClientTest {
                 "completed":true,
                 "state":${snapshot(status = "IN_PROGRESS", phase = "RESOLVE_EFFECTS")}
               }
+            }
+        """.trimIndent()
+
+    private fun gameStartedMessage(): String =
+        """
+            {
+              "type":"GAME_STARTED",
+              "sender":"server",
+              "gameId":77,
+              "payload":${snapshot(status = "IN_PROGRESS", phase = "ROLL_DICE")}
             }
         """.trimIndent()
 
@@ -356,4 +521,48 @@ class WebSocketClientTest {
             }
         """.trimIndent()
     }
+
+    private fun snapshotWithDetailedShopDefinitions(): String =
+        """
+            {
+              "game":{
+                "id":77,
+                "status":"IN_PROGRESS",
+                "hostUserId":101,
+                "lobbyCode":"ABC123",
+                "maxPlayers":4,
+                "currentTurnIndex":1,
+                "turnPhase":"BUY_OR_BUILD",
+                "lastDiceRoll":8,
+                "roundNumber":2,
+                "hasPurchasedThisTurn":false
+              },
+              "players":[
+                {"id":11,"gameId":77,"userId":101,"turnOrder":0,"coins":1,"lastSeenAt":null},
+                {"id":22,"gameId":77,"userId":202,"turnOrder":1,"coins":4,"lastSeenAt":null}
+              ],
+              "marketplace":{
+                "BAKERY":4
+              },
+              "cardDefinitions":[
+                {
+                  "cardType":"BAKERY",
+                  "cost":1,
+                  "color":"GREEN",
+                  "establishmentType":"RESTAURANT",
+                  "activationNumbers":[2,3],
+                  "effectDescription":"Server bakery effect"
+                }
+              ],
+              "landmarkDefinitions":[
+                {
+                  "landmarkType":"TRAIN_STATION",
+                  "cost":4,
+                  "description":"Server train station effect"
+                }
+              ],
+              "turnOrder":[101,202],
+              "activePlayerId":202
+            }
+        """.trimIndent()
 }

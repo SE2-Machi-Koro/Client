@@ -10,6 +10,7 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopItem
+import com.machikoro.client.network.error.ClientError
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,8 +30,10 @@ class FakeWebSocketClient : WebSocketClient {
     override val lobbyCode: StateFlow<String?>
         get() = mutableLobbyCode
 
-    override val lobbyJoinErrors: SharedFlow<String>
+    override val lobbyJoinErrors: SharedFlow<ClientError.WebSocket>
         get() = mutableLobbyJoinErrors
+    override val hostLeftLobby: SharedFlow<Unit>
+        get() = mutableHostLeftLobby
 
     override val winnerId: StateFlow<Int?>
         get() = mutableWinnerId
@@ -75,7 +78,11 @@ class FakeWebSocketClient : WebSocketClient {
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
     private val mutableLobbyCode = MutableStateFlow<String?>(null)
-    private val mutableLobbyJoinErrors = MutableSharedFlow<String>(
+    private val mutableLobbyJoinErrors = MutableSharedFlow<ClientError.WebSocket>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    private val mutableHostLeftLobby = MutableSharedFlow<Unit>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
@@ -105,6 +112,14 @@ class FakeWebSocketClient : WebSocketClient {
         private set
 
     var lastRolledDiceCount: Int? = null
+        private set
+    var advancedPhaseGameId: Int? = null
+        private set
+    var resolvedEffectsGameId: Int? = null
+        private set
+    var resolveEffectsCallCount = 0
+        private set
+    var endedTurnGameId: Int? = null
         private set
 
     override fun connect() = Unit
@@ -146,6 +161,9 @@ class FakeWebSocketClient : WebSocketClient {
     }
 
     override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow(extraBufferCapacity = 1)
+    override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> =
+        MutableSharedFlow(extraBufferCapacity = 1)
+    override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
 
     var leaveLobbyGameId: Int? = null
         private set
@@ -178,6 +196,40 @@ class FakeWebSocketClient : WebSocketClient {
 
     override fun rollDice(diceCount: Int) {
         lastRolledDiceCount = diceCount
+    }
+
+    override fun advancePhase(gameId: Int) {
+        advancedPhaseGameId = gameId
+    }
+
+    override fun resolveEffects(gameId: Int) {
+        resolvedEffectsGameId = gameId
+        resolveEffectsCallCount++
+    }
+
+    override fun endTurn(gameId: Int) {
+        endedTurnGameId = gameId
+    }
+
+    var reportCheatCalls = 0
+        private set
+
+    /** Recorded accuse calls as (gameId, accusedPlayerId) pairs. */
+    val accusations = mutableListOf<Pair<Int, Int>>()
+
+    override fun reportCheat(gameId: Int) {
+        reportCheatCalls++
+    }
+
+    override fun accuse(gameId: Int, accusedPlayerId: Int) {
+        accusations += gameId to accusedPlayerId
+    }
+
+    var lastReadyToggle: Boolean? = null
+        private set
+
+    override fun sendReadyToggle(isReady: Boolean) {
+        lastReadyToggle = isReady
     }
 
     fun emitConnectionStatus(status: ConnectionStatus) {
@@ -240,6 +292,10 @@ class FakeWebSocketClient : WebSocketClient {
         mutablePurchaseEvents.tryEmit(event)
     }
 
+    fun emitLobbyJoinError(error: ClientError.WebSocket) {
+        mutableLobbyJoinErrors.tryEmit(error)
+    }
+
     fun emitAuthRejection() {
         mutableAuthRejections.tryEmit(Unit)
     }
@@ -247,6 +303,11 @@ class FakeWebSocketClient : WebSocketClient {
     fun emitLobbyCode(code: String?) {
         mutableLobbyCode.value = code
     }
+
+    fun emitHostLeftLobby() {
+        mutableHostLeftLobby.tryEmit(Unit)
+    }
+
     data class PurchaseCall(
         val gameId: Int,
         val purchaseType: PurchaseType,

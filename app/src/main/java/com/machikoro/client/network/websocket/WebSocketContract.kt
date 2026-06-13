@@ -12,9 +12,16 @@ object WebSocketContract {
     const val addUserDestination: String = "/app/chat.addUser"
     const val chatSendDestination: String = "/app/chat.send"
     const val rollDiceDestination: String = "/app/game.rollDice"
+    const val advancePhaseDestination: String = "/app/game.advancePhase"
+    const val resolveEffectsDestination: String = "/app/game.resolveEffects"
+    const val endTurnDestination: String = "/app/game.endTurn"
+    // Cheating accusations (#280 / server #361)
+    const val reportCheatDestination: String = "/app/game.reportCheat"
+    const val accuseDestination: String = "/app/game.accuse"
     const val createLobbyDestination: String = "/app/lobby.create"
     const val joinLobbyDestination = "/app/lobby.join"
     const val leaveLobbyDestination = "/app/lobby.leave"
+    const val readyToggleDestination: String = "/app/lobby.ready"
     const val gameStartDestination: String = "/app/game.start"
     // Server PR #216 exposes PurchaseRequest at @MessageMapping("/game.purchase").
     const val purchaseDestination: String = "/app/game.purchase"

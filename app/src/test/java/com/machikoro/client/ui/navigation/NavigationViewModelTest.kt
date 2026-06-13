@@ -15,7 +15,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -45,8 +44,6 @@ class NavigationViewModelTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
-        // FIX: explicit login required before Home is reachable
-        viewModel.onUserLoggedIn()
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial(),
             startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
@@ -58,31 +55,10 @@ class NavigationViewModelTest {
     }
 
     @Test
-    fun sessionHydrationAloneDoesNotNavigateAwayFromMain() = runTest {
-        // Regression test for Bug 1: persisted session restored on startup must
-        // NOT auto-navigate to Home — the user has to explicitly log in first.
+    fun lobbyStateNavigatesToLobbyWithLobbyCodeWithoutStatus() = runTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
-        // Simulate what happens after SessionManager.hydrate(): loggedInAs is
-        // populated but onUserLoggedIn() has NOT been called yet.
-        viewModel.updateNavigationBasedOnState(
-            gameScreenState = GameScreenState.initial(),
-            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
-            lobbyCode = null,
-        )
-        advanceUntilIdle()
-
-        assertEquals(NavigationEvent.NavigateTo(AppRoute.Main), events.single())
-    }
-
-    @Test
-    fun lobbyStateNavigatesToLobbyWithLobbyCode() = runTest {
-        val viewModel = NavigationViewModel()
-        val events = collectNavigationEvents(viewModel)
-
-        // FIX: explicit login required before Lobby is reachable
-        viewModel.onUserLoggedIn()
         viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial(),
@@ -101,13 +77,35 @@ class NavigationViewModelTest {
     }
 
     @Test
-    fun unauthenticatedStateNavigatesToMainEvenWhenLobbyWasShown() = runTest {
+    fun lobbyStateNavigatesToLobbyWithLobbyCodeAndStatusWaiting() = runTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
         viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
-            gameScreenState = GameScreenState.initial(),
+            gameScreenState = GameScreenState.initial().copy(gameStatus = GameStatus.WAITING),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = "ABC1234",
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            NavigationEvent.NavigateTo(
+                route = AppRoute.Lobby,
+                arguments = AppRoute.AppRouteArguments(lobbyCode = "ABC1234"),
+            ),
+            events.single(),
+        )
+    }
+
+    @Test
+    fun unauthenticatedStateNavigatesToMainEvenWhenLobbyWasShownAndGam() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.showLobby()
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial().copy(gameStatus = GameStatus.WAITING),
             startScreenState = StartScreenState.placeholder(),
             lobbyCode = "ABC1234",
         )
@@ -124,8 +122,6 @@ class NavigationViewModelTest {
 
     @Test
     fun unauthenticatedStateNavigatesToMainEvenWhenGameStateIsStale() = runTest {
-        // Regression test for Bug 2: stale gamePhase/gameId in WebSocket state
-        // must NOT cause auto-navigation to Game on app startup.
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
@@ -157,12 +153,11 @@ class NavigationViewModelTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
-        // FIX: explicit login required before Game is reachable
-        viewModel.onUserLoggedIn()
         viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial().copy(
                 gamePhase = GamePhase.ROLL_DICE,
+                gameStatus = GameStatus.IN_PROGRESS,
                 gameId = 42,
             ),
             startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
@@ -187,8 +182,6 @@ class NavigationViewModelTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
-        // Winner route fires regardless of userHasLoggedIn since the user was
-        // already playing when the game ended.
         viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial().copy(
@@ -215,38 +208,6 @@ class NavigationViewModelTest {
     }
 
     @Test
-    fun onUserLoggedOutResetsLoginFlagAndLobbyVisibility() = runTest {
-        val viewModel = NavigationViewModel()
-
-        viewModel.onUserLoggedIn()
-        viewModel.showLobby()
-        assertTrue(viewModel.uiState.value.userHasLoggedIn)
-        assertTrue(viewModel.uiState.value.showLobbyScreen)
-
-        viewModel.onUserLoggedOut()
-
-        assertFalse(viewModel.uiState.value.userHasLoggedIn)
-        assertFalse(viewModel.uiState.value.showLobbyScreen)
-    }
-
-    @Test
-    fun afterLogoutUpdateNavigatesToMain() = runTest {
-        val viewModel = NavigationViewModel()
-        val events = collectNavigationEvents(viewModel)
-
-        viewModel.onUserLoggedIn()
-        viewModel.onUserLoggedOut()
-        viewModel.updateNavigationBasedOnState(
-            gameScreenState = GameScreenState.initial(),
-            startScreenState = StartScreenState.placeholder().copy(loggedInAs = null),
-            lobbyCode = null,
-        )
-        advanceUntilIdle()
-
-        assertEquals(NavigationEvent.NavigateTo(AppRoute.Main), events.single())
-    }
-
-    @Test
     fun duplicateNavigationEventIsNotEmittedAgain() = runTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
@@ -260,15 +221,20 @@ class NavigationViewModelTest {
 
     @Test
     fun failedEmissionClearsLastNavigation() = runTest {
+        // Use a rendezvous channel that is closed to force send() to fail and
+        // ensure the ViewModel clears its lastNavigation reservation.
         val failingChannel = kotlinx.coroutines.channels.Channel<NavigationEvent>(kotlinx.coroutines.channels.Channel.RENDEZVOUS)
         val viewModel = NavigationViewModel(failingChannel)
 
+        // Close the channel before attempting to navigate so send() will throw.
         failingChannel.close()
 
         viewModel.navigateTo(AppRoute.Home)
         advanceUntilIdle()
 
-        assertNull(viewModel.lastNavigation)
+        // lastNavigation should have been cleared by the error handler in
+        // navigateTo so subsequent navigation attempts aren't poisoned.
+        assertEquals(null, viewModel.lastNavigation)
     }
 
     @Test

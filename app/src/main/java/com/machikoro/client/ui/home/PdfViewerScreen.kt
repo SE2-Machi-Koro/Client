@@ -1,4 +1,4 @@
-package com.machikoro.client.ui.start
+package com.machikoro.client.ui.home
 
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -36,6 +36,26 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.runtime.MutableState
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
+import com.machikoro.client.R
+import com.machikoro.client.ui.shared.ArrowTextButton
+import com.machikoro.client.ui.shared.Background
+import com.machikoro.client.ui.theme.ButtonBlueDark
+import com.machikoro.client.ui.theme.ButtonColor
+import com.machikoro.client.ui.theme.ButtonTextColor
+import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.PrimaryOrange
+import com.machikoro.client.ui.theme.TextBlueDark
+import com.machikoro.client.ui.theme.TextWhite
 import java.io.File
 
 @Composable
@@ -72,7 +92,8 @@ fun PdfViewerScreen(
             }
 
             // Open PDF with PdfRenderer and keep it open
-            val fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            val fileDescriptor =
+                ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
             val pdfRenderer = PdfRenderer(fileDescriptor)
 
             fileDescriptorRef.value = fileDescriptor
@@ -115,9 +136,9 @@ fun PdfViewerScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White)
-            .padding(systemBarsPadding)
     ) {
+        Background(R.drawable.background_wood)
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -136,8 +157,7 @@ fun PdfViewerScreen(
                             contentDescription = "PDF Page ${currentPage.intValue + 1}",
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .background(Color.White),
-                            contentScale = ContentScale.FillHeight
+                                .fillMaxWidth()
                         )
                     }
                 }
@@ -153,9 +173,9 @@ fun PdfViewerScreen(
                             bitmap = bitmap.asImageBitmap(),
                             contentDescription = "PDF Page ${currentPage.intValue + 1}",
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color.White),
-                            contentScale = ContentScale.FillWidth
+                                .fillMaxHeight()
+                                .fillMaxWidth(0.9f),
+                            contentScale = ContentScale.Fit
                         )
                     }
                 }
@@ -167,20 +187,47 @@ fun PdfViewerScreen(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .fillMaxWidth()
-                .background(Color.White)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Close button
-            Button(onClick = onClose) {
-                Text("Close")
-            }
+            // Top controls - Close button and page indicator
+            ArrowTextButton(
+                label = "Close",
+                onClick = onClose,
+                fontSize = 18.sp
+            )
+
+            /*// Close button
+            Row(
+                modifier = Modifier
+                    .clickable { onClose() },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "←",
+                    color = PrimaryOrange,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.offset(y = (-3).dp)
+                )
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                Text(
+                    text = "Close",
+                    color = PrimaryOrange,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }*/
 
             // Page indicator
             Text(
                 text = "Page ${currentPage.intValue + 1} of ${totalPages.intValue}",
-                style = MaterialTheme.typography.labelMedium
+                style = MaterialTheme.typography.bodyLarge,
+                color = PrimaryOrange,
+                fontWeight = FontWeight.Bold
             )
         }
 
@@ -190,7 +237,6 @@ fun PdfViewerScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .background(Color.White)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
@@ -201,9 +247,16 @@ fun PdfViewerScreen(
                             currentPage.intValue--
                         }
                     },
-                    enabled = currentPage.intValue > 0
+                    enabled = currentPage.intValue > 0,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ButtonBlueDark,
+                        contentColor = TextWhite,
+                        disabledContainerColor = ButtonBlueDark.copy(alpha = 0.45f),
+                        disabledContentColor = TextWhite.copy(alpha = 0.45f)
+                    )
                 ) {
-                    Text("Previous")
+                    Text("Previous", fontWeight = FontWeight.ExtraBold)
                 }
                 Button(
                     onClick = {
@@ -212,9 +265,19 @@ fun PdfViewerScreen(
                         }
                     },
                     enabled = currentPage.intValue < totalPages.intValue - 1,
-                    modifier = Modifier.padding(start = 8.dp)
+                    modifier = Modifier.padding(start = 8.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ButtonColor,
+                        contentColor = ButtonTextColor,
+                        disabledContainerColor = ButtonColor.copy(alpha = 0.45f),
+                        disabledContentColor = ButtonTextColor.copy(alpha = 0.45f)
+                    )
                 ) {
-                    Text("Next")
+                    Text(
+                        "Next",
+                        fontWeight = FontWeight.ExtraBold
+                    )
                 }
             }
         }
@@ -224,8 +287,8 @@ fun PdfViewerScreen(
 private fun renderPage(
     pdfRenderer: PdfRenderer,
     pageIndex: Int,
-    currentBitmap: androidx.compose.runtime.MutableState<Bitmap?>,
-    scaleFactor: Float = 3f
+    currentBitmap: MutableState<Bitmap?>,
+    scaleFactor: Float = 6f
 ) {
     try {
         if (pageIndex < pdfRenderer.pageCount) {

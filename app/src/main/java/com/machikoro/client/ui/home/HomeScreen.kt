@@ -1,16 +1,17 @@
 package com.machikoro.client.ui.home
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -18,45 +19,53 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.machikoro.client.BuildConfig
 import com.machikoro.client.R
 import com.machikoro.client.ui.shared.ActionButton
+import com.machikoro.client.ui.shared.ArrowTextButton
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.Header
 import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ButtonBlueDark
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.PanelBackgroundBeige
+import com.machikoro.client.ui.theme.PanelBackgroundBeigeDark
+import com.machikoro.client.ui.theme.PanelBorder
+import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextWhite
-import com.machikoro.client.ui.theme.White
+
 
 @Composable
 fun HomeScreen(
+    username: String? = null,
     joinLobbyCode: String = "",
     showJoinLobbyInput: Boolean = false,
     onJoinLobbyCodeChange: (String) -> Unit = {},
     onJoinLobbyClick: () -> Unit = {},
     onCreateLobbyClick: () -> Unit = {},
-    onRulesClick: () -> Unit = {},
     onRankingClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {},
     onJoinLobbySubmit: () -> Unit = {},
     joinLobbyError: Boolean = false,
     hasActiveGame: Boolean = false,
@@ -65,11 +74,19 @@ fun HomeScreen(
     onLogoutClick: () -> Unit,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
+
+    var showPdfViewer by remember { mutableStateOf(false) }
+
+    if (showPdfViewer) {
+        PdfViewerScreen(
+            onClose = { showPdfViewer = false }
+        )
+    } else {
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
 
-    Background(R.drawable.home_screen_background)
+    Background(R.drawable.background_wood)
     // Root container. Box allows placing elements freely with align().
     Box(
         modifier = modifier
@@ -81,18 +98,21 @@ fun HomeScreen(
 
             Header("WELCOME",
                 modifier = Modifier
-                .align(Alignment.TopCenter),
+                    .padding(top = 24.dp)
+                    .align(Alignment.TopCenter),
                 fontSize = 56
             )
 
 
         // === PROFILE SECTION ===
         // User profile card in the top right corner.
+        // Shows the logged-in username in the top right corner.
         SecondaryActionButton(
-            label = "pass real name",
+            label = username ?: "Guest",
             modifier = Modifier.align(Alignment.TopEnd),
             onClick = null,
-            leftIcon = R.drawable.login_user_icon
+            leftIcon = R.drawable.login_user_icon,
+            fontSize = 18
             )
 
         // Logout affordance in the top-left corner. Issue #106 places the
@@ -105,13 +125,14 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                ActionButton(
-                    "Logout",
-                    onClick = onLogoutClick
+                ArrowTextButton(
+                    label = "Leave Lobby",
+                    onClick = onLogoutClick,
+                    fontSize = 18.sp
                 )
 
                 if (BuildConfig.DEBUG) {
@@ -142,7 +163,7 @@ fun HomeScreen(
             ) {
                 // Join lobby card. The code input only appears after clicking the card.
                 Column(
-                    modifier = Modifier.width(150.dp),
+                    modifier = Modifier.width(174.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     HomeCard(
@@ -152,22 +173,26 @@ fun HomeScreen(
                         enabled = !hasActiveGame,
                         onClick = onJoinLobbyClick
                     )
-
                     if (showJoinLobbyInput) {
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        JoinLobbyCodeRow(
-                            code = joinLobbyCode,
-                            onCodeChange = onJoinLobbyCodeChange,
-                            onJoinLobbySubmit = onJoinLobbySubmit,
-                            isError = joinLobbyError
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            JoinLobbyCodeRow(
+                                code = joinLobbyCode,
+                                onCodeChange = onJoinLobbyCodeChange,
+                                onJoinLobbySubmit = onJoinLobbySubmit,
+                                isError = joinLobbyError
+                            )
+                        }
                     }
                 }
 
                 // Create lobby card with generated code displayed directly below it.
                 Column(
-                    modifier = Modifier.width(150.dp),
+                    modifier = Modifier.width(174.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     HomeCard(
@@ -179,29 +204,33 @@ fun HomeScreen(
                     )
                 }
 
-                HomeCard(
-                    iconRes = R.drawable.home_resume_game_icon,
-                    text = "Resume Game",
-                    isPrimary = false,
-                    enabled = hasActiveGame,
-                    onClick = onResumeGameClick
-                )
+                Column(
+                    modifier = Modifier.width(174.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    HomeCard(
+                        iconRes = R.drawable.home_resume_game_icon,
+                        text = "Resume Game",
+                        isPrimary = false,
+                        enabled = hasActiveGame,
+                        onClick = onResumeGameClick
+                    )
+                }
             }
         }
 
         // === BOTTOM MENU ===
         // Clickable menu items for rules, ranking and settings.
         BottomMenuBar(
-            onRulesClick = onRulesClick,
+            onRulesClick = { showPdfViewer = true },
             onRankingClick = onRankingClick,
-            onSettingsClick = onSettingsClick,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-        )
+            )
+        }
     }
 }
 }
-
 @Composable
 private fun HomeCard(
     iconRes: Int,
@@ -210,48 +239,100 @@ private fun HomeCard(
     onClick: () -> Unit,
     enabled: Boolean = true,
 ) {
-    // The primary card is highlighted with dark blue.
-    val backgroundColor: Color = if (isPrimary) ButtonBlueDark else ButtonBeigeLight
-    val textColor = if (isPrimary) TextWhite else TextBlueDark
+    val shape = RoundedCornerShape(12.dp)
+    val backgroundColor =
+        when {
+            !enabled -> ButtonBeigeLight.copy(alpha = 0.55f)
+            isPrimary -> ButtonBlueDark
+            else -> ButtonBeigeLight
+        }
 
-    // Button is used as a card because it is already clickable and supports elevation.
-    Button(
-        onClick = onClick,
-        enabled = enabled,
+    val textColor =
+        when {
+            !enabled -> TextBlueDark.copy(alpha = 0.45f)
+            isPrimary -> TextWhite
+            else -> TextBlueDark
+        }
+
+    val contentAlpha = if (enabled) 1f else 0.45f
+    val shadowAlpha = if (enabled) 1f else 0.45f
+
+    Box(
         modifier = Modifier
-            .width(160.dp)
-            .height(140.dp),
-        shape = RoundedCornerShape(10.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = backgroundColor,
-            contentColor = textColor,
-            disabledContainerColor = backgroundColor.copy(alpha = 0.5f),
-            disabledContentColor = textColor.copy(alpha = 0.5f)
-        ),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp),
-        contentPadding = PaddingValues(8.dp)
+            .width(174.dp)
+            .height(144.dp)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        // Bottom/side shadow border
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(x = 3.dp, y = 4.dp)
+                .clip(shape)
+                .background(PanelBorder.copy(alpha = shadowAlpha))
+        )
+        // Bottom/side shadow border
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .offset(x = (-3).dp, y = 4.dp)
+                .clip(shape)
+                .background(PanelBorder.copy(alpha = shadowAlpha))        )
+
+        // Main card
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(shape)
+                .background(backgroundColor)
+                .clickable(
+                    enabled = enabled,
+                    onClick = onClick
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            // Action icon.
             Image(
-                painter = painterResource(id = iconRes),
+                painter = painterResource(id = R.drawable.decor_screw),
                 contentDescription = null,
-                modifier = Modifier.size(70.dp)
+                modifier = Modifier
+                    .size(16.dp)
+                    .align(Alignment.TopStart)
+                    .offset(x = 10.dp, y = 7.dp),
+                alpha = contentAlpha
             )
 
-            // Action text. It stays in one line and becomes shortened if needed.
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Ellipsis,
-                color = textColor
+            Image(
+                painter = painterResource(id = R.drawable.decor_screw),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(16.dp)
+                    .align(Alignment.TopEnd)
+                    .offset(x = (-10).dp, y = 7.dp),
+                alpha = contentAlpha
             )
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Image(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    modifier = Modifier.size(70.dp),
+                    alpha = contentAlpha
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                    color = textColor
+                )
+            }
         }
     }
 }
@@ -264,15 +345,16 @@ private fun JoinLobbyCodeRow(
     isError: Boolean = false
 ) {
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Card(
             modifier = Modifier
-                .width(110.dp)
+                .width(137.dp)
                 .height(34.dp),
             shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = White),
+            colors = CardDefaults.cardColors(containerColor = PanelBackgroundBeige),
             border = BorderStroke(
                 width = if (isError) 2.dp else 0.dp,
                 color = if (isError) MaterialTheme.colorScheme.error else Color.Transparent
@@ -314,47 +396,37 @@ private fun JoinLobbyCodeRow(
         }
 
         // Sends the entered lobby code to the backend.
-        Card(
+        Box(
             modifier = Modifier
                 .size(34.dp)
                 .clickable(
                     enabled = code.isNotBlank(),
                     onClick = onJoinLobbySubmit
                 ),
-            shape = RoundedCornerShape(6.dp),
-            colors = CardDefaults.cardColors(containerColor = White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.home_check_icon),
-                    contentDescription = "Join lobby",
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+            Image(
+                painter = painterResource(id = R.drawable.home_check_icon),
+                contentDescription = "Join lobby",
+                modifier = Modifier.size(29.dp)
+            )
         }
     }
 }
-
-
 
 @Composable
 private fun BottomMenuBar(
     onRulesClick: () -> Unit,
     onRankingClick: () -> Unit,
-    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Bottom menu container.
     Card(
         modifier = modifier
-            .width(475.dp)
-            .height(50.dp),
+            .width(430.dp)
+            .height(60.dp),
         shape = RoundedCornerShape(topStart = 15.dp, topEnd = 15.dp),
-        colors = CardDefaults.cardColors(containerColor = ButtonBeigeLight),
+        colors = CardDefaults.cardColors(containerColor = PanelBackgroundBeigeDark),
         elevation = CardDefaults.cardElevation(defaultElevation = 14.dp)
     ) {
         Row(
@@ -377,13 +449,6 @@ private fun BottomMenuBar(
                 text = "Leaderboard",
                 onClick = onRankingClick
             )
-
-            // Opens the settings screen.
-            BottomMenuItem(
-                iconRes = R.drawable.home_settings_icon,
-                text = "Settings",
-                onClick = onSettingsClick
-            )
         }
     }
 }
@@ -394,29 +459,38 @@ private fun BottomMenuItem(
     text: String,
     onClick: () -> Unit
 ) {
-    // Single clickable menu item inside the bottom bar.
-    Row(
+    Card(
         modifier = Modifier
-            .clickable { onClick() }
-            .padding(horizontal = 4.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+            .width(150.dp)
+            .height(42.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = ButtonBeigeLight),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        // Menu icon.
-        Image(
-            painter = painterResource(id = iconRes),
-            contentDescription = null,
-            modifier = Modifier.size(30.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxSize(),
+                //.padding(start = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Image(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(26.dp)
+            )
 
-        // Menu label.
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = TextBlueDark,
-            maxLines = 1
-        )
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = TextBlueDark,
+                maxLines = 1
+            )
+        }
     }
 }
 

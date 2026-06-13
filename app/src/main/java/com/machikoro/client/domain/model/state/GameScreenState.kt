@@ -3,6 +3,7 @@ package com.machikoro.client.domain.model.state
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
+import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.ShopItem
 
 data class GameScreenState(
@@ -10,12 +11,15 @@ data class GameScreenState(
     val gameId: Int?,
     val connectionStatus: ConnectionStatus,
     val gamePhase: GamePhase,
+    val customDisplayText: String? = null,
     val players: List<PlayerCoinState>,
     val diceResult: List<Int>? = null,
     val activePlayerId: Int? = null,
     val winnerId: Int? = null,
     val myUserId: Int? = null,
     val purchaseState: PurchaseState,
+    // Shop item selected locally for the buy/build confirmation button.
+    val selectedPurchaseItemType: String? = null,
     // Tracks the one local buy/build request currently waiting for a server GAME_ACTION.
     val pendingPurchaseItemType: String? = null,
     // Keeps button feedback tied to the specific item that was bought or failed.
@@ -33,21 +37,32 @@ data class GameScreenState(
 ) {
     val isActivePlayer: Boolean
         get() = myUserId != null && myUserId == activePlayerId
-  
+
     // Keeps UI visibility tied to the existing phase stream from the server.
     val isBuyingPhase: Boolean
         get() = gamePhase == GamePhase.BUY_OR_BUILD
+
+    val hasTrainStation: Boolean
+        get() {
+            val activePlayerDatabaseId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
+                ?: return false
+            return playerLandmarks[activePlayerDatabaseId].orEmpty().any {
+                it.landmarkType == LandmarkType.TRAIN_STATION && it.isBuilt
+            }
+        }
 
     companion object {
         fun initial() = GameScreenState(
             gameId = null,
             connectionStatus = ConnectionStatus.IDLE,
             gamePhase = GamePhase.NONE,
+            customDisplayText = null,
             players = emptyList(),
             diceResult = null,
             activePlayerId = null,
             myUserId = null,
             purchaseState = PurchaseState.IDLE,
+            selectedPurchaseItemType = null,
             pendingPurchaseItemType = null,
             purchaseFeedbackItemType = null,
             purchaseMessage = null,
