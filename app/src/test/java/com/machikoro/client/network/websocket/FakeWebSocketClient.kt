@@ -117,6 +117,8 @@ class FakeWebSocketClient : WebSocketClient {
         private set
     var resolvedEffectsGameId: Int? = null
         private set
+    var resolveEffectsCallCount = 0
+        private set
     var endedTurnGameId: Int? = null
         private set
 
@@ -159,6 +161,9 @@ class FakeWebSocketClient : WebSocketClient {
     }
 
     override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow(extraBufferCapacity = 1)
+    override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> =
+        MutableSharedFlow(extraBufferCapacity = 1)
+    override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
 
     var leaveLobbyGameId: Int? = null
         private set
@@ -199,10 +204,25 @@ class FakeWebSocketClient : WebSocketClient {
 
     override fun resolveEffects(gameId: Int) {
         resolvedEffectsGameId = gameId
+        resolveEffectsCallCount++
     }
 
     override fun endTurn(gameId: Int) {
         endedTurnGameId = gameId
+    }
+
+    var reportCheatCalls = 0
+        private set
+
+    /** Recorded accuse calls as (gameId, accusedPlayerId) pairs. */
+    val accusations = mutableListOf<Pair<Int, Int>>()
+
+    override fun reportCheat(gameId: Int) {
+        reportCheatCalls++
+    }
+
+    override fun accuse(gameId: Int, accusedPlayerId: Int) {
+        accusations += gameId to accusedPlayerId
     }
 
     var lastReadyToggle: Boolean? = null

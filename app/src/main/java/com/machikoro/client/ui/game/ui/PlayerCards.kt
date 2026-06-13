@@ -8,15 +8,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +41,7 @@ import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.R
+import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.theme.TextBlueDark
 
 
@@ -105,55 +105,55 @@ fun BigPlayerCardsDisplay(
         state.playerCards[currentPlayerId]
             .orEmpty()
 
-   Row(
-       modifier = modifier.wrapContentSize()
-   ) {
-       CompositionLocalProvider(
-           LocalOverscrollFactory provides null
-       ) {
+    CompositionLocalProvider(
+        LocalOverscrollFactory provides null
+    ) {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
 
-           LazyVerticalGrid(
-               columns = GridCells.Fixed(2), // 2 per row
-               modifier = Modifier
-                   .weight(1f),
-           ) {
+        ) {
 
-               items(landmarks) { landmark ->
-                   Box(
-                       modifier = Modifier.padding(top = 8.dp)
-                   ) {
-                       LandmarkDisplay(
-                           landmark,
-                           width = 155.dp,
-                           height = 180.dp
-                       )
-                   }
-               }
-           }
-       }
-       CompositionLocalProvider(
-           LocalOverscrollFactory provides null
-       ) {
-           LazyVerticalGrid(
-               columns = GridCells.Fixed(2), // 2 per row
-               modifier = Modifier
-                   .weight(1f),
-           ) {
-               items(establishments) { establishment ->
-                   Box(
-                       modifier = Modifier.padding(top = 8.dp)
-                   ) {
-                       CardDisplay(
-                           establishment,
-                           width = 155.dp,
-                           height = 180.dp,
-                           showCounter = true
-                       )
-                   }
-               }
-           }
-       }
-   }
+            // LANDMARKS TITLE
+            item {
+                BasicText("Landmarks")
+            }
+
+            // LANDMARKS ROW
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    ) {
+                    landmarks.forEach {
+                        LandmarkDisplay(it,
+                            width = 155.dp,
+                            height = 180.dp
+                        )
+                    }
+                }
+            }
+
+            // ESTABLISHMENTS TITLE
+            item {
+                BasicText("Establishments")
+            }
+
+            // GRID
+            items(establishments.chunked(4)) { rowItems ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    ) {
+                    rowItems.forEach {
+                        CardDisplay(it,
+                        width = 155.dp,
+                        height = 180.dp,
+                        showCounter = true
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
