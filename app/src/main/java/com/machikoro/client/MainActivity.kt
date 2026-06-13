@@ -112,6 +112,7 @@ class MainActivity : ComponentActivity() {
             val gameScreenState by gameScreenViewModel.state.collectAsState()
             val cheatRecommendation by gameScreenViewModel.cheatRecommendation.collectAsState()
             val canAccuse by gameScreenViewModel.canAccuseThisTurn.collectAsState()
+            val canReroll by gameScreenViewModel.canRerollThisTurn.collectAsState()
             val context = LocalContext.current
             val lobbyCode by homeViewModel.lobbyCode.collectAsState()
             val activeGameId by homeViewModel.activeGameId.collectAsState()
@@ -252,10 +253,12 @@ class MainActivity : ComponentActivity() {
                             homeViewModel.clearLobbyCode()
                         },
                         onRollDice = gameScreenViewModel::rollDice,
+                        onReroll = gameScreenViewModel::rerollDice,
                         cheatRecommendation = cheatRecommendation,
                         onShake = gameScreenViewModel::onShake,
                         onAccuse = { gameScreenViewModel.accuse(it) },
                         canAccuse = canAccuse,
+                        canReroll = canReroll,
                         onTurnFlowAction = gameScreenViewModel::performTurnFlowAction,
                         modifier = Modifier.padding(innerPadding),
                         lobbyCode = lobbyCode,
