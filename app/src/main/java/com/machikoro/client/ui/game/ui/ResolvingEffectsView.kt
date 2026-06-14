@@ -27,7 +27,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
@@ -41,7 +40,6 @@ import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
-import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.theme.CardBlueBackground
 import com.machikoro.client.ui.theme.CardBlueText
@@ -64,8 +62,7 @@ private val EFFECT_ROW_SHAPE = RoundedCornerShape(8.dp)
 fun ResolvingEffectsView(
     state: GameScreenState,
     modifier: Modifier = Modifier,
-    canReroll: Boolean = false,
-    onReroll: (diceCount: Int) -> Unit = {},
+    diceAction: (@Composable () -> Unit)? = null,
 ) {
     val triggeredEffects = remember(state) { state.triggeredEffects() }
     val activeEffect = triggeredEffects.firstOrNull()
@@ -84,7 +81,13 @@ fun ResolvingEffectsView(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         state.diceResult?.let {
-            DiceResultDisplay(dice = it)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                DiceResultDisplay(dice = it)
+                diceAction?.invoke()
+            }
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -96,19 +99,6 @@ fun ResolvingEffectsView(
                 style = MaterialTheme.typography.bodyMedium,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-            )
-        }
-
-        if (state.canReroll && canReroll) {
-            ActionButton(
-                onClick = { onReroll(state.diceResult?.size ?: 1) },
-                enabled = !state.isRolling,
-                label = "Nochmal würfeln",
-                leftIcon = R.drawable.game_dice_perspective,
-                fontSize = 18,
-                modifier = Modifier.semantics {
-                    contentDescription = "Nochmal würfeln"
-                }
             )
         }
 
@@ -381,7 +371,6 @@ private fun ResolvingEffectsViewPreview() {
                     )
                 )
             ),
-            canReroll = true,
             modifier = Modifier
                 .background(Color(0xFF5A321E))
                 .padding(24.dp)

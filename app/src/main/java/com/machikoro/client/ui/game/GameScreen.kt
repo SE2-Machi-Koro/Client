@@ -432,8 +432,20 @@ fun GameScreen(
                 else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
                     ResolvingEffectsView(
                         state = state,
-                        canReroll = canReroll,
-                        onReroll = onReroll,
+                        diceAction = {
+                            if (state.canReroll && canReroll) {
+                                ActionButton(
+                                    onClick = { onReroll(state.diceResult?.size ?: 1) },
+                                    enabled = !state.isRolling,
+                                    label = "Nochmal würfeln",
+                                    leftIcon = R.drawable.game_dice_perspective,
+                                    fontSize = 18,
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "Nochmal würfeln"
+                                    }
+                                )
+                            }
+                        },
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
