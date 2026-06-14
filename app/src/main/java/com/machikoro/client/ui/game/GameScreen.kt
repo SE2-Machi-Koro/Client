@@ -674,7 +674,7 @@ private fun GameScreenReconnectSnapshotPreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun GameScreenBuyOrBuildPreview() {
     ClientTheme {
@@ -696,7 +696,7 @@ private fun GameScreenBuyOrBuildPreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun GameScreenNonePreview() {
     ClientTheme {
