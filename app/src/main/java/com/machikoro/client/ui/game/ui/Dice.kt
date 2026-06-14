@@ -153,13 +153,15 @@ fun DiceSection(
     if (state.gamePhase != GamePhase.ROLL_DICE && state.gamePhase != GamePhase.RESOLVE_EFFECTS) return
 
     var isAnimating by remember { mutableStateOf(false) }
-    var selectedDiceCount by remember(state.roundNumber) { mutableStateOf<Int?>(null) }
-    var frozenDiceCount by remember(state.roundNumber) { mutableStateOf<Int?>(null) }
-    // tracks whether the player already used the Radio Tower reroll this round
-    var hasRerolled by remember(state.roundNumber) { mutableStateOf(false) }
+    // Key on both roundNumber + activePlayerId so state resets on every player's turn, not just per round.
+    var selectedDiceCount by remember(state.roundNumber, state.activePlayerId) { mutableStateOf<Int?>(null) }
+    var frozenDiceCount by remember(state.roundNumber, state.activePlayerId) { mutableStateOf<Int?>(null) }
+    // Tracks whether the player already used the Radio Tower reroll this turn.
+    var hasRerolled by remember(state.roundNumber, state.activePlayerId) { mutableStateOf(false) }
 
-    // prefer server result count, then frozen selection, then live selection, then ViewModel value
-    val animationDiceCount = state.diceResult?.size ?: frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount
+    // Prefer frozen/selected count over diceResult.size — server snapshot only stores the total, not per-die values,
+    // so diceResult.size after reconnect is always 1 regardless of actual dice count.
+    val animationDiceCount = frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount
 
     // reset local selection when server clears the dice result (new turn / reroll)
     LaunchedEffect(state.diceResult) {
