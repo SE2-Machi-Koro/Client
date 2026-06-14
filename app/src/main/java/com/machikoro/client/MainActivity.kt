@@ -232,10 +232,12 @@ class MainActivity : ComponentActivity() {
                         onLoginUsernameChange = loginDialogViewModel::usernameChanged,
                         onLoginPasswordChange = loginDialogViewModel::passwordChanged,
                         onLoginSubmit = {
+                            navigationViewModel.onUserLoggedIn()
                             loginDialogViewModel.submit()
                         },
                         onLoginDialogReset = loginDialogViewModel::reset,
                         onLogoutSubmit = {
+                            navigationViewModel.onUserLoggedOut()
                             logoutViewModel.submit()
                             // FIX: Clear lobby/game state on logout so stale activeGameId
                             // is not sent in the JOIN message on the next login, which
