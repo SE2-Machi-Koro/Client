@@ -6,10 +6,13 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+
+private const val CREATE_LOBBY_CONFIRMATION_TIMEOUT_MS = 10_000L
 
 class HomeViewModel(
     private val webSocketClient: WebSocketClient,
@@ -41,7 +44,7 @@ class HomeViewModel(
             webSocketClient.sendCreateLobby()
             // Reset flag once the server confirms via lobbyCode flow
             viewModelScope.launch {
-                webSocketClient.lobbyCode.first { it != null }
+                waitForLobbyCreationConfirmation()
                 mutableIsCreatingLobby.value = false
             }
             return
@@ -63,9 +66,15 @@ class HomeViewModel(
 
             if (status == ConnectionStatus.CONNECTED) {
                 webSocketClient.sendCreateLobby()
-                webSocketClient.lobbyCode.first { it != null }
+                waitForLobbyCreationConfirmation()
             }
             mutableIsCreatingLobby.value = false
+        }
+    }
+
+    private suspend fun waitForLobbyCreationConfirmation() {
+        withTimeoutOrNull(CREATE_LOBBY_CONFIRMATION_TIMEOUT_MS) {
+            webSocketClient.lobbyCode.first { it != null }
         }
     }
 
