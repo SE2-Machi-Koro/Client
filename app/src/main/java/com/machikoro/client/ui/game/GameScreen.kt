@@ -63,6 +63,7 @@ import com.machikoro.client.ui.game.ui.MarketplaceSection
 import com.machikoro.client.ui.game.ui.PlayerCardsDisplay
 import com.machikoro.client.ui.game.ui.PlayerCoinField
 import com.machikoro.client.ui.game.ui.PlayersTopBar
+import com.machikoro.client.ui.game.ui.ResolvingEffectsView
 import com.machikoro.client.ui.game.ui.RoundIndicator
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
@@ -427,6 +428,13 @@ fun GameScreen(
                             )
                         } else BasicText("Waiting for purchase")
                     }
+
+                else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
+                    ResolvingEffectsView(
+                        state = state,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
 
                     else if (state.gamePhase == GamePhase.ROLL_DICE) {
                         Row(
