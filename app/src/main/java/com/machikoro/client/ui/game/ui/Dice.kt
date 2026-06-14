@@ -160,6 +160,8 @@ fun DiceSection(
     var hasRerolled by remember(state.roundNumber, state.activePlayerId) { mutableStateOf(false) }
     // Captures dice count when non-active player animation is triggered (ROLL_DICE message has per-die values).
     var localAnimationDiceCount by remember(state.roundNumber, state.activePlayerId) { mutableIntStateOf(1) }
+    // Guards against re-triggering when snapshot overwrites live [x, y] result with [total].
+    var hasAnimatedThisTurn by remember(state.roundNumber, state.activePlayerId) { mutableStateOf(false) }
 
     // Active player uses frozen/selected count; snapshot only stores total so diceResult.size is unreliable after reconnect.
     // Non-active player uses the count captured from the live ROLL_DICE message (before snapshot overwrites it).
@@ -177,10 +179,11 @@ fun DiceSection(
                 frozenDiceCount = null
                 hasRerolled = false
             }
-            !state.isActivePlayer && !isAnimating -> {
-                // Non-active player: capture count from arriving result then animate briefly before reveal.
+            !state.isActivePlayer && !isAnimating && !hasAnimatedThisTurn -> {
+                // Non-active player: capture count from ROLL_DICE message (has per-die values) before snapshot overwrites.
                 localAnimationDiceCount = state.diceResult.size
                 isAnimating = true
+                hasAnimatedThisTurn = true
             }
         }
     }
