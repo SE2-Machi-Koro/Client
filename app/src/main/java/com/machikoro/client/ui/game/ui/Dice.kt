@@ -41,7 +41,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
 private const val DICE_ANIMATION_INTERVAL_MS = 100L // faster change
-private const val DICE_ANIMATION_DURATION_MS = 5000L // animate for fixed 5s
+private const val DICE_ANIMATION_DURATION_MS = 5000L // active player: full timer
+private const val NON_ACTIVE_DICE_ANIMATION_MS = 2000L // non-active player: brief animation before reveal
 private const val ROLL_TIMER_SECONDS = 5
 private val DICE_FACES = listOf(
     R.drawable.game_dice_1,
@@ -158,23 +159,37 @@ fun DiceSection(
     var frozenDiceCount by remember(state.roundNumber, state.activePlayerId) { mutableStateOf<Int?>(null) }
     // Tracks whether the player already used the Radio Tower reroll this turn.
     var hasRerolled by remember(state.roundNumber, state.activePlayerId) { mutableStateOf(false) }
+    // Captures dice count when non-active player animation is triggered (ROLL_DICE message has per-die values).
+    var localAnimationDiceCount by remember(state.roundNumber, state.activePlayerId) { mutableIntStateOf(1) }
 
-    // Prefer frozen/selected count over diceResult.size — server snapshot only stores the total, not per-die values,
-    // so diceResult.size after reconnect is always 1 regardless of actual dice count.
-    val animationDiceCount = frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount
+    // Active player uses frozen/selected count; snapshot only stores total so diceResult.size is unreliable after reconnect.
+    // Non-active player uses the count captured from the live ROLL_DICE message (before snapshot overwrites it).
+    val animationDiceCount = if (state.isActivePlayer) {
+        frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount
+    } else {
+        localAnimationDiceCount
+    }
 
-    // reset local selection when server clears the dice result (new turn / reroll)
     LaunchedEffect(state.diceResult) {
-        if (state.diceResult == null) {
-            selectedDiceCount = null
-            frozenDiceCount = null
-            hasRerolled = false
+        when {
+            state.diceResult == null -> {
+                // New turn — reset all per-turn local state.
+                selectedDiceCount = null
+                frozenDiceCount = null
+                hasRerolled = false
+            }
+            !state.isActivePlayer && !isAnimating -> {
+                // Non-active player: capture count from arriving result then animate briefly before reveal.
+                localAnimationDiceCount = state.diceResult.size
+                isAnimating = true
+            }
         }
     }
 
     LaunchedEffect(isAnimating) {
         if (isAnimating) {
-            delay(DICE_ANIMATION_DURATION_MS)
+            // Non-active players already have the result; show a shorter animation before revealing it.
+            delay(if (state.isActivePlayer) DICE_ANIMATION_DURATION_MS else NON_ACTIVE_DICE_ANIMATION_MS)
             isAnimating = false
         }
     }
