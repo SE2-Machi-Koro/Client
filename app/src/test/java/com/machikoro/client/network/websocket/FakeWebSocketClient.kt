@@ -113,6 +113,10 @@ class FakeWebSocketClient : WebSocketClient {
 
     var lastRolledDiceCount: Int? = null
         private set
+    var lastRerolledDiceCount: Int? = null
+        private set
+    var rerollCallCount = 0
+        private set
     var advancedPhaseGameId: Int? = null
         private set
     var resolvedEffectsGameId: Int? = null
@@ -196,6 +200,11 @@ class FakeWebSocketClient : WebSocketClient {
 
     override fun rollDice(diceCount: Int) {
         lastRolledDiceCount = diceCount
+    }
+
+    override fun rerollDice(diceCount: Int) {
+        lastRerolledDiceCount = diceCount
+        rerollCallCount++
     }
 
     override fun advancePhase(gameId: Int) {

@@ -72,6 +72,26 @@ class LoginDialogViewModelTest {
     }
 
     @Test
+    fun submitHttpExceptionWithEmptyBodyUsesLoginFallback() = runTest {
+        val sessionHolder = FakeSessionStateHolder()
+        val errorBody = "".toResponseBody("text/plain".toMediaType())
+        val api = FakeAuthApi(loginHandler = {
+            throw HttpException(Response.error<LoginResponse>(401, errorBody))
+        })
+        val viewModel = LoginDialogViewModel(api, sessionHolder)
+        viewModel.usernameChanged("alice")
+        viewModel.passwordChanged("wrong")
+
+        viewModel.submit()
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals("Login failed (HTTP 401)", state.errorMessage)
+        assertNull(state.loggedInAs)
+        assertNull(sessionHolder.session.value)
+    }
+
+    @Test
     fun submitIoExceptionSurfacesNetworkErrorMessage() = runTest {
         val sessionHolder = FakeSessionStateHolder()
         val api = FakeAuthApi(loginHandler = { throw IOException("connect timed out") })
@@ -85,6 +105,59 @@ class LoginDialogViewModelTest {
         val state = viewModel.state.value
         assertEquals("Network error: connect timed out", state.errorMessage)
         assertNull(sessionHolder.session.value)
+    }
+
+    @Test
+    fun submitJsonErrorBodySurfacesParsedServerMessage() = runTest {
+        val sessionHolder = FakeSessionStateHolder()
+        val errorBody = """{"errorCode":"INVALID_CREDENTIALS","message":"Invalid username or password"}"""
+            .toResponseBody("application/json".toMediaType())
+        val api = FakeAuthApi(loginHandler = {
+            throw HttpException(Response.error<LoginResponse>(401, errorBody))
+        })
+        val viewModel = LoginDialogViewModel(api, sessionHolder)
+        viewModel.usernameChanged("alice")
+        viewModel.passwordChanged("wrong")
+
+        viewModel.submit()
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals("Invalid username or password", state.errorMessage)
+        assertFalse(state.submitting)
+        assertNull(sessionHolder.session.value)
+    }
+
+    @Test
+    fun submitEmptyErrorBodySurfacesFallbackWithStatusCode() = runTest {
+        val errorBody = "".toResponseBody("text/plain".toMediaType())
+        val api = FakeAuthApi(loginHandler = {
+            throw HttpException(Response.error<LoginResponse>(500, errorBody))
+        })
+        val viewModel = LoginDialogViewModel(api, FakeSessionStateHolder())
+        viewModel.usernameChanged("alice")
+        viewModel.passwordChanged("hunter2")
+
+        viewModel.submit()
+        advanceUntilIdle()
+
+        assertEquals("Login failed (HTTP 500)", viewModel.state.value.errorMessage)
+    }
+
+    @Test
+    fun submitUnknownExceptionSurfacesItsMessage() = runTest {
+        val api = FakeAuthApi(loginHandler = { throw IllegalStateException("unexpected failure") })
+        val viewModel = LoginDialogViewModel(api, FakeSessionStateHolder())
+        viewModel.usernameChanged("alice")
+        viewModel.passwordChanged("hunter2")
+
+        viewModel.submit()
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals("unexpected failure", state.errorMessage)
+        assertFalse(state.submitting)
+        assertNull(state.loggedInAs)
     }
 
     @Test

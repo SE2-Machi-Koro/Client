@@ -297,4 +297,38 @@ class GameScreenSnapshotTest {
         composeTestRule.onNodeWithContentDescription("Bakery: 5 in stock").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Cafe: 4 in stock").assertIsDisplayed()
     }
+
+    @Test
+    fun shopMarksAlreadyOwnedPurpleEstablishmentAsAlreadyOwned() {
+        val state = GameScreenState(
+            gameId = 1,
+            connectionStatus = ConnectionStatus.CONNECTED,
+            gamePhase = GamePhase.BUY_OR_BUILD,
+            players = listOf(
+                PlayerCoinState(
+                    id = "1",
+                    displayName = "You",
+                    coins = 10,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true
+                )
+            ),
+            playerCards = mapOf(1 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1))),
+            marketplace = mapOf(CardType.STADIUM to 1),
+            activePlayerId = 1,
+            myUserId = 1,
+            gameStatus = GameStatus.IN_PROGRESS,
+            purchaseState = PurchaseState.IDLE,
+        )
+
+        composeTestRule.setContent { ClientTheme { GameScreen(state = state) } }
+
+        composeTestRule
+            .onNodeWithContentDescription(
+                "Stadium: 6 coins, activates on 6. Take 2 coins from every opponent on your turn., 1 remaining, already owned"
+            )
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Owned").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Already owned card indicator").assertIsDisplayed()
+    }
 }

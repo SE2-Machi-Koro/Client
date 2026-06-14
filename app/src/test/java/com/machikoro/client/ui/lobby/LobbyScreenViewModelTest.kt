@@ -17,13 +17,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import retrofit2.HttpException
 import retrofit2.Response
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LobbyScreenViewModelTest {
@@ -276,6 +280,40 @@ class LobbyScreenViewModelTest {
         assertEquals(1, fakeDebugApi.resetLobbyCallCount)
     }
 
+    @Test
+    fun fillWithDummies_survivesNetworkFailureWithoutAlteringLobbyState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val fakeDebugApi = FakeDebugApi(error = IOException("connect timed out"))
+        val viewModel = LobbyScreenViewModel(fakeClient, FakeSessionStateHolder(), fakeDebugApi)
+        fakeClient.emitLobbyCode("ABC123")
+        advanceUntilIdle()
+        val stateBefore = viewModel.state.value
+
+        viewModel.fillWithDummies()
+        advanceUntilIdle()
+
+        assertEquals(1, fakeDebugApi.fillLobbyCallCount)
+        assertEquals(stateBefore, viewModel.state.value)
+    }
+
+    @Test
+    fun resetLobby_survivesHttpErrorWithJsonBodyWithoutAlteringLobbyState() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val errorBody = """{"errorCode":"GAME_NOT_FOUND","message":"Lobby does not exist"}"""
+            .toResponseBody("application/json".toMediaType())
+        val fakeDebugApi = FakeDebugApi(error = HttpException(Response.error<Unit>(404, errorBody)))
+        val viewModel = LobbyScreenViewModel(fakeClient, FakeSessionStateHolder(), fakeDebugApi)
+        fakeClient.emitLobbyCode("ABC123")
+        advanceUntilIdle()
+        val stateBefore = viewModel.state.value
+
+        viewModel.resetLobby()
+        advanceUntilIdle()
+
+        assertEquals(1, fakeDebugApi.resetLobbyCallCount)
+        assertEquals(stateBefore, viewModel.state.value)
+    }
+
     // === ready-sync tests ===
 
     @Test
@@ -326,7 +364,10 @@ class LobbyScreenViewModelTest {
         assertEquals(false, fakeClient.lastReadyToggle)
     }
 
-    private class FakeDebugApi(private val shouldThrow: Boolean = false) : DebugApi {
+    private class FakeDebugApi(
+        private val shouldThrow: Boolean = false,
+        private val error: Throwable? = null,
+    ) : DebugApi {
         var fillLobbyCallCount = 0
             private set
         var lastFillRequest: FillLobbyRequest? = null
@@ -339,6 +380,7 @@ class LobbyScreenViewModelTest {
         override suspend fun fillLobby(body: FillLobbyRequest): Response<Unit> {
             fillLobbyCallCount++
             lastFillRequest = body
+            error?.let { throw it }
             if (shouldThrow) throw RuntimeException("Simulated network error")
             return Response.success(Unit)
         }
@@ -346,6 +388,7 @@ class LobbyScreenViewModelTest {
         override suspend fun resetLobby(body: ResetLobbyRequest): Response<Unit> {
             resetLobbyCallCount++
             lastResetRequest = body
+            error?.let { throw it }
             if (shouldThrow) throw RuntimeException("Simulated network error")
             return Response.success(Unit)
         }

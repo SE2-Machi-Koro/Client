@@ -54,9 +54,9 @@ class CardDefinitionsTest {
     }
 
     @Test
-    fun activationNumbersCanBeParsedFromLegacyDisplayText() {
-        assertEquals(listOf(9, 10), "9-10".toActivationNumbers())
-        assertEquals(listOf(11, 12), "11, 12".toActivationNumbers())
-        assertEquals(emptyList<Int>(), "Permanent".toActivationNumbers())
+    fun activationTextCompactsNumericActivationNumbersForDisplay() {
+        assertEquals("9-10", listOf(10, 9, 9).toActivationText())
+        assertEquals("11-12", listOf(11, 12).toActivationText())
+        assertEquals(null, emptyList<Int>().toActivationText())
     }
 }

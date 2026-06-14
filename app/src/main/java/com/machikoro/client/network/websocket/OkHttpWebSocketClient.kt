@@ -13,7 +13,6 @@ import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.network.error.ClientError
 import com.machikoro.client.domain.model.shop.ShopItem
-import com.machikoro.client.domain.model.shop.toActivationNumbers
 import com.machikoro.client.domain.model.state.AccusationResult
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCardState
@@ -397,14 +396,25 @@ class OkHttpWebSocketClient(
     }
 
     override fun rollDice(diceCount: Int) {
+        sendDiceRoll(WebSocketContract.rollDiceDestination, diceCount, "Roll dice")
+    }
+
+    // Radio Tower reroll (#326). Identical envelope to rollDice but routed to the
+    // rerollDice destination; the server reuses RollDiceRequest and enforces the
+    // Radio Tower / once-per-turn gate.
+    override fun rerollDice(diceCount: Int) {
+        sendDiceRoll(WebSocketContract.rerollDiceDestination, diceCount, "Reroll dice")
+    }
+
+    private fun sendDiceRoll(destination: String, diceCount: Int, actionName: String) {
         val socket = synchronized(this) { webSocket }
         if (socket == null) {
-            Log.w(TAG, "rollDice called but no active WebSocket connection")
+            Log.w(TAG, "$actionName called but no active WebSocket connection")
             return
         }
         val gameId = mutableActiveGameId.value
         if (gameId == null) {
-            Log.w(TAG, "rollDice called but no active game id")
+            Log.w(TAG, "$actionName called but no active game id")
             return
         }
         val payload = JSONObject()
@@ -419,13 +429,13 @@ class OkHttpWebSocketClient(
             StompFrame(
                 command = "SEND",
                 headers = mapOf(
-                    "destination" to WebSocketContract.rollDiceDestination,
+                    "destination" to destination,
                     "content-type" to "application/json"
                 ),
                 body = body
             ).serialize()
         )
-        Log.d(TAG, "Roll dice message sent (gameId=$gameId, diceCount=$diceCount)")
+        Log.d(TAG, "$actionName message sent (gameId=$gameId, diceCount=$diceCount)")
     }
 
     override fun advancePhase(gameId: Int) {
@@ -1022,8 +1032,6 @@ class OkHttpWebSocketClient(
 
     private fun JSONObject.activationNumbers(): List<Int> =
         optJSONArray("activationNumbers")?.toActivationNumbers().orEmpty()
-            .ifEmpty { optString("activationRange").toActivationNumbers() }
-            .ifEmpty { optString("activationText").toActivationNumbers() }
 
     private fun JSONObject.effectText(cardType: CardType): String =
         optString("effectText")
@@ -1167,7 +1175,10 @@ class OkHttpWebSocketClient(
     }
 
     /**
-     * Parses incoming ROLL_DICE results from the server.
+     * Parses incoming ROLL_DICE results from the server. The server reuses the
+     * ROLL_DICE type for both the initial roll (`payload.event == DICE_ROLLED`)
+     * and the Radio Tower reroll (`payload.event == DICE_REROLLED`, #326), and
+     * both carry the dice in `payload.result`, so this single parser handles both.
      */
     private fun parseDiceResult(json: JSONObject): List<Int>? {
         if (json.optString("type") != ROLL_DICE_TYPE) return null

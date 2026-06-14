@@ -98,4 +98,70 @@ class RetrofitErrorParserTest {
             cancel.toClientError("fallback")
         }
     }
+
+    @Test
+    fun malformedJsonErrorBodyFallsBackToRawBodyAsMessage() {
+        val raw = """{"errorCode":"""
+        val body = raw.toResponseBody("application/json".toMediaType())
+        val error = HttpException(Response.error<Unit>(400, body))
+
+        val result = error.toClientError("fallback") as ClientError.Http
+
+        assertEquals(400, result.statusCode)
+        assertNull(result.serverErrorCode)
+        assertEquals(raw, result.message)
+    }
+
+    @Test
+    fun jsonErrorBodyWithUnknownKeysStillParses() {
+        val body = """{"errorCode":"LOBBY_FULL","message":"Lobby is full","timestamp":"2026-06-10","path":"/lobby"}"""
+            .toResponseBody("application/json".toMediaType())
+        val error = HttpException(Response.error<Unit>(409, body))
+
+        val result = error.toClientError("fallback") as ClientError.Http
+
+        assertEquals("LOBBY_FULL", result.serverErrorCode)
+        assertEquals("Lobby is full", result.message)
+    }
+
+    @Test
+    fun jsonErrorBodyWithoutErrorCodeOrMessageUsesFallbackWithStatusCode() {
+        val body = """{}""".toResponseBody("application/json".toMediaType())
+        val error = HttpException(Response.error<Unit>(400, body))
+
+        val result = error.toClientError("Request failed") as ClientError.Http
+
+        assertNull(result.serverErrorCode)
+        assertEquals("Request failed (HTTP 400)", result.message)
+    }
+
+    @Test
+    fun unknownExceptionWithNullMessageUsesDefaultFallbackMessage() {
+        val error = RuntimeException()
+
+        val result = error.toClientError() as ClientError.Unknown
+
+        assertEquals("An error occurred", result.message)
+    }
+
+    @Test
+    fun toUserMessageReturnsMessageForHttpError() {
+        val error = ClientError.Http(statusCode = 401, serverErrorCode = null, message = "Invalid credentials")
+
+        assertEquals("Invalid credentials", error.toUserMessage())
+    }
+
+    @Test
+    fun toUserMessagePrefixesNetworkError() {
+        val error = ClientError.Network("connect timed out")
+
+        assertEquals("Network error: connect timed out", error.toUserMessage())
+    }
+
+    @Test
+    fun toUserMessageReturnsMessageForUnknownError() {
+        val error = ClientError.Unknown("something exploded")
+
+        assertEquals("something exploded", error.toUserMessage())
+    }
 }

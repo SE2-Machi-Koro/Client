@@ -1,12 +1,21 @@
 package com.machikoro.client.ui.game
 
+import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
+import com.machikoro.client.domain.enums.PurchaseType
+import com.machikoro.client.domain.enums.ShopItemColor
+import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PurchaseState
+import com.machikoro.client.domain.model.state.isAlreadyOwnedPurpleEstablishment
+import com.machikoro.client.domain.model.state.isShopItemAvailableFromMarketplace
+import com.machikoro.client.domain.model.state.remainingMarketplaceQuantityFor
 import com.machikoro.client.ui.game.ui.shouldShowBuyingPhaseShop
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -33,6 +42,140 @@ class BuyingPhaseShopStateTest {
         assertFalse(state.shouldShowBuyingPhaseShop())
     }
 
+    @Test
+    fun marketplaceQuantityOverridesStaleShopAvailability() {
+        val item = shopItem("BAKERY", isAvailable = true)
+        val state = buyingPhaseState(activePlayerId = 42, myUserId = 42).copy(
+            marketplace = mapOf(CardType.BAKERY to 0)
+        )
+
+        assertEquals(0, state.remainingMarketplaceQuantityFor(item))
+        assertFalse(state.isShopItemAvailableFromMarketplace(item))
+    }
+
+    @Test
+    fun marketplaceQuantityIsShownForMatchingShopItem() {
+        val item = shopItem("BAKERY", isAvailable = false)
+        val state = buyingPhaseState(activePlayerId = 42, myUserId = 42).copy(
+            marketplace = mapOf(CardType.BAKERY to 3)
+        )
+
+        assertEquals(3, state.remainingMarketplaceQuantityFor(item))
+        assertTrue(state.isShopItemAvailableFromMarketplace(item))
+    }
+
+    @Test
+    fun activePlayersOwnedPurpleEstablishmentIsUnavailableForRepurchase() {
+        val item = shopItem("STADIUM", isAvailable = true, color = ShopItemColor.PURPLE)
+        val state = buyingPhaseState(activePlayerId = 42, myUserId = 42).copy(
+            players = listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 6,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            ),
+            playerCards = mapOf(100 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1))),
+            marketplace = mapOf(CardType.STADIUM to 1)
+        )
+
+        assertTrue(state.isAlreadyOwnedPurpleEstablishment(item))
+    }
+
+    @Test
+    fun unownedPurpleEstablishmentIsAvailableForPurchase() {
+        val item = shopItem("STADIUM", isAvailable = true, color = ShopItemColor.PURPLE)
+        val state = buyingPhaseState(activePlayerId = 42, myUserId = 42).copy(
+            players = listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 6,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            ),
+            playerCards = mapOf(100 to listOf(PlayerCardState(CardType.TV_STATION, quantity = 1))),
+            marketplace = mapOf(CardType.STADIUM to 1)
+        )
+
+        assertFalse(state.isAlreadyOwnedPurpleEstablishment(item))
+        assertTrue(state.isShopItemAvailableFromMarketplace(item))
+    }
+
+    @Test
+    fun zeroQuantityPurpleEstablishmentIsNotTreatedAsOwned() {
+        val item = shopItem("STADIUM", isAvailable = true, color = ShopItemColor.PURPLE)
+        val state = buyingPhaseState(activePlayerId = 42, myUserId = 42).copy(
+            players = listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 6,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            ),
+            playerCards = mapOf(100 to listOf(PlayerCardState(CardType.STADIUM, quantity = 0))),
+            marketplace = mapOf(CardType.STADIUM to 1)
+        )
+
+        assertFalse(state.isAlreadyOwnedPurpleEstablishment(item))
+    }
+
+    @Test
+    fun purpleEstablishmentWithUnknownCardTypeIsNotTreatedAsOwned() {
+        val item = shopItem("UNKNOWN_CARD", isAvailable = true, color = ShopItemColor.PURPLE)
+        val state = buyingPhaseState(activePlayerId = 42, myUserId = 42).copy(
+            players = listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 6,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            ),
+            playerCards = mapOf(100 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1)))
+        )
+
+        assertFalse(state.isAlreadyOwnedPurpleEstablishment(item))
+    }
+
+    @Test
+    fun purpleEstablishmentWithoutKnownActivePlayerCardsIsNotTreatedAsOwned() {
+        val item = shopItem("STADIUM", isAvailable = true, color = ShopItemColor.PURPLE)
+        val state = buyingPhaseState(activePlayerId = 42, myUserId = 42).copy(
+            players = emptyList(),
+            playerCards = mapOf(100 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1)))
+        )
+
+        assertFalse(state.isAlreadyOwnedPurpleEstablishment(item))
+    }
+
+    @Test
+    fun ownedNonPurpleEstablishmentIsStillAvailableForDuplicates() {
+        val item = shopItem("BAKERY", isAvailable = true, color = ShopItemColor.GREEN)
+        val state = buyingPhaseState(activePlayerId = 42, myUserId = 42).copy(
+            players = listOf(
+                PlayerCoinState(
+                    id = "100",
+                    displayName = "Active player",
+                    coins = 6,
+                    isActivePlayer = true,
+                    isCurrentPlayer = true
+                )
+            ),
+            playerCards = mapOf(100 to listOf(PlayerCardState(CardType.BAKERY, quantity = 1))),
+            marketplace = mapOf(CardType.BAKERY to 3)
+        )
+
+        assertFalse(state.isAlreadyOwnedPurpleEstablishment(item))
+        assertTrue(state.isShopItemAvailableFromMarketplace(item))
+    }
+
     private fun buyingPhaseState(
         activePlayerId: Int,
         myUserId: Int,
@@ -53,5 +196,22 @@ class BuyingPhaseShopStateTest {
         myUserId = myUserId,
         purchaseState = PurchaseState.IDLE,
         gameStatus = GameStatus.IN_PROGRESS
+    )
+
+    private fun shopItem(
+        type: String,
+        isAvailable: Boolean,
+        color: ShopItemColor = ShopItemColor.GREEN,
+    ) = ShopItem(
+        type = type,
+        displayName = "Bakery",
+        cost = 1,
+        purchaseType = PurchaseType.ESTABLISHMENT,
+        color = color,
+        establishmentType = "BREAD",
+        activationNumbers = listOf(2, 3),
+        effectText = "Get 1 coin from the bank on your turn.",
+        imageKey = "card_bakery",
+        isAvailable = isAvailable
     )
 }

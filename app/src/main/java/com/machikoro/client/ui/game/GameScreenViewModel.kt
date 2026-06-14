@@ -15,8 +15,12 @@ import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.session.SessionStateHolder
+import com.machikoro.client.domain.model.state.isAlreadyOwnedPurpleEstablishment
+import com.machikoro.client.domain.model.state.isShopItemAvailableFromMarketplace
 import com.machikoro.client.network.debug.DebugApi
 import com.machikoro.client.network.debug.EndGameRequest
+import com.machikoro.client.network.toClientError
+import com.machikoro.client.network.toUserMessage
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
@@ -78,6 +82,16 @@ class GameScreenViewModel(
     val canAccuseThisTurn: StateFlow<Boolean>
         get() = mutableCanAccuseThisTurn.asStateFlow()
     private val mutableCanAccuseThisTurn = MutableStateFlow(true)
+
+    /**
+     * Radio Tower reroll budget (#326). True until the active player spends their
+     * once-per-turn reroll; renews when the turn rotates or a new game starts,
+     * using the same non-null discipline as the accusation budget. The server is
+     * authoritative — this just stops the client re-sending within a turn.
+     */
+    val canRerollThisTurn: StateFlow<Boolean>
+        get() = mutableCanRerollThisTurn.asStateFlow()
+    private val mutableCanRerollThisTurn = MutableStateFlow(true)
     private var lastTurnOwnerUserId: Int? = null
     private var lastSeenRoundNumber: Int? = null
     private val mutableCheatActivations = MutableSharedFlow<CardType?>(
@@ -103,9 +117,11 @@ class GameScreenViewModel(
     init {
         viewModelScope.launch {
             webSocketClient.activeGameId.collect { gameId ->
-                // A different game means a fresh accusation budget (#280).
+                // A different game means a fresh accusation budget (#280) and a
+                // fresh reroll budget (#326).
                 if (gameId != null && mutableState.value.gameId != gameId) {
                     mutableCanAccuseThisTurn.value = true
+                    mutableCanRerollThisTurn.value = true
                 }
                 mutableState.update { current ->
                     current.copy(gameId = gameId)
@@ -155,6 +171,7 @@ class GameScreenViewModel(
                 if (activePlayerId != null) {
                     if (lastTurnOwnerUserId != null && activePlayerId != lastTurnOwnerUserId) {
                         mutableCanAccuseThisTurn.value = true
+                        mutableCanRerollThisTurn.value = true
                     }
                     lastTurnOwnerUserId = activePlayerId
                 }
@@ -183,6 +200,7 @@ class GameScreenViewModel(
                 if (roundNumber != null) {
                     if (lastSeenRoundNumber != null && roundNumber != lastSeenRoundNumber) {
                         mutableCanAccuseThisTurn.value = true
+                        mutableCanRerollThisTurn.value = true
                     }
                     lastSeenRoundNumber = roundNumber
                 }
@@ -279,6 +297,20 @@ class GameScreenViewModel(
     }
 
     /**
+     * Radio Tower reroll (#326). Re-rolls the active player's dice during
+     * RESOLVE_EFFECTS when they have built a Radio Tower ([GameScreenState.canReroll])
+     * and still have their once-per-turn budget ([canRerollThisTurn]). No-op
+     * otherwise; the server stays authoritative for the result and phase.
+     */
+    fun rerollDice(diceCount: Int = 1) {
+        if (!mutableState.value.canReroll) return
+        if (!mutableCanRerollThisTurn.value) return
+        mutableCanRerollThisTurn.value = false
+        mutableState.update { it.copy(isRolling = true) }
+        webSocketClient.rerollDice(diceCount)
+    }
+
+    /**
      * Insider Trading cheat (#203). On a shake during the local player's turn,
      * computes a local best-buy recommendation and emits a one-shot activation
      * signal for the toast. No-op off-turn or before the game is running.
@@ -349,7 +381,9 @@ class GameScreenViewModel(
     fun selectPurchaseItem(itemType: String) {
         val current = mutableState.value
         val availableItems = current.shopItems.ifEmpty { ShopCatalog.defaultItems }
-        val item = availableItems.firstOrNull { it.type == itemType && it.isAvailable } ?: return
+        val item = availableItems.firstOrNull {
+            it.type == itemType && current.isShopItemAvailableFromMarketplace(it)
+        } ?: return
         if (!current.canSelectPurchaseItem(item)) return
 
         mutableState.update { state ->
@@ -374,7 +408,9 @@ class GameScreenViewModel(
         val current = mutableState.value
         val gameId = current.gameId ?: return
         val availableItems = current.shopItems.ifEmpty { ShopCatalog.defaultItems }
-        val item = availableItems.firstOrNull { it.type == itemType && it.isAvailable } ?: return
+        val item = availableItems.firstOrNull {
+            it.type == itemType && current.isShopItemAvailableFromMarketplace(it)
+        } ?: return
         if (!current.canStartPurchase(item)) return
 
         mutableState.update { state ->
@@ -400,8 +436,9 @@ class GameScreenViewModel(
             isActivePlayer &&
             purchaseState != PurchaseState.PENDING &&
             purchaseState != PurchaseState.SUCCESS &&
-            item.isAvailable &&
+            isShopItemAvailableFromMarketplace(item) &&
             hasEnoughKnownCoinsFor(item) &&
+            !isAlreadyOwnedPurpleEstablishment(item) &&
             !isKnownBuiltLandmark(item)
 
     private fun GameScreenState.canStartPurchase(item: ShopItem): Boolean =
@@ -410,8 +447,9 @@ class GameScreenViewModel(
             isActivePlayer &&
             purchaseState != PurchaseState.PENDING &&
             purchaseState != PurchaseState.SUCCESS &&
-            item.isAvailable &&
+            isShopItemAvailableFromMarketplace(item) &&
             hasEnoughKnownCoinsFor(item) &&
+            !isAlreadyOwnedPurpleEstablishment(item) &&
             !isKnownBuiltLandmark(item)
 
     private fun GameScreenState.hasEnoughKnownCoinsFor(item: ShopItem): Boolean {
@@ -493,7 +531,7 @@ class GameScreenViewModel(
                     mutableDebugEndGameErrors.tryEmit("End game failed (${response.code()})")
                 }
             } catch (e: Exception) {
-                mutableDebugEndGameErrors.tryEmit("End game error: ${e.message ?: "unknown error"}")
+                mutableDebugEndGameErrors.tryEmit("End game error: ${e.toClientError("unknown error").toUserMessage()}")
             } finally {
                 endGameInFlight = false
             }
