@@ -1,35 +1,47 @@
 package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalOverscrollFactory
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
-import com.machikoro.client.domain.model.shop.CardDefinitions
-import com.machikoro.client.domain.model.state.toDisplayText
+import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.White
+import com.machikoro.client.R
+import kotlinx.serialization.builtins.NothingSerializer
 
+private val SHOP_CARD_SHAPE = RoundedCornerShape(8.dp)
 
 /**
  * Marketplace supply rendered from the reconnect snapshot — one chip per card
@@ -38,96 +50,129 @@ import com.machikoro.client.ui.theme.White
 @Composable
 fun MarketplaceSection(
     marketplace: Map<CardType, Int>,
-    recommendedCardType: CardType? = null,
     modifier: Modifier = Modifier
 ) {
-    val entries = CardDefinitions.sortCardTypesByActivation(CardType.entries).mapNotNull { type ->
-        marketplace[type]?.let { count -> type to count }
-    }
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(12.dp),
-        tonalElevation = 2.dp,
-        modifier = modifier
+    CompositionLocalProvider(
+        LocalOverscrollFactory provides null
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = "Marketplace",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(items = entries, key = { it.first }) { (type, count) ->
-                    MarketplaceCardChip(
-                        type = type,
-                        count = count,
-                        isRecommended = type == recommendedCardType,
-                    )
-                }
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(4),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(marketplace.entries.toList()) { entry ->
+                CardDisplay(
+                    cardType = entry.key,
+                    quantity = entry.value,
+                    width = 150.dp,
+                    height = 175.dp,
+                    showCounter = true,
+                    modifier = Modifier.
+                    padding(top = 8.dp)
+                )
             }
         }
     }
 }
+
 @Composable
-private fun MarketplaceCardChip(
-    type: CardType,
-    count: Int,
-    isRecommended: Boolean = false
+private fun CardDisplay(
+    cardType: CardType,
+    quantity: Int,
+    modifier: Modifier = Modifier,
+    width: Dp = 90.dp,
+    height: Dp = 110.dp,
+    showCounter: Boolean = false
 ) {
-    val description = "${type.toDisplayText()}: $count in stock" +
-            if (isRecommended) ", recommended" else ""
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(8.dp),
-        tonalElevation = 1.dp,
-        modifier = Modifier
-            .widthIn(min = 96.dp)
-            .then(
-                if (isRecommended) {
-                    Modifier.border(3.dp, RecommendedHighlight, RoundedCornerShape(8.dp))
-                } else {
-                    Modifier
-                }
-            )
-            .semantics { contentDescription = description }
+
+    Box(
+        modifier = modifier
+            .wrapContentSize()
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = type.toDisplayText(),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                maxLines = 2
-            )
-            Text(
-                text = "×$count",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+        val alpha = if (quantity > 0) 1f else 0.70f // if more than 0 left
+        Image(
+            painter = painterResource(id = drawableForPlayerCard(cardType)),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .width(width)
+                .height(height)
+                .alpha(alpha)
+                .clip(SHOP_CARD_SHAPE)
+                .semantics { }
+        )
+        if(showCounter) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .size(30.dp)
+                    .offset(x = (-6).dp, y = (-8).dp)
+                    .clip(CircleShape)
+                    .alpha(alpha)
+                    .border(
+                        width = 2.dp,
+                        color = TextBlueDark,
+                        shape = CircleShape
+                    )
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = quantity.toString() + "x",
+                    color = TextBlueDark,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelSmall,
+                    )
+            }
         }
     }
 }
+private fun drawableForPlayerCard(cardType: CardType): Int =
+    when (cardType) {
+        CardType.WHEAT_FIELD -> R.drawable.card_wheat_field
+        CardType.RANCH -> R.drawable.card_ranch
+        CardType.FOREST -> R.drawable.card_forest
+        CardType.MINE -> R.drawable.card_mine
+        CardType.APPLE_ORCHARD -> R.drawable.card_apple_orchard
+        CardType.BAKERY -> R.drawable.card_bakery
+        CardType.CONVENIENCE_STORE -> R.drawable.card_convenience_store
+        CardType.CHEESE_FACTORY -> R.drawable.card_cheese_factory
+        CardType.FURNITURE_FACTORY -> R.drawable.card_furniture_factory
+        CardType.FRUIT_AND_VEGETABLE_MARKET ->
+            R.drawable.card_fruit_and_vegetable_market
+        CardType.CAFE -> R.drawable.card_cafe
+        CardType.FAMILY_RESTAURANT -> R.drawable.card_family_restaurant
+        CardType.STADIUM -> R.drawable.card_stadium
+        CardType.TV_STATION -> R.drawable.card_tv_station
+        CardType.BUSINESS_CENTER -> R.drawable.card_business_center
+    }
 
-// todo wire
+
 @Composable
 fun MarketplaceButton(
-    modifier: Modifier = Modifier
+    onClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     Box(
-        modifier = modifier
+        modifier = modifier.clickable(
+            enabled = enabled
+        ) {
+            onClick()
+        }
     ) {
-        Column{
+        val alpha = if (enabled) 1f else 0.7f
+        Column(
+            modifier = Modifier.alpha(alpha)
+        ) {
             Image(
                 painter = painterResource(id = R.drawable.markerplace_icon),
                 contentDescription = "",
-                Modifier.size(85.dp)
-
+                modifier = Modifier.size(85.dp)
+                    .offset(x = 4.dp)
             )
+
             Text(
                 text = "Marketplace",
                 style = MaterialTheme.typography.bodyMedium,
