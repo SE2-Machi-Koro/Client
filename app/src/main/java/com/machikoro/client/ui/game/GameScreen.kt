@@ -432,6 +432,8 @@ fun GameScreen(
                 else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
                     ResolvingEffectsView(
                         state = state,
+                        canReroll = canReroll,
+                        onReroll = onReroll,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -487,28 +489,6 @@ fun GameScreen(
                     }
                 }
 
-                // Radio Tower reroll (#326): only the active player who built a
-                // Radio Tower may reroll, once, during RESOLVE_EFFECTS.
-                else if (state.canReroll && canReroll) {
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(bottom = 32.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        state.diceResult?.let { DiceResultDisplay(dice = it) }
-                        ActionButton(
-                            onClick = { onReroll(state.diceResult?.size ?: 1) },
-                            enabled = !state.isRolling,
-                            label = "Nochmal würfeln",
-                            leftIcon = R.drawable.game_dice_perspective,
-                            modifier = Modifier.semantics {
-                                contentDescription = "Nochmal würfeln"
-                            }
-                        )
-                    }
-                }
                 }
             },
 // =====================================
