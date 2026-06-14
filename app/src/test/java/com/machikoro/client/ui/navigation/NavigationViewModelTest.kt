@@ -178,6 +178,34 @@ class NavigationViewModelTest {
     }
 
     @Test
+    fun loggedInActiveGameSnapshotWithoutLobbyEntryNavigatesToHome() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial().copy(
+                gamePhase = GamePhase.ROLL_DICE,
+                gameStatus = GameStatus.IN_PROGRESS,
+                gameId = 42,
+            ),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = "ABC1234",
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            NavigationEvent.NavigateTo(
+                route = AppRoute.Home,
+                arguments = AppRoute.AppRouteArguments(
+                    lobbyCode = "ABC1234",
+                    gameId = 42,
+                ),
+            ),
+            events.single(),
+        )
+    }
+
+    @Test
     fun finishedGameNavigatesToWinnerBeforeOtherRoutes() = runTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
