@@ -59,15 +59,9 @@ fun DiceResultDisplay(
     val sum = dice.sum()
 
     Row(
-        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.game_dice_perspective),
-            contentDescription = "Dice",
-            Modifier.size(56.dp)
-        )
         // Removed for now
         /*
         dice.forEach { value ->
@@ -77,13 +71,18 @@ fun DiceResultDisplay(
             )
         }
          */
-            Text(
-                text = "$sum",
-                style = MaterialTheme.typography.bodyLarge,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+        Text(
+            text = "$sum",
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+
+        Image(
+            painter = painterResource(id = R.drawable.game_dice_perspective),
+            contentDescription = "Dice",
+            modifier = Modifier.size(56.dp)
+        )
     }
 }
 
