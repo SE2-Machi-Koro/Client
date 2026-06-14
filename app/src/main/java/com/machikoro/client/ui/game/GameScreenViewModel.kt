@@ -266,7 +266,7 @@ class GameScreenViewModel(
         if (mutableState.value.gameStatus != GameStatus.IN_PROGRESS) return
         if (mutableState.value.gamePhase != GamePhase.ROLL_DICE) return
         if (!mutableState.value.isActivePlayer) return
-        mutableState.update { it.copy(isRolling = true) }
+        mutableState.update { it.copy(isRolling = true, requestedDiceCount = diceCount, rollingStartTime = System.currentTimeMillis()) }
         webSocketClient.rollDice(diceCount)
     }
 

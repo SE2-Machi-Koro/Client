@@ -67,15 +67,6 @@ data class GameScreenState(
         }
     }
 
-    val hasRadioTower: Boolean
-        get() {
-            val activePlayerDatabaseId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
-                ?: return false
-            return playerLandmarks[activePlayerDatabaseId].orEmpty().any {
-                it.landmarkType == LandmarkType.RADIO_TOWER && it.isBuilt
-            }
-        }
-
     companion object {
         fun initial() = GameScreenState(
             gameId = null,

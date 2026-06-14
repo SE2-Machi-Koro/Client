@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -147,32 +145,31 @@ fun DiceResultDisplay(
 fun DiceSection(
     state: GameScreenState,
     onRollDice: (diceCount: Int) -> Unit,
+    onReroll: (diceCount: Int) -> Unit,
+    canReroll: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    // Only show the dice UI during the ROLL_DICE phase
-    if (state.gamePhase != GamePhase.ROLL_DICE) return
+    // Show during rolling and the reroll window (Radio Tower)
+    if (state.gamePhase != GamePhase.ROLL_DICE && state.gamePhase != GamePhase.RESOLVE_EFFECTS) return
 
     var isAnimating by remember { mutableStateOf(false) }
-    // ephemeral UI selection and frozen choice when user taps a die-count
     var selectedDiceCount by remember(state.roundNumber) { mutableStateOf<Int?>(null) }
     var frozenDiceCount by remember(state.roundNumber) { mutableStateOf<Int?>(null) }
-    // track whether the player has used the radio-tower reroll this round
+    // tracks whether the player already used the Radio Tower reroll this round
     var hasRerolled by remember(state.roundNumber) { mutableStateOf(false) }
 
-    // number of dice to animate: prefer server result size, else frozen, else selected, else server requested
+    // prefer server result count, then frozen selection, then live selection, then ViewModel value
     val animationDiceCount = state.diceResult?.size ?: frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount
 
-    // react to server dice result changes: when server clears result reset selection/flags
+    // reset local selection when server clears the dice result (new turn / reroll)
     LaunchedEffect(state.diceResult) {
         if (state.diceResult == null) {
             selectedDiceCount = null
             frozenDiceCount = null
             hasRerolled = false
         }
-        // when diceResult != null we intentionally do not copy it locally; the UI reads state.diceResult directly
     }
 
-    // run animation for fixed duration when triggered
     LaunchedEffect(isAnimating) {
         if (isAnimating) {
             delay(DICE_ANIMATION_DURATION_MS)
@@ -186,65 +183,55 @@ fun DiceSection(
         modifier = modifier.padding(bottom = 32.dp)
     ) {
         when {
-                isAnimating -> {
+            isAnimating -> {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     repeat(animationDiceCount) {
                         DiceAnimationDisplay(animating = true)
                     }
                 }
             }
-            state.diceResult != null -> {
-                // show authoritative server result when available and not animating
-                DiceResultDisplay(dice = state.diceResult)
-            }
-            else -> {
-                // nothing to show
-            }
+            state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
+            else -> {}
         }
 
-        // only show controls when it's the rolling phase and player may act
         if (state.isActivePlayer &&
             state.gameStatus == GameStatus.IN_PROGRESS &&
             !isAnimating
         ) {
-            // if player has train station, offer a 1/2 selector (numbers)
-            if (state.hasTrainStation) {
-                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                    listOf(1, 2).forEach { count ->
-                        // simple numeric selector with border highlight
-                        val isSelected = (selectedDiceCount ?: state.requestedDiceCount) == count
-                        DiceCountSelector(
-                            diceCount = count,
-                            isSelected = isSelected,
-                            onClick = {
-                                selectedDiceCount = count
-                                frozenDiceCount = count
-                            }
-                        )
+            // Roll controls only appear during the actual rolling phase
+            if (state.gamePhase == GamePhase.ROLL_DICE) {
+                if (state.hasTrainStation) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                        listOf(1, 2).forEach { count ->
+                            val isSelected = (selectedDiceCount ?: state.requestedDiceCount) == count
+                            DiceCountSelector(
+                                diceCount = count,
+                                isSelected = isSelected,
+                                onClick = {
+                                    selectedDiceCount = count
+                                    frozenDiceCount = count
+                                }
+                            )
+                        }
                     }
                 }
+                DecreasingLineTimer(ROLL_TIMER_SECONDS)
             }
-            // show a timer above the roll/reroll control (UI only)
-            DecreasingLineTimer(ROLL_TIMER_SECONDS)
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (state.diceResult == null) {
+                // Roll button: only when server has no result yet and we are in ROLL_DICE
+                if (state.gamePhase == GamePhase.ROLL_DICE && state.diceResult == null) {
+                    val chosen = frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount
                     Image(
                         painter = painterResource(id = R.drawable.game_dice_perspective),
                         contentDescription = "Dice",
                         modifier = Modifier.size(48.dp)
                     )
-                }
-
-                // Roll button: visible when server has not provided a result yet
-                if (state.diceResult == null) {
-                    val chosen = frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount
                     ActionButton(
                         onClick = {
-                            // freeze selection, start local animation and request roll
                             frozenDiceCount = chosen
                             isAnimating = true
                             onRollDice(chosen)
@@ -257,18 +244,15 @@ fun DiceSection(
                     )
                 }
 
-                val showResult = !isAnimating && state.diceResult != null
-
-                // Reroll button: only offered when server has produced a result and player has radio tower
-                if (showResult && state.hasRadioTower && !hasRerolled) {
-                    val chosen = frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount
+                // Reroll button: canReroll already gates this to RESOLVE_EFFECTS + Radio Tower + result exists
+                if (state.canReroll && canReroll && !hasRerolled) {
+                    val rerollCount = frozenDiceCount ?: state.diceResult?.size ?: 1
                     ActionButton(
                         onClick = {
-                            // mark reroll used, freeze choice (if not already), start animation and request reroll
                             hasRerolled = true
-                            frozenDiceCount = chosen
+                            frozenDiceCount = rerollCount
                             isAnimating = true
-                            onRollDice(chosen)
+                            onReroll(rerollCount)
                         },
                         enabled = true,
                         label = "Roll Dice Again",
