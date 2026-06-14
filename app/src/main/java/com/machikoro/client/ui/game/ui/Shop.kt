@@ -26,11 +26,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
@@ -53,6 +55,9 @@ import com.machikoro.client.ui.theme.CardPurpleBackground
 import com.machikoro.client.ui.theme.CardPurpleText
 import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 
 private val SHOP_CARD_SHAPE = RoundedCornerShape(8.dp)
 val RecommendedHighlight = Color(0xFF00C853)
@@ -138,10 +143,6 @@ internal fun BuyingPhaseShop(
     }
 }
 
-
-
-
-
 @Composable
 private fun ShopImageTile(
     item: ShopItem,
@@ -153,43 +154,42 @@ private fun ShopImageTile(
     val canPurchase = state.canPurchaseItem(item)
     val isSelected = state.selectedPurchaseItemType == item.type
     val isFeedbackItem = state.purchaseFeedbackItemType == item.type
+    val isSuccessFeedback = isFeedbackItem && state.purchaseState == PurchaseState.SUCCESS
     val remainingQuantity = state.remainingMarketplaceQuantityFor(item)
     val isAlreadyOwnedPurple = state.isAlreadyOwnedPurpleEstablishment(item)
-
-    val borderColor = when {
-        isFeedbackItem && state.purchaseState == PurchaseState.SUCCESS -> PrimaryOrange
-        isFeedbackItem && state.purchaseState == PurchaseState.PENDING -> MaterialTheme.colorScheme.primary
-        isSelected -> SelectedHighlight
-        isRecommended -> RecommendedHighlight
-        else -> Color.Transparent
-    }
-
-    // Allow clicking if purchasable OR if already selected (to deselect/change selection)
     val isClickable = canPurchase || isSelected
 
+    val framePadding = Modifier.padding(
+        start = 6.dp,
+        end = 6.dp,
+        bottom = 9.dp
+    )
+
     Box(
-        modifier = modifier.wrapContentSize()
-    ) {
-        Box(
-            modifier = Modifier
-                .width(155.dp)
-                .height(175.dp)
-                .border(2.dp, borderColor, SHOP_CARD_SHAPE)
-                .clip(SHOP_CARD_SHAPE)
-                .clickable(
-                    enabled = isClickable,
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) {
-                    onPurchaseClick(item.type)
-                }
-                .semantics {
-                    contentDescription = "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
+        modifier = modifier
+            .wrapContentSize()
+            .clickable(
+                enabled = isClickable,
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) {
+                onPurchaseClick(item.type)
+            }
+            .semantics {
+                contentDescription =
+                    "${item.displayName}: ${item.cost} coins, activates on ${item.activationText}. ${item.effectText}" +
                             remainingQuantity?.let { ", $it remaining" }.orEmpty() +
                             (if (remainingQuantity == 0) ", unavailable" else "") +
                             (if (isAlreadyOwnedPurple) ", already owned" else "") +
                             (if (isRecommended) ", recommended" else "")
-                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .width(155.dp)
+                .height(175.dp),
+            contentAlignment = Alignment.Center
         ) {
             CardArtImage(
                 drawableResId = ShopImageResolver.drawableForShopItem(item),
@@ -198,12 +198,36 @@ private fun ShopImageTile(
                 alpha = if (canPurchase) 1f else 0.45f
             )
         }
+
+        if (isRecommended && !isSelected && !isSuccessFeedback) {
+            Image(
+                painter = painterResource(R.drawable.card_frame_green),
+                contentDescription = null,
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier
+                    .matchParentSize()
+                    .then(framePadding)
+            )
+        }
+
+        if (isSelected  || isSuccessFeedback) {
+            Image(
+                painter = painterResource(R.drawable.card_frame),
+                contentDescription = null,
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier
+                    .matchParentSize()
+                    .then(framePadding)
+            )
+        }
+
         remainingQuantity?.let { count ->
             CardQuantityIndicator(
                 quantity = count,
                 modifier = Modifier.align(Alignment.TopStart)
             )
         }
+
         if (isAlreadyOwnedPurple) {
             OwnedCardIndicator(
                 modifier = Modifier.align(Alignment.TopEnd)
@@ -301,3 +325,75 @@ private fun previewBuyingPhaseState() = GameScreenState(
         )
     )
 )
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenRollingPhasePreview() {
+    ClientTheme {
+        GameScreen(
+            state = previewBuyingPhaseState().copy(
+                gamePhase = GamePhase.ROLL_DICE,
+                purchaseState = PurchaseState.IDLE
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenBuyingPhasePreview() {
+    ClientTheme {
+        GameScreen(
+            state = previewBuyingPhaseState().copy(
+                gamePhase = GamePhase.BUY_OR_BUILD,
+                purchaseState = PurchaseState.IDLE
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenPurchasePendingPreview() {
+    ClientTheme {
+        GameScreen(
+            state = previewBuyingPhaseState().copy(
+                gamePhase = GamePhase.BUY_OR_BUILD,
+                purchaseState = PurchaseState.PENDING,
+                selectedPurchaseItemType = CardType.BAKERY.name,
+                purchaseFeedbackItemType = CardType.BAKERY.name
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenPurchaseSuccessPreview() {
+    ClientTheme {
+        GameScreen(
+            state = previewBuyingPhaseState().copy(
+                gamePhase = GamePhase.BUY_OR_BUILD,
+                purchaseState = PurchaseState.SUCCESS,
+                purchaseFeedbackItemType = CardType.BAKERY.name
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenNotActivePlayerPreview() {
+    ClientTheme {
+        GameScreen(
+            state = previewBuyingPhaseState().copy(
+                gamePhase = GamePhase.BUY_OR_BUILD,
+                activePlayerId = 2,
+                players = listOf(
+                    PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = false),
+                    PlayerCoinState("2", "Lev", 8, isCurrentPlayer = false, isActivePlayer = true)
+                )
+            )
+        )
+    }
+}

@@ -130,7 +130,7 @@ fun HomeScreen(
             ) {
 
                 ArrowTextButton(
-                    label = "Leave Lobby",
+                    label = "Logout",
                     onClick = onLogoutClick,
                     fontSize = 18.sp
                 )
