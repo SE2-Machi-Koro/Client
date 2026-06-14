@@ -153,6 +153,8 @@ private fun ShopImageTile(
 ) {
     val canPurchase = state.canPurchaseItem(item)
     val isSelected = state.selectedPurchaseItemType == item.type
+    val isFeedbackItem = state.purchaseFeedbackItemType == item.type
+    val isSuccessFeedback = isFeedbackItem && state.purchaseState == PurchaseState.SUCCESS
     val remainingQuantity = state.remainingMarketplaceQuantityFor(item)
     val isAlreadyOwnedPurple = state.isAlreadyOwnedPurpleEstablishment(item)
     val isClickable = canPurchase || isSelected
@@ -197,7 +199,7 @@ private fun ShopImageTile(
             )
         }
 
-        if (isRecommended && !isSelected) {
+        if (isRecommended && !isSelected && !isSuccessFeedback) {
             Image(
                 painter = painterResource(R.drawable.card_frame_green),
                 contentDescription = null,
@@ -208,7 +210,7 @@ private fun ShopImageTile(
             )
         }
 
-        if (isSelected) {
+        if (isSelected  || isSuccessFeedback) {
             Image(
                 painter = painterResource(R.drawable.card_frame),
                 contentDescription = null,
