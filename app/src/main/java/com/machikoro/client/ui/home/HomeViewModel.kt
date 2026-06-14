@@ -12,6 +12,8 @@ import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
+// Issue #175: if the server never confirms lobby creation, release the
+// in-flight guard so the user can retry instead of being stuck.
 private const val CREATE_LOBBY_CONFIRMATION_TIMEOUT_MS = 10_000L
 
 class HomeViewModel(

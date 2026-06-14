@@ -22,6 +22,8 @@ import com.machikoro.client.domain.model.state.StartScreenState
  */
 data class NavigationUiState(
     val showLobbyScreen: Boolean = false,
+    // Issue #175: this is set only by an explicit login action, not by session
+    // hydration, so a restored session cannot skip the start screen on launch.
     val userHasLoggedIn: Boolean = false,
 )
 
