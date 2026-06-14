@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -71,7 +72,8 @@ import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ClientTheme
 import kotlinx.coroutines.delay
 
-private val SIDE_CENTER_CONTENT_OFFSET = (-35).dp
+private val OWN_CARDS_VIEW_DELAY = 10000L
+private val MARKETPLACE_VIEW_DELAY = 10000L
 
 @Composable
 fun GameScreen(
@@ -109,7 +111,7 @@ fun GameScreen(
             text = {
                 Text(
                     "Bet that ${accuseTarget.displayName} used the Insider Trading cheat. " +
-                        "If you're wrong, you lose a coin."
+                            "If you're wrong, you lose a coin."
                 )
             },
             confirmButton = {
@@ -132,18 +134,46 @@ fun GameScreen(
 
     var showLeaveDialog by remember { mutableStateOf(false) }
     var showOwnCards by remember { mutableStateOf(false) }
+    var showMarketplace by remember { mutableStateOf(false) }
 
+    val phaseTimerTime =
+        when {
+            state.isBuyingPhase -> 30
+            state.gamePhase == GamePhase.ROLL_DICE -> 20
+            state.gamePhase == GamePhase.RESOLVE_EFFECTS -> 25
+            else -> 0
+        }
 
-    var isOwnCardsDisplayPermitted = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
+    val cardsTimerTime =
+        when {
+            showOwnCards -> 10
+            showMarketplace -> 10
+            else -> 0
+        }
+
+    val isCardViewPossible = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
             && !state.isActivePlayer)
 
-    LaunchedEffect(isOwnCardsDisplayPermitted) {
-        if (!isOwnCardsDisplayPermitted) {
+    LaunchedEffect(showOwnCards) {
+        if (showOwnCards) {
+            showMarketplace = false
+            delay(OWN_CARDS_VIEW_DELAY)
             showOwnCards = false
         }
     }
-
-
+    LaunchedEffect(showMarketplace) {
+        if (showMarketplace) {
+            showOwnCards = false
+            delay(MARKETPLACE_VIEW_DELAY)
+            showMarketplace = false
+        }
+    }
+    LaunchedEffect(isCardViewPossible) {
+        if (!isCardViewPossible) {
+            showOwnCards = false
+            showMarketplace = false
+        }
+    }
 
     if (showLeaveDialog) {
         AlertDialog(
@@ -220,169 +250,211 @@ fun GameScreen(
     Box {
 
 
-    GameScreenLayout(
-        // =====================================
-        // TOP BAR
-        // =====================================
-        topBar = {
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(
+        GameScreenLayout(
+            // =====================================
+            // TOP BAR
+            // =====================================
+            topBar = {
+                Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
 
-                    SecondaryActionButton(
-                        label = "Leave",
-                        modifier = Modifier.align(
-                            Alignment.CenterStart
-                        ),
-                        onClick = {
-                            showLeaveDialog = true
-                        }
-                    )
-
-                    PlayersTopBar(
-                        players = state.players,
-                        playerLandmarks =
-                            state.playerLandmarks,
-                        playerCards = state.playerCards,
-                        onAccusePlayer = { accuseTargetId = it },
-                        canAccuse = canAccuse,
-                        modifier = Modifier.align(
-                            Alignment.Center
-                        ),
-                    )
-
-                    state.roundNumber?.let { round ->
-                        RoundIndicator(
-                            round = round,
+                        SecondaryActionButton(
+                            label = "Leave",
                             modifier = Modifier.align(
-                                Alignment.CenterEnd
-                            )
+                                Alignment.CenterStart
+                            ),
+                            onClick = {
+                                showLeaveDialog = true
+                            }
                         )
+
+                        PlayersTopBar(
+                            players = state.players,
+                            playerLandmarks =
+                                state.playerLandmarks,
+                            playerCards = state.playerCards,
+                            onAccusePlayer = { accuseTargetId = it },
+                            canAccuse = canAccuse,
+                            modifier = Modifier.align(
+                                Alignment.Center
+                            ),
+                        )
+
+                        state.roundNumber?.let { round ->
+                            RoundIndicator(
+                                round = round,
+                                modifier = Modifier.align(
+                                    Alignment.CenterEnd
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .width(IntrinsicSize.Max),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+
+                        GamePhaseBanner(
+                            phase = state.gamePhase,
+                            text = state.customDisplayText
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp)
+                        ) {
+
+                            // phase timer stays alive
+                            if (phaseTimerTime > 0) {
+                                Box(
+                                    modifier = Modifier.alpha(
+                                        if (cardsTimerTime > 0) 0f else 1f
+                                    )
+                                ) {
+                                    DecreasingLineTimer(phaseTimerTime)
+                                }
+                            }
+
+                            // cards timer overlay
+                            if (cardsTimerTime > 0) {
+                                DecreasingLineTimer(cardsTimerTime)
+                            }
+                        }
                     }
                 }
+            },
 
-                Spacer(modifier = Modifier.height(8.dp))
+            // =====================================
+            // LEFT
+            // =====================================
+            leftContent = {
+                Box(modifier = Modifier.fillMaxHeight()) {
 
-                GamePhaseBanner(
-                    phase = state.gamePhase,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    text = state.customDisplayText
-                )
-            }
-        },
+                    Box(modifier = Modifier.align(Alignment.Center)
+                    ) {
+                        if(state.gamePhase != GamePhase.ROLL_DICE) {
+                            state.diceResult?.let { DiceResultDisplay(dice = it) }
+                        }
+                    }
 
-        // =====================================
-        // LEFT
-        // =====================================
-        leftContent = {
-            Box(modifier = Modifier.fillMaxHeight()) {
+                    Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                        MarketplaceButton(
+                            onClick = {
+                                showMarketplace = !showMarketplace
+                            },
+                            enabled = isCardViewPossible
+                        )
 
-                Box(modifier = Modifier.align(Alignment.Center)
-                    .offset(y = SIDE_CENTER_CONTENT_OFFSET)
-                ) {
-                    if(state.gamePhase != GamePhase.ROLL_DICE) {
-                        state.diceResult?.let { DiceResultDisplay(dice = it) }
                     }
                 }
+            },
 
-                Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-                    MarketplaceButton()
-                }
-            }
-        },
-
-        // =====================================
-        // CENTER
-        // =====================================
-        centerContent = {
+            // =====================================
+            // CENTER
+            // =====================================
+            centerContent = {
 
             Box(modifier = Modifier.align(Alignment.Center)) {
-
-                if(showOwnCards && isOwnCardsDisplayPermitted) {
-                    LaunchedEffect(Unit) {
-                        delay(10000)
-                        showOwnCards = false
-                    }
+                if(
+                    showOwnCards
+                    && isCardViewPossible
+                    && !showMarketplace
+                ) {
                     Column(
-                        modifier = Modifier.align(Alignment.Center)
+                        modifier = Modifier
+                            .align(Alignment.Center)
                             .fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        DecreasingLineTimer(10)
                         Image(
                             painter = painterResource(id = R.drawable.rotated_arrow),
                             contentDescription = "Arrow",
-                            modifier = Modifier.clickable {
-                                showOwnCards = false
-                            }
+                            modifier = Modifier
+                                .clickable {
+                                    showOwnCards = false
+                                }
                                 .size(35.dp)
                             )
-                        BigPlayerCardsDisplay(
-                            state
-                        )
-                    }
-                }
-
-                else if (false) {
-                    MarketplaceSection(
-                        marketplace = state.marketplace,
-                        recommendedCardType = cheatRecommendation,
-                        modifier = Modifier.widthIn(max = 260.dp)
-                    )
-                }
-
-                else if (state.isBuyingPhase) {
-                    if(state.isActivePlayer) {
-                        BuyingPhaseShop(
-                            state = state,
-                            items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
-                            onPurchaseClick = onPurchaseClick,
-                            recommendedCardType = cheatRecommendation,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    } else BasicText("Waiting for purchase")
-                }
-
-                else if (state.gamePhase == GamePhase.ROLL_DICE) {
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(bottom = 32.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        when {
-                            state.isRolling -> DiceAnimationDisplay()
-                            state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
+                            BigPlayerCardsDisplay(
+                                state
+                            )
                         }
+                    }
 
-                        if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
-                            var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
+                    else if(
+                        showMarketplace
+                        && isCardViewPossible
+                        && !showOwnCards
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
 
-                            if (state.hasTrainStation) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    listOf(1, 2).forEach { count ->
-                                        Button(
-                                            onClick = { selectedDiceCount = count },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (selectedDiceCount == count)
-                                                    MaterialTheme.colorScheme.primary
-                                                else
-                                                    MaterialTheme.colorScheme.surfaceVariant,
-                                                contentColor = if (selectedDiceCount == count)
-                                                    MaterialTheme.colorScheme.onPrimary
-                                                else
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        ) {
-                                            Text("$count 🎲")
+                            MarketplaceSection(state.marketplace)
+                        }
+                    }
+
+                    else if (state.isBuyingPhase) {
+                        if(state.isActivePlayer) {
+                            BuyingPhaseShop(
+                                state = state,
+                                items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
+                                onPurchaseClick = onPurchaseClick,
+                                recommendedCardType = cheatRecommendation,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        } else BasicText("Waiting for purchase")
+                    }
+
+                    else if (state.gamePhase == GamePhase.ROLL_DICE) {
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(bottom = 32.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            when {
+                                state.isRolling -> DiceAnimationDisplay()
+                                state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
+                            }
+
+                            if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
+                                var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
+
+                                if (state.hasTrainStation) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        listOf(1, 2).forEach { count ->
+                                            Button(
+                                                onClick = { selectedDiceCount = count },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = if (selectedDiceCount == count)
+                                                        MaterialTheme.colorScheme.primary
+                                                    else
+                                                        MaterialTheme.colorScheme.surfaceVariant,
+                                                    contentColor = if (selectedDiceCount == count)
+                                                        MaterialTheme.colorScheme.onPrimary
+                                                    else
+                                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            ) {
+                                                Text("$count 🎲")
+                                            }
                                         }
                                     }
                                 }
-                            }
 
                             ActionButton(
                                 onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
@@ -419,64 +491,70 @@ fun GameScreen(
                         )
                     }
                 }
-            }
-        },
+                }
+            },
 // =====================================
 // RIGHT
 // =====================================
-        rightContent = {
-            Box(modifier = Modifier.fillMaxHeight()
-                .width(140.dp)
-            ) {
-
-            PlayerCoinField(
-               state = state,
-                modifier = Modifier.align(Alignment.CenterEnd)
-                    .offset(y = SIDE_CENTER_CONTENT_OFFSET)
-            )
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = modifier.align(Alignment.BottomCenter)
-            ) {
-                val turnFlowLabel = state.turnFlowActionLabel()
-                if (
-                    state.isActivePlayer &&
-                    state.gameStatus == GameStatus.IN_PROGRESS
+            rightContent = {
+                Box(modifier = Modifier
+                    .fillMaxHeight()
+                    .width(140.dp)
                 ) {
-                    turnFlowLabel?.let {
-                            ActionButton(
-                                onClick = if (state.isBuyingPhase) onBuySelectedClick else onTurnFlowAction,
-                                enabled = !state.isBuyingPhase || state.canConfirmSelectedPurchase(),
-                                modifier = Modifier.semantics {
-                                    contentDescription = turnFlowLabel
-                                }
-                                    .fillMaxWidth(),
-                                label = turnFlowLabel,
-                            )
-                    }
+
+                    PlayerCoinField(
+                        state = state,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .offset(y = 45.dp)
+                    )
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = modifier.align(Alignment.BottomCenter)
+                    ) {
+                        val turnFlowLabel = state.turnFlowActionLabel()
+                        if (
+                            state.isActivePlayer &&
+                            state.gameStatus == GameStatus.IN_PROGRESS
+                        ) {
+                            turnFlowLabel?.let {
+                                ActionButton(
+                                    onClick = if (state.isBuyingPhase) onBuySelectedClick else onTurnFlowAction,
+                                    enabled = !state.isBuyingPhase || state.canConfirmSelectedPurchase(),
+                                    modifier = Modifier
+                                        .semantics {
+                                            contentDescription = turnFlowLabel
+                                        }
+                                        .fillMaxWidth(),
+                                    label = turnFlowLabel,
+                                )
+                            }
 
                             if (state.isBuyingPhase) {
-                               SecondaryActionButton(
-                                   onClick = onTurnFlowAction,
-                                   enabled = state.purchaseState != PurchaseState.PENDING,
-                                   modifier = Modifier.semantics {
-                                       contentDescription = "Skip"
-                                   }
-                                       .fillMaxWidth(),
-                                   label = "Skip",
-                           )
+                                SecondaryActionButton(
+                                    onClick = onTurnFlowAction,
+                                    enabled = state.purchaseState != PurchaseState.PENDING,
+                                    modifier = Modifier
+                                        .semantics {
+                                            contentDescription = "Skip"
+                                        }
+                                        .fillMaxWidth(),
+                                    label = "Skip",
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
-    )
+        )
 
-        if(isOwnCardsDisplayPermitted && !showOwnCards) {
+        //Small own cards at the button
+        if(isCardViewPossible && !showOwnCards && !showMarketplace) {
             Column(
-                modifier = Modifier.align(Alignment.BottomCenter)
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .offset(y = 90.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
 
@@ -484,12 +562,13 @@ fun GameScreen(
                 Image(
                     painter = painterResource(id = R.drawable.arrow_button),
                     contentDescription = "Arrow",
-                    modifier = Modifier.clickable {
-                        showOwnCards = true
-                    }
+                    modifier = Modifier
+                        .clickable {
+                            showOwnCards = true
+                        }
                         .size(35.dp),
 
-                )
+                    )
                 Spacer(modifier = Modifier.height(4.dp))
                 PlayerCardsDisplay(
                     state,
@@ -498,11 +577,11 @@ fun GameScreen(
             }
         }
     }
-        InitializationLoadingOverlay(
-            connectionStatus = state.connectionStatus,
-            gameStatus = state.gameStatus
-        )
-    }
+    InitializationLoadingOverlay(
+        connectionStatus = state.connectionStatus,
+        gameStatus = state.gameStatus
+    )
+}
 
 
 private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
@@ -516,8 +595,8 @@ private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
 
 private fun GameScreenState.canConfirmSelectedPurchase(): Boolean =
     selectedPurchaseItemType != null &&
-        purchaseState != PurchaseState.PENDING &&
-        purchaseState != PurchaseState.SUCCESS
+            purchaseState != PurchaseState.PENDING &&
+            purchaseState != PurchaseState.SUCCESS
 
 // === PREVIEWS ===
 
