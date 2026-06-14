@@ -193,6 +193,14 @@ fun DiceSection(
         }
     }
 
+    // Stop animation for active player as soon as server confirms the result — avoids blocking
+    // the result display behind the full fixed timer when server responds in <5 s.
+    LaunchedEffect(state.isRolling) {
+        if (!state.isRolling && state.isActivePlayer && isAnimating) {
+            isAnimating = false
+        }
+    }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
