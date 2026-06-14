@@ -515,7 +515,7 @@ fun GameScreen(
                     PlayerCoinField(
                         state = state,
                         modifier = Modifier
-                            .align(Alignment.Center)
+                            .align(Alignment.CenterEnd)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)
                     )
 
