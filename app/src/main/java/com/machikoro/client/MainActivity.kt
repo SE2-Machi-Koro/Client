@@ -145,15 +145,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect(activeGameId) {
-                if (activeGameId != null) {
-                    showJoinLobbyInput = false
-                }
-            }
-
             LaunchedEffect(Unit) {
                 webSocketClient.lobbyEntered.collect {
-                    // Navigate to LobbyScreen only on fresh lobby entry, not reconnect snapshots
+                    // Issue #175: navigate to Lobby only after an explicit lobby event.
+                    // Do not react to a stale activeGameId snapshot on startup/reconnect.
                     navigationViewModel.showLobby()
                 }
             }
@@ -249,10 +244,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
                         onStartGame = homeViewModel::startGame,
-                        onFillWithDummies = {
-                            Log.d("MainActivity", "onFillWithDummies called")
-                            lobbyScreenViewModel.fillWithDummies()
-                        },
+                        onFillWithDummies = lobbyScreenViewModel::fillWithDummies,
                         onResetLobby = lobbyScreenViewModel::resetLobby,
                         onLeaveLobby = {
                             navigationViewModel.leaveLobby()
