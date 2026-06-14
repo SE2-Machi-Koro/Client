@@ -16,10 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.machikoro.client.R
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.model.state.PlayerCoinState
+import com.machikoro.client.ui.theme.ClientTheme
 
 @Composable
 fun PlayerCoinField(
@@ -31,20 +34,20 @@ fun PlayerCoinField(
         firstOrNull() { it.isCurrentPlayer }
         ?.coins ?: 0
 
-    Column(
+
+    Row(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)    ) {
         Text(
             text = "$coins",
             color = Color.White,
-            fontSize = 36.sp,
+            fontSize = 30.sp,
         )
         Image(
-            painter = painterResource(id = R.drawable.player_coins),
+            painter = painterResource(id = R.drawable.game_coins_decor),
             contentDescription = "Coins",
-            modifier = Modifier.size(120.dp)
-                .offset(y = (-18).dp)
+            modifier = Modifier.size(75.dp)
         )
     }
 }
