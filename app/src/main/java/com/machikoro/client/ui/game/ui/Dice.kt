@@ -71,17 +71,17 @@ fun DiceResultDisplay(
             )
         }
          */
+        Image(
+            painter = painterResource(id = R.drawable.game_dice_perspective),
+            contentDescription = "Dice",
+            modifier = Modifier.size(56.dp)
+        )
+
         Text(
             text = "$sum",
             fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
-        )
-
-        Image(
-            painter = painterResource(id = R.drawable.game_dice_perspective),
-            contentDescription = "Dice",
-            modifier = Modifier.size(56.dp)
         )
     }
 }
