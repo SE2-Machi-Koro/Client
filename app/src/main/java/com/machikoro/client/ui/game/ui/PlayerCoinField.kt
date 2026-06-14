@@ -29,13 +29,11 @@ import com.machikoro.client.ui.theme.ClientTheme
 fun PlayerCoinField(
     state: GameScreenState,
     modifier: Modifier = Modifier
-        .offset(y = (20).dp)
 ) {
     val coins = state
         .players.
         firstOrNull() { it.isCurrentPlayer }
         ?.coins ?: 0
-
 
     Row(
         modifier = modifier,
@@ -46,14 +44,10 @@ fun PlayerCoinField(
             color = Color.White,
             fontWeight = FontWeight.Bold,
             fontSize = 30.sp,
-            modifier = Modifier
-                .offset(y = (-40).dp)
         )
         Image(
             painter = painterResource(id = R.drawable.game_coins_decor),
             contentDescription = "Coins",
-            modifier = Modifier.size(75.dp)
-                .offset(y = (-40).dp)
-        )
+            modifier = Modifier.size(75.dp))
     }
 }

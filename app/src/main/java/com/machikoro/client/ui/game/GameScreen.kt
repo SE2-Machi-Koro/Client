@@ -72,8 +72,13 @@ import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ClientTheme
 import kotlinx.coroutines.delay
 
+// delays
 private val OWN_CARDS_VIEW_DELAY = 10000L
 private val MARKETPLACE_VIEW_DELAY = 10000L
+
+
+// offsets
+private val SIDE_CONTENT_OFFSET = 35
 
 @Composable
 fun GameScreen(
@@ -339,21 +344,26 @@ fun GameScreen(
             leftContent = {
                 Box(modifier = Modifier.fillMaxHeight()) {
 
-                    Box(modifier = Modifier.align(Alignment.Center)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .offset(y = SIDE_CONTENT_OFFSET.dp)
                     ) {
                         if(state.gamePhase != GamePhase.ROLL_DICE) {
                             state.diceResult?.let { DiceResultDisplay(dice = it) }
                         }
                     }
 
-                    Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                    ) {
                         MarketplaceButton(
                             onClick = {
                                 showMarketplace = !showMarketplace
                             },
                             enabled = isCardViewPossible
                         )
-
                     }
                 }
             },
@@ -506,7 +516,7 @@ fun GameScreen(
                         state = state,
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .offset(y = 45.dp)
+                            .offset(y = SIDE_CONTENT_OFFSET.dp)
                     )
 
                     Column(
