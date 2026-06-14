@@ -15,17 +15,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,13 +48,12 @@ import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.cheat.ShakeDetector
 import com.machikoro.client.ui.game.ui.BigPlayerCardsDisplay
 import com.machikoro.client.ui.game.ui.BuyingPhaseShop
-import com.machikoro.client.ui.game.ui.DiceAnimationDisplay
 import com.machikoro.client.ui.game.ui.DiceResultDisplay
+import com.machikoro.client.ui.game.ui.DiceSection
 import com.machikoro.client.ui.game.ui.GamePhaseBanner
 import com.machikoro.client.ui.game.ui.GameScreenLayout
 import com.machikoro.client.ui.game.ui.InitializationLoadingOverlay
 import com.machikoro.client.ui.game.ui.MarketplaceButton
-import com.machikoro.client.ui.game.ui.MarketplaceSection
 import com.machikoro.client.ui.game.ui.PlayerCardsDisplay
 import com.machikoro.client.ui.game.ui.PlayerCoinField
 import com.machikoro.client.ui.game.ui.PlayersTopBar
@@ -283,7 +278,7 @@ fun GameScreen(
                 Box(modifier = Modifier.align(Alignment.Center)
                     .offset(y = SIDE_CENTER_CONTENT_OFFSET)
                 ) {
-                    if(state.gamePhase != GamePhase.ROLL_DICE) {
+                    if(state.gamePhase != GamePhase.ROLL_DICE && state.gamePhase != GamePhase.RESOLVE_EFFECTS) {
                         state.diceResult?.let { DiceResultDisplay(dice = it) }
                     }
                 }
@@ -326,14 +321,6 @@ fun GameScreen(
                     }
                 }
 
-                else if (false) {
-                    MarketplaceSection(
-                        marketplace = state.marketplace,
-                        recommendedCardType = cheatRecommendation,
-                        modifier = Modifier.widthIn(max = 260.dp)
-                    )
-                }
-
                 else if (state.isBuyingPhase) {
                     if(state.isActivePlayer) {
                         BuyingPhaseShop(
@@ -346,78 +333,15 @@ fun GameScreen(
                     } else BasicText("Waiting for purchase")
                 }
 
-                else if (state.gamePhase == GamePhase.ROLL_DICE) {
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(bottom = 32.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        when {
-                            state.isRolling -> DiceAnimationDisplay()
-                            state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
-                        }
-
-                        if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
-                            var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
-
-                            if (state.hasTrainStation) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    listOf(1, 2).forEach { count ->
-                                        Button(
-                                            onClick = { selectedDiceCount = count },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (selectedDiceCount == count)
-                                                    MaterialTheme.colorScheme.primary
-                                                else
-                                                    MaterialTheme.colorScheme.surfaceVariant,
-                                                contentColor = if (selectedDiceCount == count)
-                                                    MaterialTheme.colorScheme.onPrimary
-                                                else
-                                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        ) {
-                                            Text("$count 🎲")
-                                        }
-                                    }
-                                }
-                            }
-
-                            ActionButton(
-                                onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
-                                enabled = !state.isRolling,
-                                label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
-                                leftIcon = R.drawable.game_dice_perspective,
-                                modifier = Modifier.semantics {
-                                    contentDescription = "Würfeln"
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // Radio Tower reroll (#326): only the active player who built a
-                // Radio Tower may reroll, once, during RESOLVE_EFFECTS.
-                else if (state.canReroll && canReroll) {
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(bottom = 32.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        state.diceResult?.let { DiceResultDisplay(dice = it) }
-                        ActionButton(
-                            onClick = { onReroll(state.diceResult?.size ?: 1) },
-                            enabled = !state.isRolling,
-                            label = "Nochmal würfeln",
-                            leftIcon = R.drawable.game_dice_perspective,
-                            modifier = Modifier.semantics {
-                                contentDescription = "Nochmal würfeln"
-                            }
-                        )
-                    }
+                // DiceSection handles ROLL_DICE and Radio Tower reroll in RESOLVE_EFFECTS
+                else if (state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
+                    DiceSection(
+                        state = state,
+                        onRollDice = onRollDice,
+                        onReroll = onReroll,
+                        canReroll = canReroll,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
             }
         },
