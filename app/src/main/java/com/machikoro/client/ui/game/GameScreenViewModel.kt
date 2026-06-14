@@ -33,6 +33,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+// Failsafe for issue #175: the server is expected to answer a roll with a
+// diceResult, but if that message is lost or delayed the UI must not animate forever.
+private const val DICE_ROLL_TIMEOUT_MS = 10_000L
+
 class GameScreenViewModel(
     private val webSocketClient: WebSocketClient,
     private val sessionStateHolder: SessionStateHolder,
@@ -118,6 +122,15 @@ class GameScreenViewModel(
                 mutableState.update { state ->
                     state.copy(gamePhase = gamePhase)
                         .resetPurchaseFeedbackIf(gamePhase != GamePhase.BUY_OR_BUILD)
+                        .let { updated ->
+                            // Issue #175: a phase change means the roll flow moved on.
+                            // Stop the animation even if no diceResult event was received.
+                            if (state.isRolling && gamePhase != GamePhase.ROLL_DICE) {
+                                updated.copy(isRolling = false)
+                            } else {
+                                updated
+                            }
+                        }
                 }
             }
         }
@@ -248,8 +261,21 @@ class GameScreenViewModel(
         if (mutableState.value.gameStatus != GameStatus.IN_PROGRESS) return
         if (mutableState.value.gamePhase != GamePhase.ROLL_DICE) return
         if (!mutableState.value.isActivePlayer) return
+        // Prevent rapid taps from sending concurrent roll requests and keeping
+        // the dice animation stuck in the rolling state.
+        if (mutableState.value.isRolling) return
+
         mutableState.update { it.copy(isRolling = true) }
         webSocketClient.rollDice(diceCount)
+
+        viewModelScope.launch {
+            delay(DICE_ROLL_TIMEOUT_MS)
+            // Only clear a still-pending roll. If the server already sent a result,
+            // isRolling is false and this timeout becomes a no-op.
+            mutableState.update { current ->
+                if (current.isRolling) current.copy(isRolling = false) else current
+            }
+        }
     }
 
     /**
