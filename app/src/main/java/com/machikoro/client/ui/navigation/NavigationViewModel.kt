@@ -22,6 +22,9 @@ import com.machikoro.client.domain.model.state.StartScreenState
  */
 data class NavigationUiState(
     val showLobbyScreen: Boolean = false,
+    // Issue #175: this is set only by an explicit login action, not by session
+    // hydration, so a restored session cannot skip the start screen on launch.
+    val userHasLoggedIn: Boolean = false,
 )
 
 /**
@@ -57,6 +60,20 @@ class NavigationViewModel(
         hasBeenInLobby = false
         mutableUiState.update { it.copy(showLobbyScreen = false) }
         navigateTo(AppRoute.Home)
+    }
+
+    fun onUserLoggedIn() {
+        mutableUiState.update { it.copy(userHasLoggedIn = true) }
+    }
+
+    fun onUserLoggedOut() {
+        hasBeenInLobby = false
+        mutableUiState.update {
+            it.copy(
+                showLobbyScreen = false,
+                userHasLoggedIn = false,
+            )
+        }
     }
 
     // Navigates directly to Game without going through the lobby flow.
@@ -110,16 +127,18 @@ class NavigationViewModel(
         lobbyCode: String?,
     ) {
         viewModelScope.launch {
+            val ui = uiState.value
             val loggedIn = startScreenState.loggedInAs != null
             val targetRoute = when {
                 !loggedIn -> {
-                    hasBeenInLobby = false
+                    onUserLoggedOut()
                     AppRoute.Main
                 }
+                !ui.userHasLoggedIn -> AppRoute.Main
                 gameScreenState.gameStatus == GameStatus.FINISHED -> AppRoute.Winner
                 // Gate on hasBeenInLobby: reconnect snapshots alone must not skip HomeScreen.
                 hasBeenInLobby && gameScreenState.gameStatus == GameStatus.IN_PROGRESS -> AppRoute.Game
-                uiState.value.showLobbyScreen && (gameScreenState.gameStatus == GameStatus.WAITING || gameScreenState.gameStatus == null)-> AppRoute.Lobby
+                ui.showLobbyScreen && (gameScreenState.gameStatus == GameStatus.WAITING || gameScreenState.gameStatus == null)-> AppRoute.Lobby
                 else -> AppRoute.Home
             }
 

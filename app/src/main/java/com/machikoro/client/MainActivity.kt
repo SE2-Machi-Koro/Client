@@ -140,24 +140,16 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 webSocketClient.authRejections.collect {
-                    SessionManager.signOut()
-                    navigationViewModel.leaveLobby()
-                    homeViewModel.clearLobbyCode()
                     snackbarHostState.showSnackbar(
                         "Sitzung abgelaufen, bitte erneut anmelden"
                     )
                 }
             }
 
-            LaunchedEffect(activeGameId) {
-                if (activeGameId != null) {
-                    showJoinLobbyInput = false
-                }
-            }
-
             LaunchedEffect(Unit) {
                 webSocketClient.lobbyEntered.collect {
-                    // Navigate to LobbyScreen only on fresh lobby entry, not reconnect snapshots
+                    // Issue #175: navigate to Lobby only after an explicit lobby event.
+                    // Do not react to a stale activeGameId snapshot on startup/reconnect.
                     navigationViewModel.showLobby()
                 }
             }
@@ -240,9 +232,19 @@ class MainActivity : ComponentActivity() {
                         onRegisterDialogReset = registerDialogViewModel::reset,
                         onLoginUsernameChange = loginDialogViewModel::usernameChanged,
                         onLoginPasswordChange = loginDialogViewModel::passwordChanged,
-                        onLoginSubmit = loginDialogViewModel::submit,
+                        onLoginSubmit = {
+                            navigationViewModel.onUserLoggedIn()
+                            loginDialogViewModel.submit()
+                        },
                         onLoginDialogReset = loginDialogViewModel::reset,
-                        onLogoutSubmit = logoutViewModel::submit,
+                        onLogoutSubmit = {
+                            navigationViewModel.onUserLoggedOut()
+                            logoutViewModel.submit()
+                            // Clear lobby/game state so a later /app/chat.addUser reconnect
+                            // does not resend a stale activeGameId. Server #378 owns the
+                            // authoritative stale-session validation.
+                            homeViewModel.clearLobbyCode()
+                        },
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
                         onStartGame = homeViewModel::startGame,
                         onFillWithDummies = lobbyScreenViewModel::fillWithDummies,
@@ -309,7 +311,9 @@ class MainActivity : ComponentActivity() {
                             showJoinLobbyInput = true
                         },
                         onJoinLobbyCodeChange = homeViewModel::onJoinLobbyCodeChange,
-                        onJoinLobbySubmit = homeViewModel::joinLobby,
+                        onJoinLobbySubmit = {
+                            homeViewModel.joinLobby()
+                        },
                     )
                 }
             }
@@ -322,7 +326,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        webSocketClient.disconnect()
+        // FIX: Only disconnect when no session is active. Disconnecting while a
+        // user is logged in caused the WebSocket to tear down and reconnect on
+        // every navigation event (e.g. Home → Lobby), which created multiple
+        // concurrent connections and caused LOBBY_CREATED responses to arrive
+        // on a different socket than the one waiting for them.
+        if (SessionManager.session.value == null) {
+            webSocketClient.disconnect()
+        }
         super.onStop()
     }
 }
