@@ -37,6 +37,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+// Failsafe for issue #175: the server is expected to answer a roll with a
+// diceResult, but if that message is lost or delayed the UI must not animate forever.
+private const val DICE_ROLL_TIMEOUT_MS = 10_000L
+
 class GameScreenViewModel(
     private val webSocketClient: WebSocketClient,
     private val sessionStateHolder: SessionStateHolder,
@@ -109,6 +113,10 @@ class GameScreenViewModel(
      * stale timer never fires after the turn has moved on.
      */
     private var resolveEffectsJob: Job? = null
+    private var diceRollTimeoutJob: Job? = null
+    private var activeRollId: Int? = null
+    private var nextRollId = 0
+    private var pendingRollPhase: GamePhase? = null
 
     init {
         viewModelScope.launch {
@@ -131,9 +139,27 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.gamePhase.collect { gamePhase ->
+                var shouldCancelPendingRoll = false
                 mutableState.update { state ->
                     state.copy(gamePhase = gamePhase)
                         .resetPurchaseFeedbackIf(gamePhase != GamePhase.BUY_OR_BUILD)
+                        .let { updated ->
+                            // Issue #175: if the server advances the phase without a
+                            // diceResult event, stop only the roll tied to the old phase.
+                            if (
+                                state.isRolling &&
+                                pendingRollPhase != null &&
+                                gamePhase != pendingRollPhase
+                            ) {
+                                shouldCancelPendingRoll = true
+                                updated.copy(isRolling = false)
+                            } else {
+                                updated
+                            }
+                        }
+                }
+                if (shouldCancelPendingRoll) {
+                    cancelPendingRollTimeout()
                 }
             }
         }
@@ -144,6 +170,7 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.diceResult.collect { diceResult ->
+                cancelPendingRollTimeout()
                 mutableState.update { it.copy(diceResult = diceResult, isRolling = false) }
             }
         }
@@ -266,7 +293,12 @@ class GameScreenViewModel(
         if (mutableState.value.gameStatus != GameStatus.IN_PROGRESS) return
         if (mutableState.value.gamePhase != GamePhase.ROLL_DICE) return
         if (!mutableState.value.isActivePlayer) return
+        // Prevent rapid taps from sending concurrent roll requests and keeping
+        // the dice animation stuck in the rolling state.
+        if (mutableState.value.isRolling) return
+
         mutableState.update { it.copy(isRolling = true, requestedDiceCount = diceCount) }
+        startRollTimeout(expectedPhase = GamePhase.ROLL_DICE)
         webSocketClient.rollDice(diceCount)
     }
 
@@ -279,9 +311,36 @@ class GameScreenViewModel(
     fun rerollDice(diceCount: Int = 1) {
         if (!mutableState.value.canReroll) return
         if (!mutableCanRerollThisTurn.value) return
+        if (mutableState.value.isRolling) return
         mutableCanRerollThisTurn.value = false
         mutableState.update { it.copy(isRolling = true) }
+        startRollTimeout(expectedPhase = GamePhase.RESOLVE_EFFECTS)
         webSocketClient.rerollDice(diceCount)
+    }
+
+    private fun startRollTimeout(expectedPhase: GamePhase) {
+        diceRollTimeoutJob?.cancel()
+        val rollId = ++nextRollId
+        activeRollId = rollId
+        pendingRollPhase = expectedPhase
+        diceRollTimeoutJob = viewModelScope.launch {
+            delay(DICE_ROLL_TIMEOUT_MS)
+            if (activeRollId == rollId) {
+                activeRollId = null
+                pendingRollPhase = null
+                diceRollTimeoutJob = null
+                mutableState.update { current ->
+                    if (current.isRolling) current.copy(isRolling = false) else current
+                }
+            }
+        }
+    }
+
+    private fun cancelPendingRollTimeout() {
+        diceRollTimeoutJob?.cancel()
+        diceRollTimeoutJob = null
+        activeRollId = null
+        pendingRollPhase = null
     }
 
     /**

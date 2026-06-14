@@ -68,6 +68,10 @@ import kotlinx.coroutines.delay
 
 private val SIDE_CENTER_CONTENT_OFFSET = (-35).dp
 
+
+// offsets
+private val SIDE_CONTENT_OFFSET = 35
+
 @Composable
 fun GameScreen(
     state: GameScreenState,
@@ -519,7 +523,7 @@ private fun GameScreenReconnectSnapshotPreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun GameScreenBuyOrBuildPreview() {
     ClientTheme {
@@ -541,7 +545,7 @@ private fun GameScreenBuyOrBuildPreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun GameScreenNonePreview() {
     ClientTheme {

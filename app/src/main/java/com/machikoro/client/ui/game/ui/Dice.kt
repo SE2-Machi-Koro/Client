@@ -121,7 +121,6 @@ fun DiceResultDisplay(
     val sum = dice.sum()
 
     Row(
-        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {

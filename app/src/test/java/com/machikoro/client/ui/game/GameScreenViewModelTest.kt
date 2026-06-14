@@ -313,6 +313,39 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun rerollIsIgnoredWhileDiceAnimationIsAlreadyRunning() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        setUpRerollableTurn(fakeClient)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 1)
+        fakeClient.emitActivePlayerId(99)
+        runCurrent()
+        fakeClient.emitActivePlayerId(42)
+        runCurrent()
+        viewModel.rerollDice(diceCount = 1)
+
+        assertEquals(1, fakeClient.rerollCallCount)
+    }
+
+    @Test
+    fun rerollClearsIsRollingAfterTimeoutWhenServerNeverReplies() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        setUpRerollableTurn(fakeClient)
+        advanceUntilIdle()
+
+        viewModel.rerollDice(diceCount = 1)
+        assertTrue(viewModel.state.value.isRolling)
+
+        advanceTimeBy(11_000L)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isRolling)
+    }
+
+    @Test
     fun rerollBudgetRenewsWhenTurnRotates() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
@@ -879,6 +912,85 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.state.value.isRolling)
+    }
+
+    @Test
+    fun isRollingIsClearedWhenGamePhaseChangesAwayFromRollDice() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+        assertTrue(viewModel.state.value.isRolling)
+
+        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isRolling)
+    }
+
+    @Test
+    fun secondRollDiceCallIsIgnoredWhileRollingIsInProgress() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+        viewModel.rollDice(diceCount = 2)
+
+        assertEquals(1, fakeClient.lastRolledDiceCount)
+    }
+
+    @Test
+    fun isRollingIsClearedAfterTimeoutWhenServerNeverReplies() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+        assertTrue(viewModel.state.value.isRolling)
+
+        advanceTimeBy(11_000L)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isRolling)
+    }
+
+    @Test
+    fun staleRollTimeoutDoesNotClearLaterRoll() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+        advanceTimeBy(2_000L)
+        fakeClient.emitDiceResult(listOf(4))
+        advanceUntilIdle()
+        assertFalse(viewModel.state.value.isRolling)
+
+        viewModel.rollDice(diceCount = 2)
+        assertTrue(viewModel.state.value.isRolling)
+
+        advanceTimeBy(8_100L)
+        runCurrent()
+
+        assertTrue(viewModel.state.value.isRolling)
     }
 
     @Test
