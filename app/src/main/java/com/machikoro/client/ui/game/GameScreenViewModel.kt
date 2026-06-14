@@ -56,6 +56,10 @@ class GameScreenViewModel(
     /** One-shot cheating-accusation result (#280) for a toast — pass-through from the WS client. */
     val accusationResults: SharedFlow<AccusationResult>
         get() = webSocketClient.accusationResults
+
+    /** One-shot server-side accusation rejection (#280) for a toast — pass-through. */
+    val accusationErrors: SharedFlow<String>
+        get() = webSocketClient.accusationErrors
     private val mutableCheatActivations = MutableSharedFlow<CardType?>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,

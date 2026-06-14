@@ -14,6 +14,7 @@ import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.network.error.ClientError
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.shop.toActivationNumbers
+import com.machikoro.client.domain.model.state.AccusationResult
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
@@ -105,6 +106,11 @@ class OkHttpWebSocketClient(
     override val purchaseEvents: SharedFlow<PurchaseEvent>
         get() = mutablePurchaseEvents.asSharedFlow()
 
+    override val accusationResults: SharedFlow<AccusationResult>
+        get() = mutableAccusationResults.asSharedFlow()
+
+    override val accusationErrors: SharedFlow<String>
+        get() = mutableAccusationErrors.asSharedFlow()
     override val authRejections: SharedFlow<Unit>
         get() = mutableAuthRejections.asSharedFlow()
 
@@ -140,6 +146,15 @@ class OkHttpWebSocketClient(
     private val mutableMarketplace = MutableStateFlow<Map<CardType, Int>>(emptyMap())
     private val mutableShopItems = MutableStateFlow<List<ShopItem>>(emptyList())
     private val mutablePurchaseEvents = MutableSharedFlow<PurchaseEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    private val mutableAccusationResults = MutableSharedFlow<AccusationResult>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    private val mutableAccusationErrors = MutableSharedFlow<String>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
@@ -423,6 +438,36 @@ class OkHttpWebSocketClient(
 
     override fun endTurn(gameId: Int) {
         sendGameIdAction(WebSocketContract.endTurnDestination, gameId, "endTurn")
+    }
+
+    override fun reportCheat(gameId: Int) {
+        sendGameIdAction(WebSocketContract.reportCheatDestination, gameId, "reportCheat")
+    }
+
+    override fun accuse(gameId: Int, accusedPlayerId: Int) {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "accuse called but no active WebSocket connection")
+            return
+        }
+
+        val body = JSONObject()
+            .put("gameId", gameId)
+            .put("accusedPlayerId", accusedPlayerId)
+            .toString()
+
+        socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.accuseDestination,
+                    "content-type" to "application/json"
+                ),
+                body = body
+            ).serialize()
+        )
+
+        Log.d(TAG, "Accuse message sent for game id: $gameId, accusedPlayerId=$accusedPlayerId")
     }
 
     override fun sendPurchase(
