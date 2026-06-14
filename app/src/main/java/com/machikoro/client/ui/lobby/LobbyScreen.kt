@@ -253,7 +253,7 @@ fun LobbyScreen(
         }
 
         ArrowTextButton(
-            label = "Leave Lobby",
+            label = "Logout",
             onClick = onLeaveLobby,
             modifier = Modifier.offset(x = 30.dp, y = 28.dp),
             fontSize = 18.sp
