@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 // Issue #175: if the server never confirms lobby creation, release the
 // in-flight guard so the user can retry instead of being stuck.
-private const val CREATE_LOBBY_CONFIRMATION_TIMEOUT_MS = 10_000L
+private const val LOBBY_CONFIRMATION_TIMEOUT_MS = 10_000L
 
 class HomeViewModel(
     private val webSocketClient: WebSocketClient,
@@ -33,6 +33,7 @@ class HomeViewModel(
     // FIX: Track whether a createLobby request is already in flight so rapid
     // taps don't send multiple LOBBY_CREATE frames to the server.
     private val mutableIsCreatingLobby = MutableStateFlow(false)
+    private val mutableIsJoiningLobby = MutableStateFlow(false)
 
     fun createLobby() {
         // FIX: Ignore tap if a lobby creation is already pending or a lobby
@@ -75,8 +76,14 @@ class HomeViewModel(
     }
 
     private suspend fun waitForLobbyCreationConfirmation() {
-        withTimeoutOrNull(CREATE_LOBBY_CONFIRMATION_TIMEOUT_MS) {
+        withTimeoutOrNull(LOBBY_CONFIRMATION_TIMEOUT_MS) {
             webSocketClient.lobbyCode.first { it != null }
+        }
+    }
+
+    private suspend fun waitForLobbyJoinConfirmation() {
+        withTimeoutOrNull(LOBBY_CONFIRMATION_TIMEOUT_MS) {
+            webSocketClient.lobbyEntered.first()
         }
     }
 
@@ -93,13 +100,23 @@ class HomeViewModel(
     fun joinLobby() {
         val code = mutableJoinLobbyCode.value.trim()
         if (code.isBlank()) return
+        if (mutableIsJoiningLobby.value) return
+
+        mutableIsJoiningLobby.value = true
 
         if (webSocketClient.connectionStatus.value == ConnectionStatus.CONNECTED) {
             webSocketClient.sendJoinLobby(code)
+            viewModelScope.launch {
+                waitForLobbyJoinConfirmation()
+                mutableIsJoiningLobby.value = false
+            }
             return
         }
 
-        if (joinLobbyJob?.isActive == true) return
+        if (joinLobbyJob?.isActive == true) {
+            mutableIsJoiningLobby.value = false
+            return
+        }
 
         webSocketClient.connect()
 
@@ -112,12 +129,15 @@ class HomeViewModel(
 
             if (status == ConnectionStatus.CONNECTED) {
                 webSocketClient.sendJoinLobby(code)
+                waitForLobbyJoinConfirmation()
             }
+            mutableIsJoiningLobby.value = false
         }
     }
 
     fun setJoinLobbyError(message: String) {
         mutableJoinLobbyError.value = true
+        mutableIsJoiningLobby.value = false
     }
 
     fun startGame() {
@@ -127,6 +147,7 @@ class HomeViewModel(
     fun clearLobbyCode() {
         webSocketClient.clearLobbyCode()
         mutableIsCreatingLobby.value = false
+        mutableIsJoiningLobby.value = false
     }
 
     class Factory(

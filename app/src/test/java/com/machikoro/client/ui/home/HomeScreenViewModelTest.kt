@@ -143,6 +143,58 @@ class HomeScreenViewModelTest {
     }
 
     @Test
+    fun joinLobbyIgnoresRapidDuplicateClicksWhenWebSocketIsConnected() {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+        viewModel.onJoinLobbyCodeChange("abc123")
+
+        viewModel.joinLobby()
+        viewModel.joinLobby()
+
+        assertEquals(1, fakeClient.sendJoinLobbyCallCount)
+    }
+
+    @Test
+    fun joinLobbyAllowsRetryAfterConfirmationTimeout() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+        viewModel.onJoinLobbyCodeChange("abc123")
+
+        viewModel.joinLobby()
+        assertEquals(1, fakeClient.sendJoinLobbyCallCount)
+
+        viewModel.joinLobby()
+        assertEquals(1, fakeClient.sendJoinLobbyCallCount)
+
+        advanceTimeBy(11_000L)
+        advanceUntilIdle()
+
+        viewModel.joinLobby()
+        assertEquals(2, fakeClient.sendJoinLobbyCallCount)
+    }
+
+    @Test
+    fun joinLobbyAllowsRetryAfterServerRejectsJoin() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+        viewModel.onJoinLobbyCodeChange("abc123")
+
+        viewModel.joinLobby()
+        assertEquals(1, fakeClient.sendJoinLobbyCallCount)
+
+        viewModel.setJoinLobbyError("Lobby code is invalid")
+        viewModel.joinLobby()
+
+        assertEquals(2, fakeClient.sendJoinLobbyCallCount)
+    }
+
+    @Test
     fun setJoinLobbyErrorRaisesErrorFlag() {
         val viewModel = HomeViewModel(FakeWebSocketClient())
         assertFalse(viewModel.joinLobbyError.value)
@@ -242,14 +294,17 @@ class HomeScreenViewModelTest {
         var sendCreateLobbyCalled = false
         var sendCreateLobbyCallCount = 0
         var sendJoinLobbyCalled = false
+        var sendJoinLobbyCallCount = 0
         var joinedLobbyCode: String? = null
 
         override fun sendJoinLobby(lobbyCode: String) {
             sendJoinLobbyCalled = true
+            sendJoinLobbyCallCount++
             joinedLobbyCode = lobbyCode
         }
 
-        override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow()
+        val mutableLobbyEntered = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+        override val lobbyEntered: SharedFlow<Unit> = mutableLobbyEntered
         override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> =
             MutableSharedFlow(extraBufferCapacity = 1)
         override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
@@ -280,6 +335,7 @@ class HomeScreenViewModelTest {
     }
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class MainDispatcherRule(
     private val testDispatcher: TestDispatcher = StandardTestDispatcher(),
 ) : TestWatcher() {

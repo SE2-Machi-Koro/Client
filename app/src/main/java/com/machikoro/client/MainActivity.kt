@@ -240,9 +240,9 @@ class MainActivity : ComponentActivity() {
                         onLogoutSubmit = {
                             navigationViewModel.onUserLoggedOut()
                             logoutViewModel.submit()
-                            // FIX: Clear lobby/game state on logout so stale activeGameId
-                            // is not sent in the JOIN message on the next login, which
-                            // caused the server to block lobby creation.
+                            // Clear lobby/game state so a later /app/chat.addUser reconnect
+                            // does not resend a stale activeGameId. Server #378 owns the
+                            // authoritative stale-session validation.
                             homeViewModel.clearLobbyCode()
                         },
                         onReadyToggle = lobbyScreenViewModel::onReadyToggle,
@@ -270,7 +270,6 @@ class MainActivity : ComponentActivity() {
                         onCreateLobbyClick = {
                             showJoinLobbyInput = false
                             homeViewModel.createLobby()
-                            navigationViewModel.showLobby()
                         },
                         onLeaveGame = {
                             navigationViewModel.leaveLobby()
@@ -314,7 +313,6 @@ class MainActivity : ComponentActivity() {
                         onJoinLobbyCodeChange = homeViewModel::onJoinLobbyCodeChange,
                         onJoinLobbySubmit = {
                             homeViewModel.joinLobby()
-                            navigationViewModel.showLobby()
                         },
                     )
                 }
