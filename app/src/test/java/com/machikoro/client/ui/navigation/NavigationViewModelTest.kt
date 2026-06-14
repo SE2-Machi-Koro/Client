@@ -44,6 +44,7 @@ class NavigationViewModelTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
+        viewModel.onUserLoggedIn()
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial(),
             startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
@@ -55,10 +56,26 @@ class NavigationViewModelTest {
     }
 
     @Test
+    fun sessionHydrationAloneDoesNotNavigateAwayFromMain() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial(),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = null,
+        )
+        advanceUntilIdle()
+
+        assertEquals(NavigationEvent.NavigateTo(AppRoute.Main), events.single())
+    }
+
+    @Test
     fun lobbyStateNavigatesToLobbyWithLobbyCodeWithoutStatus() = runTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
+        viewModel.onUserLoggedIn()
         viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial(),
@@ -81,6 +98,7 @@ class NavigationViewModelTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
+        viewModel.onUserLoggedIn()
         viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial().copy(gameStatus = GameStatus.WAITING),
@@ -153,6 +171,7 @@ class NavigationViewModelTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
+        viewModel.onUserLoggedIn()
         viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial().copy(
@@ -182,6 +201,7 @@ class NavigationViewModelTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
+        viewModel.onUserLoggedIn()
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial().copy(
                 gamePhase = GamePhase.ROLL_DICE,
@@ -210,6 +230,7 @@ class NavigationViewModelTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
 
+        viewModel.onUserLoggedIn()
         viewModel.showLobby()
         viewModel.updateNavigationBasedOnState(
             gameScreenState = GameScreenState.initial().copy(
@@ -233,6 +254,22 @@ class NavigationViewModelTest {
             ),
             events.single(),
         )
+    }
+
+    @Test
+    fun onUserLoggedOutResetsLoginFlagAndLobbyVisibility() {
+        val viewModel = NavigationViewModel()
+
+        viewModel.onUserLoggedIn()
+        viewModel.showLobby()
+
+        assertTrue(viewModel.uiState.value.userHasLoggedIn)
+        assertTrue(viewModel.uiState.value.showLobbyScreen)
+
+        viewModel.onUserLoggedOut()
+
+        assertFalse(viewModel.uiState.value.userHasLoggedIn)
+        assertFalse(viewModel.uiState.value.showLobbyScreen)
     }
 
     @Test

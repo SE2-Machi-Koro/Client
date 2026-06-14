@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -105,6 +106,26 @@ class HomeScreenViewModelTest {
 
         assertFalse(fakeClient.connectCalled)
         assertTrue(fakeClient.sendCreateLobbyCalled)
+    }
+
+    @Test
+    fun createLobbyAllowsRetryAfterConfirmationTimeout() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+
+        viewModel.createLobby()
+        assertEquals(1, fakeClient.sendCreateLobbyCallCount)
+
+        viewModel.createLobby()
+        assertEquals(1, fakeClient.sendCreateLobbyCallCount)
+
+        advanceTimeBy(11_000L)
+        advanceUntilIdle()
+
+        viewModel.createLobby()
+        assertEquals(2, fakeClient.sendCreateLobbyCallCount)
     }
 
     @Test
@@ -197,6 +218,7 @@ class HomeScreenViewModelTest {
         var disconnectCalled = false
         var sendGameStartCalled = false
         var sendCreateLobbyCalled = false
+        var sendCreateLobbyCallCount = 0
         var sendJoinLobbyCalled = false
         var joinedLobbyCode: String? = null
 
@@ -218,7 +240,10 @@ class HomeScreenViewModelTest {
         override fun reportCheat(gameId: Int) = Unit
         override fun accuse(gameId: Int, accusedPlayerId: Int) = Unit
         override fun sendGameStart() { sendGameStartCalled = true }
-        override fun sendCreateLobby() { sendCreateLobbyCalled = true }
+        override fun sendCreateLobby() {
+            sendCreateLobbyCalled = true
+            sendCreateLobbyCallCount++
+        }
         override fun sendPurchase(
             gameId: Int,
             purchaseType: PurchaseType,
