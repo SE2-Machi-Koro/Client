@@ -368,7 +368,7 @@ private fun ResolvingEffectsViewPreview() {
                             landmarkType = LandmarkType.RADIO_TOWER,
                             isBuilt = true
                         )
-                    )g
+                    )
                 )
             ),
             modifier = Modifier
