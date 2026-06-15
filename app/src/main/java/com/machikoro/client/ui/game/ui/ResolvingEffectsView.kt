@@ -50,7 +50,6 @@ import com.machikoro.client.ui.theme.TextOnOrange
 fun ResolvingEffectsView(
     state: GameScreenState,
     modifier: Modifier = Modifier,
-    diceAction: (@Composable () -> Unit)? = null,
 ) {
     val triggeredEffects = remember(state) { state.triggeredEffects() }
 
@@ -83,7 +82,7 @@ private fun TriggeredEffectsBoard(
     val stadiumEffects = purpleEffects.filter { it.cardType == CardType.STADIUM }
     val tvStationEffects = purpleEffects.filter { it.cardType == CardType.TV_STATION }
 
-    if (tvStationEffects.isNotEmpty()) {
+    if (tvStationEffects.isNotEmpty() && effects.size == tvStationEffects.size) {
         TvStationChoosePlayerView(
             effect = tvStationEffects.first(),
             players = players.filter { it.id.toIntOrNull() != activePlayerId },
@@ -516,6 +515,11 @@ private data class TriggeredEffectUi(
 private val TriggeredEffectUi.totalIncome: Int
     get() = incomeAmount * quantity
 
+/**
+ * Best-effort local preview of establishments that should visually light up for
+ * this roll. The server remains authoritative for real coin movement, including
+ * Shopping Mall bonuses, partial red-card payments, and non-coin purple effects.
+ */
 private fun GameScreenState.triggeredEffects(): List<TriggeredEffectUi> {
     val rolledTotal = diceResult?.sum() ?: return emptyList()
     val activePlayerDatabaseId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
@@ -532,7 +536,9 @@ private fun GameScreenState.triggeredEffects(): List<TriggeredEffectUi> {
     return players.flatMapIndexed { playerOrder, player ->
         val playerId = player.id.toIntOrNull() ?: return@flatMapIndexed emptyList()
 
-        playerCards[playerId].orEmpty().mapNotNull { ownedCard ->
+        val ownedCards = playerCards[playerId].orEmpty()
+
+        ownedCards.mapNotNull { ownedCard ->
             val item = cardCatalog[ownedCard.cardType] ?: return@mapNotNull null
 
             if (ownedCard.quantity <= 0) return@mapNotNull null
@@ -548,7 +554,7 @@ private fun GameScreenState.triggeredEffects(): List<TriggeredEffectUi> {
                 effectText = item.effectText,
                 color = item.color,
                 resolveOrder = item.color.resolvePriority * 100 + playerOrder,
-                incomeAmount = ownedCard.cardType.coinEffectAmount(),
+                incomeAmount = ownedCard.cardType.coinEffectAmount(ownedCards),
             )
         }
     }.sortedWith(
@@ -578,17 +584,30 @@ private val ShopItemColor.resolvePriority: Int
         ShopItemColor.LANDMARK -> 4
     }
 
-private fun CardType.coinEffectAmount(): Int = when (this) {
-    CardType.CAFE -> 1
-    CardType.FAMILY_RESTAURANT -> 3
+private fun CardType.coinEffectAmount(ownedCards: List<PlayerCardState>): Int = when (this) {
+    CardType.WHEAT_FIELD -> 1
+    CardType.RANCH -> 1
+    CardType.FOREST -> 1
+    CardType.MINE -> 5
+    CardType.APPLE_ORCHARD -> 3
     CardType.BAKERY -> 1
     CardType.CONVENIENCE_STORE -> 3
-    CardType.WHEAT_FIELD -> 1
-    CardType.FOREST -> 1
+    CardType.CHEESE_FACTORY -> 3 * ownedCards.quantityOf(CardType.RANCH)
+    CardType.FURNITURE_FACTORY -> 3 * (
+        ownedCards.quantityOf(CardType.FOREST) + ownedCards.quantityOf(CardType.MINE)
+    )
+    CardType.FRUIT_AND_VEGETABLE_MARKET -> 2 * (
+        ownedCards.quantityOf(CardType.WHEAT_FIELD) + ownedCards.quantityOf(CardType.APPLE_ORCHARD)
+    )
+    CardType.CAFE -> 1
+    CardType.FAMILY_RESTAURANT -> 2
     CardType.STADIUM -> 2
     CardType.TV_STATION -> 5
-    else -> 1
+    CardType.BUSINESS_CENTER -> 0
 }
+
+private fun List<PlayerCardState>.quantityOf(cardType: CardType): Int =
+    filter { it.cardType == cardType }.sumOf { it.quantity }
 
 @Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
