@@ -256,6 +256,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onRollDice = gameScreenViewModel::rollDice,
                         onReroll = gameScreenViewModel::rerollDice,
+                        onSkipReroll = gameScreenViewModel::skipReroll,
                         cheatRecommendation = cheatRecommendation,
                         onShake = gameScreenViewModel::onShake,
                         onAccuse = { gameScreenViewModel.accuse(it) },

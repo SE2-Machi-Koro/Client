@@ -87,6 +87,7 @@ fun GameScreen(
     onBuySelectedClick: () -> Unit = {},
     onRollDice: (diceCount: Int) -> Unit = {},
     onReroll: (diceCount: Int) -> Unit = {},
+    onSkipReroll: () -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     onEndGame: () -> Unit = {},
@@ -468,15 +469,25 @@ fun GameScreen(
                                 }
 
                                 if (showRadioTowerReroll) {
-                                    ActionButton(
-                                        onClick = { onReroll(state.diceResult?.size ?: 1) },
-                                        enabled = !state.isRolling,
-                                        label = "Nochmal würfeln",
-                                        leftIcon = R.drawable.game_dice_perspective,
-                                        modifier = Modifier.semantics {
-                                            contentDescription = "Nochmal würfeln"
-                                        }
-                                    )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        ActionButton(
+                                            onClick = { onReroll(state.diceResult?.size ?: 1) },
+                                            enabled = !state.isRolling,
+                                            label = "Nochmal würfeln",
+                                            leftIcon = R.drawable.game_dice_perspective,
+                                            modifier = Modifier.semantics {
+                                                contentDescription = "Nochmal würfeln"
+                                            }
+                                        )
+                                        SecondaryActionButton(
+                                            onClick = onSkipReroll,
+                                            enabled = !state.isRolling,
+                                            label = "Skip",
+                                            modifier = Modifier.semantics {
+                                                contentDescription = "Skip reroll"
+                                            }
+                                        )
+                                    }
                                 } else {
                                     ActionButton(
                                         onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
