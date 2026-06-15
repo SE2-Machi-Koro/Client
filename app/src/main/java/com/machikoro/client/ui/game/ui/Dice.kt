@@ -56,6 +56,28 @@ private val DICE_FACES = listOf(
 fun diceDrawableFor(value: Int): Int =
     DICE_FACES.getOrElse(value - 1) { R.drawable.game_dice_perspective }
 
+/**
+ * Decides whether a newly received dice result should re-trigger the non-active player's
+ * rolling animation. A genuine roll or Radio Tower reroll always animates, but the
+ * authoritative snapshot that collapses the live per-die result `[a, b]` into its total
+ * `[a + b]` must not — otherwise the animation replays on every snapshot (#346).
+ *
+ * @param newResult the dice result that just arrived.
+ * @param lastAnimatedResult the result the animation last played for this turn, or null.
+ */
+internal fun shouldAnimateNonActiveRoll(
+    newResult: List<Int>?,
+    lastAnimatedResult: List<Int>?,
+): Boolean {
+    if (newResult.isNullOrEmpty()) return false
+    if (newResult == lastAnimatedResult) return false
+    val isSnapshotCollapse = newResult.size == 1 &&
+        lastAnimatedResult != null &&
+        lastAnimatedResult.size > 1 &&
+        newResult.single() == lastAnimatedResult.sum()
+    return !isSnapshotCollapse
+}
+
 @Composable
 fun DiceAnimationDisplay(
     animating: Boolean,
@@ -160,8 +182,9 @@ fun DiceSection(
     var hasRerolled by remember(state.roundNumber, state.activePlayerId) { mutableStateOf(false) }
     // Captures dice count when non-active player animation is triggered (ROLL_DICE message has per-die values).
     var localAnimationDiceCount by remember(state.roundNumber, state.activePlayerId) { mutableIntStateOf(1) }
-    // Guards against re-triggering when snapshot overwrites live [x, y] result with [total].
-    var hasAnimatedThisTurn by remember(state.roundNumber, state.activePlayerId) { mutableStateOf(false) }
+    // Last result the non-active animation played for. Lets a genuine reroll re-animate within the
+    // same turn while ignoring the snapshot that collapses the live [x, y] result into [total] (#346).
+    var lastAnimatedResult by remember(state.roundNumber, state.activePlayerId) { mutableStateOf<List<Int>?>(null) }
 
     // Active player uses frozen/selected count; snapshot only stores total so diceResult.size is unreliable after reconnect.
     // Non-active player uses the count captured from the live ROLL_DICE message (before snapshot overwrites it).
@@ -172,19 +195,21 @@ fun DiceSection(
     }
 
     LaunchedEffect(state.diceResult) {
-        when {
-            state.diceResult == null -> {
-                // New turn — reset all per-turn local state.
-                selectedDiceCount = null
-                frozenDiceCount = null
-                hasRerolled = false
-            }
-            !state.isActivePlayer && !isAnimating && !hasAnimatedThisTurn -> {
-                // Non-active player: capture count from ROLL_DICE message (has per-die values) before snapshot overwrites.
-                localAnimationDiceCount = state.diceResult.size
-                isAnimating = true
-                hasAnimatedThisTurn = true
-            }
+        val result = state.diceResult
+        if (result == null) {
+            // New turn — reset all per-turn local state.
+            selectedDiceCount = null
+            frozenDiceCount = null
+            hasRerolled = false
+            lastAnimatedResult = null
+            return@LaunchedEffect
+        }
+        if (!state.isActivePlayer && !isAnimating && shouldAnimateNonActiveRoll(result, lastAnimatedResult)) {
+            // Non-active player: capture count from the live ROLL_DICE message (has per-die values)
+            // and animate. Snapshot collapses [x, y] into [total]; that overwrite is ignored (#346).
+            localAnimationDiceCount = result.size
+            lastAnimatedResult = result
+            isAnimating = true
         }
     }
 
