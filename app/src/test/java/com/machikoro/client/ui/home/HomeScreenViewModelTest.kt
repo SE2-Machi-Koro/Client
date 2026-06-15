@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -109,6 +110,26 @@ class HomeScreenViewModelTest {
     }
 
     @Test
+    fun createLobbyAllowsRetryAfterConfirmationTimeout() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+
+        viewModel.createLobby()
+        assertEquals(1, fakeClient.sendCreateLobbyCallCount)
+
+        viewModel.createLobby()
+        assertEquals(1, fakeClient.sendCreateLobbyCallCount)
+
+        advanceTimeBy(11_000L)
+        advanceUntilIdle()
+
+        viewModel.createLobby()
+        assertEquals(2, fakeClient.sendCreateLobbyCallCount)
+    }
+
+    @Test
     fun joinLobbySendsJoinRequestWhenWebSocketIsConnected() {
         val fakeClient = FakeWebSocketClient()
         val viewModel = HomeViewModel(fakeClient)
@@ -120,6 +141,58 @@ class HomeScreenViewModelTest {
 
         assertTrue(fakeClient.sendJoinLobbyCalled)
         assertEquals("ABC123", fakeClient.joinedLobbyCode)
+    }
+
+    @Test
+    fun joinLobbyIgnoresRapidDuplicateClicksWhenWebSocketIsConnected() {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+        viewModel.onJoinLobbyCodeChange("abc123")
+
+        viewModel.joinLobby()
+        viewModel.joinLobby()
+
+        assertEquals(1, fakeClient.sendJoinLobbyCallCount)
+    }
+
+    @Test
+    fun joinLobbyAllowsRetryAfterConfirmationTimeout() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+        viewModel.onJoinLobbyCodeChange("abc123")
+
+        viewModel.joinLobby()
+        assertEquals(1, fakeClient.sendJoinLobbyCallCount)
+
+        viewModel.joinLobby()
+        assertEquals(1, fakeClient.sendJoinLobbyCallCount)
+
+        advanceTimeBy(11_000L)
+        advanceUntilIdle()
+
+        viewModel.joinLobby()
+        assertEquals(2, fakeClient.sendJoinLobbyCallCount)
+    }
+
+    @Test
+    fun joinLobbyAllowsRetryAfterServerRejectsJoin() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = HomeViewModel(fakeClient)
+
+        fakeClient.mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+        viewModel.onJoinLobbyCodeChange("abc123")
+
+        viewModel.joinLobby()
+        assertEquals(1, fakeClient.sendJoinLobbyCallCount)
+
+        viewModel.setJoinLobbyError("Lobby code is invalid")
+        viewModel.joinLobby()
+
+        assertEquals(2, fakeClient.sendJoinLobbyCallCount)
     }
 
     @Test
@@ -221,15 +294,19 @@ class HomeScreenViewModelTest {
         var disconnectCalled = false
         var sendGameStartCalled = false
         var sendCreateLobbyCalled = false
+        var sendCreateLobbyCallCount = 0
         var sendJoinLobbyCalled = false
+        var sendJoinLobbyCallCount = 0
         var joinedLobbyCode: String? = null
 
         override fun sendJoinLobby(lobbyCode: String) {
             sendJoinLobbyCalled = true
+            sendJoinLobbyCallCount++
             joinedLobbyCode = lobbyCode
         }
 
-        override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow()
+        val mutableLobbyEntered = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+        override val lobbyEntered: SharedFlow<Unit> = mutableLobbyEntered
         override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> =
             MutableSharedFlow(extraBufferCapacity = 1)
         override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
@@ -243,7 +320,10 @@ class HomeScreenViewModelTest {
         override fun reportCheat(gameId: Int) = Unit
         override fun accuse(gameId: Int, accusedPlayerId: Int) = Unit
         override fun sendGameStart() { sendGameStartCalled = true }
-        override fun sendCreateLobby() { sendCreateLobbyCalled = true }
+        override fun sendCreateLobby() {
+            sendCreateLobbyCalled = true
+            sendCreateLobbyCallCount++
+        }
         override fun sendPurchase(
             gameId: Int,
             purchaseType: PurchaseType,
@@ -258,6 +338,7 @@ class HomeScreenViewModelTest {
     }
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class MainDispatcherRule(
     private val testDispatcher: TestDispatcher = StandardTestDispatcher(),
 ) : TestWatcher() {
