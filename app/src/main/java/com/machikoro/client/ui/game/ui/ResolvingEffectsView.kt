@@ -41,7 +41,9 @@ import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PurchaseState
+import com.machikoro.client.ui.theme.ButtonBorderBeige
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextOnOrange
 
 @Composable
@@ -77,7 +79,18 @@ private fun TriggeredEffectsBoard(
     modifier: Modifier = Modifier,
 ) {
     val redEffects = effects.filter { it.color == ShopItemColor.RED }
+    val purpleEffects = effects.filter { it.color == ShopItemColor.PURPLE }
+    val stadiumEffects = purpleEffects.filter { it.cardType == CardType.STADIUM }
+    val tvStationEffects = purpleEffects.filter { it.cardType == CardType.TV_STATION }
 
+    if (tvStationEffects.isNotEmpty()) {
+        TvStationChoosePlayerView(
+            effect = tvStationEffects.first(),
+            players = players.filter { it.id.toIntOrNull() != activePlayerId },
+            modifier = modifier
+        )
+        return
+    }
     Row(
         modifier = modifier
             .horizontalScroll(rememberScrollState())
@@ -88,8 +101,21 @@ private fun TriggeredEffectsBoard(
         players.forEach { player ->
             val playerId = player.id.toIntOrNull()
             val playerEffects = effects.filter { it.playerId == playerId }
+            val isOpponentPayingForStadium =
+                playerId != activePlayerId && stadiumEffects.isNotEmpty()
 
             when {
+                playerId == activePlayerId && stadiumEffects.isNotEmpty() -> {
+                    StadiumGainStack(
+                        effect = stadiumEffects.first(),
+                        payingPlayers = players.filter { it.id.toIntOrNull() != activePlayerId }
+                    )
+                }
+
+                playerId != activePlayerId && stadiumEffects.isNotEmpty() -> {
+                    StadiumLossStack()
+                }
+
                 playerEffects.isNotEmpty() -> {
                     TriggeredPlayerStack(
                         effects = playerEffects,
@@ -170,6 +196,192 @@ private fun ActivePlayerTransferStack(
         )
 
         PayingPlayersList(payingPlayerNames)
+    }
+}
+
+@Composable
+private fun StadiumGainStack(
+    effect: TriggeredEffectUi,
+    payingPlayers: List<PlayerCoinState>,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        IncomeWithCoin(
+            quantity = payingPlayers.size,
+            coinValue = 2,
+            isPositive = true
+        )
+
+        Box(contentAlignment = Alignment.TopStart) {
+            CardArtImage(
+                drawableResId = ShopImageResolver.drawableForCardType(effect.cardType),
+                width = 155.dp,
+                height = 175.dp,
+            )
+        }
+
+        PayingPlayersList(payingPlayers.map { it.displayName })
+    }
+}
+
+@Composable
+private fun StadiumLossStack() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        IncomeWithCoin(
+            quantity = 1,
+            coinValue = 2,
+            isPositive = false
+        )
+
+        Box(
+            modifier = Modifier
+                .width(155.dp)
+                .height(175.dp)
+        )
+    }
+}
+
+@Composable
+private fun TvStationChoosePlayerView(
+    effect: TriggeredEffectUi,
+    players: List<PlayerCoinState>,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(28.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Activated card",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            CardArtImage(
+                drawableResId = ShopImageResolver.drawableForCardType(effect.cardType),
+                width = 155.dp,
+                height = 175.dp,
+            )
+        }
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Choose player to steal 5 coins",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            players.forEach { player ->
+                TvStationPlayerChoice(player)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TvStationPlayerChoice(
+    player: PlayerCoinState,
+) {
+    Row(
+        modifier = Modifier
+            .width(180.dp)
+            .background(Color.White, RoundedCornerShape(13.dp))
+            .border(2.dp, ButtonBorderBeige, RoundedCornerShape(13.dp))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = player.displayName,
+            color = TextBlueDark,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        CoinBadge(amount = player.coins, modifier = Modifier.padding(top = 4.dp))
+    }
+}
+
+@Composable
+private fun TvStationActivePlayerResultStack(
+    effect: TriggeredEffectUi,
+    payingPlayerName: String,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        IncomeWithCoin(
+            quantity = 1,
+            coinValue = 5,
+            isPositive = true
+        )
+
+        Box(contentAlignment = Alignment.TopStart) {
+            CardArtImage(
+                drawableResId = ShopImageResolver.drawableForCardType(effect.cardType),
+                width = 155.dp,
+                height = 175.dp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TvStationPayingPlayerResultStack(
+    receivingPlayerName: String,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        IncomeWithCoin(
+            quantity = 1,
+            coinValue = 5,
+            isPositive = false
+        )
+
+        PayingPlayersList(
+            listOf(receivingPlayerName)
+        )
+    }
+}
+
+@Composable
+private fun TvStationResultView(
+    effect: TriggeredEffectUi,
+    activePlayerName: String,
+    payingPlayerName: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(46.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        TvStationActivePlayerResultStack(
+            effect = effect,
+            payingPlayerName = payingPlayerName
+        )
+
+        TvStationPayingPlayerResultStack(
+            receivingPlayerName = activePlayerName
+        )
     }
 }
 
@@ -350,6 +562,8 @@ private fun CardType.coinEffectAmount(): Int = when (this) {
     CardType.CONVENIENCE_STORE -> 3
     CardType.WHEAT_FIELD -> 1
     CardType.FOREST -> 1
+    CardType.STADIUM -> 2
+    CardType.TV_STATION -> 5
     else -> 1
 }
 
@@ -453,6 +667,34 @@ private fun ResolvingEffectsGreenCardsPreview() {
                     )
                 ),
                 modifier = Modifier.align(Alignment.Center)
+            )
+        }
+    }
+}
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun ResolvingEffectsTvStationResultPreview() {
+    ClientTheme {
+        Box(
+            modifier = Modifier
+                .background(Color(0xFF5A321E))
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            TvStationResultView(
+                effect = TriggeredEffectUi(
+                    playerId = 1,
+                    playerName = "You",
+                    cardType = CardType.TV_STATION,
+                    cardName = "TV Station",
+                    quantity = 1,
+                    effectText = "Take 5 coins from any one player, on your turn only.",
+                    color = ShopItemColor.PURPLE,
+                    resolveOrder = 300,
+                    incomeAmount = 5
+                ),
+                activePlayerName = "You",
+                payingPlayerName = "Player3"
             )
         }
     }

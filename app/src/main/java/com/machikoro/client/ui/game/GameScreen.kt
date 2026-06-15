@@ -921,3 +921,66 @@ private fun GameScreenResolveEffectsGreenCardsPreview() {
         )
     }
 }
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenResolveEffectsPurpleStadiumPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = listOf(
+                    PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
+                    PlayerCoinState("2", "Player2", 4),
+                    PlayerCoinState("3", "Player3", 5),
+                    PlayerCoinState("4", "Player4", 7),
+                ),
+                diceResult = listOf(6),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                roundNumber = 10,
+                playerLandmarks = previewLandmarks(),
+                playerCards = mapOf(
+                    1 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1))
+                ),
+                marketplace = previewMarketplace(),
+                customDisplayText = "Round outcome"
+            ),
+            canReroll = false
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenResolveEffectsPurpleTvStationPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = listOf(
+                    PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
+                    PlayerCoinState("2", "Player2", 4),
+                    PlayerCoinState("3", "Player3", 5),
+                    PlayerCoinState("4", "Player4", 7),
+                ),
+                diceResult = listOf(6),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                roundNumber = 10,
+                playerLandmarks = previewLandmarks(),
+                playerCards = mapOf(
+                    1 to listOf(PlayerCardState(CardType.TV_STATION, quantity = 1))
+                ),
+                marketplace = previewMarketplace(),
+                customDisplayText = "Choose player"
+            ),
+            canReroll = false
+        )
+    }
+}
