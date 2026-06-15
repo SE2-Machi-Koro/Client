@@ -1071,24 +1071,19 @@ class OkHttpWebSocketClient(
     }
 
     private fun JSONObject.toCardDefinition(cardType: CardType): CardDefinition {
-        val fallback = CardDefinitions.forType(cardType)
+        // All CardType values must have an entry — crash early if a new value is added without a definition.
+        val fallback = checkNotNull(CardDefinitions.forType(cardType)) {
+            "CardDefinitions missing entry for $cardType"
+        }
         return CardDefinition(
             cardType = cardType,
-            displayName = optString("displayName").ifBlank {
-                fallback?.displayName ?: cardType.displayName()
-            },
-            cost = optIntOrNull("cost") ?: fallback?.cost ?: 0,
-            color = optString("color").toShopItemColor(fallback?.color),
-            establishmentType = optString("establishmentType").ifBlank {
-                fallback?.establishmentType.orEmpty()
-            },
-            activationNumbers = activationNumbers().ifEmpty {
-                fallback?.activationNumbers.orEmpty()
-            },
+            displayName = optString("displayName").ifBlank { fallback.displayName },
+            cost = optIntOrNull("cost") ?: fallback.cost,
+            color = optString("color").toShopItemColor(fallback.color),
+            establishmentType = optString("establishmentType").ifBlank { fallback.establishmentType },
+            activationNumbers = activationNumbers().ifEmpty { fallback.activationNumbers },
             effectText = effectText(cardType),
-            imageKey = optString("imageKey").ifBlank {
-                fallback?.imageKey ?: "card_${cardType.name.lowercase()}"
-            },
+            imageKey = optString("imageKey").ifBlank { fallback.imageKey },
         )
     }
 
