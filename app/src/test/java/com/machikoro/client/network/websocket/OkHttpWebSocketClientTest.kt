@@ -3661,14 +3661,15 @@ class OkHttpWebSocketClientTest {
 
         client.sendChatMessage(gameId = 7, message = "hello world")
 
-        assertTrue(
-            factory.socket.sentMessages.any {
-                it.startsWith("SEND\n") &&
-                        it.contains("destination:/app/chat.send") &&
-                        it.contains("\"message\":\"hello world\"") &&
-                        it.contains("\"gameId\":7")
-            }
-        )
+        val frame = factory.socket.sentMessages.first {
+            it.startsWith("SEND\n")
+        }
+        val json = frame.substringAfter("\n\n").substringBefore("\u0000")
+        val body = JSONObject(json)
+
+        assertEquals("CHAT", body.getString("type"))
+        assertEquals(7, body.getInt("gameId"))
+        assertEquals("hello world", body.getString("content"))
     }
     @Test
     fun sendChatMessageWithoutConnectionIsIgnored() {

@@ -971,7 +971,7 @@ class OkHttpWebSocketClient(
         val payload = json.optJSONObject("payload")
         val msg = payload?.optString("message") ?: json.optString("message")
         if (msg.isBlank()) return
-        val sender = json.optString("sender") ?: json.optString("username")
+        val sender = payload?.optString("sender") ?: json.optString("sender") ?: json.optString("username")
         if (sender.isBlank()) return
 
         mutableChatMessages.tryEmit(
