@@ -25,8 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -35,7 +33,6 @@ import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
-import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.model.shop.ShopCatalog
@@ -43,7 +40,6 @@ import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
-import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.TextOnOrange
@@ -86,7 +82,7 @@ private fun TriggeredEffectsBoard(
         modifier = modifier
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(46.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
         verticalAlignment = Alignment.Top
     ) {
         players.forEach { player ->
@@ -165,7 +161,7 @@ private fun ActivePlayerTransferStack(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(3.dp),
-        modifier = Modifier.padding(bottom = 111.dp)
+        modifier = Modifier.padding(bottom = 111.dp, end = 25.dp)
     ) {
         IncomeWithCoin(
             quantity = 1,

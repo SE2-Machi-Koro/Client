@@ -47,6 +47,7 @@ import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
@@ -446,8 +447,9 @@ fun GameScreen(
                                 )
                             }
                         },
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .offset(x = 5.dp, y = 50.dp)                    )
                 }
 
                 else if (state.gamePhase == GamePhase.ROLL_DICE) {
@@ -801,6 +803,46 @@ private fun GameScreenResolveEffectsPreview() {
                 customDisplayText = "Resolving effects"
             ),
             canReroll = true
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenResolveEffectsRedCardsPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = listOf(
+                    PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
+                    PlayerCoinState("2", "Player2", 4),
+                    PlayerCoinState("3", "Player3", 5),
+                    PlayerCoinState("4", "Player4", 7),
+                ),
+                diceResult = listOf(4, 5),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                roundNumber = 10,
+                playerLandmarks = previewLandmarks(),
+                playerCards = mapOf(
+                    2 to listOf(
+                        PlayerCardState(CardType.FAMILY_RESTAURANT, quantity = 1)
+                    ),
+                    3 to listOf(
+                        PlayerCardState(CardType.FAMILY_RESTAURANT, quantity = 2)
+                    ),
+                    4 to listOf(
+                        PlayerCardState(CardType.FAMILY_RESTAURANT, quantity = 1)
+                    )
+                ),
+                marketplace = previewMarketplace(),
+                customDisplayText = "Round outcome"
+            ),
+            canReroll = false
         )
     }
 }
