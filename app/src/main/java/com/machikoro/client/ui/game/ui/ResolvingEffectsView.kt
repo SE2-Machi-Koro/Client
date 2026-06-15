@@ -65,7 +65,6 @@ fun ResolvingEffectsView(
         TriggeredEffectsBoard(
             effects = triggeredEffects,
             players = state.players,
-            activePlayerId = state.activePlayerId,
             modifier = modifier
         )
     }
@@ -74,9 +73,9 @@ fun ResolvingEffectsView(
 private fun TriggeredEffectsBoard(
     effects: List<TriggeredEffectUi>,
     players: List<PlayerCoinState>,
-    activePlayerId: Int?,
     modifier: Modifier = Modifier,
 ) {
+    val activePlayerId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
     val redEffects = effects.filter { it.color == ShopItemColor.RED }
     val purpleEffects = effects.filter { it.color == ShopItemColor.PURPLE }
     val stadiumEffects = purpleEffects.filter { it.cardType == CardType.STADIUM }
