@@ -965,7 +965,7 @@ class OkHttpWebSocketClient(
     private fun handleChatMessage(json: JSONObject) {
         // Flexible detection: the server might put message/sender in the top-level or under payload.
         val payload = json.optJSONObject("payload")
-        val msg = payload?.optString("message") ?: json.optString("message")
+        val msg = payload?.optString("message") ?: json.optString("content")
         if (msg.isBlank()) return
         val sender = payload?.optString("sender") ?: json.optString("sender") ?: json.optString("username")
         if (sender.isBlank()) return

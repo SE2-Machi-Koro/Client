@@ -3617,7 +3617,7 @@ class OkHttpWebSocketClientTest {
         runCurrent()
 
         // server sends message and sender at top-level
-        val chatJson = """{"type":"CHAT","sender":"bob","message":"hey"}"""
+        val chatJson = """{"type":"CHAT","sender":"bob","content":"hey"}"""
         factory.simulateText(gameActionFrame(chatJson))
         runCurrent()
 
@@ -3647,7 +3647,7 @@ class OkHttpWebSocketClientTest {
         assertTrue(received.isEmpty())
 
         // blank sender
-        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"","message":"hi"}"""))
+        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"","content":"hi"}"""))
         runCurrent()
         assertTrue(received.isEmpty())
     }
