@@ -846,3 +846,78 @@ private fun GameScreenResolveEffectsRedCardsPreview() {
         )
     }
 }
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenResolveEffectsBlueCardsPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = listOf(
+                    PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
+                    PlayerCoinState("2", "Player2", 4),
+                    PlayerCoinState("3", "Player3", 5),
+                    PlayerCoinState("4", "Player4", 7),
+                ),
+                diceResult = listOf(1),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                roundNumber = 10,
+                playerLandmarks = previewLandmarks(),
+                playerCards = mapOf(
+                    1 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 1)),
+                    2 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 2)),
+                    3 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 1)),
+                    4 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 1)),
+                ),
+                marketplace = previewMarketplace(),
+                customDisplayText = "Round outcome"
+            ),
+            canReroll = false
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenResolveEffectsGreenCardsPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = listOf(
+                    PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
+                    PlayerCoinState("2", "Player2", 4),
+                    PlayerCoinState("3", "Player3", 5),
+                    PlayerCoinState("4", "Player4", 7),
+                ),
+                diceResult = listOf(2),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                roundNumber = 10,
+                playerLandmarks = previewLandmarks(),
+                playerCards = mapOf(
+                    1 to listOf(
+                        PlayerCardState(CardType.BAKERY, quantity = 2)
+                    ),
+                    2 to listOf(
+                        PlayerCardState(CardType.BAKERY, quantity = 2)
+                    ),
+                    3 to listOf(
+                        PlayerCardState(CardType.BAKERY, quantity = 1)
+                    ),
+                ),
+                marketplace = previewMarketplace(),
+                customDisplayText = "Round outcome"
+            ),
+            canReroll = false
+        )
+    }
+}
