@@ -530,7 +530,8 @@ class OkHttpWebSocketClient(
         val body = JSONObject()
             .put("type", "CHAT")
             .put("sender", WebSocketContract.defaultSender)
-            .put("payload", payload)
+            .put("content", message)
+            .put("gameId", gameId)
             .toString()
 
         val sent = socket.send(
