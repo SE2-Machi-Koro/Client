@@ -523,10 +523,6 @@ class OkHttpWebSocketClient(
             return
         }
 
-        val payload = JSONObject()
-            .put("gameId", gameId)
-            .put("message", message)
-
         val body = JSONObject()
             .put("type", "CHAT")
             .put("sender", WebSocketContract.defaultSender)
