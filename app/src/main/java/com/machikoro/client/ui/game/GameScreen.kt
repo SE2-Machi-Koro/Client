@@ -501,6 +501,28 @@ fun GameScreen(
                     }
                 }
 
+                // Radio Tower reroll (#326): only the active player who built a
+                // Radio Tower may reroll, once, during RESOLVE_EFFECTS.
+                else if (state.canReroll && canReroll) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(bottom = 32.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        state.diceResult?.let { DiceResultDisplay(dice = it) }
+                        ActionButton(
+                            onClick = { onReroll(state.diceResult?.size ?: 1) },
+                            enabled = !state.isRolling,
+                            label = "Nochmal würfeln",
+                            leftIcon = R.drawable.game_dice_perspective,
+                            modifier = Modifier.semantics {
+                                contentDescription = "Nochmal würfeln"
+                            }
+                        )
+                    }
+                }
                 }
             },
 // =====================================
@@ -757,3 +779,28 @@ private fun previewMarketplace() = mapOf(
     CardType.CONVENIENCE_STORE to 4,
     CardType.FOREST to 6,
 )
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenResolveEffectsPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = previewPlayers(),
+                diceResult = listOf(3),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                roundNumber = 4,
+               // canReroll = true,
+                playerLandmarks = previewLandmarks(),
+                marketplace = previewMarketplace(),
+                customDisplayText = "Resolving effects"
+            ),
+            canReroll = true
+        )
+    }
+}
