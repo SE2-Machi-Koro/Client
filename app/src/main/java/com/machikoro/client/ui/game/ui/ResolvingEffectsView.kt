@@ -320,7 +320,6 @@ private fun TvStationPlayerChoice(
 @Composable
 private fun TvStationActivePlayerResultStack(
     effect: TriggeredEffectUi,
-    payingPlayerName: String,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -365,23 +364,47 @@ private fun TvStationPayingPlayerResultStack(
 @Composable
 private fun TvStationResultView(
     effect: TriggeredEffectUi,
-    activePlayerName: String,
-    payingPlayerName: String,
+    players: List<PlayerCoinState>,
+    activePlayerId: Int,
+    payingPlayerId: Int,
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(46.dp),
+        modifier = modifier
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
         verticalAlignment = Alignment.Top
     ) {
-        TvStationActivePlayerResultStack(
-            effect = effect,
-            payingPlayerName = payingPlayerName
-        )
+        players.forEach { player ->
+            val playerId = player.id.toIntOrNull()
 
-        TvStationPayingPlayerResultStack(
-            receivingPlayerName = activePlayerName
-        )
+            when (playerId) {
+                activePlayerId -> {
+                    TvStationActivePlayerResultStack(
+                        effect = effect
+                    )
+                }
+
+                payingPlayerId -> {
+                    val activePlayerName =
+                        players.firstOrNull { it.id.toIntOrNull() == activePlayerId }
+                            ?.displayName ?: "Player"
+
+                    TvStationPayingPlayerResultStack(
+                        receivingPlayerName = activePlayerName
+                    )
+                }
+
+                else -> {
+                    Box(
+                        modifier = Modifier
+                            .width(155.dp)
+                            .height(175.dp)
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -693,8 +716,14 @@ private fun ResolvingEffectsTvStationResultPreview() {
                     resolveOrder = 300,
                     incomeAmount = 5
                 ),
-                activePlayerName = "You",
-                payingPlayerName = "Player3"
+                players = listOf(
+                    PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
+                    PlayerCoinState("2", "Player2", 4),
+                    PlayerCoinState("3", "Player3", 5),
+                    PlayerCoinState("4", "Player4", 7),
+                ),
+                activePlayerId = 1,
+                payingPlayerId = 3
             )
         }
     }
