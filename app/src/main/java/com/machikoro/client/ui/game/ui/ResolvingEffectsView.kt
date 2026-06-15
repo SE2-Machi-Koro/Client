@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -80,6 +81,7 @@ private fun TriggeredEffectsBoard(
     val purpleEffects = effects.filter { it.color == ShopItemColor.PURPLE }
     val stadiumEffects = purpleEffects.filter { it.cardType == CardType.STADIUM }
     val tvStationEffects = purpleEffects.filter { it.cardType == CardType.TV_STATION }
+    val businessCenterEffects = purpleEffects.filter { it.cardType == CardType.BUSINESS_CENTER }
 
     if (tvStationEffects.isNotEmpty() && effects.size == tvStationEffects.size) {
         TvStationChoosePlayerView(
@@ -89,18 +91,27 @@ private fun TriggeredEffectsBoard(
         )
         return
     }
+
+    if (businessCenterEffects.isNotEmpty() && effects.size == businessCenterEffects.size) {
+        BusinessCenterChoosePlayerView(
+            effect = businessCenterEffects.first(),
+            players = players.filter { it.id.toIntOrNull() != activePlayerId },
+            modifier = modifier
+        )
+        return
+    }
+
     Row(
         modifier = modifier
+            .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.Top
     ) {
         players.forEach { player ->
             val playerId = player.id.toIntOrNull()
             val playerEffects = effects.filter { it.playerId == playerId }
-            val isOpponentPayingForStadium =
-                playerId != activePlayerId && stadiumEffects.isNotEmpty()
 
             when {
                 playerId == activePlayerId && stadiumEffects.isNotEmpty() -> {
@@ -117,13 +128,14 @@ private fun TriggeredEffectsBoard(
                 playerEffects.isNotEmpty() -> {
                     TriggeredPlayerStack(
                         effects = playerEffects,
-                        isPositive = true
+                        isPositive = playerEffects.any { it.color == ShopItemColor.RED } ||
+                            playerId == activePlayerId ||
+                            playerEffects.any { it.color == ShopItemColor.BLUE }
                     )
                 }
 
                 playerId == activePlayerId && redEffects.isNotEmpty() -> {
                     ActivePlayerTransferStack(
-                        payingPlayerNames = redEffects.map { it.playerName }.distinct(),
                         amount = redEffects.sumOf { it.totalIncome }
                     )
                 }
@@ -145,13 +157,13 @@ private fun TriggeredPlayerStack(
     effects: List<TriggeredEffectUi>,
     isPositive: Boolean,
 ) {
+    val totalCoins = effects.sumOf { it.totalIncome }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         IncomeWithCoin(
-            quantity = effects.sumOf { it.quantity },
-            coinValue = effects.firstOrNull()?.incomeAmount ?: 1,
+            amount = totalCoins,
             isPositive = isPositive
         )
 
@@ -179,21 +191,19 @@ private fun TriggeredPlayerStack(
 
 @Composable
 private fun ActivePlayerTransferStack(
-    payingPlayerNames: List<String>,
     amount: Int,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(3.dp),
-        modifier = Modifier.padding(bottom = 111.dp, end = 25.dp)
+        modifier = Modifier
+            .width(155.dp)
+            .padding(top = 12.dp)
     ) {
         IncomeWithCoin(
-            quantity = 1,
-            coinValue = amount,
+            amount = amount,
             isPositive = false
         )
-
-        PayingPlayersList(payingPlayerNames)
     }
 }
 
@@ -207,8 +217,7 @@ private fun StadiumGainStack(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         IncomeWithCoin(
-            quantity = payingPlayers.size,
-            coinValue = 2,
+            amount = 2 * payingPlayers.size,
             isPositive = true
         )
 
@@ -219,8 +228,6 @@ private fun StadiumGainStack(
                 height = 175.dp,
             )
         }
-
-        PayingPlayersList(payingPlayers.map { it.displayName })
     }
 }
 
@@ -231,8 +238,7 @@ private fun StadiumLossStack() {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         IncomeWithCoin(
-            quantity = 1,
-            coinValue = 2,
+            amount = 2,
             isPositive = false
         )
 
@@ -251,8 +257,8 @@ private fun TvStationChoosePlayerView(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(28.dp),
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
@@ -279,6 +285,53 @@ private fun TvStationChoosePlayerView(
         ) {
             Text(
                 text = "Choose player to steal 5 coins",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            players.forEach { player ->
+                TvStationPlayerChoice(player)
+            }
+        }
+    }
+}
+
+@Composable
+private fun BusinessCenterChoosePlayerView(
+    effect: TriggeredEffectUi,
+    players: List<PlayerCoinState>,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Activated card",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            CardArtImage(
+                drawableResId = ShopImageResolver.drawableForCardType(effect.cardType),
+                width = 155.dp,
+                height = 175.dp,
+            )
+        }
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Choose opponent to exchange with",
                 color = Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
@@ -324,8 +377,7 @@ private fun TvStationActivePlayerResultStack(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         IncomeWithCoin(
-            quantity = 1,
-            coinValue = 5,
+            amount = 5,
             isPositive = true
         )
 
@@ -348,8 +400,7 @@ private fun TvStationPayingPlayerResultStack(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         IncomeWithCoin(
-            quantity = 1,
-            coinValue = 5,
+            amount = 5,
             isPositive = false
         )
 
@@ -443,8 +494,7 @@ private fun PayingPlayerPill(
 }
 @Composable
 private fun IncomeWithCoin(
-    quantity: Int,
-    coinValue: Int,
+    amount: Int,
     isPositive: Boolean,
 ) {
     Row(
@@ -452,19 +502,20 @@ private fun IncomeWithCoin(
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Text(
-            text = "${if (isPositive) "+" else "-"}$quantity x",
+            text = "${if (isPositive) "+" else "-"}$amount",
             color = if (isPositive) Color(0xFF8BC56A) else Color(0xFFC5163D),
             fontSize = 22.sp,
             fontWeight = FontWeight.ExtraBold,
             modifier = Modifier.offset(y = (-4).dp)
         )
 
-        CoinBadge(amount = coinValue)
+        CoinBadge()
     }
 }
+
 @Composable
 private fun CoinBadge(
-    amount: Int,
+    amount: Int? = null,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.size(36.dp)) {
@@ -478,7 +529,7 @@ private fun CoinBadge(
         )
 
         Text(
-            text = amount.toString(),
+            text = amount?.toString().orEmpty(),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.ExtraBold,
             color = TextOnOrange,
@@ -489,16 +540,6 @@ private fun CoinBadge(
         )
     }
 }
-
-
-private fun previewIncomeText(
-    effects: List<TriggeredEffectUi>,
-    isActivePlayer: Boolean,
-): String {
-    val amount = effects.sumOf { it.quantity }
-    return if (isActivePlayer) "+$amount x" else "-$amount x"
-}
-
 private data class TriggeredEffectUi(
     val playerId: Int,
     val playerName: String,
