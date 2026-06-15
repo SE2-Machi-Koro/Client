@@ -158,6 +158,7 @@ fun GameScreen(
 
     val isCardViewPossible = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
             && !state.isActivePlayer)
+    val showRadioTowerReroll = state.canReroll && canReroll
 
     LaunchedEffect(showOwnCards) {
         if (showOwnCards) {
@@ -349,7 +350,7 @@ fun GameScreen(
                             .align(Alignment.Center)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)
                     ) {
-                        if(state.gamePhase != GamePhase.ROLL_DICE) {
+                        if(state.gamePhase != GamePhase.ROLL_DICE && !showRadioTowerReroll) {
                             state.diceResult?.let { DiceResultDisplay(dice = it) }
                         }
                     }
@@ -428,7 +429,7 @@ fun GameScreen(
                         } else BasicText("Waiting for purchase")
                     }
 
-                    else if (state.gamePhase == GamePhase.ROLL_DICE) {
+                    else if (state.gamePhase == GamePhase.ROLL_DICE || showRadioTowerReroll) {
                         Row(
                             modifier = Modifier
                                 .align(Alignment.Center)
@@ -444,7 +445,7 @@ fun GameScreen(
                             if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
                                 var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
 
-                                if (state.hasTrainStation) {
+                                if (state.gamePhase == GamePhase.ROLL_DICE && state.hasTrainStation) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         listOf(1, 2).forEach { count ->
                                             Button(
@@ -466,41 +467,30 @@ fun GameScreen(
                                     }
                                 }
 
-                            ActionButton(
-                                onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
-                                enabled = !state.isRolling,
-                                label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
-                                leftIcon = R.drawable.game_dice_perspective,
-                                modifier = Modifier.semantics {
-                                    contentDescription = "Würfeln"
+                                if (showRadioTowerReroll) {
+                                    ActionButton(
+                                        onClick = { onReroll(state.diceResult?.size ?: 1) },
+                                        enabled = !state.isRolling,
+                                        label = "Nochmal würfeln",
+                                        leftIcon = R.drawable.game_dice_perspective,
+                                        modifier = Modifier.semantics {
+                                            contentDescription = "Nochmal würfeln"
+                                        }
+                                    )
+                                } else {
+                                    ActionButton(
+                                        onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
+                                        enabled = !state.isRolling,
+                                        label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
+                                        leftIcon = R.drawable.game_dice_perspective,
+                                        modifier = Modifier.semantics {
+                                            contentDescription = "Würfeln"
+                                        }
+                                    )
                                 }
-                            )
+                            }
                         }
                     }
-                }
-
-                // Radio Tower reroll (#326): only the active player who built a
-                // Radio Tower may reroll, once, during RESOLVE_EFFECTS.
-                else if (state.canReroll && canReroll) {
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(bottom = 32.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        state.diceResult?.let { DiceResultDisplay(dice = it) }
-                        ActionButton(
-                            onClick = { onReroll(state.diceResult?.size ?: 1) },
-                            enabled = !state.isRolling,
-                            label = "Nochmal würfeln",
-                            leftIcon = R.drawable.game_dice_perspective,
-                            modifier = Modifier.semantics {
-                                contentDescription = "Nochmal würfeln"
-                            }
-                        )
-                    }
-                }
                 }
             },
 // =====================================
