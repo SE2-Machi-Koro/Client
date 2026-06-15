@@ -39,9 +39,8 @@ import com.machikoro.client.ui.leaderboard.LeaderboardScreen
 import com.machikoro.client.ui.leaderboard.LeaderboardState
 import com.machikoro.client.ui.start.StartScreen
 import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.ui.win.GameOverOneWinner
+import com.machikoro.client.ui.win.WinnerScreen
 import com.machikoro.client.ui.win.resolveRankedPlayers
-import com.machikoro.client.ui.win.resolveWinnerName
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
@@ -250,8 +249,7 @@ fun AppRoot(
             }
 
             composable(AppRoute.Winner.route) {
-                GameOverOneWinner(
-                    winnerName = resolveWinnerName(gameScreenState),
+                WinnerScreen(
                     roundsNumber = gameScreenState.roundNumber ?: 0,
                     rankedPlayers = resolveRankedPlayers(gameScreenState),
                     onBackHome = onBackHome,
