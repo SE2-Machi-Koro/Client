@@ -46,16 +46,10 @@ fun GameOverOneWinner(
     onBackHome: () -> Unit,
     onViewLeaderboard: () -> Unit = {},
 ) {
-    if (rankedPlayers.isEmpty()) return
-
-    val winner = rankedPlayers.first()
 
     var showAllPlayers by remember {
         mutableStateOf(true)
     }
-
-
-
     var showCrown by remember {
         mutableStateOf(false)
     }
@@ -120,7 +114,7 @@ fun GameOverOneWinner(
             Spacer(
                 modifier = Modifier.padding(16.dp)
             )
-
+            if(rankedPlayers.isNotEmpty()) {
             // ALL PLAYERS FIRST
             if (showAllPlayers) {
                 FlowRow(
@@ -184,11 +178,13 @@ fun GameOverOneWinner(
                         Box(
                             contentAlignment = Alignment.TopCenter
                         ) {
-
-                            PlayerProfileCard(
-                                name = winner.first,
-                                place = 1
-                            )
+                            val winner = rankedPlayers.firstOrNull()
+                            winner?.let { it ->
+                                PlayerProfileCard(
+                                    name = it.first,
+                                    place = 1
+                                )
+                            }
 
                             Box(
                                 modifier = Modifier.offset(y = (-28).dp)
@@ -207,7 +203,7 @@ fun GameOverOneWinner(
                     }
                 }
             }
-
+            }
             Spacer(
                 modifier = Modifier.weight(1f)
             )
@@ -251,17 +247,14 @@ fun GameOverOneWinner(
 
 @Preview(showBackground = true)
 @Composable
-private fun WinnerScreenPreview() {
+private fun WinnerScreenScreenPreview() {
     ClientTheme {
-        GameOverOneWinner(
+        WinnerScreen(
             roundsNumber = 5,
             onBackHome = {},
             onViewLeaderboard = {},
             rankedPlayers = listOf(
-                "Alice" to 1,
-                "Bob" to 3,
-                "Charlie" to 4,
-                "Diana" to 2
+
             )
         )
     }
