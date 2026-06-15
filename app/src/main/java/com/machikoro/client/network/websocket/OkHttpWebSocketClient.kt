@@ -946,9 +946,10 @@ class OkHttpWebSocketClient(
         parseGameStatus(game.optString("status"))?.let { mutableGameStatus.value = it }
         parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
         game.optIntOrNull("roundNumber")?.let { mutableRoundNumber.value = it }
-        // Assign unconditionally so null clears the result between turns (server sends null on advanceTurn).
-        // Note: server persists only the total, not individual dice — reconnect shows single-element list.
-        mutableDiceResult.value = game.optIntOrNull("lastDiceRoll")?.let { listOf(it) }
+        // The snapshot persists only the dice total (lastDiceRoll), not the
+        // individual dice — surface it as a single-element list so the game
+        // screen can show the last roll on reconnect.
+        game.optIntOrNull("lastDiceRoll")?.let { mutableDiceResult.value = listOf(it) }
 
         val playerUsernames = parsePlayerUsernames(state.optJSONObject("playerUsernames"))
         mutablePlayers.value = state.optJSONArray("players").toPlayerCoinStates(state, game, playerUsernames)
@@ -1008,19 +1009,24 @@ class OkHttpWebSocketClient(
     }
 
     private fun JSONObject.toCardDefinition(cardType: CardType): CardDefinition {
-        // All CardType values must have an entry — crash early if a new value is added without a definition.
-        val fallback = checkNotNull(CardDefinitions.forType(cardType)) {
-            "CardDefinitions missing entry for $cardType"
-        }
+        val fallback = CardDefinitions.forType(cardType)
         return CardDefinition(
             cardType = cardType,
-            displayName = optString("displayName").ifBlank { fallback.displayName },
-            cost = optIntOrNull("cost") ?: fallback.cost,
-            color = optString("color").toShopItemColor(fallback.color),
-            establishmentType = optString("establishmentType").ifBlank { fallback.establishmentType },
-            activationNumbers = activationNumbers().ifEmpty { fallback.activationNumbers },
+            displayName = optString("displayName").ifBlank {
+                fallback?.displayName ?: cardType.displayName()
+            },
+            cost = optIntOrNull("cost") ?: fallback?.cost ?: 0,
+            color = optString("color").toShopItemColor(fallback?.color),
+            establishmentType = optString("establishmentType").ifBlank {
+                fallback?.establishmentType.orEmpty()
+            },
+            activationNumbers = activationNumbers().ifEmpty {
+                fallback?.activationNumbers.orEmpty()
+            },
             effectText = effectText(cardType),
-            imageKey = optString("imageKey").ifBlank { fallback.imageKey },
+            imageKey = optString("imageKey").ifBlank {
+                fallback?.imageKey ?: "card_${cardType.name.lowercase()}"
+            },
         )
     }
 
