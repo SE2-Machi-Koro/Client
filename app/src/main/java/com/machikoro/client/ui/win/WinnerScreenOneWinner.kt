@@ -12,6 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -21,112 +27,222 @@ import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.AnimatedItem
 import com.machikoro.client.ui.shared.AnimationType
 import com.machikoro.client.ui.shared.Background
+import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.shared.Header
-import com.machikoro.client.ui.shared.RegularInfoText
 import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ClientTheme
+import kotlinx.coroutines.delay
 
-/*
-This file contains the GameOverOneWinner composable,
-which displays the end-of-game screen when there is
-only one winner. The screen includes a background,
-a header, and an animated player profile card for
-the winner. It also displays the number of rounds
-it took for the winner to win the game. Runner-up
-players are shown with a staggered animation after
-the winner card appears. Buttons are displayed in a
-column to prevent overflow on narrow screens.
- */
+private const val PLAYER_CARD_DELAY = 500
+private const val PLAYER_VISIBLE_TIME = 1500L
+
+private const val WINNER_DELAY = 500
+private const val BUTTONS_DELAY = 4000
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GameOverOneWinner(
-    winnerName: String,
+    rankedPlayers: List<Pair<String, Int>>,
     roundsNumber: Int,
     onBackHome: () -> Unit,
     onViewLeaderboard: () -> Unit = {},
-    rankedPlayers: List<Pair<String, Int>> = emptyList(),
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    if (rankedPlayers.isEmpty()) return
+
+    val winner = rankedPlayers.first()
+
+    var showAllPlayers by remember {
+        mutableStateOf(true)
+    }
+
+
+
+    var showCrown by remember {
+        mutableStateOf(false)
+    }
+
+    var showWinnerOnly by remember {
+        mutableStateOf(false)
+    }
+
+    var showButtons by remember {
+        mutableStateOf(false)
+    }
+
+    var headerText by remember {
+        mutableStateOf("Game Over!")
+    }
+
+    LaunchedEffect(Unit) {
+        delay(
+            ((rankedPlayers.size + 1) * PLAYER_CARD_DELAY).toLong()
+        )
+        // Show crown on winner
+        showCrown = true
+
+        // Wait delay * player count
+        delay(
+            PLAYER_VISIBLE_TIME *
+                    rankedPlayers.size
+        )
+
+        // Remove all players
+        showAllPlayers = false
+        headerText = "Congratulations to..."
+        // Show winner screen
+        showWinnerOnly = true
+
+        // Show buttons
+        delay(BUTTONS_DELAY.toLong())
+        showButtons = true
+    }
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
         Background(R.drawable.game_end)
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment =
+                Alignment.CenterHorizontally
         ) {
-            Header("Congratulations to...")
-
-            Spacer(modifier = Modifier.padding(17.dp))
-
-            // Winner card with crown and round info
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(
-                    40.dp,
-                    Alignment.CenterHorizontally
-                ),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(contentAlignment = Alignment.TopCenter) {
-                    AnimatedItem(
-                        delayMillis = 500,
-                        animationType = AnimationType.Bounce
-                    ) {
-                        PlayerProfileCard(winnerName, 1)
-                    }
-                    AnimatedItem(
-                        delayMillis = 1000,
-                        animationType = AnimationType.Bounce
-                    ) {
-                        Box(modifier = Modifier.offset(y = (-28).dp)) {
-                            Crown()
-                        }
-                    }
-                }
-
+            key(headerText) {
                 AnimatedItem(
-                    delayMillis = 2000,
-                    animationType = AnimationType.Fade
+                    delayMillis = 0,
+                    animationType = AnimationType.Bounce
                 ) {
-                    RegularInfoText("won the game in \n$roundsNumber rounds!")
+                    Header(headerText)
                 }
             }
 
-            // Runner-up players appear with staggered delay after winner card
-            if (rankedPlayers.size > 1) {
-                Spacer(modifier = Modifier.padding(8.dp))
+            Spacer(
+                modifier = Modifier.padding(16.dp)
+            )
+
+            // ALL PLAYERS FIRST
+            if (showAllPlayers) {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(
-                        16.dp,
-                        Alignment.CenterHorizontally
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement =
+                        Arrangement.spacedBy(
+                            16.dp,
+                            Alignment.CenterHorizontally
+                        ),
+                    verticalArrangement =
+                        Arrangement.spacedBy(12.dp)
                 ) {
-                    rankedPlayers.drop(1).forEachIndexed { index, (name, _) ->
+
+                    rankedPlayers.forEachIndexed { index, (name, _) ->
+
                         AnimatedItem(
-                            delayMillis = 3000 + index * 500,
+                            delayMillis = PLAYER_CARD_DELAY + (index * PLAYER_CARD_DELAY),
                             animationType = AnimationType.Bounce
                         ) {
-                            PlayerProfileCard(name, index + 2)
+                            Box(
+                                contentAlignment = Alignment.TopCenter
+                            ) {
+
+                                PlayerProfileCard(name = name,
+                                    place = index + 1
+                                )
+
+                                if (index == 0 && showCrown) {
+
+                                    AnimatedItem(
+                                        delayMillis = 0,
+                                        animationType = AnimationType.Bounce
+                                    ) {
+                                        Box(
+                                            modifier =
+                                                Modifier.offset(
+                                                    y = (-28).dp
+                                                )
+                                        ) {
+                                            Crown()
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
-
-            AnimatedItem(
-                delayMillis = 5000,
-                animationType = AnimationType.SlideUp
-            ) {
-                // Buttons in a Column to prevent overflow on narrow screens
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+            if (showWinnerOnly) {
+                AnimatedItem(
+                    delayMillis = WINNER_DELAY,
+                    animationType = AnimationType.Bounce
                 ) {
-                    ActionButton("Back to home", onBackHome)
-                    SecondaryActionButton("View Leaderboard", onViewLeaderboard)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+
+                        Box(
+                            contentAlignment = Alignment.TopCenter
+                        ) {
+
+                            PlayerProfileCard(
+                                name = winner.first,
+                                place = 1
+                            )
+
+                            Box(
+                                modifier = Modifier.offset(y = (-28).dp)
+                            ) {
+                                Crown()
+                            }
+                        }
+
+                        Spacer(
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+
+                        BasicText(
+                            "Won the game in\n$roundsNumber rounds!"
+                        )
+                    }
+                }
+            }
+
+            Spacer(
+                modifier = Modifier.weight(1f)
+            )
+
+            // BUTTONS
+            if (showButtons) {
+                AnimatedItem(
+                    delayMillis = 0,
+                    animationType =
+                        AnimationType.SlideUp
+                ) {
+
+                    Row(
+                        verticalAlignment =
+                            Alignment.CenterVertically,
+                        horizontalArrangement =
+                            Arrangement.spacedBy(
+                                8.dp
+                            )
+                    ) {
+
+                        ActionButton(
+                            label =
+                                "Back home",
+                            onClick =
+                                onBackHome
+                        )
+
+                        SecondaryActionButton(
+                            label =
+                                "View Leaderboard",
+                            onClick =
+                                onViewLeaderboard
+                        )
+                    }
                 }
             }
         }
@@ -135,18 +251,17 @@ fun GameOverOneWinner(
 
 @Preview(showBackground = true)
 @Composable
-fun GameOverOnePlayerPreview() {
+private fun WinnerScreenPreview() {
     ClientTheme {
         GameOverOneWinner(
-            winnerName = "Alice",
             roundsNumber = 5,
             onBackHome = {},
             onViewLeaderboard = {},
             rankedPlayers = listOf(
-                "Alice" to 4,
-                "Bob" to 2,
-                "Charlie" to 1,
-                "Diana" to 0,
+                "Alice" to 1,
+                "Bob" to 3,
+                "Charlie" to 4,
+                "Diana" to 2
             )
         )
     }

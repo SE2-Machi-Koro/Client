@@ -251,7 +251,6 @@ fun AppRoot(
 
             composable(AppRoute.Winner.route) {
                 GameOverOneWinner(
-                    winnerName = resolveWinnerName(gameScreenState),
                     roundsNumber = gameScreenState.roundNumber ?: 0,
                     rankedPlayers = resolveRankedPlayers(gameScreenState),
                     onBackHome = onBackHome,
