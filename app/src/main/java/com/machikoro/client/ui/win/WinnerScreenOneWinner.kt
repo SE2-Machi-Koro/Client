@@ -40,7 +40,7 @@ private const val WINNER_DELAY = 500
 private const val BUTTONS_DELAY = 4000
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun GameOverOneWinner(
+fun WinnerScreen(
     rankedPlayers: List<Pair<String, Int>>,
     roundsNumber: Int,
     onBackHome: () -> Unit,
