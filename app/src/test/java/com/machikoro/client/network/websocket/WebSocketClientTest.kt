@@ -7,6 +7,7 @@ import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopItem
+import com.machikoro.client.domain.model.state.ChatMessageState
 import com.machikoro.client.network.error.ClientError
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
@@ -61,6 +62,8 @@ class DummyWebSocketClient : WebSocketClient {
     override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow()
     override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> = MutableSharedFlow(extraBufferCapacity = 1)
     override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
+    override val chatMessages: SharedFlow<ChatMessageState> = MutableSharedFlow(extraBufferCapacity = 1)
+
     override fun connect() {}
     override fun disconnect() {}
     override fun sendCreateLobby() {}
@@ -77,6 +80,7 @@ class DummyWebSocketClient : WebSocketClient {
     override fun accuse(gameId: Int, accusedPlayerId: Int) {}
     override fun sendLeaveLobby(gameId: Int) {}
     override fun sendReadyToggle(isReady: Boolean) {}
+    override fun sendChatMessage(gameId: Int, message: String) {}
     override fun sendPurchase(
         gameId: Int,
         purchaseType: PurchaseType,
