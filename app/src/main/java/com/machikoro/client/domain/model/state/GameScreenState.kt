@@ -9,6 +9,7 @@ import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.model.shop.ShopItem
 
 data class GameScreenState(
+    // Required by Server PurchaseRequest; populated from lobby/game WebSocket messages.
     val gameId: Int?,
     val connectionStatus: ConnectionStatus,
     val gamePhase: GamePhase,
@@ -19,12 +20,16 @@ data class GameScreenState(
     val winnerId: Int? = null,
     val myUserId: Int? = null,
     val purchaseState: PurchaseState,
+    // Shop item selected locally for the buy/build confirmation button.
     val selectedPurchaseItemType: String? = null,
+    // Tracks the one local buy/build request currently waiting for a server GAME_ACTION.
     val pendingPurchaseItemType: String? = null,
+    // Keeps button feedback tied to the specific item that was bought or failed.
     val purchaseFeedbackItemType: String? = null,
+    // Short feedback text shown in the shop for pending, success, or retryable errors.
     val purchaseMessage: String? = null,
     val isRolling: Boolean = false,
-    val requestedDiceCount: Int = 1,
+    // Reconnect snapshot fields (from /app/game.sync).
     val gameStatus: GameStatus? = null,
     val roundNumber: Int? = null,
     val playerCards: Map<Int, List<PlayerCardState>> = emptyMap(),
@@ -35,6 +40,7 @@ data class GameScreenState(
     val isActivePlayer: Boolean
         get() = myUserId != null && myUserId == activePlayerId
 
+    // Keeps UI visibility tied to the existing phase stream from the server.
     val isBuyingPhase: Boolean
         get() = gamePhase == GamePhase.BUY_OR_BUILD
 
@@ -82,7 +88,6 @@ data class GameScreenState(
             purchaseFeedbackItemType = null,
             purchaseMessage = null,
             isRolling = false,
-            requestedDiceCount = 1,
             gameStatus = null,
             roundNumber = null,
             playerCards = emptyMap(),

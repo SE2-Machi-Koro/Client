@@ -946,9 +946,10 @@ class OkHttpWebSocketClient(
         parseGameStatus(game.optString("status"))?.let { mutableGameStatus.value = it }
         parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
         game.optIntOrNull("roundNumber")?.let { mutableRoundNumber.value = it }
-        // Assign unconditionally so null clears the result between turns (server sends null on advanceTurn).
-        // Note: server persists only the total, not individual dice — reconnect shows single-element list.
-        mutableDiceResult.value = game.optIntOrNull("lastDiceRoll")?.let { listOf(it) }
+        // The snapshot persists only the dice total (lastDiceRoll), not the
+        // individual dice — surface it as a single-element list so the game
+        // screen can show the last roll on reconnect.
+        game.optIntOrNull("lastDiceRoll")?.let { mutableDiceResult.value = listOf(it) }
 
         val playerUsernames = parsePlayerUsernames(state.optJSONObject("playerUsernames"))
         mutablePlayers.value = state.optJSONArray("players").toPlayerCoinStates(state, game, playerUsernames)
