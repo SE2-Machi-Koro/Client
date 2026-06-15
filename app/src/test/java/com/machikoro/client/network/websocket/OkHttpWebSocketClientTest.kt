@@ -7,6 +7,7 @@ import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.state.AccusationResult
+import com.machikoro.client.domain.model.state.ChatMessageState
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.network.error.ClientError
 import com.machikoro.client.domain.model.state.PlayerCoinState
@@ -3582,6 +3583,102 @@ class OkHttpWebSocketClientTest {
         val bob = client.players.value.firstOrNull { it.displayName == "bob" }
         assertNotNull(bob)
         assertEquals(5, bob?.coins)
+    }
+
+    @Test
+    fun incomingChatMessageWithPayloadEmitsChatMessage() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val received = mutableListOf<ChatMessageState>()
+        client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        runCurrent()
+
+        // server sends chat under payload
+        val chatJson = """{"type":"CHAT","sender":"server","payload":{"sender":"alice","message":"hello"}}"""
+        factory.simulateText(gameActionFrame(chatJson))
+        runCurrent()
+
+        assertEquals(1, received.size)
+        assertEquals("alice", received.first().sender)
+        assertEquals("hello", received.first().message)
+    }
+    @Test
+    fun incomingChatMessageWithTopLevelFieldsEmitsChatMessage() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        val received = mutableListOf<ChatMessageState>()
+        client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        // server sends message and sender at top-level
+        val chatJson = """{"type":"CHAT","sender":"bob","message":"hey"}"""
+        factory.simulateText(gameActionFrame(chatJson))
+        runCurrent()
+
+        assertEquals(1, received.size)
+        assertEquals("bob", received.first().sender)
+        assertEquals("hey", received.first().message)
+    }
+    @Test
+    fun malformedOrBlankChatMessageDoesNotEmit() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        val received = mutableListOf<ChatMessageState>()
+        client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        // malformed JSON
+        factory.simulateText(gameActionFrame("not json"))
+        runCurrent()
+        assertTrue(received.isEmpty())
+
+        // valid JSON but no message
+        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"carol","payload":{}}"""))
+        runCurrent()
+        assertTrue(received.isEmpty())
+
+        // blank sender
+        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"","message":"hi"}"""))
+        runCurrent()
+        assertTrue(received.isEmpty())
+    }
+    @Test
+    fun sendChatMessageSendsStompFrame() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(gameActionFrame("CONNECTED\nversion:1.2\n\n\u0000")) // or connectedFrame()
+
+        client.sendChatMessage(gameId = 7, message = "hello world")
+
+        assertTrue(
+            factory.socket.sentMessages.any {
+                it.startsWith("SEND\n") &&
+                        it.contains("destination:/app/chat.send") &&
+                        it.contains("\"message\":\"hello world\"") &&
+                        it.contains("\"gameId\":7")
+            }
+        )
+    }
+    @Test
+    fun sendChatMessageWithoutConnectionIsIgnored() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        // no connect() called
+        client.sendChatMessage(gameId = 7, message = "hi")
+
+        assertTrue(factory.socket.sentMessages.isEmpty())
     }
 
     private fun newClient(

@@ -30,6 +30,7 @@ import okio.ByteString
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DummyWebSocketClient : WebSocketClient {
@@ -341,6 +342,20 @@ class WebSocketClientTest {
         assertEquals(GamePhase.BUY_OR_BUILD, playerB.client.gamePhase.value)
         assertEquals(mapOf(CardType.WHEAT_FIELD to 0, CardType.BAKERY to 4), playerB.client.marketplace.value)
         assertEquals(202, playerB.client.activePlayerId.value)
+    }
+    @Test
+    fun fakeClientSendChatRecordsLastSentAndEchoesIntoFlow() = runTest {
+        val fake = FakeWebSocketClient()
+        val received = mutableListOf<ChatMessageState>()
+        fake.chatMessages.onEach { received += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        fake.sendChatMessage(gameId = 42, message = "test-msg")
+
+        assertEquals(Pair(42, "test-msg"), fake.lastSentChat)
+        // Fake implementation echoes a ChatMessageState(sender="test", message=message)
+        runCurrent()
+        assertTrue(received.any { it.message == "test-msg" })
     }
 
     private fun okHttpClientFixture(userId: Int = 101): OkHttpClientFixture {
