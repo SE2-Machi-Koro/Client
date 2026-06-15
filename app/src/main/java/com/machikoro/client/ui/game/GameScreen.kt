@@ -450,7 +450,7 @@ fun GameScreen(
                     )
                 }
 
-                    else if (state.gamePhase == GamePhase.ROLL_DICE) {
+                else if (state.gamePhase == GamePhase.ROLL_DICE) {
                         Row(
                             modifier = Modifier
                                 .align(Alignment.Center)
