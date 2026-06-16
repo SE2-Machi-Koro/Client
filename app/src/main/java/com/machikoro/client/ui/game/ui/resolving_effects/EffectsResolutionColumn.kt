@@ -24,8 +24,8 @@ fun EffectsResolutionColumn(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(0.dp) // keep 0
-
+        verticalArrangement = Arrangement.spacedBy(0.dp), // keep 0
+        modifier = modifier
     ) {
 
     CoinBadge(earnedCoins, modifier = modifier.size(36.dp))
