@@ -611,7 +611,36 @@ private fun GameScreenState.canConfirmSelectedPurchase(): Boolean =
 
 // === PREVIEWS ===
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenRadioTowerRerollDecisionPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = previewPlayers(),
+                diceResult = listOf(6, 6),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                gameStatus = GameStatus.IN_PROGRESS,
+                roundNumber = 4,
+                playerLandmarks = mapOf(
+                    1 to listOf(
+                        PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = true),
+                    )
+                ),
+                marketplace = previewMarketplace(),
+            ),
+            canReroll = true,
+        )
+    }
+}
+
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun GameScreenRollDicePreview() {
     ClientTheme {
@@ -629,7 +658,7 @@ private fun GameScreenRollDicePreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun GameScreenRollingPreview() {
     ClientTheme {
@@ -648,7 +677,7 @@ private fun GameScreenRollingPreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun GameScreenRollDiceNotActivePreview() {
     ClientTheme {
@@ -666,7 +695,7 @@ private fun GameScreenRollDiceNotActivePreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 600)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun GameScreenReconnectSnapshotPreview() {
     ClientTheme {
