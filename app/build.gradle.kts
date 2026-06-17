@@ -37,8 +37,8 @@ fun buildProperty(name: String, defaultValue: String) =
         .orElse(providers.provider { localProperties.getProperty(name) })
         .orElse(defaultValue)
 
-val backendBaseUrl = buildProperty("backendBaseUrl", "http://10.0.2.2:8080")
-val websocketUrl = buildProperty("websocketUrl", "ws://10.0.2.2:8080/ws")
+val backendBaseUrl = buildProperty("backendBaseUrl", "https://machi-koro.up.railway.app")
+val websocketUrl = buildProperty("websocketUrl", "wss://machi-koro.up.railway.app/ws")
 
 android {
     namespace = "com.machikoro.client"
