@@ -431,17 +431,17 @@ fun GameScreen(
                     }
 
                     else if (state.gamePhase == GamePhase.ROLL_DICE || showRadioTowerReroll) {
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .align(Alignment.Center)
                                 .padding(bottom = 32.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             when {
                                 state.isRolling -> DiceAnimationDisplay()
                                 state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
-                                // #306: dice image sits beside the button (not inside it)
+                                // #306: dice image sits above the button (not inside it)
                                 // so a static die is shown before the first roll.
                                 else -> Image(
                                     painter = painterResource(id = R.drawable.game_dice_perspective),
