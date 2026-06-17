@@ -631,7 +631,7 @@ private fun LandmarkPip(
 }
 
 @Composable
-private fun CoinBadge(
+fun CoinBadge(
     amount: Int,
     modifier: Modifier = Modifier
 ) {

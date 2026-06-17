@@ -1518,6 +1518,22 @@ class GameScreenViewModelTest {
         emitGamePhase(GamePhase.RESOLVE_EFFECTS)
     }
 
+    private fun FakeWebSocketClient.enterRadioTowerRerollDecision(
+        activeUserId: Int = 42,
+        gameId: Int = 7,
+    ) {
+        enterResolveEffects(activeUserId = activeUserId, gameId = gameId)
+        emitPlayers(
+            listOf(
+                PlayerCoinState(id = "7", displayName = "alice", coins = 5, isActivePlayer = true),
+            )
+        )
+        emitPlayerLandmarks(
+            mapOf(7 to listOf(PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = true)))
+        )
+        emitDiceResult(listOf(6, 6))
+    }
+
     @Test
     fun performTurnFlowActionNoLongerResolvesEffectsManually() = runTest {
         val fakeClient = FakeWebSocketClient()
@@ -1562,6 +1578,35 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         assertEquals(1, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
+    fun resolveEffectsDoesNotAutoSendWhileRadioTowerDecisionIsPending() = runTest {
+        val dwell = GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS
+        val fakeClient = FakeWebSocketClient()
+        viewModel(fakeClient, userId = 42, resolveEffectsDwellMillis = dwell)
+
+        fakeClient.enterRadioTowerRerollDecision()
+        runCurrent()
+        advanceTimeBy(dwell + 1)
+        runCurrent()
+
+        assertEquals(0, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
+    fun skipRerollAcceptsDiceResultAndResolvesEffects() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        fakeClient.enterRadioTowerRerollDecision()
+        runCurrent()
+
+        viewModel.skipReroll()
+        runCurrent()
+
+        assertEquals(7, fakeClient.resolvedEffectsGameId)
+        assertEquals(1, fakeClient.resolveEffectsCallCount)
+        assertFalse(viewModel.canRerollThisTurn.value)
     }
 
     @Test
