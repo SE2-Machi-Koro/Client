@@ -93,6 +93,26 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun diceRollTickIncrementsInStateOnEachRoll() = runTest {
+        // #346: the tick is what drives the non-active player's roll/reroll
+        // animation, so every genuine dice result must bump it in state.
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        assertEquals(0L, viewModel.state.value.diceRollTick)
+
+        fakeClient.emitDiceResult(listOf(3, 4))
+        advanceUntilIdle()
+        val afterRoll = viewModel.state.value.diceRollTick
+        assertTrue(afterRoll > 0L)
+
+        // A same-turn reroll (a second genuine result) bumps the tick again.
+        fakeClient.emitDiceResult(listOf(6, 6))
+        advanceUntilIdle()
+        assertTrue(viewModel.state.value.diceRollTick > afterRoll)
+    }
+
+    @Test
     fun gamePhaseUpdatesAreReflectedInState() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient)

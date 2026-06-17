@@ -175,6 +175,14 @@ class GameScreenViewModel(
             }
         }
         viewModelScope.launch {
+            // #346: drives the non-active player's roll/reroll animation. Bumped
+            // only on a real DICE_ROLLED/DICE_REROLLED frame, so a same-turn reroll
+            // animates while the snapshot collapse ([x, y] -> [total]) does not.
+            webSocketClient.diceRollTick.collect { tick ->
+                mutableState.update { it.copy(diceRollTick = tick) }
+            }
+        }
+        viewModelScope.launch {
             webSocketClient.activePlayerId.collect { activePlayerId ->
                 // The Insider Trading cheat is valid for one turn only — drop it when the turn rotates.
                 if (mutableState.value.activePlayerId != activePlayerId) {

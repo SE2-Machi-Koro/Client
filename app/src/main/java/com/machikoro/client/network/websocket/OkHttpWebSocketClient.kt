@@ -75,6 +75,8 @@ class OkHttpWebSocketClient(
 
     override val diceResult: StateFlow<List<Int>?>
         get() = mutableDiceResult.asStateFlow()
+    override val diceRollTick: StateFlow<Long>
+        get() = mutableDiceRollTick.asStateFlow()
 
     override val activePlayerId: StateFlow<Int?>
         get() = mutableActivePlayerId.asStateFlow()
@@ -138,6 +140,7 @@ class OkHttpWebSocketClient(
     private val mutableWinnerId = MutableStateFlow<Int?>(null)
 
     private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
+    private val mutableDiceRollTick = MutableStateFlow(0L)
     private val mutableActivePlayerId = MutableStateFlow<Int?>(null)
     private val mutableActiveGameId = MutableStateFlow<Int?>(null)
     private val mutableIsLobbyHost = MutableStateFlow(false)
@@ -673,7 +676,12 @@ class OkHttpWebSocketClient(
                 }
                 parsePurchaseSuccess(json)?.let { mutablePurchaseEvents.tryEmit(it) }
                 parsePurchaseFailure(json)?.let { mutablePurchaseEvents.tryEmit(it) }
-                parseDiceResult(json)?.let { mutableDiceResult.value = it }
+                parseDiceResult(json)?.let {
+                    // Set the result first, then bump the tick so any collector
+                    // that reacts to the tick already sees the new dice (#346).
+                    mutableDiceResult.value = it
+                    mutableDiceRollTick.value += 1
+                }
                 handleGameEnded(json)
             }
             "ERROR" -> {
@@ -1407,6 +1415,7 @@ class OkHttpWebSocketClient(
         mutableGamePhase.value = GamePhase.NONE
         mutablePlayers.value = emptyList()
         mutableDiceResult.value = null
+        mutableDiceRollTick.value = 0L
         mutableActivePlayerId.value = null
         mutableLobbyCode.value = null
         mutableGameStatus.value = null

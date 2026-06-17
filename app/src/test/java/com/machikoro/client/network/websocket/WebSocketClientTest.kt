@@ -49,6 +49,7 @@ class DummyWebSocketClient : WebSocketClient {
     override val isLobbyHost: StateFlow<Boolean> = MutableStateFlow(false)
     override val winnerId: StateFlow<Int?> = MutableStateFlow(null)
     override val diceResult: StateFlow<List<Int>?> = MutableStateFlow(null)
+    override val diceRollTick: StateFlow<Long> = MutableStateFlow(0L)
     override val activePlayerId: StateFlow<Int?> = MutableStateFlow(null)
     override val authRejections = kotlinx.coroutines.flow.MutableSharedFlow<Unit>()
     override val lobbyJoinErrors: SharedFlow<ClientError.WebSocket> = MutableSharedFlow(

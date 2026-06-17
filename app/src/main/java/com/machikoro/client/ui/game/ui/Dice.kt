@@ -160,8 +160,9 @@ fun DiceSection(
     var hasRerolled by remember(state.roundNumber, state.activePlayerId) { mutableStateOf(false) }
     // Captures dice count when non-active player animation is triggered (ROLL_DICE message has per-die values).
     var localAnimationDiceCount by remember(state.roundNumber, state.activePlayerId) { mutableIntStateOf(1) }
-    // Guards against re-triggering when snapshot overwrites live [x, y] result with [total].
-    var hasAnimatedThisTurn by remember(state.roundNumber, state.activePlayerId) { mutableStateOf(false) }
+    // Last roll tick we already animated. Seeded with the current tick so entering
+    // mid-turn does not replay a roll that already happened (#346).
+    var lastAnimatedTick by remember { mutableStateOf(state.diceRollTick) }
 
     // Active player uses frozen/selected count; snapshot only stores total so diceResult.size is unreliable after reconnect.
     // Non-active player uses the count captured from the live ROLL_DICE message (before snapshot overwrites it).
@@ -172,25 +173,27 @@ fun DiceSection(
     }
 
     LaunchedEffect(state.diceResult) {
-        when {
-            state.diceResult == null -> {
-                // New turn — reset all per-turn local state.
-                selectedDiceCount = null
-                frozenDiceCount = null
-                hasRerolled = false
-                // #346: also clear the once-per-turn animation guard so a fresh
-                // result within the same turn (e.g. a Radio Tower reroll) animates
-                // again for non-active players instead of the result silently
-                // swapping in without a roll animation.
-                hasAnimatedThisTurn = false
-            }
-            !state.isActivePlayer && !isAnimating && !hasAnimatedThisTurn -> {
-                // Non-active player: capture count from ROLL_DICE message (has per-die values) before snapshot overwrites.
-                localAnimationDiceCount = state.diceResult.size
-                isAnimating = true
-                hasAnimatedThisTurn = true
-            }
+        if (state.diceResult == null) {
+            // New turn — reset per-turn local state.
+            selectedDiceCount = null
+            frozenDiceCount = null
+            hasRerolled = false
         }
+    }
+
+    // #346: animate non-active players on every genuine roll AND reroll. The tick
+    // is bumped only by real DICE_ROLLED/DICE_REROLLED frames, so a same-turn
+    // Radio Tower reroll replays the animation, while the [x, y] -> [total]
+    // snapshot collapse (which does not bump the tick) does not.
+    LaunchedEffect(state.diceRollTick) {
+        if (!state.isActivePlayer &&
+            state.diceResult != null &&
+            state.diceRollTick > lastAnimatedTick
+        ) {
+            localAnimationDiceCount = state.diceResult.size
+            isAnimating = true
+        }
+        lastAnimatedTick = state.diceRollTick
     }
 
     LaunchedEffect(isAnimating) {

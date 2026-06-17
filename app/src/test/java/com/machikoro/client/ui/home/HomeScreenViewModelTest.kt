@@ -250,6 +250,7 @@ class HomeScreenViewModelTest {
             MutableStateFlow(GamePhase.NONE)
         override val diceResult: StateFlow<List<Int>?> =
             MutableStateFlow(null)
+        override val diceRollTick: StateFlow<Long> = MutableStateFlow(0L)
         override val activePlayerId: StateFlow<Int?> = // NEU
             MutableStateFlow(null)
         override val players: StateFlow<List<PlayerCoinState>> =
