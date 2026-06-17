@@ -3669,7 +3669,7 @@ class OkHttpWebSocketClientTest {
 
         assertEquals("CHAT", body.getString("type"))
         assertEquals(7, body.getInt("gameId"))
-        assertEquals("hello world", body.getString("content"))
+        assertEquals("hello world", body.getString("message"))
     }
     @Test
     fun sendChatMessageWithoutConnectionIsIgnored() {
