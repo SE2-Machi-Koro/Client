@@ -525,8 +525,7 @@ class OkHttpWebSocketClient(
 
         val body = JSONObject()
             .put("type", "CHAT")
-            .put("sender", WebSocketContract.defaultSender)
-            .put("content", message)
+            .put("message", message)
             .put("gameId", gameId)
             .toString()
 
@@ -534,7 +533,7 @@ class OkHttpWebSocketClient(
             StompFrame(
                 command = "SEND",
                 headers = mapOf(
-                    "destination" to WebSocketContract.chatSendDestination,
+                    "destination" to WebSocketContract.gameChatSendDestination,
                     "content-type" to "application/json"
                 ),
                 body = body
@@ -963,12 +962,15 @@ class OkHttpWebSocketClient(
     }
 
     private fun handleChatMessage(json: JSONObject) {
+        if (json.optString("type") != "CHAT") return //ignore messages of other types
         // Flexible detection: the server might put message/sender in the top-level or under payload.
         val payload = json.optJSONObject("payload")
         val msg = payload?.optString("message") ?: json.optString("content")
         if (msg.isBlank()) return
         val sender = payload?.optString("sender") ?: json.optString("sender") ?: json.optString("username")
         if (sender.isBlank()) return
+
+        Log.d(TAG, "Received chat message from $sender: $msg")
 
         mutableChatMessages.tryEmit(
             ChatMessageState(
