@@ -298,7 +298,7 @@ class GameScreenViewModel(
         // the dice animation stuck in the rolling state.
         if (mutableState.value.isRolling) return
 
-        mutableState.update { it.copy(isRolling = true) }
+        mutableState.update { it.copy(isRolling = true, requestedDiceCount = diceCount) }
         startRollTimeout(expectedPhase = GamePhase.ROLL_DICE)
         webSocketClient.rollDice(diceCount)
     }

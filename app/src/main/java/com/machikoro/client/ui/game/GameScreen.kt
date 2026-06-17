@@ -17,15 +17,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,8 +50,8 @@ import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.cheat.ShakeDetector
 import com.machikoro.client.ui.game.ui.BigPlayerCardsDisplay
 import com.machikoro.client.ui.game.ui.BuyingPhaseShop
-import com.machikoro.client.ui.game.ui.DiceAnimationDisplay
 import com.machikoro.client.ui.game.ui.DiceResultDisplay
+import com.machikoro.client.ui.game.ui.DiceSection
 import com.machikoro.client.ui.game.ui.GamePhaseBanner
 import com.machikoro.client.ui.game.ui.GameScreenLayout
 import com.machikoro.client.ui.game.ui.InitializationLoadingOverlay
@@ -159,7 +156,6 @@ fun GameScreen(
 
     val isCardViewPossible = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
             && !state.isActivePlayer)
-    val showRadioTowerReroll = state.canReroll && canReroll
 
     LaunchedEffect(showOwnCards) {
         if (showOwnCards) {
@@ -351,7 +347,7 @@ fun GameScreen(
                             .align(Alignment.Center)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)
                     ) {
-                        if(state.gamePhase != GamePhase.ROLL_DICE && !showRadioTowerReroll) {
+                        if(state.gamePhase != GamePhase.ROLL_DICE && state.gamePhase != GamePhase.RESOLVE_EFFECTS) {
                             state.diceResult?.let { DiceResultDisplay(dice = it) }
                         }
                     }
@@ -430,82 +426,15 @@ fun GameScreen(
                         } else BasicText("Waiting for purchase")
                     }
 
-                    else if (state.gamePhase == GamePhase.ROLL_DICE || showRadioTowerReroll) {
-                        Column(
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(bottom = 32.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            when {
-                                state.isRolling -> DiceAnimationDisplay()
-                                state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
-                                // #306: dice image sits above the button (not inside it)
-                                // so a static die is shown before the first roll.
-                                else -> Image(
-                                    painter = painterResource(id = R.drawable.game_dice_perspective),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(56.dp)
-                                )
-                            }
-
-                            if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
-                                var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
-
-                                if (state.gamePhase == GamePhase.ROLL_DICE && state.hasTrainStation) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        listOf(1, 2).forEach { count ->
-                                            Button(
-                                                onClick = { selectedDiceCount = count },
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = if (selectedDiceCount == count)
-                                                        MaterialTheme.colorScheme.primary
-                                                    else
-                                                        MaterialTheme.colorScheme.surfaceVariant,
-                                                    contentColor = if (selectedDiceCount == count)
-                                                        MaterialTheme.colorScheme.onPrimary
-                                                    else
-                                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            ) {
-                                                Text("$count 🎲")
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (showRadioTowerReroll) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        ActionButton(
-                                            onClick = { onReroll(state.diceResult?.size ?: 1) },
-                                            enabled = !state.isRolling,
-                                            label = "Roll Dice Again",
-                                            modifier = Modifier.semantics {
-                                                contentDescription = "Roll Dice Again"
-                                            }
-                                        )
-                                        SecondaryActionButton(
-                                            onClick = onSkipReroll,
-                                            enabled = !state.isRolling,
-                                            label = "Skip",
-                                            modifier = Modifier.semantics {
-                                                contentDescription = "Skip reroll"
-                                            }
-                                        )
-                                    }
-                                } else {
-                                    ActionButton(
-                                        onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
-                                        enabled = !state.isRolling,
-                                        label = if (state.diceResult == null) "Roll Dice" else "Roll Dice Again",
-                                        modifier = Modifier.semantics {
-                                            contentDescription = "Roll Dice"
-                                        }
-                                    )
-                                }
-                            }
-                        }
+                    else if (state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
+                        DiceSection(
+                            state = state,
+                            onRollDice = onRollDice,
+                            onReroll = onReroll,
+                            onSkipReroll = onSkipReroll,
+                            canReroll = canReroll,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
                     }
                 }
             },
