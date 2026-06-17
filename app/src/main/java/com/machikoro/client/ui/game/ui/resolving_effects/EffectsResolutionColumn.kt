@@ -28,14 +28,14 @@ fun EffectsResolutionColumn(
         modifier = modifier
     ) {
 
-    CoinBadge(earnedCoins, modifier = modifier.size(36.dp))
+    CoinBadge(earnedCoins, modifier = Modifier.size(36.dp))
 
 
     CompositionLocalProvider(
         LocalOverscrollFactory provides null
     ) {
         LazyColumn(
-            modifier = modifier.width(145.dp),
+            modifier = Modifier.width(145.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
