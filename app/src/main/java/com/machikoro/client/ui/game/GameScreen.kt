@@ -441,6 +441,13 @@ fun GameScreen(
                             when {
                                 state.isRolling -> DiceAnimationDisplay()
                                 state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
+                                // #306: dice image sits beside the button (not inside it)
+                                // so a static die is shown before the first roll.
+                                else -> Image(
+                                    painter = painterResource(id = R.drawable.game_dice_perspective),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(56.dp)
+                                )
                             }
 
                             if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
@@ -473,10 +480,9 @@ fun GameScreen(
                                         ActionButton(
                                             onClick = { onReroll(state.diceResult?.size ?: 1) },
                                             enabled = !state.isRolling,
-                                            label = "Nochmal würfeln",
-                                            leftIcon = R.drawable.game_dice_perspective,
+                                            label = "Roll Dice Again",
                                             modifier = Modifier.semantics {
-                                                contentDescription = "Nochmal würfeln"
+                                                contentDescription = "Roll Dice Again"
                                             }
                                         )
                                         SecondaryActionButton(
@@ -492,10 +498,9 @@ fun GameScreen(
                                     ActionButton(
                                         onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
                                         enabled = !state.isRolling,
-                                        label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
-                                        leftIcon = R.drawable.game_dice_perspective,
+                                        label = if (state.diceResult == null) "Roll Dice" else "Roll Dice Again",
                                         modifier = Modifier.semantics {
-                                            contentDescription = "Würfeln"
+                                            contentDescription = "Roll Dice"
                                         }
                                     )
                                 }
