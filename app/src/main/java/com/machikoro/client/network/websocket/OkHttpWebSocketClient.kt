@@ -14,6 +14,7 @@ import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.network.error.ClientError
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.AccusationResult
+import com.machikoro.client.domain.model.state.ChatMessageState
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
@@ -114,6 +115,9 @@ class OkHttpWebSocketClient(
     override val accusationErrors: SharedFlow<String>
         get() = mutableAccusationErrors.asSharedFlow()
 
+    override val chatMessages: SharedFlow<ChatMessageState>
+        get() = mutableChatMessages.asSharedFlow()
+
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
@@ -161,6 +165,11 @@ class OkHttpWebSocketClient(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
+    private val mutableChatMessages = MutableSharedFlow<ChatMessageState>(
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+
     private val frameBuffer = StringBuilder()
 
     @Volatile
@@ -507,6 +516,37 @@ class OkHttpWebSocketClient(
         Log.d(TAG, "Purchase message sent for game id: $gameId")
     }
 
+    override fun sendChatMessage(gameId: Int, message: String) {
+        val socket = synchronized(this) { webSocket }
+        if (socket == null) {
+            Log.w(TAG, "sendChatMessage called but no active WebSocket connection")
+            return
+        }
+
+        val body = JSONObject()
+            .put("type", "CHAT")
+            .put("message", message)
+            .put("gameId", gameId)
+            .toString()
+
+        val sent = socket.send(
+            StompFrame(
+                command = "SEND",
+                headers = mapOf(
+                    "destination" to WebSocketContract.gameChatSendDestination,
+                    "content-type" to "application/json"
+                ),
+                body = body
+            ).serialize()
+        )
+
+        if (!sent) {
+            Log.w(TAG, "sendChatMessage: failed to send frame")
+        } else {
+            Log.d(TAG, "Chat message sent (gameId=$gameId)")
+        }
+    }
+
     private fun sendGameIdAction(destination: String, gameId: Int, actionName: String) {
         val socket = synchronized(this) { webSocket }
         if (socket == null) {
@@ -626,6 +666,7 @@ class OkHttpWebSocketClient(
                 handleAuthoritativeSnapshot(json)
                 handleAccusationResult(json)
                 handleAccusationError(json)
+                handleChatMessage(json)
                 parseGameAction(json).let { (phase, activePlayerId) ->
                     phase?.let { mutableGamePhase.value = it }
                     activePlayerId?.let { mutableActivePlayerId.value = it }
@@ -918,6 +959,25 @@ class OkHttpWebSocketClient(
         if (json.optString("code") != INVALID_ACCUSATION_CODE) return
         val message = json.optString("message").takeIf { it.isNotBlank() } ?: "Invalid accusation"
         mutableAccusationErrors.tryEmit(message)
+    }
+
+    private fun handleChatMessage(json: JSONObject) {
+        if (json.optString("type") != "CHAT") return //ignore messages of other types
+        // Flexible detection: the server might put message/sender in the top-level or under payload.
+        val payload = json.optJSONObject("payload")
+        val msg = payload?.optString("message") ?: json.optString("content")
+        if (msg.isBlank()) return
+        val sender = payload?.optString("sender") ?: json.optString("sender") ?: json.optString("username")
+        if (sender.isBlank()) return
+
+        Log.d(TAG, "Received chat message from $sender: $msg")
+
+        mutableChatMessages.tryEmit(
+            ChatMessageState(
+                sender = sender,
+                message = msg,
+            )
+        )
     }
 
     private fun handleAuthoritativeSnapshot(json: JSONObject) {
