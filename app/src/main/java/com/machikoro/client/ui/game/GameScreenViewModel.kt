@@ -32,8 +32,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -271,16 +271,17 @@ class GameScreenViewModel(
         // means the timer is (re)scheduled exactly once per entry into the
         // condition and cancelled exactly once on leaving it.
         viewModelScope.launch {
-            mutableState
-                .map { it.isInResolveEffectsAsActivePlayer() }
+            mutableState.combine(mutableCanRerollThisTurn) { state, canRerollThisTurn ->
+                state.shouldAutoResolveEffects(canRerollThisTurn)
+            }
                 .distinctUntilChanged()
-                .collect { inResolveEffects ->
+                .collect { shouldAutoResolve ->
                     resolveEffectsJob?.cancel()
-                    if (inResolveEffects) {
+                    if (shouldAutoResolve) {
                         resolveEffectsJob = viewModelScope.launch {
                             delay(resolveEffectsDwellMillis)
                             val now = mutableState.value
-                            if (now.isInResolveEffectsAsActivePlayer()) {
+                            if (now.shouldAutoResolveEffects(mutableCanRerollThisTurn.value)) {
                                 now.gameId?.let { webSocketClient.resolveEffects(it) }
                             }
                         }
@@ -316,6 +317,18 @@ class GameScreenViewModel(
         mutableState.update { it.copy(isRolling = true) }
         startRollTimeout(expectedPhase = GamePhase.RESOLVE_EFFECTS)
         webSocketClient.rerollDice(diceCount)
+    }
+
+    fun skipReroll() {
+        val current = mutableState.value
+        val gameId = current.gameId ?: return
+        if (!current.canReroll) return
+        if (!mutableCanRerollThisTurn.value) return
+        if (current.isRolling) return
+
+        mutableCanRerollThisTurn.value = false
+        resolveEffectsJob?.cancel()
+        webSocketClient.resolveEffects(gameId)
     }
 
     private fun startRollTimeout(expectedPhase: GamePhase) {
@@ -407,9 +420,14 @@ class GameScreenViewModel(
      */
     private fun GameScreenState.isInResolveEffectsAsActivePlayer(): Boolean =
         gameStatus == GameStatus.IN_PROGRESS &&
-        gamePhase == GamePhase.RESOLVE_EFFECTS &&
-        isActivePlayer &&
-        gameId != null
+            gamePhase == GamePhase.RESOLVE_EFFECTS &&
+            isActivePlayer &&
+            gameId != null
+
+    private fun GameScreenState.shouldAutoResolveEffects(canRerollThisTurn: Boolean): Boolean =
+        isInResolveEffectsAsActivePlayer() &&
+            !isRolling &&
+            !(canReroll && canRerollThisTurn)
 
     fun selectPurchaseItem(itemType: String) {
         val current = mutableState.value
