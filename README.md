@@ -114,20 +114,22 @@ To enable full game functionality, a running instance of the Machi Koro Backend 
 
 The application uses Gradle properties to configure the backend connection. These can be defined in your root `local.properties`, project or user Gradle properties, or passed via command line. Command-line `-P` values take precedence over `local.properties`.
 
-| Property Name | Default Value (Emulator) | Description |
-| :--- | :--- | :--- |
-| `backendBaseUrl` | `http://10.0.2.2:8080` | The REST API base URL |
-| `websocketUrl` | `ws://10.0.2.2:8080/ws` | The STOMP WebSocket endpoint |
+By default the client points to the **Railway production backend**. To target a local backend (e.g. the Android emulator at `10.0.2.2:8080`) override these properties.
 
-**Example CLI build with custom URLs:**
+| Property Name | Default Value (Railway production) | Description |
+| :--- | :--- | :--- |
+| `backendBaseUrl` | `https://machi-koro.up.railway.app` | The REST API base URL |
+| `websocketUrl` | `wss://machi-koro.up.railway.app/ws` | The STOMP WebSocket endpoint |
+
+**Example CLI build targeting a local emulator backend:**
 ```bash
-./gradlew assembleDebug -PbackendBaseUrl=http://api.myapp.com -PwebsocketUrl=ws://api.myapp.com/ws
+./gradlew assembleDebug -PbackendBaseUrl=http://10.0.2.2:8080 -PwebsocketUrl=ws://10.0.2.2:8080/ws
 ```
 
 **Example `local.properties` configuration:**
 ```properties
-backendBaseUrl=http://api.myapp.com
-websocketUrl=ws://api.myapp.com/ws
+backendBaseUrl=http://10.0.2.2:8080
+websocketUrl=ws://10.0.2.2:8080/ws
 ```
 
 ## 📦 Build & Deployment
@@ -162,7 +164,9 @@ We use **Jacoco** for coverage reporting. The build will fail if line coverage f
 
 ## ⚡️ Note for Developers
 
-> **Important:** To run the full Machi Koro system locally, you must have the backend server running. If you haven't already, clone and start the backend project:
+> **Important:** By default the client connects to the **Railway production backend** (`https://machi-koro.up.railway.app`), so no local setup is required to run against it.
+>
+> To run the full Machi Koro system locally instead, start the backend server and override the connection properties (see [Environment Variables](#️-environment-variables)). If you haven't already, clone and start the backend project:
 >
  > ```bash
  > git clone https://github.com/SE2-Machi-Koro/Server.git
@@ -170,10 +174,10 @@ We use **Jacoco** for coverage reporting. The build will fail if line coverage f
  > docker compose up --build
  > ```
 >
-> The client will not function without the backend API and WebSocket services available. For more details, see the [Server repository](https://github.com/SE2-Machi-Koro/Server).
+> The client will not function without the backend API and WebSocket services available — either the hosted Railway deployment or a locally running instance. For more details, see the [Server repository](https://github.com/SE2-Machi-Koro/Server).
 
 ---
   
 ---
 
-Last updated 13.06.2026
+Last updated 18.06.2026
