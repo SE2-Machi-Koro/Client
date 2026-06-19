@@ -1,5 +1,6 @@
 package com.machikoro.client.ui.game
 
+import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -28,6 +29,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.machikoro.client.domain.model.state.AccusationResult
+import com.machikoro.client.domain.model.state.ChatMessageState
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -98,6 +100,8 @@ class GameScreenViewModel(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
+
+    private val _chatMessages = mutableStateListOf<ChatMessageState>()
 
     /** Debug End-game (#191): one-shot failure message, drives a snackbar. */
     val debugEndGameErrors: SharedFlow<String>
@@ -287,6 +291,12 @@ class GameScreenViewModel(
                         }
                     }
                 }
+        }
+        viewModelScope.launch {
+            webSocketClient.chatMessages.collect { chat ->
+                _chatMessages.add(chat)
+                mutableState.update { it.copy(chatMessages = _chatMessages) }
+            }
         }
     }
 
@@ -479,6 +489,13 @@ class GameScreenViewModel(
             cardType = item.type.takeIf { item.purchaseType == PurchaseType.ESTABLISHMENT },
             landmarkType = item.type.takeIf { item.purchaseType == PurchaseType.LANDMARK }
         )
+    }
+
+    fun sendChatMessage(message: String) {
+        val current = mutableState.value
+        val gameId = current.gameId ?: return
+        if (message.isBlank()) return
+        webSocketClient.sendChatMessage(gameId, message.trim())
     }
 
     private fun GameScreenState.canSelectPurchaseItem(item: ShopItem): Boolean =
