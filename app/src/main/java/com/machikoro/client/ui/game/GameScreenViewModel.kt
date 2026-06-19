@@ -141,7 +141,17 @@ class GameScreenViewModel(
             webSocketClient.gamePhase.collect { gamePhase ->
                 var shouldCancelPendingRoll = false
                 mutableState.update { state ->
-                    state.copy(gamePhase = gamePhase)
+                    // A new roll phase means a fresh roll: drop the previous turn's
+                    // dice. The server never sends a null diceResult between turns, so
+                    // without this the stale result lingers — hiding the Roll Dice
+                    // button (its condition is diceResult == null) and leaving the last
+                    // number and a frozen die on screen.
+                    val enteringRollDice =
+                        gamePhase == GamePhase.ROLL_DICE && state.gamePhase != GamePhase.ROLL_DICE
+                    state.copy(
+                        gamePhase = gamePhase,
+                        diceResult = if (enteringRollDice) null else state.diceResult,
+                    )
                         .resetPurchaseFeedbackIf(gamePhase != GamePhase.BUY_OR_BUILD)
                         .let { updated ->
                             // Issue #175: if the server advances the phase without a

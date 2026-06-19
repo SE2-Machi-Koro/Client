@@ -214,6 +214,24 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun diceResultIsClearedWhenEnteringRollDicePhase() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+
+        // Previous turn's result, outside the roll phase.
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitDiceResult(listOf(3, 4))
+        advanceUntilIdle()
+        assertEquals(listOf(3, 4), viewModel.state.value.diceResult)
+
+        // A new turn enters ROLL_DICE: the stale result must be dropped so the
+        // Roll Dice button reappears and the old number/die stop showing.
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        advanceUntilIdle()
+        assertNull(viewModel.state.value.diceResult)
+    }
+
+    @Test
     fun activeGameIdFromClientIsReflectedInState() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient)

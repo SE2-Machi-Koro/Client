@@ -41,8 +41,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
 private const val DICE_ANIMATION_INTERVAL_MS = 100L // faster change
-private const val DICE_ANIMATION_DURATION_MS = 5000L // active player: full timer
-private const val NON_ACTIVE_DICE_ANIMATION_MS = 2000L // non-active player: brief animation before reveal
+// One brief roll animation for everyone, so the reveal isn't held behind a long fixed
+// delay and active/non-active players stay in lockstep (matters during a Radio Tower
+// reroll where both spin off the same roll tick). The active player's spin also ends
+// the instant the server confirms the result (see the isRolling effect below), so this
+// is only the upper bound; non-active players already hold the result and reveal it
+// after the same short spin.
+private const val DICE_ANIMATION_DURATION_MS = 1500L
 private val DICE_FACES = listOf(
     R.drawable.game_dice_1,
     R.drawable.game_dice_2,
@@ -198,8 +203,8 @@ fun DiceSection(
 
     LaunchedEffect(isAnimating) {
         if (isAnimating) {
-            // Non-active players already have the result; show a shorter animation before revealing it.
-            delay(if (state.isActivePlayer) DICE_ANIMATION_DURATION_MS else NON_ACTIVE_DICE_ANIMATION_MS)
+            // Same brief spin for active and non-active players before the result shows.
+            delay(DICE_ANIMATION_DURATION_MS)
             isAnimating = false
         }
     }
@@ -257,11 +262,6 @@ fun DiceSection(
                 // Roll button: only when server has no result yet and we are in ROLL_DICE
                 if (state.gamePhase == GamePhase.ROLL_DICE && state.diceResult == null) {
                     val chosen = frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount
-                    Image(
-                        painter = painterResource(id = R.drawable.game_dice_perspective),
-                        contentDescription = "Dice",
-                        modifier = Modifier.size(48.dp)
-                    )
                     ActionButton(
                         onClick = {
                             frozenDiceCount = chosen
