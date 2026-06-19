@@ -16,6 +16,10 @@ data class GameScreenState(
     val customDisplayText: String? = null,
     val players: List<PlayerCoinState>,
     val diceResult: List<Int>? = null,
+    // Bumped on every genuine roll/reroll (not on reconnect snapshots) so the UI
+    // can animate non-active players for each real roll, including a same-turn
+    // Radio Tower reroll (#346).
+    val diceRollTick: Long = 0L,
     val activePlayerId: Int? = null,
     val winnerId: Int? = null,
     val myUserId: Int? = null,
@@ -29,6 +33,10 @@ data class GameScreenState(
     // Short feedback text shown in the shop for pending, success, or retryable errors.
     val purchaseMessage: String? = null,
     val isRolling: Boolean = false,
+    // Dice count the active player requested for the in-flight roll. Drives the
+    // rolling animation (how many dice spin) since the snapshot persists only
+    // the total, making diceResult.size unreliable after a reconnect.
+    val requestedDiceCount: Int = 1,
     // Reconnect snapshot fields (from /app/game.sync).
     val gameStatus: GameStatus? = null,
     val roundNumber: Int? = null,
@@ -88,6 +96,7 @@ data class GameScreenState(
             purchaseFeedbackItemType = null,
             purchaseMessage = null,
             isRolling = false,
+            requestedDiceCount = 1,
             gameStatus = null,
             roundNumber = null,
             playerCards = emptyMap(),
