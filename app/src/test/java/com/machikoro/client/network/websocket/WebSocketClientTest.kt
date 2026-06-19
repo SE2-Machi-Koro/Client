@@ -182,6 +182,22 @@ class WebSocketClientTest {
     }
 
     @Test
+    fun laterSnapshotDoesNotCollapsePerDiceResultIntoTotal() {
+        val fixture = okHttpClientFixture()
+
+        // Live roll gives the individual dice (2 + 6 = 8).
+        fixture.deliverMessage(rollDiceMessage())
+        assertEquals(listOf(2, 6), fixture.client.diceResult.value)
+
+        // A routine snapshot only carries the total (lastDiceRoll:8). It must not
+        // overwrite the richer per-die result for the same roll, or the dice display
+        // would flip from two dice to one generic die and hide doubles.
+        fixture.deliverMessage(gameActionMessage())
+
+        assertEquals(listOf(2, 6), fixture.client.diceResult.value)
+    }
+
+    @Test
     fun gameEndAppliesFinalSnapshot() {
         val fixture = okHttpClientFixture()
 

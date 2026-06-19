@@ -123,25 +123,43 @@ fun DiceResultDisplay(
     modifier: Modifier = Modifier
 ) {
     val sum = dice.sum()
+    // Doubles (two equal dice) matter in Machi Koro — the Amusement Park grants an
+    // extra turn on doubles — so call them out instead of leaving players to notice.
+    val isDoubles = dice.size == 2 && dice.distinct().size == 1
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier
     ) {
-        dice.forEach { value ->
-            Image(
-                painter = painterResource(id = diceDrawableFor(value)),
-                contentDescription = "Dice showing $value",
-                modifier = Modifier.size(56.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            dice.forEach { value ->
+                Image(
+                    painter = painterResource(id = diceDrawableFor(value)),
+                    contentDescription = "Dice showing $value",
+                    modifier = Modifier.size(56.dp)
+                )
+            }
+            Text(
+                text = "$sum",
+                style = MaterialTheme.typography.bodyLarge,
+                fontSize = 36.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
             )
         }
-        Text(
-            text = "$sum",
-            style = MaterialTheme.typography.bodyLarge,
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
+        if (isDoubles) {
+            Text(
+                text = "Doubles!",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.Yellow,
+                modifier = Modifier.semantics { contentDescription = "Doubles" }
+            )
+        }
     }
 }
 

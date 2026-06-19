@@ -615,10 +615,16 @@ class GameScreenViewModel(
     companion object {
         /**
          * #302: how long the client dwells on RESOLVE_EFFECTS before auto-sending
-         * resolveEffects. Configurable; ~20s per the issue. A placeholder constant
-         * for now — a visible timer will replace it later.
+         * resolveEffects — long enough to read the dice result and income, then
+         * advance. This is the same value the RESOLVE_EFFECTS phase timer counts
+         * down (see [RESOLVE_EFFECTS_TIMER_SECONDS]), so the visible countdown and
+         * the actual phase length stay in lockstep. Players without a Radio Tower
+         * have nothing to decide here, so it is kept short rather than the old 20s.
          */
-        const val DEFAULT_RESOLVE_EFFECTS_DWELL_MS = 20_000L
+        const val DEFAULT_RESOLVE_EFFECTS_DWELL_MS = 6_000L
+
+        /** RESOLVE_EFFECTS phase-timer length, in seconds, derived from the dwell. */
+        const val RESOLVE_EFFECTS_TIMER_SECONDS = (DEFAULT_RESOLVE_EFFECTS_DWELL_MS / 1000L).toInt()
     }
 
     class Factory(

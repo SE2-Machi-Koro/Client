@@ -1015,9 +1015,17 @@ class OkHttpWebSocketClient(
         parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
         game.optIntOrNull("roundNumber")?.let { mutableRoundNumber.value = it }
         // The snapshot persists only the dice total (lastDiceRoll), not the
-        // individual dice — surface it as a single-element list so the game
-        // screen can show the last roll on reconnect.
-        game.optIntOrNull("lastDiceRoll")?.let { mutableDiceResult.value = listOf(it) }
+        // individual dice. Surface it as a single-element list so the last roll
+        // still shows on reconnect — but do NOT clobber a richer per-die result we
+        // already hold for the same roll (it sums to this total). Otherwise a
+        // routine snapshot collapses [x, y] into a single generic die mid-turn,
+        // which is the inconsistent "one vs two dice" display and also hides doubles.
+        game.optIntOrNull("lastDiceRoll")?.let { total ->
+            val current = mutableDiceResult.value
+            if (current == null || current.sum() != total) {
+                mutableDiceResult.value = listOf(total)
+            }
+        }
 
         val playerUsernames = parsePlayerUsernames(state.optJSONObject("playerUsernames"))
         mutablePlayers.value = state.optJSONArray("players").toPlayerCoinStates(state, game, playerUsernames)

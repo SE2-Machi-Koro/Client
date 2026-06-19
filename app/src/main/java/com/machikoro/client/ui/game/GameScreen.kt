@@ -143,7 +143,9 @@ fun GameScreen(
         when {
             state.isBuyingPhase -> 30
             state.gamePhase == GamePhase.ROLL_DICE -> 20
-            state.gamePhase == GamePhase.RESOLVE_EFFECTS -> 25
+            // Matches the actual auto-advance dwell so the countdown the player sees
+            // is the real time until RESOLVE_EFFECTS ends, not a longer, unrelated number.
+            state.gamePhase == GamePhase.RESOLVE_EFFECTS -> GameScreenViewModel.RESOLVE_EFFECTS_TIMER_SECONDS
             else -> 0
         }
 
