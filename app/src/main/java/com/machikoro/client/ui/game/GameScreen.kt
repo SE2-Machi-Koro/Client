@@ -16,9 +16,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,6 +42,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.machikoro.client.BuildConfig
 import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
@@ -45,6 +50,7 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.ShopCatalog
+import com.machikoro.client.domain.model.state.ChatMessageState
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCoinState
@@ -53,6 +59,7 @@ import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.cheat.ShakeDetector
 import com.machikoro.client.ui.game.ui.BigPlayerCardsDisplay
 import com.machikoro.client.ui.game.ui.BuyingPhaseShop
+import com.machikoro.client.ui.game.ui.ChatOverlay
 import com.machikoro.client.ui.game.ui.DiceAnimationDisplay
 import com.machikoro.client.ui.game.ui.DiceResultDisplay
 import com.machikoro.client.ui.game.ui.GamePhaseBanner
@@ -91,6 +98,7 @@ fun GameScreen(
     onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     onEndGame: () -> Unit = {},
+    onSendChatMessage: (message: String) -> Unit = {},
     cheatRecommendation: CardType? = null,
     onShake: () -> Unit = {},
     onAccuse: (accusedPlayerId: Int) -> Unit = {},
@@ -160,6 +168,8 @@ fun GameScreen(
     val isCardViewPossible = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
             && !state.isActivePlayer)
     val showRadioTowerReroll = state.canReroll && canReroll
+
+    var chatOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(showOwnCards) {
         if (showOwnCards) {
@@ -587,6 +597,28 @@ fun GameScreen(
                 )
             }
         }
+        // Chat overlay
+        ChatOverlay(
+            open = chatOpen,
+            messages = state.chatMessages,
+            onSendMessageClick = onSendChatMessage,
+            onClose = { chatOpen = false }
+        )
+
+        // Floating chat button
+        FloatingActionButton(
+            onClick = {
+                chatOpen = !chatOpen
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Icon(
+                Icons.Default.Chat,
+                contentDescription = "Chat"
+            )
+        }
     }
     InitializationLoadingOverlay(
         connectionStatus = state.connectionStatus,
@@ -653,7 +685,7 @@ private fun GameScreenRollDicePreview() {
                 purchaseState = PurchaseState.IDLE,
                 myUserId = 1,
                 activePlayerId = 1,
-            )
+            ),
         )
     }
 }
