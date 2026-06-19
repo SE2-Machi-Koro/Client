@@ -76,11 +76,10 @@ fun ChatOverlay(
                     ) {
 
                         items(messages) { msg ->
-
                             Text(
-                                text = msg.toString(),
+                                text = "${msg.sender}: ${msg.message}",
                                 color = Color.White,
-                                modifier = Modifier.padding(4.dp)
+                                modifier = Modifier.padding(vertical = 4.dp)
                             )
                         }
                     }
