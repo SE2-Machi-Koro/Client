@@ -352,7 +352,8 @@ fun GameScreen(
                         if(state.gamePhase != GamePhase.ROLL_DICE && state.gamePhase != GamePhase.RESOLVE_EFFECTS) {
                             state.diceResult?.let {
                                 DiceResultDisplay(dice = it,
-                                    diceSize = 42.dp)
+                                    diceSize = 42.dp,
+                                    modifier = Modifier.offset(y = (-10).dp))
                             }
                         }
                     }
