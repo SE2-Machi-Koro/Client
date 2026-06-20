@@ -22,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -56,8 +55,10 @@ import com.machikoro.client.ui.theme.CardPurpleText
 import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 
 private val SHOP_CARD_SHAPE = RoundedCornerShape(8.dp)
 val RecommendedHighlight = Color(0xFF00C853)
@@ -222,15 +223,21 @@ private fun ShopImageTile(
         }
 
         remainingQuantity?.let { count ->
-            CardQuantityIndicator(
-                quantity = count,
-                modifier = Modifier.align(Alignment.TopStart)
-            )
+                if(!isAlreadyOwnedPurple) {
+                CardQuantityIndicator(
+                    quantity = count,
+                    modifier = Modifier.align(Alignment.TopStart)
+                )
+            }
         }
 
         if (isAlreadyOwnedPurple) {
             OwnedCardIndicator(
-                modifier = Modifier.align(Alignment.TopEnd)
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset(
+                        y = (-15).dp,
+                    )
             )
         }
     }
@@ -241,14 +248,15 @@ private fun OwnedCardIndicator(modifier: Modifier = Modifier) {
     Text(
         text = "Owned",
         color = CardPurpleText,
-        fontSize = 12.sp,
+        fontSize = 14.sp,
         style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
         modifier = modifier
             .padding(top = 6.dp, end = 6.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(CardPurpleBackground)
-            .border(1.dp, CardPurpleText, RoundedCornerShape(8.dp))
-            .padding(horizontal = 8.dp, vertical = 3.dp)
+            .border(2.dp, CardPurpleText, RoundedCornerShape(24.dp))
+            .padding(horizontal = 14.dp, vertical = 4.dp)
             .semantics {
                 contentDescription = "Already owned card indicator"
             }
