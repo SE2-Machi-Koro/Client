@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -101,6 +100,7 @@ fun GameScreen(
         enabled = state.gameStatus == GameStatus.IN_PROGRESS,
         onShake = onShake,
     )
+
 
     // Cheating accusation (#280): the Accuse action in the player-inspection
     // dialog opens this confirmation. Accusing wrongly costs a coin, so we
@@ -468,7 +468,10 @@ fun GameScreen(
                         ) {
                             turnFlowLabel?.let {
                                 ActionButton(
-                                    onClick = if (state.isBuyingPhase) onBuySelectedClick else onTurnFlowAction,
+                                    onClick = {
+                                        SoundManager.play(GameSound.PURCHASE)
+                                        if (state.isBuyingPhase) onBuySelectedClick() else onTurnFlowAction()
+                                    },
                                     enabled = !state.isBuyingPhase || state.canConfirmSelectedPurchase(),
                                     modifier = Modifier
                                         .semantics {

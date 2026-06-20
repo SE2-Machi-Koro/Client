@@ -35,6 +35,7 @@ import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.AppRoot
 import com.machikoro.client.ui.connection.ConnectionBannerViewModel
 import com.machikoro.client.ui.game.GameScreenViewModel
+import com.machikoro.client.ui.game.SoundManager
 import com.machikoro.client.ui.home.HomeViewModel
 import com.machikoro.client.ui.leaderboard.LeaderboardViewModel
 import com.machikoro.client.ui.lobby.LobbyScreenViewModel
@@ -323,6 +324,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        SoundManager.init(applicationContext)
         webSocketClient.connect()
     }
 
@@ -335,6 +337,7 @@ class MainActivity : ComponentActivity() {
         if (SessionManager.session.value == null) {
             webSocketClient.disconnect()
         }
+        SoundManager.release()
         super.onStop()
     }
 }
