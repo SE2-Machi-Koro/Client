@@ -22,13 +22,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.machikoro.client.R
@@ -48,6 +49,7 @@ private const val DICE_ANIMATION_INTERVAL_MS = 100L // faster change
 // is only the upper bound; non-active players already hold the result and reveal it
 // after the same short spin.
 private const val DICE_ANIMATION_DURATION_MS = 1500L
+private val DICE_SIZE = 64.dp
 private val DICE_FACES = listOf(
     R.drawable.game_dice_1,
     R.drawable.game_dice_2,
@@ -120,46 +122,76 @@ fun DiceCountSelector(
 @Composable
 fun DiceResultDisplay(
     dice: List<Int>,
+    diceSize: Dp = DICE_SIZE,
     modifier: Modifier = Modifier
 ) {
     val sum = dice.sum()
     // Doubles (two equal dice) matter in Machi Koro — the Amusement Park grants an
     // extra turn on doubles — so call them out instead of leaving players to notice.
     val isDoubles = dice.size == 2 && dice.distinct().size == 1
-
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            dice.forEach { value ->
-                Image(
-                    painter = painterResource(id = diceDrawableFor(value)),
-                    contentDescription = "Dice showing $value",
-                    modifier = Modifier.size(56.dp)
-                )
-            }
-            Text(
-                text = "$sum",
-                style = MaterialTheme.typography.bodyLarge,
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-        }
         if (isDoubles) {
             Text(
                 text = "Doubles!",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color.Yellow,
-                modifier = Modifier.semantics { contentDescription = "Doubles" }
+                modifier = Modifier.semantics {
+                    contentDescription = "Doubles"
+                }
             )
         }
+
+        if (dice.size == 1) {
+            // One die: image and number in one row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = diceDrawableFor(dice.first())),
+                    contentDescription = "Dice showing ${dice.first()}",
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier.size(diceSize)
+                )
+
+                Text(
+                    text = "$sum",
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        } else {
+            // Two dice: dice in one row, number underneath
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row {
+                    dice.forEach { value ->
+                        Image(
+                            painter = painterResource(id = diceDrawableFor(value)),
+                            contentDescription = "Dice showing $value",
+                            contentScale = ContentScale.FillBounds,
+                            modifier = Modifier.size(diceSize)
+                        )
+                    }
+                }
+
+                Text(
+                    text = "$sum",
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
+
+
     }
 }
 
