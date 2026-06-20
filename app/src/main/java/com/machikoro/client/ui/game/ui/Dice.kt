@@ -1,14 +1,16 @@
 package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -96,27 +98,50 @@ fun DiceCountSelector(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Image(
-        painter = painterResource(id = diceDrawableFor(diceCount)),
-        contentDescription = "Select $diceCount dice",
-        modifier = modifier
-            .size(80.dp)
-            .border(
-                width = if (isSelected) 4.dp else 2.dp,
-                color = if (isSelected)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(12.dp)
-            )
-            .padding(8.dp)
-            .clickable(
+    if(diceCount == 1) {
+        Box(
+            modifier =   Modifier.clickable(
                 enabled = true,
                 onClick = onClick,
-                role = Role.Button
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                role = Role.Button)
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.game_dice_perspective),
+                contentDescription = "Select $diceCount dice",
+                modifier = modifier
+                    .size(80.dp)
+                    .alpha(if (isSelected) 1f else 0.5f)
             )
-            .alpha(if (isSelected) 1f else 0.6f)
-    )
+        }
+    } else {
+        Row(
+            modifier = Modifier.clickable(
+                enabled = true,
+                onClick = onClick,
+                indication = null,
+                interactionSource = remember { MutableInteractionSource()},
+                role = Role.Button)
+                .wrapContentSize()
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.game_dice_perspective),
+                contentDescription = "Select $diceCount dice",
+                modifier = modifier
+                    .size(80.dp)
+                    .alpha(if (isSelected) 1f else 0.6f),
+            )
+            Image(
+                painter = painterResource(id = R.drawable.game_dice_perspective),
+                contentDescription = "Select $diceCount dice",
+                modifier = modifier
+                    .size(80.dp)
+                    .offset(y = (-35).dp)
+                    .alpha(if (isSelected) 1f else 0.5f),
+            )
+        }
+    }
 }
 
 @Composable
@@ -155,7 +180,7 @@ fun DiceResultDisplay(
                 Image(
                     painter = painterResource(id = diceDrawableFor(dice.first())),
                     contentDescription = "Dice showing ${dice.first()}",
-                    contentScale = ContentScale.FillBounds,
+                    contentScale = ContentScale.Fit,
                     modifier = Modifier.size(diceSize)
                 )
 
@@ -171,12 +196,14 @@ fun DiceResultDisplay(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     dice.forEach { value ->
                         Image(
                             painter = painterResource(id = diceDrawableFor(value)),
                             contentDescription = "Dice showing $value",
-                            contentScale = ContentScale.FillBounds,
+                            contentScale = ContentScale.Fit,
                             modifier = Modifier.size(diceSize)
                         )
                     }
@@ -290,7 +317,10 @@ fun DiceSection(
         ) {
             // Roll controls only appear during the actual rolling phase
             if (state.gamePhase == GamePhase.ROLL_DICE && state.hasTrainStation) {
-                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.wrapContentSize()) {
                     listOf(1, 2).forEach { count ->
                         val isSelected = (selectedDiceCount ?: state.requestedDiceCount) == count
                         DiceCountSelector(
