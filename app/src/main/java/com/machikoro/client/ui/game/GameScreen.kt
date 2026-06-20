@@ -429,7 +429,9 @@ fun GameScreen(
                                 recommendedCardType = cheatRecommendation,
                                 modifier = Modifier.align(Alignment.Center)
                             )
-                        } else BasicText("Waiting for purchase")
+                        } else BasicText(
+                            state.activePlayerUsername + " is deciding what card to buy",
+                            modifier = Modifier.offset(y = (-SIDE_CONTENT_OFFSET).dp))
                     }
 
                     else if (state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
