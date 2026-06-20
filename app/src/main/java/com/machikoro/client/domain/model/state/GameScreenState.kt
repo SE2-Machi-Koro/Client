@@ -79,6 +79,8 @@ data class GameScreenState(
             it.landmarkType == landmarkType && it.isBuilt
         }
     }
+    val activePlayerUsername: String
+        get() = players.firstOrNull { it.isActivePlayer }?.displayName ?: "Player"
 
     companion object {
         fun initial() = GameScreenState(
