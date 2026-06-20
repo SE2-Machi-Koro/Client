@@ -1,6 +1,5 @@
 package com.machikoro.client.ui.game.ui
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -8,29 +7,23 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
@@ -42,10 +35,10 @@ import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PurchaseState
+import com.machikoro.client.ui.game.ui.resolving_effects.CardsStack
 import com.machikoro.client.ui.theme.ButtonBorderBeige
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.TextBlueDark
-import com.machikoro.client.ui.theme.TextOnOrange
 
 @Composable
 fun ResolvingEffectsView(
@@ -167,25 +160,10 @@ private fun TriggeredPlayerStack(
             isPositive = isPositive
         )
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy((-18).dp),
-        ) {
-            effects.forEach { effect ->
-                Box(contentAlignment = Alignment.TopStart) {
-                    CardArtImage(
-                        drawableResId = ShopImageResolver.drawableForCardType(effect.cardType),
-                        width = 155.dp,
-                        height = 175.dp,
-                    )
-
-                    CardQuantityIndicator(
-                        quantity = effect.quantity,
-                        isVisible = effect.quantity > 1,
-                    )
-                }
-            }
-        }
+        CardsStack(
+            cards = effects.stackedCards(),
+            modifier = Modifier.width(155.dp)
+        )
     }
 }
 
@@ -221,13 +199,10 @@ private fun StadiumGainStack(
             isPositive = true
         )
 
-        Box(contentAlignment = Alignment.TopStart) {
-            CardArtImage(
-                drawableResId = ShopImageResolver.drawableForCardType(effect.cardType),
-                width = 155.dp,
-                height = 175.dp,
-            )
-        }
+        CardsStack(
+            cards = listOf(effect.cardType),
+            modifier = Modifier.width(155.dp)
+        )
     }
 }
 
@@ -272,10 +247,9 @@ private fun TvStationChoosePlayerView(
                 fontWeight = FontWeight.Bold
             )
 
-            CardArtImage(
-                drawableResId = ShopImageResolver.drawableForCardType(effect.cardType),
-                width = 155.dp,
-                height = 175.dp,
+            CardsStack(
+                cards = listOf(effect.cardType),
+                modifier = Modifier.width(155.dp)
             )
         }
 
@@ -319,10 +293,9 @@ private fun BusinessCenterChoosePlayerView(
                 fontWeight = FontWeight.Bold
             )
 
-            CardArtImage(
-                drawableResId = ShopImageResolver.drawableForCardType(effect.cardType),
-                width = 155.dp,
-                height = 175.dp,
+            CardsStack(
+                cards = listOf(effect.cardType),
+                modifier = Modifier.width(155.dp)
             )
         }
 
@@ -364,7 +337,18 @@ private fun TvStationPlayerChoice(
             fontWeight = FontWeight.Bold
         )
 
-        CoinBadge(amount = player.coins, modifier = Modifier.padding(top = 4.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = "Balance",
+                color = TextBlueDark,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            CoinBadge(amount = player.coins, modifier = Modifier.padding(top = 4.dp))
+        }
     }
 }
 
@@ -381,13 +365,10 @@ private fun TvStationActivePlayerResultStack(
             isPositive = true
         )
 
-        Box(contentAlignment = Alignment.TopStart) {
-            CardArtImage(
-                drawableResId = ShopImageResolver.drawableForCardType(effect.cardType),
-                width = 155.dp,
-                height = 175.dp,
-            )
-        }
+        CardsStack(
+            cards = listOf(effect.cardType),
+            modifier = Modifier.width(155.dp)
+        )
     }
 }
 
@@ -513,33 +494,6 @@ private fun IncomeWithCoin(
     }
 }
 
-@Composable
-private fun CoinBadge(
-    amount: Int? = null,
-    modifier: Modifier = Modifier
-) {
-    Box(modifier = modifier.size(36.dp)) {
-        Image(
-            painter = painterResource(R.drawable.coin),
-            contentDescription = "Coin",
-            modifier = Modifier
-                .fillMaxSize()
-                .align(Alignment.Center),
-            contentScale = ContentScale.Fit
-        )
-
-        Text(
-            text = amount?.toString().orEmpty(),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.ExtraBold,
-            color = TextOnOrange,
-            fontSize = 18.sp,
-            modifier = Modifier
-                .offset(y = (-4).dp)
-                .align(Alignment.Center)
-        )
-    }
-}
 private data class TriggeredEffectUi(
     val playerId: Int,
     val playerName: String,
@@ -554,6 +508,9 @@ private data class TriggeredEffectUi(
 
 private val TriggeredEffectUi.totalIncome: Int
     get() = incomeAmount * quantity
+
+private fun List<TriggeredEffectUi>.stackedCards(): List<CardType> =
+    flatMap { effect -> List(effect.quantity) { effect.cardType } }
 
 /**
  * Best-effort local preview of establishments that should visually light up for

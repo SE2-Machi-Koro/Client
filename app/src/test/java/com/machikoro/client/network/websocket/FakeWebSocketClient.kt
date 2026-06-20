@@ -10,6 +10,7 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopItem
+import com.machikoro.client.domain.model.state.ChatMessageState
 import com.machikoro.client.network.error.ClientError
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -73,7 +74,8 @@ class FakeWebSocketClient : WebSocketClient {
 
     override val authRejections: SharedFlow<Unit>
         get() = mutableAuthRejections
-
+    override val chatMessages: SharedFlow<ChatMessageState>
+        get() = mutableChatMessages
     private val mutableConnectionStatus = MutableStateFlow(ConnectionStatus.IDLE)
     private val mutableGamePhase = MutableStateFlow(GamePhase.NONE)
     private val mutablePlayers = MutableStateFlow<List<PlayerCoinState>>(emptyList())
@@ -107,6 +109,7 @@ class FakeWebSocketClient : WebSocketClient {
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
+    private val mutableChatMessages= MutableSharedFlow<ChatMessageState>(extraBufferCapacity = 16, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     var gameStartSent = false
         private set
@@ -239,6 +242,19 @@ class FakeWebSocketClient : WebSocketClient {
 
     override fun sendReadyToggle(isReady: Boolean) {
         lastReadyToggle = isReady
+    }
+
+    var lastSentChat: Pair<Int, String>? = null
+        private set
+
+    override fun sendChatMessage(gameId: Int, message: String) {
+        lastSentChat = Pair(gameId, message)
+        // optionally echo it back to consumers for tests:
+        (chatMessages as MutableSharedFlow).tryEmit(ChatMessageState(sender = "test", message = message))
+    }
+
+    fun emitChatMessage(msg: ChatMessageState) {
+        (chatMessages as MutableSharedFlow).tryEmit(msg)
     }
 
     fun emitConnectionStatus(status: ConnectionStatus) {

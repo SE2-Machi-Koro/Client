@@ -89,6 +89,7 @@ fun GameScreen(
     onBuySelectedClick: () -> Unit = {},
     onRollDice: (diceCount: Int) -> Unit = {},
     onReroll: (diceCount: Int) -> Unit = {},
+    onSkipReroll: () -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     onEndGame: () -> Unit = {},
@@ -160,6 +161,7 @@ fun GameScreen(
 
     val isCardViewPossible = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
             && !state.isActivePlayer)
+    val showRadioTowerReroll = state.canReroll && canReroll
 
     LaunchedEffect(showOwnCards) {
         if (showOwnCards) {
@@ -351,7 +353,7 @@ fun GameScreen(
                             .align(Alignment.Center)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)
                     ) {
-                        if(state.gamePhase != GamePhase.ROLL_DICE) {
+                        if(state.gamePhase != GamePhase.ROLL_DICE && !showRadioTowerReroll) {
                             state.diceResult?.let { DiceResultDisplay(dice = it) }
                         }
                     }
@@ -430,36 +432,16 @@ fun GameScreen(
                         } else BasicText("Waiting for purchase")
                     }
 
-                else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
-                    if (state.canReroll && canReroll) {
-                        Row(
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(bottom = 32.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            state.diceResult?.let { DiceResultDisplay(dice = it) }
-                            ActionButton(
-                                onClick = { onReroll(state.diceResult?.size ?: 1) },
-                                enabled = !state.isRolling,
-                                label = "Nochmal würfeln",
-                                leftIcon = R.drawable.game_dice_perspective,
-                                modifier = Modifier.semantics {
-                                    contentDescription = "Nochmal würfeln"
-                                }
-                            )
-                        }
-                    } else {
+                    else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS && !showRadioTowerReroll) {
                         ResolvingEffectsView(
                             state = state,
                             modifier = Modifier
                                 .align(Alignment.Center)
-                                .offset(x = 5.dp, y = 50.dp)                    )
+                                .offset(x = 5.dp, y = 50.dp)
+                        )
                     }
-                }
 
-                else if (state.gamePhase == GamePhase.ROLL_DICE) {
+                    else if (state.gamePhase == GamePhase.ROLL_DICE || showRadioTowerReroll) {
                         Row(
                             modifier = Modifier
                                 .align(Alignment.Center)
@@ -475,7 +457,7 @@ fun GameScreen(
                             if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
                                 var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
 
-                                if (state.hasTrainStation) {
+                                if (state.gamePhase == GamePhase.ROLL_DICE && state.hasTrainStation) {
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         listOf(1, 2).forEach { count ->
                                             Button(
@@ -497,19 +479,40 @@ fun GameScreen(
                                     }
                                 }
 
-                            ActionButton(
-                                onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
-                                enabled = !state.isRolling,
-                                label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
-                                leftIcon = R.drawable.game_dice_perspective,
-                                modifier = Modifier.semantics {
-                                    contentDescription = "Würfeln"
+                                if (showRadioTowerReroll) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        ActionButton(
+                                            onClick = { onReroll(state.diceResult?.size ?: 1) },
+                                            enabled = !state.isRolling,
+                                            label = "Nochmal würfeln",
+                                            leftIcon = R.drawable.game_dice_perspective,
+                                            modifier = Modifier.semantics {
+                                                contentDescription = "Nochmal würfeln"
+                                            }
+                                        )
+                                        SecondaryActionButton(
+                                            onClick = onSkipReroll,
+                                            enabled = !state.isRolling,
+                                            label = "Skip",
+                                            modifier = Modifier.semantics {
+                                                contentDescription = "Skip reroll"
+                                            }
+                                        )
+                                    }
+                                } else {
+                                    ActionButton(
+                                        onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
+                                        enabled = !state.isRolling,
+                                        label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
+                                        leftIcon = R.drawable.game_dice_perspective,
+                                        modifier = Modifier.semantics {
+                                            contentDescription = "Würfeln"
+                                        }
+                                    )
                                 }
-                            )
+                            }
                         }
                     }
-                }
-
                 }
             },
 // =====================================
@@ -619,7 +622,36 @@ private fun GameScreenState.canConfirmSelectedPurchase(): Boolean =
 
 // === PREVIEWS ===
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenRadioTowerRerollDecisionPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = previewPlayers(),
+                diceResult = listOf(6, 6),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                gameStatus = GameStatus.IN_PROGRESS,
+                roundNumber = 4,
+                playerLandmarks = mapOf(
+                    1 to listOf(
+                        PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = true),
+                    )
+                ),
+                marketplace = previewMarketplace(),
+            ),
+            canReroll = true,
+        )
+    }
+}
+
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun GameScreenRollDicePreview() {
     ClientTheme {
@@ -637,7 +669,7 @@ private fun GameScreenRollDicePreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun GameScreenRollingPreview() {
     ClientTheme {
@@ -656,7 +688,7 @@ private fun GameScreenRollingPreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 400)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun GameScreenRollDiceNotActivePreview() {
     ClientTheme {
@@ -674,7 +706,7 @@ private fun GameScreenRollDiceNotActivePreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 412, heightDp = 600)
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
 private fun GameScreenReconnectSnapshotPreview() {
     ClientTheme {

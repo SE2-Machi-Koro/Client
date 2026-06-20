@@ -7,7 +7,8 @@ client. The implementation source of truth is `WebSocketContract.kt` and
 ## Connection
 
 - Build-time property: `websocketUrl`
-- Default emulator URL: `ws://10.0.2.2:8080/ws`
+- Default URL (Railway production): `wss://machi-koro.up.railway.app/ws`
+- Local emulator override: `ws://10.0.2.2:8080/ws`
 - The client opens an OkHttp WebSocket and then sends a STOMP `CONNECT` frame.
 - Auth is sent on the STOMP `CONNECT` frame as:
   - Header: `Authorization`

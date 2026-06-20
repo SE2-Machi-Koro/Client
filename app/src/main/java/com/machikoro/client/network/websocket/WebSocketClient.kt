@@ -11,6 +11,7 @@ import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.AccusationResult
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.shop.PurchaseEvent
+import com.machikoro.client.domain.model.state.ChatMessageState
 import com.machikoro.client.network.error.ClientError
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -50,6 +51,12 @@ interface WebSocketClient {
     val shopItems: StateFlow<List<ShopItem>>
     // One-shot purchase success/error updates used to move the shop out of optimistic UI state.
     val purchaseEvents: SharedFlow<PurchaseEvent>
+
+
+    // Stream of incoming chat messages for the active game
+    val chatMessages: SharedFlow<ChatMessageState>
+    // Send a chat message to the server (sent to WebSocketContract.chatSendDestination)
+    fun sendChatMessage(gameId: Int, message: String)
 
     // One-shot result of a cheating accusation (#280), for a toast.
     val accusationResults: SharedFlow<AccusationResult>

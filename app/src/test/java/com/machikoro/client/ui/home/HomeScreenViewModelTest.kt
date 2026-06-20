@@ -10,6 +10,7 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.shop.PurchaseEvent
+import com.machikoro.client.domain.model.state.ChatMessageState
 import com.machikoro.client.network.error.ClientError
 import com.machikoro.client.network.websocket.WebSocketClient
 import kotlinx.coroutines.Dispatchers
@@ -288,6 +289,7 @@ class HomeScreenViewModelTest {
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
         )
+        override val chatMessages: SharedFlow<ChatMessageState> = MutableSharedFlow(extraBufferCapacity = 1)
         var connectCalled = false
         var disconnectCalled = false
         var sendGameStartCalled = false
@@ -332,6 +334,7 @@ class HomeScreenViewModelTest {
         override fun clearGameState() = Unit
         override fun sendLeaveLobby(gameId: Int) {}
         override fun sendReadyToggle(isReady: Boolean) = Unit
+        override fun sendChatMessage(gameId: Int, message: String) {}
     }
 }
 

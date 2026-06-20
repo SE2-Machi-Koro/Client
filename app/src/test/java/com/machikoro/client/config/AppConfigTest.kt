@@ -6,7 +6,7 @@ import org.junit.Test
 class AppConfigTest {
     @Test
     fun exposesConfiguredDefaultUrls() {
-        assertEquals("http://10.0.2.2:8080", AppConfig.backendBaseUrl)
-        assertEquals("ws://10.0.2.2:8080/ws", AppConfig.websocketUrl)
+        assertEquals("https://machi-koro.up.railway.app", AppConfig.backendBaseUrl)
+        assertEquals("wss://machi-koro.up.railway.app/ws", AppConfig.websocketUrl)
     }
 }
