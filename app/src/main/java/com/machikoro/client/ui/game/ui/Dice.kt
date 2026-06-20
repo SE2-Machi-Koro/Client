@@ -177,7 +177,7 @@ fun DiceResultDisplay(
             // One die: image and number in one row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Image(
                     painter = painterResource(id = diceDrawableFor(dice.first())),
@@ -199,7 +199,7 @@ fun DiceResultDisplay(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     dice.forEach { value ->
                         Image(
