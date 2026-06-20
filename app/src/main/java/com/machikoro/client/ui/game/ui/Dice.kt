@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,6 +40,7 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.ui.shared.ActionButton
+import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.shared.SecondaryActionButton
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -307,10 +309,23 @@ fun DiceSection(
                     }
                 }
             }
-            state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
+            state.diceResult != null -> {
+                Column {
+                    if(!state.isActivePlayer) {
+                        BasicText(
+                            state.activePlayerUsername + " has rolled:",
+                        )
+                    }
+                }
+                DiceResultDisplay(dice = state.diceResult)
+            }
             else -> {}
         }
-
+        if(!state.isActivePlayer && state.diceResult == null) {
+            BasicText(
+                state.activePlayerUsername + " is rolling dice",
+                modifier = Modifier.offset(y = (-35).dp))
+        }
         if (state.isActivePlayer &&
             state.gameStatus == GameStatus.IN_PROGRESS &&
             !isAnimating
@@ -349,10 +364,12 @@ fun DiceSection(
                             onRollDice(chosen)
                         },
                         enabled = true,
-                        label = "Roll Dice",
+                        label = "Roll Dice" + if(chosen > 1) "s" else "",
                         modifier = Modifier.semantics {
                             contentDescription = "Roll Dice"
                         }
+
+                            .width(145.dp)
                     )
                 }
 
