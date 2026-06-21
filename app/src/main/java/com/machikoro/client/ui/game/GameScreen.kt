@@ -342,15 +342,19 @@ fun GameScreen(
             // LEFT
             // =====================================
             leftContent = {
-                Box(modifier = Modifier.fillMaxHeight()) {
-
+                Box(modifier = Modifier
+                    .fillMaxHeight()) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.Center)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)
                     ) {
                         if(state.gamePhase != GamePhase.ROLL_DICE && state.gamePhase != GamePhase.RESOLVE_EFFECTS) {
-                            state.diceResult?.let { DiceResultDisplay(dice = it) }
+                            state.diceResult?.let {
+                                DiceResultDisplay(dice = it,
+                                    diceSize = 42.dp,
+                                    modifier = Modifier.offset(y = (-10).dp))
+                            }
                         }
                     }
 
@@ -425,7 +429,9 @@ fun GameScreen(
                                 recommendedCardType = cheatRecommendation,
                                 modifier = Modifier.align(Alignment.Center)
                             )
-                        } else BasicText("Waiting for purchase")
+                        } else BasicText(
+                            state.activePlayerUsername + " is deciding what card to buy",
+                            modifier = Modifier.offset(y = (-SIDE_CONTENT_OFFSET).dp))
                     }
 
                     else if (state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
