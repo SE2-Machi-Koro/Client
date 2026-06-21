@@ -310,10 +310,19 @@ fun DiceSection(
                 }
             }
             state.diceResult != null -> {
-                if (!state.isActivePlayer) {
-                    BasicText(state.activePlayerUsername + " has rolled:")
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                )
+                {
+                    if(!state.isActivePlayer) {
+                        BasicText(
+                             state.activePlayerUsername + " has rolled:",
+                        )
+                    }
+                    DiceResultDisplay(dice = state.diceResult)
                 }
-                DiceResultDisplay(dice = state.diceResult)
+
             }
             else -> {}
         }
@@ -360,12 +369,11 @@ fun DiceSection(
                             onRollDice(chosen)
                         },
                         enabled = true,
-                        label = if (chosen > 1) "Roll $chosen Dice" else "Roll Dice",
+                        label = "Roll " + (if(chosen > 1) "Two " else "One ") + "Dice",
                         modifier = Modifier.semantics {
                             contentDescription = "Roll Dice"
                         }
-
-                            .width(145.dp)
+                            .width(180.dp)
                     )
                 }
 
