@@ -369,7 +369,7 @@ fun DiceSection(
                             onRollDice(chosen)
                         },
                         enabled = true,
-                        label = "Roll " + (if(chosen > 1) "Two " else "One ") + "Dice",
+                        label = "Roll " + (if (chosen > 1) "Two Dice" else "One Die"),
                         modifier = Modifier.semantics {
                             contentDescription = "Roll Dice"
                         }
