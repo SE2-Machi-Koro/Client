@@ -132,7 +132,7 @@ fun DiceCountSelector(
                 contentDescription = "Select $diceCount dice",
                 modifier = modifier
                     .size(80.dp)
-                    .alpha(if (isSelected) 1f else 0.6f),
+                    .alpha(if (isSelected) 1f else 0.5f),
             )
             Image(
                 painter = painterResource(id = R.drawable.game_dice_perspective),
@@ -310,12 +310,8 @@ fun DiceSection(
                 }
             }
             state.diceResult != null -> {
-                Column {
-                    if(!state.isActivePlayer) {
-                        BasicText(
-                            state.activePlayerUsername + " has rolled:",
-                        )
-                    }
+                if (!state.isActivePlayer) {
+                    BasicText(state.activePlayerUsername + " has rolled:")
                 }
                 DiceResultDisplay(dice = state.diceResult)
             }
@@ -364,7 +360,7 @@ fun DiceSection(
                             onRollDice(chosen)
                         },
                         enabled = true,
-                        label = "Roll Dice" + if(chosen > 1) "s" else "",
+                        label = if (chosen > 1) "Roll $chosen Dice" else "Roll Dice",
                         modifier = Modifier.semantics {
                             contentDescription = "Roll Dice"
                         }

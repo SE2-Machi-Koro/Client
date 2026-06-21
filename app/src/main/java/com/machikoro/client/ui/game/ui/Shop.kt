@@ -223,7 +223,7 @@ private fun ShopImageTile(
         }
 
         remainingQuantity?.let { count ->
-                if(!isAlreadyOwnedPurple) {
+            if (!isAlreadyOwnedPurple) {
                 CardQuantityIndicator(
                     quantity = count,
                     modifier = Modifier.align(Alignment.TopStart)
