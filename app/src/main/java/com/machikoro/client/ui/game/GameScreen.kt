@@ -101,7 +101,6 @@ fun GameScreen(
         onShake = onShake,
     )
 
-
     // Cheating accusation (#280): the Accuse action in the player-inspection
     // dialog opens this confirmation. Accusing wrongly costs a coin, so we
     // always confirm first.
@@ -475,8 +474,12 @@ fun GameScreen(
                             turnFlowLabel?.let {
                                 ActionButton(
                                     onClick = {
-                                        SoundManager.play(GameSound.PURCHASE)
-                                        if (state.isBuyingPhase) onBuySelectedClick() else onTurnFlowAction()
+                                        if (state.isBuyingPhase) {
+                                            SoundManager.play(GameSound.PURCHASE)
+                                            onBuySelectedClick()
+                                        } else {
+                                            onTurnFlowAction()
+                                        }
                                     },
                                     enabled = !state.isBuyingPhase || state.canConfirmSelectedPurchase(),
                                     modifier = Modifier

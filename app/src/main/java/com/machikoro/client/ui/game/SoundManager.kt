@@ -1,51 +1,55 @@
 package com.machikoro.client.ui.game
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.media.SoundPool
 import com.machikoro.client.R
 
 object SoundManager {
 
-    private lateinit var soundPool: SoundPool
-
+    private var soundPool: SoundPool? = null
     private val sounds = mutableMapOf<GameSound, Int>()
+    private val loaded = mutableSetOf<Int>()
 
     fun init(context: Context) {
-        soundPool = SoundPool.Builder()
+        if (soundPool != null) return // idempotent: onStart can fire repeatedly
+
+        val pool = SoundPool.Builder()
             .setMaxStreams(5)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
             .build()
 
-        sounds[GameSound.DICE_ROLL] =
-            soundPool.load(context, R.raw.dice, 1)
+        // load() is async — only mark a sample playable once it is ready
+        pool.setOnLoadCompleteListener { _, sampleId, status ->
+            if (status == 0) loaded.add(sampleId)
+        }
 
-        sounds[GameSound.CARD_FLIP] = soundPool.load(context, R.raw.card_flip, 1)
+        sounds[GameSound.DICE_ROLL] = pool.load(context, R.raw.dice, 1)
+        sounds[GameSound.PURCHASE] = pool.load(context, R.raw.purchase, 1)
+        sounds[GameSound.WIN] = pool.load(context, R.raw.win, 1)
 
-        sounds[GameSound.COIN_DRAWER] = soundPool.load(context, R.raw.coin_drawer, 1)
-
-        sounds[GameSound.PURCHASE] = soundPool.load(context, R.raw.purchase, 1)
-
-        //   sounds[GameSound.BUTTON_CLICK] = soundPool.load(context, R.raw.button_click, 1)
-
- //       sounds[GameSound.DOUBLES] = soundPool.load(context, R.raw.doubles, 1)
-
-        sounds[GameSound.COIN] =
-            soundPool.load(context, R.raw.coin, 1)
-
-        sounds[GameSound.WIN] =
-            soundPool.load(context, R.raw.win, 1)
+        soundPool = pool
     }
 
     fun play(sound: GameSound) {
-        sounds[sound]?.let {
-            soundPool.play(it, 1f, 1f, 1, 0, 1f)
-        }
+        val pool = soundPool ?: return
+        val id = sounds[sound] ?: return
+        if (id in loaded) pool.play(id, 1f, 1f, 1, 0, 1f)
     }
 
     fun release() {
-        soundPool.release()
+        soundPool?.release()
+        soundPool = null
+        sounds.clear()
+        loaded.clear()
     }
 }
 
 enum class GameSound {
-    DICE_ROLL, COIN, BUTTON_CLICK, DOUBLES, WIN, CARD_FLIP, PURCHASE, COIN_DRAWER
+    DICE_ROLL, PURCHASE, WIN
 }
