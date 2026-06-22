@@ -174,25 +174,6 @@ fun GameScreen(
             showMarketplace = false
         }
     }
-
-    // Coin SFX: play when the local player's balance changes during effect
-    // resolution — income earned plays COIN, paying an opponent/the bank plays
-    // COIN_DRAWER. Scoped to RESOLVE_EFFECTS so it does not double up with the
-    // PURCHASE sound during BUY_OR_BUILD, and guarded by a remembered previous
-    // value so it never fires on the first composition or a reconnect snapshot.
-    val myCoins = state.players.firstOrNull { it.id == state.myUserId?.toString() }?.coins
-    var previousCoins by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(myCoins, state.gamePhase) {
-        val current = myCoins
-        val previous = previousCoins
-        if (current != null && previous != null && state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
-            when {
-                current > previous -> SoundManager.play(GameSound.COIN)
-                current < previous -> SoundManager.play(GameSound.COIN_DRAWER)
-            }
-        }
-        if (current != null) previousCoins = current
-    }
     LaunchedEffect(isCardViewPossible) {
         if (!isCardViewPossible) {
             showOwnCards = false

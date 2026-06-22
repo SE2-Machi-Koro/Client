@@ -194,11 +194,28 @@ class MainActivity : ComponentActivity() {
                     }
                     // SIUUU when the local player nails a cheater (#353): only on a
                     // correct accusation made by us, not when we're wrong or a
-                    // rival catches someone.
-                    if (result.caught && result.accuserId == gameScreenState.myUserId) {
+                    // rival catches someone. accuserId is a player ID (#389), so
+                    // compare against our player ID — not the user ID, which lives
+                    // in a separate ID space.
+                    val myPlayerId = gameScreenState.players
+                        .firstOrNull { it.isCurrentPlayer }?.id?.toIntOrNull()
+                    if (result.caught && result.accuserId != null && result.accuserId == myPlayerId) {
                         SoundManager.play(GameSound.SIUUU)
                     }
                     Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            }
+
+            // Coin SFX (#389): the server sends the local player's signed coin
+            // delta after effect resolution — earning plays COIN, paying out
+            // plays COIN_DRAWER.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.coinDeltas.collect { delta ->
+                    if (delta > 0) {
+                        SoundManager.play(GameSound.COIN)
+                    } else if (delta < 0) {
+                        SoundManager.play(GameSound.COIN_DRAWER)
+                    }
                 }
             }
 

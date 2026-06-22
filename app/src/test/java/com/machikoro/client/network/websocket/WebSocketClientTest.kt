@@ -63,6 +63,7 @@ class DummyWebSocketClient : WebSocketClient {
 
     override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow()
     override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> = MutableSharedFlow(extraBufferCapacity = 1)
+    override val coinDeltas: SharedFlow<Int> = MutableSharedFlow(extraBufferCapacity = 1)
     override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
     override val chatMessages: SharedFlow<ChatMessageState> = MutableSharedFlow(extraBufferCapacity = 1)
 

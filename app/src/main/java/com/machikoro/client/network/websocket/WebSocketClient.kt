@@ -65,6 +65,11 @@ interface WebSocketClient {
     // One-shot result of a cheating accusation (#280), for a toast.
     val accusationResults: SharedFlow<AccusationResult>
 
+    // One-shot signed coin delta for the local player from the latest effect
+    // resolution (#389), positive when earning and negative when paying out.
+    // Drives the coin / coin-drawer sound effects.
+    val coinDeltas: SharedFlow<Int>
+
     // One-shot server rejection of an accusation (INVALID_ACCUSATION on the
     // private errors queue), e.g. "once per turn" when the local gate diverged
     // across a reconnect. Carries the server's message, for a toast.
