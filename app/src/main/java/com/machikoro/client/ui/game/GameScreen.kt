@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -76,6 +78,9 @@ import com.machikoro.client.ui.shared.DecreasingLineTimer
 import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.PrimaryBeigeLight
+import com.machikoro.client.ui.theme.PrimaryBlueDark
+import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 import kotlinx.coroutines.delay
 
@@ -171,6 +176,18 @@ fun GameScreen(
             && !state.isActivePlayer)
 
     var chatOpen by remember { mutableStateOf(false) }
+    var unreadCount by remember { mutableStateOf(0) }
+
+    LaunchedEffect(state.chatMessages.size) {
+        if (!chatOpen && state.chatMessages.isNotEmpty()) {
+            unreadCount++
+        }
+    }
+    LaunchedEffect(chatOpen) {
+        if (chatOpen) {
+            unreadCount = 0
+        }
+    }
 
     LaunchedEffect(showOwnCards) {
         if (showOwnCards) {
@@ -542,22 +559,34 @@ fun GameScreen(
                 )
             }
         }
-
-        // Floating chat button
-        FloatingActionButton(
-            onClick = {
-                chatOpen = !chatOpen
+        BadgedBox(
+            badge = {
+                if (unreadCount > 0) {
+                    Badge (
+                        contentColor = PrimaryBlueDark,
+                        containerColor = PrimaryOrange
+                    ){
+                        Text(unreadCount.toString())
+                    }
+                }
             },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
-            containerColor = ButtonBeigeLight
         ) {
-            Icon(
-                Icons.Default.Chat,
-                contentDescription = "Chat",
-                tint = TextBlueDark
-            )
+            // Floating chat button
+            FloatingActionButton(
+                onClick = {
+                    chatOpen = !chatOpen
+                },
+                containerColor = ButtonBeigeLight
+            ) {
+                Icon(
+                    Icons.Default.Chat,
+                    contentDescription = "Chat",
+                    tint = TextBlueDark
+                )
+            }
         }
         // Chat overlay
         ChatOverlay(
