@@ -42,7 +42,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.machikoro.client.BuildConfig
 import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
@@ -50,7 +49,6 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.ShopCatalog
-import com.machikoro.client.domain.model.state.ChatMessageState
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCoinState
@@ -76,7 +74,9 @@ import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.shared.DecreasingLineTimer
 import com.machikoro.client.ui.shared.SecondaryActionButton
+import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.TextBlueDark
 import kotlinx.coroutines.delay
 
 // delays
@@ -597,13 +597,6 @@ fun GameScreen(
                 )
             }
         }
-        // Chat overlay
-        ChatOverlay(
-            open = chatOpen,
-            messages = state.chatMessages,
-            onSendMessageClick = onSendChatMessage,
-            onClose = { chatOpen = false }
-        )
 
         // Floating chat button
         FloatingActionButton(
@@ -612,13 +605,23 @@ fun GameScreen(
             },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp)
+                .padding(16.dp),
+            containerColor = ButtonBeigeLight
         ) {
             Icon(
                 Icons.Default.Chat,
-                contentDescription = "Chat"
+                contentDescription = "Chat",
+                tint = TextBlueDark
             )
         }
+        // Chat overlay
+        ChatOverlay(
+            currentPlayer = state.players.filter{it.isCurrentPlayer}[0].displayName,
+            open = chatOpen,
+            messages = state.chatMessages,
+            onSendMessageClick = onSendChatMessage,
+            onClose = { chatOpen = false }
+        )
     }
     InitializationLoadingOverlay(
         connectionStatus = state.connectionStatus,
