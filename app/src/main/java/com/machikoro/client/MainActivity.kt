@@ -35,6 +35,7 @@ import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.AppRoot
 import com.machikoro.client.ui.connection.ConnectionBannerViewModel
 import com.machikoro.client.ui.game.GameScreenViewModel
+import com.machikoro.client.ui.game.GameSound
 import com.machikoro.client.ui.game.SoundManager
 import com.machikoro.client.ui.home.HomeViewModel
 import com.machikoro.client.ui.leaderboard.LeaderboardViewModel
@@ -190,6 +191,12 @@ class MainActivity : ComponentActivity() {
                         "${result.accuserName} caught ${result.accusedName} cheating — $penalty"
                     } else {
                         "${result.accuserName} wrongly accused ${result.accusedName} — $penalty"
+                    }
+                    // SIUUU when the local player nails a cheater (#353): only on a
+                    // correct accusation made by us, not when we're wrong or a
+                    // rival catches someone.
+                    if (result.caught && result.accuserId == gameScreenState.myUserId) {
+                        SoundManager.play(GameSound.SIUUU)
                     }
                     Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                 }

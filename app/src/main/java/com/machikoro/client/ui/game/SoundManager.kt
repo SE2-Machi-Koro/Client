@@ -31,7 +31,11 @@ object SoundManager {
 
         sounds[GameSound.DICE_ROLL] = pool.load(context, R.raw.dice, 1)
         sounds[GameSound.PURCHASE] = pool.load(context, R.raw.purchase, 1)
+        sounds[GameSound.CARD_FLIP] = pool.load(context, R.raw.card_flip, 1)
+        sounds[GameSound.COIN] = pool.load(context, R.raw.coin, 1)
+        sounds[GameSound.COIN_DRAWER] = pool.load(context, R.raw.coin_drawer, 1)
         sounds[GameSound.WIN] = pool.load(context, R.raw.win, 1)
+        sounds[GameSound.SIUUU] = pool.load(context, R.raw.siuuu, 1)
 
         soundPool = pool
     }
@@ -51,5 +55,5 @@ object SoundManager {
 }
 
 enum class GameSound {
-    DICE_ROLL, PURCHASE, WIN
+    DICE_ROLL, PURCHASE, CARD_FLIP, COIN, COIN_DRAWER, WIN, SIUUU
 }

@@ -948,6 +948,7 @@ class OkHttpWebSocketClient(
         mutableAccusationResults.tryEmit(
             AccusationResult(
                 caught = caught,
+                accuserId = accuserId,
                 accuserName = nameOf(accuserId),
                 accusedName = nameOf(accusedId),
                 penalizedName = nameOf(penalizedId),
