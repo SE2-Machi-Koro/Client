@@ -34,6 +34,10 @@ interface WebSocketClient {
     // Holds the latest dice result received from the server.
     // Null if no dice have been rolled yet in the current turn.
     val diceResult: StateFlow<List<Int>?>
+    // Monotonic counter bumped only on a genuine DICE_ROLLED/DICE_REROLLED frame
+    // (never on a reconnect snapshot). Lets the UI animate every real roll and
+    // reroll without being fooled by the [x, y] -> [total] snapshot collapse (#346).
+    val diceRollTick: StateFlow<Long>
     val activePlayerId: StateFlow<Int?>
     val winnerId: StateFlow<Int?>
 

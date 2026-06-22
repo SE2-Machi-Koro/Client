@@ -42,6 +42,9 @@ class FakeWebSocketClient : WebSocketClient {
     override val diceResult: StateFlow<List<Int>?>
         get() = mutableDiceResult
 
+    override val diceRollTick: StateFlow<Long>
+        get() = mutableDiceRollTick
+
     override val activePlayerId: StateFlow<Int?>
         get() = mutableActivePlayerId
 
@@ -90,6 +93,7 @@ class FakeWebSocketClient : WebSocketClient {
     )
     private val mutableWinnerId = MutableStateFlow<Int?>(null)
     private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
+    private val mutableDiceRollTick = MutableStateFlow(0L)
     private val mutableActivePlayerId = MutableStateFlow<Int?>(null)
     private val mutableActiveGameId = MutableStateFlow<Int?>(null)
     private val mutableIsLobbyHost = MutableStateFlow(false)
@@ -190,6 +194,7 @@ class FakeWebSocketClient : WebSocketClient {
         mutablePlayers.value = emptyList()
         mutableLobbyCode.value = null
         mutableDiceResult.value = null
+        mutableDiceRollTick.value = 0L
         mutableActivePlayerId.value = null
         mutableActiveGameId.value = null
         mutableIsLobbyHost.value = false
@@ -271,6 +276,7 @@ class FakeWebSocketClient : WebSocketClient {
     
     fun emitDiceResult(dice: List<Int>) {
         mutableDiceResult.value = dice
+        mutableDiceRollTick.value += 1
     }
 
     fun emitActivePlayerId(id: Int?) {

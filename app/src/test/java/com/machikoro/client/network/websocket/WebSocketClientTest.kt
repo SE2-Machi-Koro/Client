@@ -49,6 +49,7 @@ class DummyWebSocketClient : WebSocketClient {
     override val isLobbyHost: StateFlow<Boolean> = MutableStateFlow(false)
     override val winnerId: StateFlow<Int?> = MutableStateFlow(null)
     override val diceResult: StateFlow<List<Int>?> = MutableStateFlow(null)
+    override val diceRollTick: StateFlow<Long> = MutableStateFlow(0L)
     override val activePlayerId: StateFlow<Int?> = MutableStateFlow(null)
     override val authRejections = kotlinx.coroutines.flow.MutableSharedFlow<Unit>()
     override val lobbyJoinErrors: SharedFlow<ClientError.WebSocket> = MutableSharedFlow(
@@ -178,6 +179,22 @@ class WebSocketClientTest {
         assertEquals(GamePhase.RESOLVE_EFFECTS, fixture.client.gamePhase.value)
         assertEquals(202, fixture.client.activePlayerId.value)
         assertEquals(4, fixture.client.players.value.first { it.id == "22" }.coins)
+    }
+
+    @Test
+    fun laterSnapshotDoesNotCollapsePerDiceResultIntoTotal() {
+        val fixture = okHttpClientFixture()
+
+        // Live roll gives the individual dice (2 + 6 = 8).
+        fixture.deliverMessage(rollDiceMessage())
+        assertEquals(listOf(2, 6), fixture.client.diceResult.value)
+
+        // A routine snapshot only carries the total (lastDiceRoll:8). It must not
+        // overwrite the richer per-die result for the same roll, or the dice display
+        // would flip from two dice to one generic die and hide doubles.
+        fixture.deliverMessage(gameActionMessage())
+
+        assertEquals(listOf(2, 6), fixture.client.diceResult.value)
     }
 
     @Test

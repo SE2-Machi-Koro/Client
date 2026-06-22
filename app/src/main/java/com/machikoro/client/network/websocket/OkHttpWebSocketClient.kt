@@ -75,6 +75,8 @@ class OkHttpWebSocketClient(
 
     override val diceResult: StateFlow<List<Int>?>
         get() = mutableDiceResult.asStateFlow()
+    override val diceRollTick: StateFlow<Long>
+        get() = mutableDiceRollTick.asStateFlow()
 
     override val activePlayerId: StateFlow<Int?>
         get() = mutableActivePlayerId.asStateFlow()
@@ -138,6 +140,7 @@ class OkHttpWebSocketClient(
     private val mutableWinnerId = MutableStateFlow<Int?>(null)
 
     private val mutableDiceResult = MutableStateFlow<List<Int>?>(null)
+    private val mutableDiceRollTick = MutableStateFlow(0L)
     private val mutableActivePlayerId = MutableStateFlow<Int?>(null)
     private val mutableActiveGameId = MutableStateFlow<Int?>(null)
     private val mutableIsLobbyHost = MutableStateFlow(false)
@@ -673,7 +676,12 @@ class OkHttpWebSocketClient(
                 }
                 parsePurchaseSuccess(json)?.let { mutablePurchaseEvents.tryEmit(it) }
                 parsePurchaseFailure(json)?.let { mutablePurchaseEvents.tryEmit(it) }
-                parseDiceResult(json)?.let { mutableDiceResult.value = it }
+                parseDiceResult(json)?.let {
+                    // Set the result first, then bump the tick so any collector
+                    // that reacts to the tick already sees the new dice (#346).
+                    mutableDiceResult.value = it
+                    mutableDiceRollTick.value += 1
+                }
                 handleGameEnded(json)
             }
             "ERROR" -> {
@@ -1007,9 +1015,17 @@ class OkHttpWebSocketClient(
         parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
         game.optIntOrNull("roundNumber")?.let { mutableRoundNumber.value = it }
         // The snapshot persists only the dice total (lastDiceRoll), not the
-        // individual dice — surface it as a single-element list so the game
-        // screen can show the last roll on reconnect.
-        game.optIntOrNull("lastDiceRoll")?.let { mutableDiceResult.value = listOf(it) }
+        // individual dice. Surface it as a single-element list so the last roll
+        // still shows on reconnect — but do NOT clobber a richer per-die result we
+        // already hold for the same roll (it sums to this total). Otherwise a
+        // routine snapshot collapses [x, y] into a single generic die mid-turn,
+        // which is the inconsistent "one vs two dice" display and also hides doubles.
+        game.optIntOrNull("lastDiceRoll")?.let { total ->
+            val current = mutableDiceResult.value
+            if (current == null || current.sum() != total) {
+                mutableDiceResult.value = listOf(total)
+            }
+        }
 
         val playerUsernames = parsePlayerUsernames(state.optJSONObject("playerUsernames"))
         mutablePlayers.value = state.optJSONArray("players").toPlayerCoinStates(state, game, playerUsernames)
@@ -1407,6 +1423,7 @@ class OkHttpWebSocketClient(
         mutableGamePhase.value = GamePhase.NONE
         mutablePlayers.value = emptyList()
         mutableDiceResult.value = null
+        mutableDiceRollTick.value = 0L
         mutableActivePlayerId.value = null
         mutableLobbyCode.value = null
         mutableGameStatus.value = null

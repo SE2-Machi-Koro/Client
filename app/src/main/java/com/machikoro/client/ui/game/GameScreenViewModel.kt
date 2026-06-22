@@ -145,7 +145,17 @@ class GameScreenViewModel(
             webSocketClient.gamePhase.collect { gamePhase ->
                 var shouldCancelPendingRoll = false
                 mutableState.update { state ->
-                    state.copy(gamePhase = gamePhase)
+                    // A new roll phase means a fresh roll: drop the previous turn's
+                    // dice. The server never sends a null diceResult between turns, so
+                    // without this the stale result lingers — hiding the Roll Dice
+                    // button (its condition is diceResult == null) and leaving the last
+                    // number and a frozen die on screen.
+                    val enteringRollDice =
+                        gamePhase == GamePhase.ROLL_DICE && state.gamePhase != GamePhase.ROLL_DICE
+                    state.copy(
+                        gamePhase = gamePhase,
+                        diceResult = if (enteringRollDice) null else state.diceResult,
+                    )
                         .resetPurchaseFeedbackIf(gamePhase != GamePhase.BUY_OR_BUILD)
                         .let { updated ->
                             // Issue #175: if the server advances the phase without a
@@ -176,6 +186,14 @@ class GameScreenViewModel(
             webSocketClient.diceResult.collect { diceResult ->
                 cancelPendingRollTimeout()
                 mutableState.update { it.copy(diceResult = diceResult, isRolling = false) }
+            }
+        }
+        viewModelScope.launch {
+            // #346: drives the non-active player's roll/reroll animation. Bumped
+            // only on a real DICE_ROLLED/DICE_REROLLED frame, so a same-turn reroll
+            // animates while the snapshot collapse ([x, y] -> [total]) does not.
+            webSocketClient.diceRollTick.collect { tick ->
+                mutableState.update { it.copy(diceRollTick = tick) }
             }
         }
         viewModelScope.launch {
@@ -308,7 +326,7 @@ class GameScreenViewModel(
         // the dice animation stuck in the rolling state.
         if (mutableState.value.isRolling) return
 
-        mutableState.update { it.copy(isRolling = true) }
+        mutableState.update { it.copy(isRolling = true, requestedDiceCount = diceCount) }
         startRollTimeout(expectedPhase = GamePhase.ROLL_DICE)
         webSocketClient.rollDice(diceCount)
     }
@@ -614,10 +632,16 @@ class GameScreenViewModel(
     companion object {
         /**
          * #302: how long the client dwells on RESOLVE_EFFECTS before auto-sending
-         * resolveEffects. Configurable; ~20s per the issue. A placeholder constant
-         * for now — a visible timer will replace it later.
+         * resolveEffects — long enough to read the dice result and income, then
+         * advance. This is the same value the RESOLVE_EFFECTS phase timer counts
+         * down (see [RESOLVE_EFFECTS_TIMER_SECONDS]), so the visible countdown and
+         * the actual phase length stay in lockstep. Players without a Radio Tower
+         * have nothing to decide here, so it is kept short rather than the old 20s.
          */
-        const val DEFAULT_RESOLVE_EFFECTS_DWELL_MS = 20_000L
+        const val DEFAULT_RESOLVE_EFFECTS_DWELL_MS = 6_000L
+
+        /** RESOLVE_EFFECTS phase-timer length, in seconds, derived from the dwell. */
+        const val RESOLVE_EFFECTS_TIMER_SECONDS = (DEFAULT_RESOLVE_EFFECTS_DWELL_MS / 1000L).toInt()
     }
 
     class Factory(

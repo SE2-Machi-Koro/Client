@@ -29,7 +29,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -60,6 +59,7 @@ import com.machikoro.client.ui.game.ui.BuyingPhaseShop
 import com.machikoro.client.ui.game.ui.ChatOverlay
 import com.machikoro.client.ui.game.ui.DiceAnimationDisplay
 import com.machikoro.client.ui.game.ui.DiceResultDisplay
+import com.machikoro.client.ui.game.ui.DiceSection
 import com.machikoro.client.ui.game.ui.GamePhaseBanner
 import com.machikoro.client.ui.game.ui.GameScreenLayout
 import com.machikoro.client.ui.game.ui.InitializationLoadingOverlay
@@ -154,7 +154,9 @@ fun GameScreen(
         when {
             state.isBuyingPhase -> 30
             state.gamePhase == GamePhase.ROLL_DICE -> 20
-            state.gamePhase == GamePhase.RESOLVE_EFFECTS -> 25
+            // Matches the actual auto-advance dwell so the countdown the player sees
+            // is the real time until RESOLVE_EFFECTS ends, not a longer, unrelated number.
+            state.gamePhase == GamePhase.RESOLVE_EFFECTS -> GameScreenViewModel.RESOLVE_EFFECTS_TIMER_SECONDS
             else -> 0
         }
 
@@ -167,7 +169,6 @@ fun GameScreen(
 
     val isCardViewPossible = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
             && !state.isActivePlayer)
-    val showRadioTowerReroll = state.canReroll && canReroll
 
     var chatOpen by remember { mutableStateOf(false) }
 
@@ -354,15 +355,19 @@ fun GameScreen(
             // LEFT
             // =====================================
             leftContent = {
-                Box(modifier = Modifier.fillMaxHeight()) {
-
+                Box(modifier = Modifier
+                    .fillMaxHeight()) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.Center)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)
                     ) {
-                        if(state.gamePhase != GamePhase.ROLL_DICE && !showRadioTowerReroll) {
-                            state.diceResult?.let { DiceResultDisplay(dice = it) }
+                        if(state.gamePhase != GamePhase.ROLL_DICE && state.gamePhase != GamePhase.RESOLVE_EFFECTS) {
+                            state.diceResult?.let {
+                                DiceResultDisplay(dice = it,
+                                    diceSize = 42.dp,
+                                    modifier = Modifier.offset(y = (-10).dp))
+                            }
                         }
                     }
 
@@ -437,80 +442,20 @@ fun GameScreen(
                                 recommendedCardType = cheatRecommendation,
                                 modifier = Modifier.align(Alignment.Center)
                             )
-                        } else BasicText("Waiting for purchase")
+                        } else BasicText(
+                            state.activePlayerUsername + " is deciding what card to buy",
+                            modifier = Modifier.offset(y = (-SIDE_CONTENT_OFFSET).dp))
                     }
 
-                    else if (state.gamePhase == GamePhase.ROLL_DICE || showRadioTowerReroll) {
-                        Row(
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(bottom = 32.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            when {
-                                state.isRolling -> DiceAnimationDisplay()
-                                state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
-                            }
-
-                            if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
-                                var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
-
-                                if (state.gamePhase == GamePhase.ROLL_DICE && state.hasTrainStation) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        listOf(1, 2).forEach { count ->
-                                            Button(
-                                                onClick = { selectedDiceCount = count },
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = if (selectedDiceCount == count)
-                                                        MaterialTheme.colorScheme.primary
-                                                    else
-                                                        MaterialTheme.colorScheme.surfaceVariant,
-                                                    contentColor = if (selectedDiceCount == count)
-                                                        MaterialTheme.colorScheme.onPrimary
-                                                    else
-                                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            ) {
-                                                Text("$count 🎲")
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (showRadioTowerReroll) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        ActionButton(
-                                            onClick = { onReroll(state.diceResult?.size ?: 1) },
-                                            enabled = !state.isRolling,
-                                            label = "Nochmal würfeln",
-                                            leftIcon = R.drawable.game_dice_perspective,
-                                            modifier = Modifier.semantics {
-                                                contentDescription = "Nochmal würfeln"
-                                            }
-                                        )
-                                        SecondaryActionButton(
-                                            onClick = onSkipReroll,
-                                            enabled = !state.isRolling,
-                                            label = "Skip",
-                                            modifier = Modifier.semantics {
-                                                contentDescription = "Skip reroll"
-                                            }
-                                        )
-                                    }
-                                } else {
-                                    ActionButton(
-                                        onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
-                                        enabled = !state.isRolling,
-                                        label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
-                                        leftIcon = R.drawable.game_dice_perspective,
-                                        modifier = Modifier.semantics {
-                                            contentDescription = "Würfeln"
-                                        }
-                                    )
-                                }
-                            }
-                        }
+                    else if (state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
+                        DiceSection(
+                            state = state,
+                            onRollDice = onRollDice,
+                            onReroll = onReroll,
+                            onSkipReroll = onSkipReroll,
+                            canReroll = canReroll,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
                     }
                 }
             },
