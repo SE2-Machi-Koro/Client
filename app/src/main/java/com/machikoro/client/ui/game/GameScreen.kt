@@ -585,7 +585,7 @@ fun GameScreen(
         }
         // Chat overlay
         ChatOverlay(
-            currentPlayer = state.players.filter{it.isCurrentPlayer}[0].displayName,
+            currentPlayer = state.players.firstOrNull { it.isCurrentPlayer }?.displayName ?: "",
             open = chatOpen,
             messages = state.chatMessages,
             onSendMessageClick = onSendChatMessage,
