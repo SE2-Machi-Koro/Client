@@ -113,7 +113,8 @@ fun DiceCountSelector(
                 painter = painterResource(id = R.drawable.game_dice_perspective),
                 contentDescription = "Select $diceCount dice",
                 modifier = modifier
-                    .size(80.dp)
+                    .size(100.dp)
+                    .offset(y = 5.dp)
                     .alpha(if (isSelected) 1f else 0.5f)
             )
         }
@@ -125,21 +126,23 @@ fun DiceCountSelector(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource()},
                 role = Role.Button)
-                .wrapContentSize()
+                .wrapContentSize(),
+            horizontalArrangement = Arrangement.spacedBy((-20).dp)
+
         ) {
             Image(
                 painter = painterResource(id = R.drawable.game_dice_perspective_1),
                 contentDescription = "Select $diceCount dice",
                 modifier = modifier
-                    .size(80.dp)
+                    .size(100.dp)
                     .alpha(if (isSelected) 1f else 0.5f),
             )
             Image(
                 painter = painterResource(id = R.drawable.game_dice_perspective_2),
                 contentDescription = "Select $diceCount dice",
                 modifier = modifier
-                    .size(80.dp)
-                    .offset(y = (-35).dp)
+                    .size(100.dp)
+                    .offset(y = (-45).dp)
                     .alpha(if (isSelected) 1f else 0.5f),
             )
         }
@@ -353,7 +356,15 @@ fun DiceSection(
                         )
                     }
                 }
+            } else if (!isAnimating && state.diceResult == null){
+                Image(
+                    painter = painterResource(id = R.drawable.game_dice_perspective),
+                    contentDescription = "One dice",
+                    modifier = modifier
+                        .size(100.dp)
+                )
             }
+
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
