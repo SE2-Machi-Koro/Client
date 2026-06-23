@@ -173,7 +173,7 @@ fun GameScreen(
     var chatOpen by remember { mutableStateOf(false) }
     var readCount by remember { mutableStateOf(0) }
 
-    LaunchedEffect(chatOpen) {
+    LaunchedEffect(chatOpen, state.chatMessages) {
         if (chatOpen) {
             readCount = state.chatMessages.size
         }
