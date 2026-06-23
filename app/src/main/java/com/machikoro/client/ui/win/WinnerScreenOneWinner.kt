@@ -45,6 +45,7 @@ private const val BUTTONS_DELAY = 4000
 fun WinnerScreen(
     rankedPlayers: List<Pair<String, Int>>,
     roundsNumber: Int,
+    localPlayerIsWinner: Boolean = false,
     onBackHome: () -> Unit,
     onViewLeaderboard: () -> Unit = {},
 ) {
@@ -68,7 +69,7 @@ fun WinnerScreen(
     }
 
     LaunchedEffect(Unit) {
-        SoundManager.play(GameSound.WIN)
+        if (localPlayerIsWinner) SoundManager.play(GameSound.WIN)
         delay(
             ((rankedPlayers.size + 1) * PLAYER_CARD_DELAY).toLong()
         )

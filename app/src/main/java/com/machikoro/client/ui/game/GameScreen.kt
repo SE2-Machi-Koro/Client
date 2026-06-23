@@ -180,6 +180,11 @@ fun GameScreen(
             showMarketplace = false
         }
     }
+    LaunchedEffect(state.purchaseState) {
+        if (state.purchaseState == PurchaseState.SUCCESS) {
+            SoundManager.play(GameSound.PURCHASE)
+        }
+    }
 
     if (showLeaveDialog) {
         AlertDialog(
@@ -477,7 +482,6 @@ fun GameScreen(
                                 ActionButton(
                                     onClick = {
                                         if (state.isBuyingPhase) {
-                                            SoundManager.play(GameSound.PURCHASE)
                                             onBuySelectedClick()
                                         } else {
                                             onTurnFlowAction()
