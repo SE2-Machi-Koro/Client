@@ -46,6 +46,8 @@ fun ResolvingEffectsView(
     modifier: Modifier = Modifier,
 ) {
     val triggeredEffects = remember(state) { state.triggeredEffects() }
+    val localPlayerId = state.players.firstOrNull { it.isCurrentPlayer }?.id?.toIntOrNull()
+        ?: state.myUserId
 
     if (triggeredEffects.isEmpty()) {
         Text(
@@ -59,6 +61,7 @@ fun ResolvingEffectsView(
         TriggeredEffectsBoard(
             effects = triggeredEffects,
             players = state.players,
+            localPlayerId = localPlayerId,
             modifier = modifier
         )
     }
@@ -67,9 +70,25 @@ fun ResolvingEffectsView(
 private fun TriggeredEffectsBoard(
     effects: List<TriggeredEffectUi>,
     players: List<PlayerCoinState>,
+    localPlayerId: Int?,
     modifier: Modifier = Modifier,
 ) {
     val activePlayerId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
+    val activePlayerName = players.firstOrNull { it.id.toIntOrNull() == activePlayerId }
+        ?.displayName ?: "active player"
+
+    val localEffects = effects.filter { it.playerId == localPlayerId }
+    val isLocalActivePlayer = localPlayerId != null && localPlayerId == activePlayerId
+
+    if (!isLocalActivePlayer) {
+        PersonalEffectsDetailView(
+            effects = localEffects,
+            activePlayerName = activePlayerName,
+            modifier = modifier
+        )
+        return
+    }
+
     val redEffects = effects.filter { it.color == ShopItemColor.RED }
     val purpleEffects = effects.filter { it.color == ShopItemColor.PURPLE }
     val stadiumEffects = purpleEffects.filter { it.cardType == CardType.STADIUM }
@@ -122,8 +141,8 @@ private fun TriggeredEffectsBoard(
                     TriggeredPlayerStack(
                         effects = playerEffects,
                         isPositive = playerEffects.any { it.color == ShopItemColor.RED } ||
-                            playerId == activePlayerId ||
-                            playerEffects.any { it.color == ShopItemColor.BLUE }
+                                playerId == activePlayerId ||
+                                playerEffects.any { it.color == ShopItemColor.BLUE }
                     )
                 }
 
@@ -142,6 +161,57 @@ private fun TriggeredEffectsBoard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PersonalEffectsDetailView(
+    effects: List<TriggeredEffectUi>,
+    activePlayerName: String,
+    modifier: Modifier = Modifier,
+) {
+    val redEffects = effects.filter { it.color == ShopItemColor.RED }
+    val bankEffects = effects.filter {
+        it.color == ShopItemColor.BLUE || it.color == ShopItemColor.GREEN
+    }
+    val shownEffects = redEffects.ifEmpty { bankEffects }.ifEmpty { effects }
+    val coinDelta = shownEffects.sumOf { it.totalIncome }
+
+    val subtitle = when {
+        redEffects.isNotEmpty() -> "from $activePlayerName"
+        bankEffects.isNotEmpty() -> "from the bank"
+        shownEffects.isEmpty() -> "no establishments triggered"
+        else -> "activated now"
+    }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.width(270.dp)
+    ) {
+        Text(
+            text = "Your outcome",
+            color = Color.White,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
+
+        Text(
+            text = subtitle,
+            color = Color.White,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        IncomeWithCoin(
+            amount = coinDelta,
+            isPositive = true
+        )
+
+        CardsStack(
+            cards = shownEffects.stackedCards(),
+            modifier = Modifier.width(155.dp)
+        )
     }
 }
 
@@ -483,17 +553,16 @@ private fun IncomeWithCoin(
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Text(
-            text = "${if (isPositive) "+" else "-"}$amount",
+            text = if (isPositive) "+" else "-",
             color = if (isPositive) Color(0xFF8BC56A) else Color(0xFFC5163D),
             fontSize = 22.sp,
             fontWeight = FontWeight.ExtraBold,
             modifier = Modifier.offset(y = (-4).dp)
         )
 
-        CoinBadge()
+        CoinBadge(amount = amount)
     }
 }
-
 private data class TriggeredEffectUi(
     val playerId: Int,
     val playerName: String,
@@ -510,7 +579,7 @@ private val TriggeredEffectUi.totalIncome: Int
     get() = incomeAmount * quantity
 
 private fun List<TriggeredEffectUi>.stackedCards(): List<CardType> =
-    flatMap { effect -> List(effect.quantity) { effect.cardType } }
+    flatMap { effect -> List(effect.quantity.coerceAtLeast(1)) { effect.cardType } }
 
 /**
  * Best-effort local preview of establishments that should visually light up for
