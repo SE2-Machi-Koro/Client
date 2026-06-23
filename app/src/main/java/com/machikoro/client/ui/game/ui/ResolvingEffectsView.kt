@@ -46,8 +46,6 @@ fun ResolvingEffectsView(
     modifier: Modifier = Modifier,
 ) {
     val triggeredEffects = remember(state) { state.triggeredEffects() }
-    val localPlayerId = state.players.firstOrNull { it.isCurrentPlayer }?.id?.toIntOrNull()
-        ?: state.myUserId
 
     if (triggeredEffects.isEmpty()) {
         Text(
@@ -61,159 +59,119 @@ fun ResolvingEffectsView(
         TriggeredEffectsBoard(
             effects = triggeredEffects,
             players = state.players,
-            localPlayerId = localPlayerId,
             modifier = modifier
         )
     }
 }
+
 @Composable
 private fun TriggeredEffectsBoard(
     effects: List<TriggeredEffectUi>,
     players: List<PlayerCoinState>,
-    localPlayerId: Int?,
     modifier: Modifier = Modifier,
 ) {
     val activePlayerId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
     val activePlayerName = players.firstOrNull { it.id.toIntOrNull() == activePlayerId }
-        ?.displayName ?: "active player"
+        ?.displayName ?: "Active player"
 
-    val localEffects = effects.filter { it.playerId == localPlayerId }
-    val isLocalActivePlayer = localPlayerId != null && localPlayerId == activePlayerId
-
-    if (!isLocalActivePlayer) {
-        PersonalEffectsDetailView(
-            effects = localEffects,
-            activePlayerName = activePlayerName,
-            modifier = modifier
+    val outcomeItems = remember(effects, players) {
+        buildOutcomeItems(
+            effects = effects,
+            players = players,
+            activePlayerId = activePlayerId,
+            activePlayerName = activePlayerName
         )
-        return
-    }
-
-    val redEffects = effects.filter { it.color == ShopItemColor.RED }
-    val purpleEffects = effects.filter { it.color == ShopItemColor.PURPLE }
-    val stadiumEffects = purpleEffects.filter { it.cardType == CardType.STADIUM }
-    val tvStationEffects = purpleEffects.filter { it.cardType == CardType.TV_STATION }
-    val businessCenterEffects = purpleEffects.filter { it.cardType == CardType.BUSINESS_CENTER }
-
-    if (tvStationEffects.isNotEmpty() && effects.size == tvStationEffects.size) {
-        TvStationChoosePlayerView(
-            effect = tvStationEffects.first(),
-            players = players.filter { it.id.toIntOrNull() != activePlayerId },
-            modifier = modifier
-        )
-        return
-    }
-
-    if (businessCenterEffects.isNotEmpty() && effects.size == businessCenterEffects.size) {
-        BusinessCenterChoosePlayerView(
-            effect = businessCenterEffects.first(),
-            players = players.filter { it.id.toIntOrNull() != activePlayerId },
-            modifier = modifier
-        )
-        return
     }
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = 24.dp)
+            .offset(x = (-10).dp),
         horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.Top
     ) {
         players.forEach { player ->
             val playerId = player.id.toIntOrNull()
-            val playerEffects = effects.filter { it.playerId == playerId }
+            val playerItems = outcomeItems.filter { it.playerId == playerId }
 
-            when {
-                playerId == activePlayerId && stadiumEffects.isNotEmpty() -> {
-                    StadiumGainStack(
-                        effect = stadiumEffects.first(),
-                        payingPlayers = players.filter { it.id.toIntOrNull() != activePlayerId }
-                    )
-                }
+            PlayerOutcomeColumn(
+                outcomes = playerItems
+            )
+        }
+    }
+}
 
-                playerId != activePlayerId && stadiumEffects.isNotEmpty() -> {
-                    StadiumLossStack()
-                }
-
-                playerEffects.isNotEmpty() -> {
-                    TriggeredPlayerStack(
-                        effects = playerEffects,
-                        isPositive = playerEffects.any { it.color == ShopItemColor.RED } ||
-                                playerId == activePlayerId ||
-                                playerEffects.any { it.color == ShopItemColor.BLUE }
-                    )
-                }
-
-                playerId == activePlayerId && redEffects.isNotEmpty() -> {
-                    ActivePlayerTransferStack(
-                        amount = redEffects.sumOf { it.totalIncome }
-                    )
-                }
-
-                else -> {
-                    Box(
-                        modifier = Modifier
-                            .width(155.dp)
-                            .height(175.dp)
-                    )
-                }
+@Composable
+private fun PlayerOutcomeColumn(
+    outcomes: List<PlayerOutcomeUi>,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.width(145.dp)
+    ) {
+        if (outcomes.isEmpty()) {
+            IncomeWithCoin(amount = 0, isPositive = true)
+            Box(
+                modifier = Modifier
+                    .width(135.dp)
+                    .height(150.dp)
+            )
+        } else {
+            outcomes.forEach { outcome ->
+                OutcomeStack(outcome)
             }
         }
     }
 }
 
 @Composable
-private fun PersonalEffectsDetailView(
-    effects: List<TriggeredEffectUi>,
-    activePlayerName: String,
-    modifier: Modifier = Modifier,
+private fun PlayerNamePill(
+    name: String,
 ) {
-    val redEffects = effects.filter { it.color == ShopItemColor.RED }
-    val bankEffects = effects.filter {
-        it.color == ShopItemColor.BLUE || it.color == ShopItemColor.GREEN
+    Box(
+        modifier = Modifier
+            .background(Color.White, RoundedCornerShape(12.dp))
+            .border(2.dp, ButtonBorderBeige, RoundedCornerShape(12.dp))
+            .padding(horizontal = 14.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = name,
+            color = TextBlueDark,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1
+        )
     }
-    val shownEffects = redEffects.ifEmpty { bankEffects }.ifEmpty { effects }
-    val coinDelta = shownEffects.sumOf { it.totalIncome }
+}
 
-    val subtitle = when {
-        redEffects.isNotEmpty() -> "from $activePlayerName"
-        bankEffects.isNotEmpty() -> "from the bank"
-        shownEffects.isEmpty() -> "no establishments triggered"
-        else -> "activated now"
-    }
-
+@Composable
+private fun OutcomeStack(
+    outcome: PlayerOutcomeUi,
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier.width(270.dp)
     ) {
-        Text(
-            text = "Your outcome",
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.ExtraBold
-        )
-
-        Text(
-            text = subtitle,
-            color = Color.White,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold
-        )
-
         IncomeWithCoin(
-            amount = coinDelta,
-            isPositive = true
+            amount = outcome.amount,
+            isPositive = outcome.isPositive
         )
+
+        outcome.fromPlayerName?.let { fromPlayer ->
+            PayingPlayerPill(fromPlayer)
+        }
 
         CardsStack(
-            cards = shownEffects.stackedCards(),
+            cards = outcome.cards,
             modifier = Modifier.width(155.dp)
         )
     }
 }
+
 
 @Composable
 private fun TriggeredPlayerStack(
@@ -563,6 +521,14 @@ private fun IncomeWithCoin(
         CoinBadge(amount = amount)
     }
 }
+
+private data class PlayerOutcomeUi(
+    val playerId: Int,
+    val amount: Int,
+    val isPositive: Boolean,
+    val cards: List<CardType>,
+    val fromPlayerName: String? = null,
+)
 private data class TriggeredEffectUi(
     val playerId: Int,
     val playerName: String,
@@ -580,6 +546,56 @@ private val TriggeredEffectUi.totalIncome: Int
 
 private fun List<TriggeredEffectUi>.stackedCards(): List<CardType> =
     flatMap { effect -> List(effect.quantity.coerceAtLeast(1)) { effect.cardType } }
+
+private fun buildOutcomeItems(
+    effects: List<TriggeredEffectUi>,
+    players: List<PlayerCoinState>,
+    activePlayerId: Int?,
+    activePlayerName: String,
+): List<PlayerOutcomeUi> {
+    if (activePlayerId == null) return emptyList()
+
+    val activePlayer = players.firstOrNull { it.id.toIntOrNull() == activePlayerId }
+    val redEffects = effects.filter { it.color == ShopItemColor.RED }
+    val nonRedEffects = effects.filter { it.color != ShopItemColor.RED }
+
+    val redReceiverOutcomes = redEffects.map { effect ->
+        PlayerOutcomeUi(
+            playerId = effect.playerId,
+            amount = effect.totalIncome,
+            isPositive = true,
+            cards = effect.stackedCards(),
+            fromPlayerName = activePlayerName
+        )
+    }
+
+    val redTotalPaidByActivePlayer = redEffects.sumOf { it.totalIncome }
+    val activeRedPayment = if (redTotalPaidByActivePlayer > 0 && activePlayer != null) {
+        listOf(
+            PlayerOutcomeUi(
+                playerId = activePlayerId,
+                amount = redTotalPaidByActivePlayer,
+                isPositive = false,
+                cards = emptyList()
+            )
+        )
+    } else {
+        emptyList()
+    }
+
+    val bankAndPurpleOutcomes = nonRedEffects
+        .filter { it.totalIncome >= 0 }
+        .map { effect ->
+            PlayerOutcomeUi(
+                playerId = effect.playerId,
+                amount = effect.totalIncome,
+                isPositive = true,
+                cards = effect.stackedCards()
+            )
+        }
+
+    return activeRedPayment + redReceiverOutcomes + bankAndPurpleOutcomes
+}
 
 /**
  * Best-effort local preview of establishments that should visually light up for
@@ -672,39 +688,26 @@ private fun CardType.coinEffectAmount(ownedCards: List<PlayerCardState>): Int = 
     CardType.BUSINESS_CENTER -> 0
 }
 
+private fun TriggeredEffectUi.stackedCards(): List<CardType> =
+    List(quantity.coerceAtLeast(1)) { cardType }
 private fun List<PlayerCardState>.quantityOf(cardType: CardType): Int =
     filter { it.cardType == cardType }.sumOf { it.quantity }
 
 @Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
-private fun ResolvingEffectsRedCardsPreview() {
+private fun ResolvingEffectsRedCardsActivePlayerPreview() {
     ClientTheme {
-        Box(
-            modifier = Modifier
-                .background(Color(0xFF5A321E))
-                .padding(24.dp)
-        ) {
+        ResolvingEffectsPreviewContainer {
             ResolvingEffectsView(
-                state = GameScreenState(
-                    gameId = 1,
-                    gamePhase = GamePhase.RESOLVE_EFFECTS,
-                    connectionStatus = ConnectionStatus.CONNECTED,
-                    players = listOf(
-                        PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
-                        PlayerCoinState("2", "Player2", 4),
-                        PlayerCoinState("3", "Player3", 5),
-                    ),
-                    diceResult = listOf(4, 5),
-                    activePlayerId = 1,
+                state = resolvingEffectsPreviewState(
                     myUserId = 1,
-                    gameStatus = GameStatus.IN_PROGRESS,
-                    purchaseState = PurchaseState.IDLE,
+                    activePlayerId = 1,
+                    diceResult = listOf(4, 5),
                     playerCards = mapOf(
                         2 to listOf(PlayerCardState(CardType.FAMILY_RESTAURANT, quantity = 1)),
-                        3 to listOf(PlayerCardState(CardType.FAMILY_RESTAURANT, quantity = 1)),
+                        3 to listOf(PlayerCardState(CardType.FAMILY_RESTAURANT, quantity = 2)),
                     )
-                ),
-                modifier = Modifier.align(Alignment.Center)
+                )
             )
         }
     }
@@ -712,35 +715,40 @@ private fun ResolvingEffectsRedCardsPreview() {
 
 @Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
-private fun ResolvingEffectsBlueCardsPreview() {
+private fun ResolvingEffectsRedCardsPassivePlayerPreview() {
     ClientTheme {
-        Box(
-            modifier = Modifier
-                .background(Color(0xFF5A321E))
-                .padding(24.dp)
-        ) {
+        ResolvingEffectsPreviewContainer {
             ResolvingEffectsView(
-                state = GameScreenState(
-                    gameId = 1,
-                    gamePhase = GamePhase.RESOLVE_EFFECTS,
-                    connectionStatus = ConnectionStatus.CONNECTED,
-                    players = listOf(
-                        PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
-                        PlayerCoinState("2", "Player2", 4),
-                        PlayerCoinState("3", "Player3", 5),
-                    ),
-                    diceResult = listOf(1),
+                state = resolvingEffectsPreviewState(
+                    myUserId = 2,
                     activePlayerId = 1,
+                    diceResult = listOf(4, 5),
+                    playerCards = mapOf(
+                        2 to listOf(PlayerCardState(CardType.FAMILY_RESTAURANT, quantity = 1)),
+                        3 to listOf(PlayerCardState(CardType.FAMILY_RESTAURANT, quantity = 2)),
+                    )
+                )
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun ResolvingEffectsBlueCardsActivePlayerPreview() {
+    ClientTheme {
+        ResolvingEffectsPreviewContainer {
+            ResolvingEffectsView(
+                state = resolvingEffectsPreviewState(
                     myUserId = 1,
-                    gameStatus = GameStatus.IN_PROGRESS,
-                    purchaseState = PurchaseState.IDLE,
+                    activePlayerId = 1,
+                    diceResult = listOf(1),
                     playerCards = mapOf(
                         1 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 1)),
                         2 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 2)),
                         3 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 1)),
                     )
-                ),
-                modifier = Modifier.align(Alignment.Center)
+                )
             )
         }
     }
@@ -748,68 +756,211 @@ private fun ResolvingEffectsBlueCardsPreview() {
 
 @Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
-private fun ResolvingEffectsGreenCardsPreview() {
+private fun ResolvingEffectsBlueCardsPassivePlayerPreview() {
     ClientTheme {
-        Box(
-            modifier = Modifier
-                .background(Color(0xFF5A321E))
-                .padding(24.dp)
-        ) {
+        ResolvingEffectsPreviewContainer {
             ResolvingEffectsView(
-                state = GameScreenState(
-                    gameId = 1,
-                    gamePhase = GamePhase.RESOLVE_EFFECTS,
-                    connectionStatus = ConnectionStatus.CONNECTED,
-                    players = listOf(
-                        PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
-                        PlayerCoinState("2", "Player2", 4),
-                    ),
-                    diceResult = listOf(2),
+                state = resolvingEffectsPreviewState(
+                    myUserId = 2,
                     activePlayerId = 1,
-                    myUserId = 1,
-                    gameStatus = GameStatus.IN_PROGRESS,
-                    purchaseState = PurchaseState.IDLE,
+                    diceResult = listOf(1),
                     playerCards = mapOf(
-                        1 to listOf(PlayerCardState(CardType.BAKERY, quantity = 2)),
-                        2 to listOf(PlayerCardState(CardType.BAKERY, quantity = 2)),
+                        1 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 1)),
+                        2 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 2)),
+                        3 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 1)),
                     )
-                ),
-                modifier = Modifier.align(Alignment.Center)
+                )
             )
         }
     }
 }
+
 @Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
-private fun ResolvingEffectsTvStationResultPreview() {
+private fun ResolvingEffectsGreenCardsActivePlayerPreview() {
     ClientTheme {
-        Box(
-            modifier = Modifier
-                .background(Color(0xFF5A321E))
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            TvStationResultView(
-                effect = TriggeredEffectUi(
-                    playerId = 1,
-                    playerName = "You",
-                    cardType = CardType.TV_STATION,
-                    cardName = "TV Station",
-                    quantity = 1,
-                    effectText = "Take 5 coins from any one player, on your turn only.",
-                    color = ShopItemColor.PURPLE,
-                    resolveOrder = 300,
-                    incomeAmount = 5
-                ),
-                players = listOf(
-                    PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
-                    PlayerCoinState("2", "Player2", 4),
-                    PlayerCoinState("3", "Player3", 5),
-                    PlayerCoinState("4", "Player4", 7),
-                ),
-                activePlayerId = 1,
-                payingPlayerId = 3
+        ResolvingEffectsPreviewContainer {
+            ResolvingEffectsView(
+                state = resolvingEffectsPreviewState(
+                    myUserId = 1,
+                    activePlayerId = 1,
+                    diceResult = listOf(2),
+                    playerCards = mapOf(
+                        1 to listOf(PlayerCardState(CardType.BAKERY, quantity = 2)),
+                        2 to listOf(PlayerCardState(CardType.BAKERY, quantity = 2)),
+                    )
+                )
             )
         }
     }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun ResolvingEffectsGreenCardsPassivePlayerPreview() {
+    ClientTheme {
+        ResolvingEffectsPreviewContainer {
+            ResolvingEffectsView(
+                state = resolvingEffectsPreviewState(
+                    myUserId = 2,
+                    activePlayerId = 1,
+                    diceResult = listOf(2),
+                    playerCards = mapOf(
+                        1 to listOf(PlayerCardState(CardType.BAKERY, quantity = 2)),
+                        2 to listOf(PlayerCardState(CardType.BAKERY, quantity = 2)),
+                    )
+                )
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun ResolvingEffectsPurpleStadiumActivePlayerPreview() {
+    ClientTheme {
+        ResolvingEffectsPreviewContainer {
+            ResolvingEffectsView(
+                state = resolvingEffectsPreviewState(
+                    myUserId = 1,
+                    activePlayerId = 1,
+                    diceResult = listOf(6),
+                    playerCards = mapOf(
+                        1 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1))
+                    )
+                )
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun ResolvingEffectsPurpleStadiumPassivePlayerPreview() {
+    ClientTheme {
+        ResolvingEffectsPreviewContainer {
+            ResolvingEffectsView(
+                state = resolvingEffectsPreviewState(
+                    myUserId = 2,
+                    activePlayerId = 1,
+                    diceResult = listOf(6),
+                    playerCards = mapOf(
+                        1 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1))
+                    )
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun ResolvingEffectsPreviewContainer(
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .background(Color(0xFF5A321E))
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun ResolvingEffectsPurpleTvStationActiveChoicePreview() {
+    ClientTheme {
+        ResolvingEffectsPreviewContainer {
+            ResolvingEffectsView(
+                state = resolvingEffectsPreviewState(
+                    myUserId = 1,
+                    activePlayerId = 1,
+                    diceResult = listOf(6),
+                    playerCards = mapOf(
+                        1 to listOf(PlayerCardState(CardType.TV_STATION, quantity = 1))
+                    )
+                )
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun ResolvingEffectsPurpleBusinessCenterActiveChoicePreview() {
+    ClientTheme {
+        ResolvingEffectsPreviewContainer {
+            ResolvingEffectsView(
+                state = resolvingEffectsPreviewState(
+                    myUserId = 1,
+                    activePlayerId = 1,
+                    diceResult = listOf(6),
+                    playerCards = mapOf(
+                        1 to listOf(PlayerCardState(CardType.BUSINESS_CENTER, quantity = 1))
+                    )
+                )
+            )
+        }
+    }
+}
+
+private fun resolvingEffectsPreviewState(
+    myUserId: Int,
+    activePlayerId: Int,
+    diceResult: List<Int>,
+    playerCards: Map<Int, List<PlayerCardState>>,
+): GameScreenState {
+    return GameScreenState(
+        gameId = 1,
+        gamePhase = GamePhase.RESOLVE_EFFECTS,
+        connectionStatus = ConnectionStatus.CONNECTED,
+        players = previewPlayersForResolvingEffects(
+            myUserId = myUserId,
+            activePlayerId = activePlayerId
+        ),
+        diceResult = diceResult,
+        activePlayerId = activePlayerId,
+        myUserId = myUserId,
+        gameStatus = GameStatus.IN_PROGRESS,
+        purchaseState = PurchaseState.IDLE,
+        playerCards = playerCards,
+        customDisplayText = "Resolving effects"
+    )
+}
+
+private fun previewPlayersForResolvingEffects(
+    myUserId: Int,
+    activePlayerId: Int,
+): List<PlayerCoinState> {
+    return listOf(
+        PlayerCoinState(
+            id = "1",
+            displayName = "You",
+            coins = 6,
+            isCurrentPlayer = myUserId == 1,
+            isActivePlayer = activePlayerId == 1
+        ),
+        PlayerCoinState(
+            id = "2",
+            displayName = "Player2",
+            coins = 4,
+            isCurrentPlayer = myUserId == 2,
+            isActivePlayer = activePlayerId == 2
+        ),
+        PlayerCoinState(
+            id = "3",
+            displayName = "Player3",
+            coins = 5,
+            isCurrentPlayer = myUserId == 3,
+            isActivePlayer = activePlayerId == 3
+        ),
+        PlayerCoinState(
+            id = "4",
+            displayName = "Player4",
+            coins = 7,
+            isCurrentPlayer = myUserId == 4,
+            isActivePlayer = activePlayerId == 4
+        ),
+    )
 }
