@@ -17,15 +17,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -54,8 +51,8 @@ import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.cheat.ShakeDetector
 import com.machikoro.client.ui.game.ui.BigPlayerCardsDisplay
 import com.machikoro.client.ui.game.ui.BuyingPhaseShop
-import com.machikoro.client.ui.game.ui.DiceAnimationDisplay
 import com.machikoro.client.ui.game.ui.DiceResultDisplay
+import com.machikoro.client.ui.game.ui.DiceSection
 import com.machikoro.client.ui.game.ui.GamePhaseBanner
 import com.machikoro.client.ui.game.ui.GameScreenLayout
 import com.machikoro.client.ui.game.ui.InitializationLoadingOverlay
@@ -148,7 +145,9 @@ fun GameScreen(
         when {
             state.isBuyingPhase -> 30
             state.gamePhase == GamePhase.ROLL_DICE -> 20
-            state.gamePhase == GamePhase.RESOLVE_EFFECTS -> 25
+            // Matches the actual auto-advance dwell so the countdown the player sees
+            // is the real time until RESOLVE_EFFECTS ends, not a longer, unrelated number.
+            state.gamePhase == GamePhase.RESOLVE_EFFECTS -> GameScreenViewModel.RESOLVE_EFFECTS_TIMER_SECONDS
             else -> 0
         }
 
@@ -161,7 +160,6 @@ fun GameScreen(
 
     val isCardViewPossible = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
             && !state.isActivePlayer)
-    val showRadioTowerReroll = state.canReroll && canReroll
 
     LaunchedEffect(showOwnCards) {
         if (showOwnCards) {
@@ -346,15 +344,19 @@ fun GameScreen(
             // LEFT
             // =====================================
             leftContent = {
-                Box(modifier = Modifier.fillMaxHeight()) {
-
+                Box(modifier = Modifier
+                    .fillMaxHeight()) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.Center)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)
                     ) {
-                        if(state.gamePhase != GamePhase.ROLL_DICE && !showRadioTowerReroll) {
-                            state.diceResult?.let { DiceResultDisplay(dice = it) }
+                        if(state.gamePhase != GamePhase.ROLL_DICE && state.gamePhase != GamePhase.RESOLVE_EFFECTS) {
+                            state.diceResult?.let {
+                                DiceResultDisplay(dice = it,
+                                    diceSize = 42.dp,
+                                    modifier = Modifier.offset(y = (-10).dp))
+                            }
                         }
                     }
 
@@ -429,7 +431,9 @@ fun GameScreen(
                                 recommendedCardType = cheatRecommendation,
                                 modifier = Modifier.align(Alignment.Center)
                             )
-                        } else BasicText("Waiting for purchase")
+                        } else BasicText(
+                            state.activePlayerUsername + " is deciding what card to buy",
+                            modifier = Modifier.offset(y = (-SIDE_CONTENT_OFFSET).dp))
                     }
 
                     else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS && !showRadioTowerReroll) {
