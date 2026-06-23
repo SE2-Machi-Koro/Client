@@ -171,16 +171,11 @@ fun GameScreen(
             && !state.isActivePlayer)
 
     var chatOpen by remember { mutableStateOf(false) }
-    var unreadCount by remember { mutableStateOf(0) }
+    var readCount by remember { mutableStateOf(0) }
 
-    LaunchedEffect(state.chatMessages.size) {
-        if (!chatOpen && state.chatMessages.isNotEmpty()) {
-            unreadCount++
-        }
-    }
     LaunchedEffect(chatOpen) {
         if (chatOpen) {
-            unreadCount = 0
+            readCount = state.chatMessages.size
         }
     }
 
@@ -556,12 +551,12 @@ fun GameScreen(
         }
         BadgedBox(
             badge = {
-                if (unreadCount > 0) {
+                if (readCount < state.chatMessages.size) {
                     Badge (
                         contentColor = PrimaryBlueDark,
                         containerColor = PrimaryOrange
                     ){
-                        Text(unreadCount.toString())
+                        Text((state.chatMessages.size-readCount).toString())
                     }
                 }
             },
