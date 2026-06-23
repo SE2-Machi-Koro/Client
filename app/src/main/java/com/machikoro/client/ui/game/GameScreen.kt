@@ -436,7 +436,10 @@ fun GameScreen(
                             modifier = Modifier.offset(y = (-SIDE_CONTENT_OFFSET).dp))
                     }
 
-                    else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS && !showRadioTowerReroll) {
+                    else if (
+                        state.gamePhase == GamePhase.RESOLVE_EFFECTS &&
+                        !(state.canReroll && canReroll)
+                    ) {
                         ResolvingEffectsView(
                             state = state,
                             modifier = Modifier
@@ -445,77 +448,15 @@ fun GameScreen(
                         )
                     }
 
-                    else if (state.gamePhase == GamePhase.ROLL_DICE || showRadioTowerReroll) {
-                        Row(
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(bottom = 32.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            when {
-                                state.isRolling -> DiceAnimationDisplay()
-                                state.diceResult != null -> DiceResultDisplay(dice = state.diceResult)
-                            }
-
-                            if (state.isActivePlayer && state.gameStatus == GameStatus.IN_PROGRESS) {
-                                var selectedDiceCount by remember(state.roundNumber) { mutableIntStateOf(1) }
-
-                                if (state.gamePhase == GamePhase.ROLL_DICE && state.hasTrainStation) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        listOf(1, 2).forEach { count ->
-                                            Button(
-                                                onClick = { selectedDiceCount = count },
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = if (selectedDiceCount == count)
-                                                        MaterialTheme.colorScheme.primary
-                                                    else
-                                                        MaterialTheme.colorScheme.surfaceVariant,
-                                                    contentColor = if (selectedDiceCount == count)
-                                                        MaterialTheme.colorScheme.onPrimary
-                                                    else
-                                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            ) {
-                                                Text("$count 🎲")
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (showRadioTowerReroll) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        ActionButton(
-                                            onClick = { onReroll(state.diceResult?.size ?: 1) },
-                                            enabled = !state.isRolling,
-                                            label = "Nochmal würfeln",
-                                            leftIcon = R.drawable.game_dice_perspective,
-                                            modifier = Modifier.semantics {
-                                                contentDescription = "Nochmal würfeln"
-                                            }
-                                        )
-                                        SecondaryActionButton(
-                                            onClick = onSkipReroll,
-                                            enabled = !state.isRolling,
-                                            label = "Skip",
-                                            modifier = Modifier.semantics {
-                                                contentDescription = "Skip reroll"
-                                            }
-                                        )
-                                    }
-                                } else {
-                                    ActionButton(
-                                        onClick = { onRollDice(if (state.hasTrainStation) selectedDiceCount else 1) },
-                                        enabled = !state.isRolling,
-                                        label = if (state.diceResult == null) "Würfeln" else "Nochmal würfeln",
-                                        leftIcon = R.drawable.game_dice_perspective,
-                                        modifier = Modifier.semantics {
-                                            contentDescription = "Würfeln"
-                                        }
-                                    )
-                                }
-                            }
-                        }
+                    else if (state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
+                        DiceSection(
+                            state = state,
+                            onRollDice = onRollDice,
+                            onReroll = onReroll,
+                            onSkipReroll = onSkipReroll,
+                            canReroll = canReroll,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
                     }
                 }
             },
