@@ -60,7 +60,7 @@ fun ChatInput(
 
         IconButton(
             onClick = {
-                if (text.isNotBlank()) {
+                if (text.isNotBlank() && text.length <= 300) {
                     onSend(text)
                     text = ""
                 }
@@ -72,7 +72,7 @@ fun ChatInput(
             Icon(
                 Icons.Default.Send,
                 contentDescription = "Send",
-                tint = if (text.isNotBlank()) PrimaryBlueDark else ButtonBorderBlue
+                tint = if (text.isNotBlank() && text.length <= 300) PrimaryBlueDark else ButtonBorderBlue
             )
         }
     }
