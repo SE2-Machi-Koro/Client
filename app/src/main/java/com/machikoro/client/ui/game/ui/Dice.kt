@@ -315,7 +315,7 @@ fun DiceSection(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 )
                 {
-                    if(!state.isActivePlayer) {
+                    if(!state.isActivePlayer && !isAnimating) {
                         BasicText(
                              state.activePlayerUsername + " has rolled:",
                         )
