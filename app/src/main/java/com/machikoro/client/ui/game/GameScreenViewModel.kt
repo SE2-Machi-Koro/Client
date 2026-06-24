@@ -513,6 +513,7 @@ class GameScreenViewModel(
         val current = mutableState.value
         val gameId = current.gameId ?: return
         if (message.isBlank()) return
+        if (message.length > 300) return
         webSocketClient.sendChatMessage(gameId, message.trim())
     }
 
