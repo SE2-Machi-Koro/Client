@@ -23,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.R
+import com.machikoro.client.ui.game.GameSound
+import com.machikoro.client.ui.game.SoundManager
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.AnimatedItem
 import com.machikoro.client.ui.shared.AnimationType
@@ -43,10 +45,10 @@ private const val BUTTONS_DELAY = 4000
 fun WinnerScreen(
     rankedPlayers: List<Pair<String, Int>>,
     roundsNumber: Int,
+    localPlayerIsWinner: Boolean = false,
     onBackHome: () -> Unit,
     onViewLeaderboard: () -> Unit = {},
 ) {
-
     var showAllPlayers by remember {
         mutableStateOf(true)
     }
@@ -67,6 +69,7 @@ fun WinnerScreen(
     }
 
     LaunchedEffect(Unit) {
+        if (localPlayerIsWinner) SoundManager.play(GameSound.WIN)
         delay(
             ((rankedPlayers.size + 1) * PLAYER_CARD_DELAY).toLong()
         )

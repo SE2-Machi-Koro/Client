@@ -7,6 +7,7 @@ package com.machikoro.client.domain.model.state
  */
 data class AccusationResult(
     val caught: Boolean,
+    val accuserId: Int?,
     val accuserName: String,
     val accusedName: String,
     val penalizedName: String,

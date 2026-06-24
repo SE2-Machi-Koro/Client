@@ -39,6 +39,8 @@ import com.machikoro.client.R
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.ui.game.GameSound
+import com.machikoro.client.ui.game.SoundManager
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.shared.SecondaryActionButton
@@ -364,6 +366,7 @@ fun DiceSection(
                     val chosen = frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount
                     ActionButton(
                         onClick = {
+                            SoundManager.play(GameSound.DICE_ROLL)
                             frozenDiceCount = chosen
                             isAnimating = true
                             onRollDice(chosen)
@@ -382,6 +385,7 @@ fun DiceSection(
                     val rerollCount = frozenDiceCount ?: state.diceResult?.size ?: 1
                     ActionButton(
                         onClick = {
+                            SoundManager.play(GameSound.DICE_ROLL)
                             hasRerolled = true
                             frozenDiceCount = rerollCount
                             isAnimating = true
