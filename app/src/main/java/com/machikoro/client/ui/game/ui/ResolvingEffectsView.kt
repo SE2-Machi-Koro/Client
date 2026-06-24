@@ -47,21 +47,11 @@ fun ResolvingEffectsView(
 ) {
     val triggeredEffects = remember(state) { state.triggeredEffects() }
 
-    if (triggeredEffects.isEmpty()) {
-        Text(
-            text = "No triggered establishments",
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = modifier
-        )
-    } else {
-        TriggeredEffectsBoard(
-            effects = triggeredEffects,
-            players = state.players,
-            modifier = modifier
-        )
-    }
+    TriggeredEffectsBoard(
+        effects = triggeredEffects,
+        players = state.players,
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -140,10 +130,6 @@ private fun OutcomeStack(
             isPositive = outcome.isPositive
         )
 
-        outcome.fromPlayerName?.let { fromPlayer ->
-            PayingPlayerPill(fromPlayer)
-        }
-
         CardsStack(
             cards = outcome.cards,
             modifier = Modifier.width(155.dp)
@@ -151,162 +137,6 @@ private fun OutcomeStack(
     }
 }
 
-@Composable
-private fun TvStationPlayerChoice(
-    player: PlayerCoinState,
-) {
-    Row(
-        modifier = Modifier
-            .width(180.dp)
-            .background(Color.White, RoundedCornerShape(13.dp))
-            .border(2.dp, ButtonBorderBeige, RoundedCornerShape(13.dp))
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = player.displayName,
-            color = TextBlueDark,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = "Balance",
-                color = TextBlueDark,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            CoinBadge(amount = player.coins, modifier = Modifier.padding(top = 4.dp))
-        }
-    }
-}
-
-@Composable
-private fun TvStationActivePlayerResultStack(
-    effect: TriggeredEffectUi,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        IncomeWithCoin(
-            amount = 5,
-            isPositive = true
-        )
-
-        CardsStack(
-            cards = listOf(effect.cardType),
-            modifier = Modifier.width(155.dp)
-        )
-    }
-}
-
-@Composable
-private fun TvStationPayingPlayerResultStack(
-    receivingPlayerName: String,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        IncomeWithCoin(
-            amount = 5,
-            isPositive = false
-        )
-
-        PayingPlayersList(
-            listOf(receivingPlayerName)
-        )
-    }
-}
-
-@Composable
-private fun TvStationResultView(
-    effect: TriggeredEffectUi,
-    players: List<PlayerCoinState>,
-    activePlayerId: Int,
-    payingPlayerId: Int,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        players.forEach { player ->
-            val playerId = player.id.toIntOrNull()
-
-            when (playerId) {
-                activePlayerId -> {
-                    TvStationActivePlayerResultStack(
-                        effect = effect
-                    )
-                }
-
-                payingPlayerId -> {
-                    val activePlayerName =
-                        players.firstOrNull { it.id.toIntOrNull() == activePlayerId }
-                            ?.displayName ?: "Player"
-
-                    TvStationPayingPlayerResultStack(
-                        receivingPlayerName = activePlayerName
-                    )
-                }
-
-                else -> {
-                    Box(
-                        modifier = Modifier
-                            .width(155.dp)
-                            .height(175.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PayingPlayersList(
-    playerNames: List<String>,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.padding(top = 8.dp)
-    ) {
-        playerNames.forEach { name ->
-            PayingPlayerPill(name)
-        }
-    }
-}
-
-@Composable
-private fun PayingPlayerPill(
-    playerName: String,
-) {
-    Row(
-        modifier = Modifier
-            .background(Color.White, RoundedCornerShape(12.dp))
-            .border(2.dp, Color(0xFFC5163D), RoundedCornerShape(12.dp))
-            .padding(horizontal = 18.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = playerName,
-            color = Color(0xFF8A1738),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.ExtraBold
-        )
-    }
-}
 @Composable
 private fun IncomeWithCoin(
     amount: Int,
@@ -362,8 +192,37 @@ private fun buildOutcomeItems(
     if (activePlayerId == null) return emptyList()
 
     val activePlayer = players.firstOrNull { it.id.toIntOrNull() == activePlayerId }
+    val opponents = players.filter { it.id.toIntOrNull() != activePlayerId }
+
+    val stadiumEffects = effects.filter { it.cardType == CardType.STADIUM }
     val redEffects = effects.filter { it.color == ShopItemColor.RED }
-    val nonRedEffects = effects.filter { it.color != ShopItemColor.RED }
+    val regularIncomeEffects = effects.filter {
+        it.color == ShopItemColor.BLUE || it.color == ShopItemColor.GREEN
+    }
+
+    val stadiumGain = stadiumEffects.map { effect ->
+        PlayerOutcomeUi(
+            playerId = activePlayerId,
+            amount = effect.incomeAmount * opponents.size * effect.quantity,
+            isPositive = true,
+            cards = effect.stackedCards()
+        )
+    }
+
+    val stadiumLosses = if (stadiumEffects.isNotEmpty()) {
+        opponents.mapNotNull { opponent ->
+            val opponentId = opponent.id.toIntOrNull() ?: return@mapNotNull null
+            PlayerOutcomeUi(
+                playerId = opponentId,
+                amount = stadiumEffects.sumOf { it.incomeAmount * it.quantity },
+                isPositive = false,
+                cards = emptyList(),
+                fromPlayerName = activePlayerName
+            )
+        }
+    } else {
+        emptyList()
+    }
 
     val redReceiverOutcomes = redEffects.map { effect ->
         PlayerOutcomeUi(
@@ -389,8 +248,20 @@ private fun buildOutcomeItems(
         emptyList()
     }
 
-    val bankAndPurpleOutcomes = nonRedEffects
-        .filter { it.totalIncome >= 0 }
+    val bankIncomeOutcomes = regularIncomeEffects.map { effect ->
+        PlayerOutcomeUi(
+            playerId = effect.playerId,
+            amount = effect.totalIncome,
+            isPositive = true,
+            cards = effect.stackedCards()
+        )
+    }
+
+    val unresolvedPurpleOutcomes = effects
+        .filter {
+            it.color == ShopItemColor.PURPLE &&
+                    it.cardType != CardType.STADIUM
+        }
         .map { effect ->
             PlayerOutcomeUi(
                 playerId = effect.playerId,
@@ -400,7 +271,12 @@ private fun buildOutcomeItems(
             )
         }
 
-    return activeRedPayment + redReceiverOutcomes + bankAndPurpleOutcomes
+    return activeRedPayment +
+            redReceiverOutcomes +
+            stadiumGain +
+            stadiumLosses +
+            bankIncomeOutcomes +
+            unresolvedPurpleOutcomes
 }
 
 /**
