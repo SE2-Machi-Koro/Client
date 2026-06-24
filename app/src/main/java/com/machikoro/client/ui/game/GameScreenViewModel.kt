@@ -454,10 +454,11 @@ class GameScreenViewModel(
             !(canReroll && canRerollThisTurn)
 
     private fun GameScreenState.resolveEffectsDwellMillis(): Long {
+        val diceWasRolled = diceResult != null
         val triggeredCount = triggeredEstablishmentCountForCurrentRoll()
 
         return when {
-            triggeredCount == 0 -> 0L
+            diceWasRolled && triggeredCount == 0 -> 0L
             triggeredCount == 1 -> 2_000L
             triggeredCount <= 3 -> 4_000L
             else -> resolveEffectsDwellMillis
