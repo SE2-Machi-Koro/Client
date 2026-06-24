@@ -356,7 +356,11 @@ fun DiceSection(
                         )
                     }
                 }
-            } else if (!isAnimating && state.diceResult == null){
+            } else if (
+                state.gamePhase == GamePhase.ROLL_DICE &&
+                !isAnimating &&
+                state.diceResult == null
+            ) {
                 Image(
                     painter = painterResource(id = R.drawable.game_dice_perspective),
                     contentDescription = "One dice",
