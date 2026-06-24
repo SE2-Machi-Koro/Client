@@ -43,7 +43,7 @@ fun CardsStack(
                 Box(
                     modifier = Modifier
                         .offset(
-                            x = (cardWidth - shadowWidth) / 2,
+                            x = (cardWidth - shadowWidth) / 3,
                             y = yOffset - 1.5.dp
                         )
                         .width(shadowWidth)

@@ -51,6 +51,16 @@ fun ResolvingEffectsView(
 ) {
     val triggeredEffects = remember(state) { state.triggeredEffects() }
 
+    if (triggeredEffects.isEmpty()) {
+        Text(
+            text = "No establishments triggered",
+            color = Color.White,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
+        return
+    }
+
     TriggeredEffectsBoard(
         effects = triggeredEffects,
         players = state.players,
@@ -107,7 +117,10 @@ private fun PlayerOutcomeColumn(
         modifier = Modifier.width(155.dp)
     ) {
         if (outcomes.isEmpty()) {
-            IncomeWithCoin(amount = 0, isPositive = true)
+            Box(
+                modifier = Modifier.height(36.dp)
+            )
+
             Box(
                 modifier = Modifier
                     .width(155.dp)
@@ -129,15 +142,29 @@ private fun OutcomeStack(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        IncomeWithCoin(
-            amount = outcome.amount,
-            isPositive = outcome.isPositive
-        )
+        if (outcome.amount != 0) {
+            IncomeWithCoin(
+                amount = outcome.amount,
+                isPositive = outcome.isPositive
+            )
+        } else {
+            Box(
+                modifier = Modifier.height(36.dp)
+            )
+        }
 
-        CardsStack(
-            cards = outcome.cards,
-            modifier = Modifier.width(155.dp)
-        )
+        if (outcome.cards.isNotEmpty()) {
+            CardsStack(
+                cards = outcome.cards,
+                modifier = Modifier.width(155.dp)
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .width(155.dp)
+                    .height(175.dp)
+            )
+        }
     }
 }
 
@@ -701,6 +728,31 @@ private fun TriggeredEffectUi.stackedCards(): List<CardType> =
     List(quantity.coerceAtLeast(1)) { cardType }
 private fun List<PlayerCardState>.quantityOf(cardType: CardType): Int =
     filter { it.cardType == cardType }.sumOf { it.quantity }
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun ResolvingEffectsNoTriggeredCardsPreview() {
+    ClientTheme {
+        ResolvingEffectsPreviewContainer {
+            ResolvingEffectsView(
+                state = resolvingEffectsPreviewState(
+                    myUserId = 1,
+                    activePlayerId = 1,
+                    diceResult = listOf(6, 6),
+                    playerCards = mapOf(
+                        1 to listOf(
+                            PlayerCardState(CardType.BAKERY, quantity = 1),
+                            PlayerCardState(CardType.CAFE, quantity = 1),
+                        ),
+                        2 to listOf(
+                            PlayerCardState(CardType.WHEAT_FIELD, quantity = 1),
+                        )
+                    )
+                )
+            )
+        }
+    }
+}
 
 @Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
