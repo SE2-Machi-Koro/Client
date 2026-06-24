@@ -78,6 +78,7 @@ import com.machikoro.client.ui.theme.PrimaryBlueDark
 import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
 import kotlinx.coroutines.delay
+import java.lang.Integer.parseInt
 
 // delays
 private val OWN_CARDS_VIEW_DELAY = 10000L
@@ -580,7 +581,7 @@ fun GameScreen(
         }
         // Chat overlay
         ChatOverlay(
-            currentPlayer = state.players.firstOrNull { it.isCurrentPlayer }?.displayName ?: "",
+            currentPlayer = state.players.firstOrNull { parseInt(it.id) == state.myUserId }?.displayName ?: "",
             open = chatOpen,
             messages = state.chatMessages,
             onSendMessageClick = onSendChatMessage,
