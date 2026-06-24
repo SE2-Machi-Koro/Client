@@ -174,6 +174,7 @@ class FakeWebSocketClient : WebSocketClient {
     override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow(extraBufferCapacity = 1)
     override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> =
         MutableSharedFlow(extraBufferCapacity = 1)
+    override val coinDeltas: SharedFlow<Int> = MutableSharedFlow(extraBufferCapacity = 1)
     override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
 
     var leaveLobbyGameId: Int? = null

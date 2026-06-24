@@ -310,6 +310,7 @@ class HomeScreenViewModelTest {
         override val lobbyEntered: SharedFlow<Unit> = mutableLobbyEntered
         override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> =
             MutableSharedFlow(extraBufferCapacity = 1)
+        override val coinDeltas: SharedFlow<Int> = MutableSharedFlow(extraBufferCapacity = 1)
         override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
         override fun connect() { connectCalled = true }
         override fun disconnect() { disconnectCalled = true }

@@ -35,6 +35,8 @@ import com.machikoro.client.network.websocket.OkHttpWebSocketClient
 import com.machikoro.client.ui.AppRoot
 import com.machikoro.client.ui.connection.ConnectionBannerViewModel
 import com.machikoro.client.ui.game.GameScreenViewModel
+import com.machikoro.client.ui.game.GameSound
+import com.machikoro.client.ui.game.SoundManager
 import com.machikoro.client.ui.home.HomeViewModel
 import com.machikoro.client.ui.leaderboard.LeaderboardViewModel
 import com.machikoro.client.ui.lobby.LobbyScreenViewModel
@@ -190,7 +192,30 @@ class MainActivity : ComponentActivity() {
                     } else {
                         "${result.accuserName} wrongly accused ${result.accusedName} — $penalty"
                     }
+                    // SIUUU when the local player nails a cheater (#353): only on a
+                    // correct accusation made by us, not when we're wrong or a
+                    // rival catches someone. accuserId is a player ID (#389), so
+                    // compare against our player ID — not the user ID, which lives
+                    // in a separate ID space.
+                    val myPlayerId = gameScreenState.players
+                        .firstOrNull { it.isCurrentPlayer }?.id?.toIntOrNull()
+                    if (result.caught && result.accuserId != null && result.accuserId == myPlayerId) {
+                        SoundManager.play(GameSound.SIUUU)
+                    }
                     Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                }
+            }
+
+            // Coin SFX (#389): the server sends the local player's signed coin
+            // delta after effect resolution — earning plays COIN, paying out
+            // plays COIN_DRAWER.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.coinDeltas.collect { delta ->
+                    if (delta > 0) {
+                        SoundManager.play(GameSound.COIN)
+                    } else if (delta < 0) {
+                        SoundManager.play(GameSound.COIN_DRAWER)
+                    }
                 }
             }
 
@@ -323,6 +348,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        SoundManager.init(applicationContext)
         webSocketClient.connect()
     }
 
@@ -335,6 +361,7 @@ class MainActivity : ComponentActivity() {
         if (SessionManager.session.value == null) {
             webSocketClient.disconnect()
         }
+        SoundManager.release()
         super.onStop()
     }
 }
