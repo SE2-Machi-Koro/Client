@@ -114,6 +114,9 @@ class OkHttpWebSocketClient(
     override val accusationResults: SharedFlow<AccusationResult>
         get() = mutableAccusationResults.asSharedFlow()
 
+    override val coinDeltas: SharedFlow<Int>
+        get() = mutableCoinDeltas.asSharedFlow()
+
     override val accusationErrors: SharedFlow<String>
         get() = mutableAccusationErrors.asSharedFlow()
 
@@ -161,6 +164,10 @@ class OkHttpWebSocketClient(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     private val mutableAccusationResults = MutableSharedFlow<AccusationResult>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    private val mutableCoinDeltas = MutableSharedFlow<Int>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
@@ -667,6 +674,7 @@ class OkHttpWebSocketClient(
                 handleGameStarted(json)
                 handleSync(json)
                 handleAuthoritativeSnapshot(json)
+                handleCoinDeltas(json)
                 handleAccusationResult(json)
                 handleAccusationError(json)
                 handleChatMessage(json)
@@ -948,6 +956,7 @@ class OkHttpWebSocketClient(
         mutableAccusationResults.tryEmit(
             AccusationResult(
                 caught = caught,
+                accuserId = accuserId,
                 accuserName = nameOf(accuserId),
                 accusedName = nameOf(accusedId),
                 penalizedName = nameOf(penalizedId),
@@ -994,6 +1003,24 @@ class OkHttpWebSocketClient(
         val payload = json.optJSONObject("payload") ?: return
         val state = payload.optJSONObject("state") ?: return
         applyGameStateSnapshot(state, json.optIntOrNull("gameId") ?: payload.optIntOrNull("gameId"))
+    }
+
+    /**
+     * Emits the local player's signed coin delta from an EFFECTS_RESOLVED
+     * broadcast (#389) so the UI can play the coin / coin-drawer sound. The
+     * server keys `coinDeltas` by player ID; we resolve our own player ID from
+     * the freshly applied roster (handleAuthoritativeSnapshot runs first), not
+     * from the user ID — the two ID spaces are independent.
+     */
+    private fun handleCoinDeltas(json: JSONObject) {
+        if (json.optString("type") != GAME_ACTION_TYPE) return
+        val payload = json.optJSONObject("payload") ?: return
+        if (payload.optString("event") != EFFECTS_RESOLVED_EVENT) return
+        val deltas = payload.optJSONObject("coinDeltas") ?: return
+        val myPlayerId = mutablePlayers.value.firstOrNull { it.isCurrentPlayer }?.id ?: return
+        if (!deltas.has(myPlayerId)) return
+        val delta = deltas.optInt(myPlayerId)
+        if (delta != 0) mutableCoinDeltas.tryEmit(delta)
     }
 
     private fun applyGameStateSnapshot(state: JSONObject, envelopeGameId: Int? = null) {
@@ -1540,6 +1567,7 @@ class OkHttpWebSocketClient(
         private const val LOBBY_ROSTER_TYPE = "LOBBY_ROSTER"
         private const val ERROR_TYPE = "ERROR"
         private const val PURCHASE_FAILED_EVENT = "PURCHASE_FAILED"
+        private const val EFFECTS_RESOLVED_EVENT = "EFFECTS_RESOLVED"
         private const val ROLL_DICE_TYPE = "ROLL_DICE"
         private const val SYNC_TYPE = "SYNC"
         private val HOST_USER_ID_KEYS = listOf(

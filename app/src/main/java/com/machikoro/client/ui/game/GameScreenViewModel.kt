@@ -65,6 +65,10 @@ class GameScreenViewModel(
     val accusationResults: SharedFlow<AccusationResult>
         get() = webSocketClient.accusationResults
 
+    /** One-shot local-player coin delta from effect resolution (#389) — drives coin SFX. */
+    val coinDeltas: SharedFlow<Int>
+        get() = webSocketClient.coinDeltas
+
     /** One-shot server-side accusation rejection (#280) for a toast — pass-through. */
     val accusationErrors: SharedFlow<String>
         get() = webSocketClient.accusationErrors
