@@ -43,8 +43,8 @@ fun CardsStack(
                 Box(
                     modifier = Modifier
                         .offset(
-                            x = (cardWidth - shadowWidth) / 4,
-                            y = yOffset + 0.5.dp
+                            x = (cardWidth - shadowWidth) / 2,
+                            y = yOffset - 1.5.dp
                         )
                         .width(shadowWidth)
                         .height(7.dp)
@@ -79,8 +79,8 @@ fun CardsStack(
 fun CardDisplay(
     cardType: CardType,
     modifier: Modifier = Modifier,
-    width: Dp = 145.dp,
-    height: Dp = 165.dp,
+    width: Dp = 155.dp,
+    height: Dp = 175.dp,
 ) {
     Box(
         modifier = modifier.wrapContentSize()
