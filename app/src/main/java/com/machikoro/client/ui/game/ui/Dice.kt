@@ -115,7 +115,7 @@ fun DiceCountSelector(
                 painter = painterResource(id = R.drawable.game_dice_perspective),
                 contentDescription = "Select $diceCount dice",
                 modifier = modifier
-                    .size(100.dp)
+                    .size(95.dp)
                     .offset(y = 5.dp)
                     .alpha(if (isSelected) 1f else 0.5f)
             )
@@ -129,22 +129,22 @@ fun DiceCountSelector(
                 interactionSource = remember { MutableInteractionSource()},
                 role = Role.Button)
                 .wrapContentSize(),
-            horizontalArrangement = Arrangement.spacedBy((-20).dp)
+            horizontalArrangement = Arrangement.spacedBy((-30).dp) // makes dices closer to each other
 
         ) {
             Image(
                 painter = painterResource(id = R.drawable.game_dice_perspective_1),
                 contentDescription = "Select $diceCount dice",
                 modifier = modifier
-                    .size(100.dp)
+                    .size(95.dp) // dice size
                     .alpha(if (isSelected) 1f else 0.5f),
             )
             Image(
                 painter = painterResource(id = R.drawable.game_dice_perspective_2),
                 contentDescription = "Select $diceCount dice",
                 modifier = modifier
-                    .size(100.dp)
-                    .offset(y = (-45).dp)
+                    .size(95.dp)
+                    .offset(y = (-45).dp) // second dice is higher
                     .alpha(if (isSelected) 1f else 0.5f),
             )
         }
@@ -320,7 +320,7 @@ fun DiceSection(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 )
                 {
-                    if(!state.isActivePlayer && !isAnimating) {
+                    if(!state.isActivePlayer) {
                         BasicText(
                              state.activePlayerUsername + " has rolled:",
                         )
@@ -360,13 +360,12 @@ fun DiceSection(
                 }
             } else if (
                 state.gamePhase == GamePhase.ROLL_DICE &&
-                !isAnimating &&
                 state.diceResult == null
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.game_dice_perspective),
                     contentDescription = "One dice",
-                    modifier = modifier
+                    modifier = Modifier
                         .size(100.dp)
                 )
             }
