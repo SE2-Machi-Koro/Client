@@ -1671,6 +1671,88 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun resolveEffectsAutoSendsAfterShortDwellForSingleTriggeredCard() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "7",
+                    displayName = "alice",
+                    coins = 5,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true
+                )
+            )
+        )
+        fakeClient.emitDiceResult(listOf(1))
+        fakeClient.emitPlayerCards(
+            mapOf(
+                7 to listOf(
+                    PlayerCardState(CardType.WHEAT_FIELD, quantity = 1)
+                )
+            )
+        )
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+
+        runCurrent()
+        advanceTimeBy(1_999L)
+        runCurrent()
+
+        assertEquals(0, fakeClient.resolveEffectsCallCount)
+
+        advanceTimeBy(1L)
+        runCurrent()
+
+        assertEquals(1, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
+    fun resolveEffectsAutoSendsAfterMediumDwellForFewTriggeredCards() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "7",
+                    displayName = "alice",
+                    coins = 5,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true
+                )
+            )
+        )
+        fakeClient.emitDiceResult(listOf(1))
+        fakeClient.emitPlayerCards(
+            mapOf(
+                7 to listOf(
+                    PlayerCardState(CardType.WHEAT_FIELD, quantity = 2)
+                )
+            )
+        )
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+
+        runCurrent()
+        advanceTimeBy(3_999L)
+        runCurrent()
+
+        assertEquals(0, fakeClient.resolveEffectsCallCount)
+
+        advanceTimeBy(1L)
+        runCurrent()
+
+        assertEquals(1, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
     fun skipRerollAcceptsDiceResultAndResolvesEffects() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
