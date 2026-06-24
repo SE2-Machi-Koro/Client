@@ -436,30 +436,40 @@ fun GameScreen(
                             modifier = Modifier.offset(y = (-SIDE_CONTENT_OFFSET).dp))
                     }
 
-                    else if (
-                        state.gamePhase == GamePhase.RESOLVE_EFFECTS &&
-                        !(state.canReroll && canReroll)
-                    ) {
-                        ResolvingEffectsView(
-                            state = state,
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .offset(x = 4.dp, y = 50.dp)
-                        )
-                    }
+                else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
+                    ResolvingEffectsView(
+                        state = state,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .offset(x = 4.dp, y = 50.dp)
+                    )
 
-                    else if (state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
+                    if (state.canReroll && canReroll) {
                         DiceSection(
                             state = state,
                             onRollDice = onRollDice,
                             onReroll = onReroll,
                             onSkipReroll = onSkipReroll,
                             canReroll = canReroll,
-                            modifier = Modifier.align(Alignment.Center)
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .offset(y = 24.dp)
                         )
                     }
                 }
-            },
+
+                else if (state.gamePhase == GamePhase.ROLL_DICE) {
+                    DiceSection(
+                        state = state,
+                        onRollDice = onRollDice,
+                        onReroll = onReroll,
+                        onSkipReroll = onSkipReroll,
+                        canReroll = canReroll,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+            }
+                            },
 // =====================================
 // RIGHT
 // =====================================

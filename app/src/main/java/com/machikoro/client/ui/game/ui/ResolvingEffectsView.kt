@@ -1,7 +1,6 @@
 package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -555,21 +554,16 @@ private fun buildOutcomeItems(
         it.color == ShopItemColor.BLUE || it.color == ShopItemColor.GREEN
     }
 
-    val stadiumGain = stadiumEffects.map { effect ->
-        PlayerOutcomeUi(
-            playerId = activePlayerId,
-            amount = effect.incomeAmount * opponents.size * effect.quantity,
-            isPositive = true,
-            cards = effect.stackedCards()
-        )
-    }
+    val stadiumAmountPerOpponent = stadiumEffects.sumOf { it.incomeAmount * it.quantity }
 
-    val stadiumLosses = if (stadiumEffects.isNotEmpty()) {
+    val stadiumLosses = if (stadiumAmountPerOpponent > 0) {
         opponents.mapNotNull { opponent ->
             val opponentId = opponent.id.toIntOrNull() ?: return@mapNotNull null
+            val paidAmount = minOf(stadiumAmountPerOpponent, opponent.coins)
+
             PlayerOutcomeUi(
                 playerId = opponentId,
-                amount = stadiumEffects.sumOf { it.incomeAmount * it.quantity },
+                amount = paidAmount,
                 isPositive = false,
                 cards = emptyList(),
                 fromPlayerName = activePlayerName
@@ -579,18 +573,39 @@ private fun buildOutcomeItems(
         emptyList()
     }
 
+    val stadiumGainAmount = stadiumLosses.sumOf { it.amount }
+
+    val stadiumGain = if (stadiumGainAmount > 0 && stadiumEffects.isNotEmpty()) {
+        listOf(
+            PlayerOutcomeUi(
+                playerId = activePlayerId,
+                amount = stadiumGainAmount,
+                isPositive = true,
+                cards = stadiumEffects.stackedCards()
+            )
+        )
+    } else {
+        emptyList()
+    }
+
+    var remainingActivePlayerCoins = activePlayer?.coins?.coerceAtLeast(0) ?: 0
+
     val redReceiverOutcomes = redEffects.map { effect ->
+        val paidAmount = minOf(effect.totalIncome, remainingActivePlayerCoins)
+        remainingActivePlayerCoins -= paidAmount
+
         PlayerOutcomeUi(
             playerId = effect.playerId,
-            amount = effect.totalIncome,
+            amount = paidAmount,
             isPositive = true,
             cards = effect.stackedCards(),
             fromPlayerName = activePlayerName
         )
     }
 
-    val redTotalPaidByActivePlayer = redEffects.sumOf { it.totalIncome }
-    val activeRedPayment = if (redTotalPaidByActivePlayer > 0 && activePlayer != null) {
+    val redTotalPaidByActivePlayer = redReceiverOutcomes.sumOf { it.amount }
+
+    val activeRedPayment = if (redTotalPaidByActivePlayer > 0) {
         listOf(
             PlayerOutcomeUi(
                 playerId = activePlayerId,
@@ -630,7 +645,8 @@ private fun buildOutcomeItems(
             redReceiverOutcomes +
             stadiumGain +
             stadiumLosses +
-            bankIncomeOutcomes
+            bankIncomeOutcomes +
+            unresolvedPurpleOutcomes
 }
 
 /**
