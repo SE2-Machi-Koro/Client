@@ -26,7 +26,7 @@ fun CardsStack(
     cards: List<CardType>,
     modifier: Modifier = Modifier
 ) {
-    val overlap = 55.dp
+    val overlap = 36.dp
     val cardHeight = 175.dp
     val cardWidth = 155.dp
     val shadowWidth = cardWidth * 0.88f

@@ -444,7 +444,7 @@ fun GameScreen(
                             state = state,
                             modifier = Modifier
                                 .align(Alignment.Center)
-                                .offset(x = 5.dp, y = 50.dp)
+                                .offset(x = 4.dp, y = 50.dp)
                         )
                     }
 
