@@ -115,7 +115,8 @@ fun DiceCountSelector(
                 painter = painterResource(id = R.drawable.game_dice_perspective),
                 contentDescription = "Select $diceCount dice",
                 modifier = modifier
-                    .size(80.dp)
+                    .size(95.dp)
+                    .offset(y = 5.dp)
                     .alpha(if (isSelected) 1f else 0.5f)
             )
         }
@@ -127,21 +128,23 @@ fun DiceCountSelector(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource()},
                 role = Role.Button)
-                .wrapContentSize()
+                .wrapContentSize(),
+            horizontalArrangement = Arrangement.spacedBy((-30).dp) // makes dices closer to each other
+
         ) {
             Image(
-                painter = painterResource(id = R.drawable.game_dice_perspective),
+                painter = painterResource(id = R.drawable.game_dice_perspective_1),
                 contentDescription = "Select $diceCount dice",
                 modifier = modifier
-                    .size(80.dp)
+                    .size(95.dp) // dice size
                     .alpha(if (isSelected) 1f else 0.5f),
             )
             Image(
-                painter = painterResource(id = R.drawable.game_dice_perspective),
+                painter = painterResource(id = R.drawable.game_dice_perspective_2),
                 contentDescription = "Select $diceCount dice",
                 modifier = modifier
-                    .size(80.dp)
-                    .offset(y = (-35).dp)
+                    .size(95.dp)
+                    .offset(y = (-45).dp) // second dice is higher
                     .alpha(if (isSelected) 1f else 0.5f),
             )
         }
@@ -201,7 +204,7 @@ fun DiceResultDisplay(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     dice.forEach { value ->
                         Image(
@@ -305,7 +308,7 @@ fun DiceSection(
     ) {
         when {
             isAnimating -> {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     repeat(animationDiceCount) {
                         DiceAnimationDisplay(animating = true)
                     }
@@ -355,7 +358,18 @@ fun DiceSection(
                         )
                     }
                 }
+            } else if (
+                state.gamePhase == GamePhase.ROLL_DICE &&
+                state.diceResult == null
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.game_dice_perspective),
+                    contentDescription = "One dice",
+                    modifier = Modifier
+                        .size(100.dp)
+                )
             }
+
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
