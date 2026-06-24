@@ -161,6 +161,8 @@ fun GameScreen(
     val isCardViewPossible = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
             && !state.isActivePlayer)
 
+    val showRadioTowerReroll = state.canReroll && canReroll
+
     LaunchedEffect(showOwnCards) {
         if (showOwnCards) {
             showMarketplace = false
@@ -351,7 +353,7 @@ fun GameScreen(
                             .align(Alignment.Center)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)
                     ) {
-                        if(state.gamePhase != GamePhase.ROLL_DICE && state.gamePhase != GamePhase.RESOLVE_EFFECTS) {
+                        if (state.gamePhase != GamePhase.ROLL_DICE) {
                             state.diceResult?.let {
                                 DiceResultDisplay(dice = it,
                                     diceSize = 42.dp,
@@ -437,24 +439,44 @@ fun GameScreen(
                     }
 
                 else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
-                    ResolvingEffectsView(
-                        state = state,
+                    Column(
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .offset(x = 4.dp, y = 50.dp)
-                    )
+                            .offset(x = 5.dp, y = 50.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ResolvingEffectsView(state = state)
 
-                    if (state.canReroll && canReroll) {
-                        DiceSection(
-                            state = state,
-                            onRollDice = onRollDice,
-                            onReroll = onReroll,
-                            onSkipReroll = onSkipReroll,
-                            canReroll = canReroll,
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .offset(y = 24.dp)
-                        )
+                        if (
+                            showRadioTowerReroll &&
+                            state.isActivePlayer &&
+                            state.gameStatus == GameStatus.IN_PROGRESS
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                ActionButton(
+                                    onClick = { onReroll(state.diceResult?.size ?: 1) },
+                                    enabled = !state.isRolling,
+                                    label = "Reroll",
+                                    leftIcon = R.drawable.game_dice_perspective,
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "Reroll dice"
+                                    }
+                                )
+
+                                SecondaryActionButton(
+                                    onClick = onSkipReroll,
+                                    enabled = !state.isRolling,
+                                    label = "Skip",
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "Skip reroll"
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
 

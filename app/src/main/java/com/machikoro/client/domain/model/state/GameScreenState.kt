@@ -6,6 +6,7 @@ import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.ShopItemColor
+import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.shop.ShopItem
 
 data class GameScreenState(
@@ -125,4 +126,54 @@ fun GameScreenState.isAlreadyOwnedPurpleEstablishment(item: ShopItem): Boolean {
     val activePlayerId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull() ?: return false
     val cardType = runCatching { CardType.valueOf(item.type) }.getOrNull() ?: return false
     return playerCards[activePlayerId].orEmpty().any { it.cardType == cardType && it.quantity > 0 }
+}
+
+fun GameScreenState.triggeredEstablishmentCountForCurrentRoll(): Int {
+    val rolledTotal = diceResult?.sum() ?: return 0
+    val activePlayerDatabaseId = players
+        .firstOrNull { it.isActivePlayer }
+        ?.id
+        ?.toIntOrNull()
+
+    val cardCatalog = shopItems
+        .ifEmpty { ShopCatalog.defaultItems }
+        .filter { it.purchaseType == PurchaseType.ESTABLISHMENT }
+        .mapNotNull { item ->
+            val cardType = runCatching { CardType.valueOf(item.type) }.getOrNull()
+            cardType?.let { it to item }
+        }
+        .toMap()
+
+    return players.sumOf { player ->
+        val playerId = player.id.toIntOrNull() ?: return@sumOf 0
+
+        playerCards[playerId].orEmpty().sumOf { ownedCard ->
+            val item = cardCatalog[ownedCard.cardType]
+
+            if (
+                item != null &&
+                ownedCard.quantity > 0 &&
+                rolledTotal in item.activationNumbers &&
+                item.color.triggersForResolvingEffects(playerId, activePlayerDatabaseId)
+            ) {
+                ownedCard.quantity
+            } else {
+                0
+            }
+        }
+    }
+}
+
+fun GameScreenState.hasTriggeredEstablishmentsForCurrentRoll(): Boolean =
+    triggeredEstablishmentCountForCurrentRoll() > 0
+
+private fun ShopItemColor.triggersForResolvingEffects(
+    ownerPlayerId: Int,
+    activePlayerId: Int?,
+): Boolean = when (this) {
+    ShopItemColor.RED -> activePlayerId != null && ownerPlayerId != activePlayerId
+    ShopItemColor.BLUE -> true
+    ShopItemColor.GREEN -> ownerPlayerId == activePlayerId
+    ShopItemColor.PURPLE -> ownerPlayerId == activePlayerId
+    ShopItemColor.LANDMARK -> false
 }
