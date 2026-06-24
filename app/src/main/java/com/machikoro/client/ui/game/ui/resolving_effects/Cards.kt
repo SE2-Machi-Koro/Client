@@ -8,8 +8,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.machikoro.client.domain.enums.CardType
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
@@ -22,22 +26,48 @@ fun CardsStack(
     cards: List<CardType>,
     modifier: Modifier = Modifier
 ) {
-    val overlap = 50.dp
-    val cardHeight = 165.dp
+    val overlap = 55.dp
+    val cardHeight = 175.dp
+    val cardWidth = 155.dp
+    val shadowWidth = cardWidth * 0.88f
 
     Box(
         modifier = modifier.height(
             cardHeight + ((cards.size - 1) * overlap)
         )
     ) {
-
         cards.forEachIndexed { index, card ->
+            val yOffset = overlap * index
+
+            if (index > 0) {
+                Box(
+                    modifier = Modifier
+                        .offset(
+                            x = (cardWidth - shadowWidth) / 4,
+                            y = yOffset + 0.5.dp
+                        )
+                        .width(shadowWidth)
+                        .height(7.dp)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0x44000000),
+                                    Color.Transparent
+                                )
+                            ),
+                            shape = RoundedCornerShape(
+                                topStart = 10.dp,
+                                topEnd = 10.dp
+                            )
+                        )
+                )
+            }
 
             CardDisplay(
                 cardType = card,
-                modifier = Modifier.offset(
-                    y = overlap * index
-                )
+                modifier = Modifier.offset(y = yOffset),
+                width = cardWidth,
+                height = cardHeight
             )
         }
     }
