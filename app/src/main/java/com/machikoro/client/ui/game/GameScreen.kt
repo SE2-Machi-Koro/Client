@@ -552,7 +552,7 @@ fun GameScreen(
         BadgedBox(
             badge = {
                 if (readCount < state.chatMessages.size) {
-                    Badge (
+                    Badge(
                         contentColor = PrimaryBlueDark,
                         containerColor = PrimaryOrange
                     ){

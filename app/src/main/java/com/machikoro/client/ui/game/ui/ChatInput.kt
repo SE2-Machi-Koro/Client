@@ -35,7 +35,6 @@ fun ChatInput(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            //.padding(8.dp)
             .background(Black, shape = OutlinedTextFieldDefaults.shape)
     ) {
 
@@ -55,8 +54,6 @@ fun ChatInput(
             modifier = Modifier.weight(1f)
                 .padding(8.dp),
         )
-
-        //Spacer(Modifier.width(8.dp))
 
         IconButton(
             onClick = {

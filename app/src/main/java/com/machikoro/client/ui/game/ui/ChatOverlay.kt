@@ -46,7 +46,6 @@ fun ChatOverlay(
     currentPlayer: String,
     open: Boolean,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier,
     messages: List<ChatMessageState>,
     onSendMessageClick: (String) -> Unit
 ) {
