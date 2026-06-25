@@ -28,6 +28,7 @@ import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.ShopItemColor
+import com.machikoro.client.domain.enums.triggersForResolvingEffects
 import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
@@ -221,6 +222,8 @@ private fun FramedEffectCard(
     }
 }
 
+// TODO: Wire TV Station and Business Center interaction states once the server exposes
+// selectable purple-card effects. For now these composables are preview scaffolding.
 @Composable
 private fun PurpleTvStationChoiceView(
     players: List<PlayerCoinState>,
@@ -256,7 +259,10 @@ private fun PurpleTvStationChoiceView(
                 PlayerChoicePill(
                     name = player.displayName,
                     coins = player.coins,
-                    enabled = player.coins >= 5
+                    enabled = player.coins >= 5,
+                    onClick = {
+                        // TODO: Handle TV Station player selection when server action is available.
+                    }
                 )
             }
         }
@@ -468,6 +474,7 @@ private fun PlayerChoicePill(
     name: String,
     coins: Int,
     enabled: Boolean,
+    onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -677,7 +684,7 @@ private fun GameScreenState.triggeredEffects(): List<TriggeredEffectUi> {
 
             if (ownedCard.quantity <= 0) return@mapNotNull null
             if (rolledTotal !in item.activationNumbers) return@mapNotNull null
-            if (!item.color.triggersFor(playerId, activePlayerDatabaseId)) return@mapNotNull null
+            if (!item.color.triggersForResolvingEffects(playerId, activePlayerDatabaseId)) return@mapNotNull null
 
             TriggeredEffectUi(
                 playerId = playerId,
@@ -696,17 +703,6 @@ private fun GameScreenState.triggeredEffects(): List<TriggeredEffectUi> {
             .thenBy { it.playerId }
             .thenBy { it.cardName }
     )
-}
-
-private fun ShopItemColor.triggersFor(
-    ownerPlayerId: Int,
-    activePlayerId: Int?,
-): Boolean = when (this) {
-    ShopItemColor.RED -> activePlayerId != null && ownerPlayerId != activePlayerId
-    ShopItemColor.BLUE -> true
-    ShopItemColor.GREEN -> ownerPlayerId == activePlayerId
-    ShopItemColor.PURPLE -> ownerPlayerId == activePlayerId
-    ShopItemColor.LANDMARK -> false
 }
 
 private val ShopItemColor.resolvePriority: Int
