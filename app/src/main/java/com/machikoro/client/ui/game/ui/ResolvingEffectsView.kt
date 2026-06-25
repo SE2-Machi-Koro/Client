@@ -253,7 +253,7 @@ private fun PurpleTvStationChoiceView(
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrgit statusangement.spacedBy(8.dp)
         ) {
             players.forEach { player ->
                 PlayerChoicePill(
