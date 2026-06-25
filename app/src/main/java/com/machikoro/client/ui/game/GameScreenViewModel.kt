@@ -101,8 +101,6 @@ class GameScreenViewModel(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
 
-    private val _chatMessages = mutableStateListOf<ChatMessageState>()
-
     /** Debug End-game (#191): one-shot failure message, drives a snackbar. */
     val debugEndGameErrors: SharedFlow<String>
         get() = mutableDebugEndGameErrors.asSharedFlow()
@@ -312,8 +310,7 @@ class GameScreenViewModel(
         }
         viewModelScope.launch {
             webSocketClient.chatMessages.collect { chat ->
-                _chatMessages.add(chat)
-                mutableState.update { it.copy(chatMessages = _chatMessages) }
+                mutableState.update { it.copy(chatMessages = it.chatMessages + chat) }
             }
         }
     }
