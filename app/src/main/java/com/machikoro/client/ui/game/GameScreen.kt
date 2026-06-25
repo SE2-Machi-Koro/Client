@@ -63,6 +63,7 @@ import com.machikoro.client.ui.game.ui.PlayerCoinField
 import com.machikoro.client.ui.game.ui.PlayersTopBar
 import com.machikoro.client.ui.game.ui.ResolvingEffectsView
 import com.machikoro.client.ui.game.ui.RoundIndicator
+import com.machikoro.client.ui.game.ui.withResolvingEffectsPreviewCoins
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.BasicText
@@ -108,6 +109,7 @@ fun GameScreen(
     // dialog opens this confirmation. Accusing wrongly costs a coin, so we
     // always confirm first.
     var accuseTargetId by remember { mutableStateOf<String?>(null) }
+    val coinDisplayState = remember(state) { state.withResolvingEffectsPreviewCoins() }
     val accuseTarget = accuseTargetId?.let { id -> state.players.firstOrNull { it.id == id } }
     if (accuseTarget != null) {
         AlertDialog(
@@ -289,7 +291,7 @@ fun GameScreen(
                         )
 
                         PlayersTopBar(
-                            players = state.players,
+                            players = coinDisplayState.players,
                             playerLandmarks =
                                 state.playerLandmarks,
                             playerCards = state.playerCards,
@@ -509,7 +511,7 @@ fun GameScreen(
                 ) {
 
                     PlayerCoinField(
-                        state = state,
+                        state = coinDisplayState,
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)

@@ -2,6 +2,7 @@ package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,30 +21,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.machikoro.client.R
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
+import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.enums.triggersForResolvingEffects
 import com.machikoro.client.domain.model.shop.ShopCatalog
+import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.game.ui.resolving_effects.CardsStack
-import com.machikoro.client.ui.theme.ButtonBorderBeige
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.TextBlueDark
-import androidx.compose.foundation.Image
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import com.machikoro.client.R
 
 @Composable
 fun ResolvingEffectsView(
@@ -66,6 +67,38 @@ fun ResolvingEffectsView(
         effects = triggeredEffects,
         players = state.players,
         modifier = modifier
+    )
+}
+
+fun GameScreenState.withResolvingEffectsPreviewCoins(): GameScreenState {
+    if (gamePhase != GamePhase.RESOLVE_EFFECTS) return this
+
+    val triggeredEffects = triggeredEffects()
+    if (triggeredEffects.isEmpty()) return this
+
+    val activePlayerId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
+    val activePlayerName = players.firstOrNull { it.id.toIntOrNull() == activePlayerId }
+        ?.displayName ?: "Active player"
+    val outcomeItems = buildOutcomeItems(
+        effects = triggeredEffects,
+        players = players,
+        activePlayerId = activePlayerId,
+        activePlayerName = activePlayerName
+    )
+    if (outcomeItems.isEmpty()) return this
+
+    val coinDeltasByPlayer = outcomeItems
+        .groupBy { it.playerId }
+        .mapValues { (_, outcomes) ->
+            outcomes.sumOf { if (it.isPositive) it.amount else -it.amount }
+        }
+
+    return copy(
+        players = players.map { player ->
+            val playerId = player.id.toIntOrNull()
+            val coinDelta = coinDeltasByPlayer[playerId] ?: return@map player
+            player.copy(coins = (player.coins + coinDelta).coerceAtLeast(0))
+        }
     )
 }
 
@@ -92,8 +125,7 @@ private fun TriggeredEffectsBoard(
         modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp)
-            .offset(x = (-10).dp),
+            .padding(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.Top
     ) {
@@ -541,7 +573,7 @@ private data class TriggeredEffectUi(
     val color: ShopItemColor,
     val resolveOrder: Int,
     val incomeAmount: Int,
-    )
+)
 
 private val TriggeredEffectUi.totalIncome: Int
     get() = incomeAmount * quantity
@@ -572,6 +604,7 @@ private fun buildOutcomeItems(
         opponents.mapNotNull { opponent ->
             val opponentId = opponent.id.toIntOrNull() ?: return@mapNotNull null
             val paidAmount = minOf(stadiumAmountPerOpponent, opponent.coins)
+            if (paidAmount <= 0) return@mapNotNull null
 
             PlayerOutcomeUi(
                 playerId = opponentId,
@@ -602,9 +635,10 @@ private fun buildOutcomeItems(
 
     var remainingActivePlayerCoins = activePlayer?.coins?.coerceAtLeast(0) ?: 0
 
-    val redReceiverOutcomes = redEffects.map { effect ->
+    val redReceiverOutcomes = redEffects.mapNotNull { effect ->
         val paidAmount = minOf(effect.totalIncome, remainingActivePlayerCoins)
         remainingActivePlayerCoins -= paidAmount
+        if (paidAmount <= 0) return@mapNotNull null
 
         PlayerOutcomeUi(
             playerId = effect.playerId,
@@ -639,32 +673,19 @@ private fun buildOutcomeItems(
         )
     }
 
-    val unresolvedPurpleOutcomes = effects
-        .filter {
-            it.color == ShopItemColor.PURPLE &&
-                    it.cardType != CardType.STADIUM
-        }
-        .map { effect ->
-            PlayerOutcomeUi(
-                playerId = effect.playerId,
-                amount = effect.totalIncome,
-                isPositive = true,
-                cards = effect.stackedCards()
-            )
-        }
-
     return activeRedPayment +
             redReceiverOutcomes +
             stadiumGain +
             stadiumLosses +
-            bankIncomeOutcomes +
-            unresolvedPurpleOutcomes
+            bankIncomeOutcomes
 }
 
 /**
  * Best-effort local preview of establishments that should visually light up for
- * this roll. The server remains authoritative for real coin movement, including
- * Shopping Mall bonuses, partial red-card payments, and non-coin purple effects.
+ * this roll. The server remains authoritative for real coin movement; this
+ * preview mirrors Shopping Mall bonuses and caps theft at visible coin balances.
+ * TV Station and Business Center stay hidden until the server exposes their
+ * selected targets, so the panel does not invent coin transfers.
  */
 private fun GameScreenState.triggeredEffects(): List<TriggeredEffectUi> {
     val rolledTotal = diceResult?.sum() ?: return emptyList()
@@ -700,7 +721,8 @@ private fun GameScreenState.triggeredEffects(): List<TriggeredEffectUi> {
                 effectText = item.effectText,
                 color = item.color,
                 resolveOrder = item.color.resolvePriority * 100 + playerOrder,
-                incomeAmount = ownedCard.cardType.coinEffectAmount(ownedCards),
+                incomeAmount = ownedCard.cardType.coinEffectAmount(ownedCards) +
+                    shoppingMallBonus(playerId, item),
             )
         }
     }.sortedWith(
@@ -708,6 +730,17 @@ private fun GameScreenState.triggeredEffects(): List<TriggeredEffectUi> {
             .thenBy { it.playerId }
             .thenBy { it.cardName }
     )
+}
+
+private fun GameScreenState.shoppingMallBonus(
+    playerId: Int,
+    item: ShopItem,
+): Int {
+    if (item.establishmentType != "CUP" && item.establishmentType != "BREAD") return 0
+    val hasShoppingMall = playerLandmarks[playerId].orEmpty().any {
+        it.landmarkType == LandmarkType.SHOPPING_MALL && it.isBuilt
+    }
+    return if (hasShoppingMall) 1 else 0
 }
 
 private val ShopItemColor.resolvePriority: Int
