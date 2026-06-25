@@ -593,6 +593,8 @@ fun GameScreen(
         }
         // Chat overlay
         ChatOverlay(
+            //used to compare the current player with the chat message sender to highlight own messages
+            //displayname == username
             currentPlayer = state.players.firstOrNull { it.id.toIntOrNull() == state.myUserId }?.displayName ?: "",
             open = chatOpen,
             messages = state.chatMessages,
