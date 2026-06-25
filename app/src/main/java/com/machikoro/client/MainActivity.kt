@@ -340,6 +340,7 @@ class MainActivity : ComponentActivity() {
                         onJoinLobbySubmit = {
                             homeViewModel.joinLobby()
                         },
+                        onSendChatMessage = gameScreenViewModel::sendChatMessage
                     )
                 }
             }

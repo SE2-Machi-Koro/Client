@@ -46,6 +46,7 @@ data class GameScreenState(
     val playerLandmarks: Map<Int, List<PlayerLandmarkState>> = emptyMap(),
     val marketplace: Map<CardType, Int> = emptyMap(),
     val shopItems: List<ShopItem> = emptyList(),
+    val chatMessages: List<ChatMessageState> = emptyList(),
 ) {
     val isActivePlayer: Boolean
         get() = myUserId != null && myUserId == activePlayerId

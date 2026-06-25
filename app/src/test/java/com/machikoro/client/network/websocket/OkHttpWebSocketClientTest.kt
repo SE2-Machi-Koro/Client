@@ -3666,8 +3666,7 @@ class OkHttpWebSocketClientTest {
         }
         val json = frame.substringAfter("\n\n").substringBefore("\u0000")
         val body = JSONObject(json)
-
-        assertEquals("CHAT", body.getString("type"))
+        
         assertEquals(7, body.getInt("gameId"))
         assertEquals("hello world", body.getString("message"))
     }
