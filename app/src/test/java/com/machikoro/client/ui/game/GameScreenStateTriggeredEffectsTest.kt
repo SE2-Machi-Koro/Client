@@ -3,6 +3,9 @@ package com.machikoro.client.domain.model.state
 import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
+import com.machikoro.client.domain.enums.PurchaseType
+import com.machikoro.client.domain.enums.ShopItemColor
+import com.machikoro.client.domain.model.shop.ShopItem
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
 import junit.framework.TestCase.assertTrue
@@ -90,6 +93,52 @@ class GameScreenStateTriggeredEffectsTest {
     }
 
     @Test
+    fun triggeredEstablishmentCountReturnsZeroWhenActivePlayerIsMissingForTurnOnlyCards() {
+        val state = baseState(
+            diceResult = listOf(2),
+            players = listOf(
+                PlayerCoinState(
+                    id = "1",
+                    displayName = "You",
+                    coins = 5,
+                    isCurrentPlayer = true,
+                    isActivePlayer = false
+                )
+            ),
+            playerCards = mapOf(
+                1 to listOf(PlayerCardState(CardType.BAKERY, quantity = 1))
+            )
+        )
+
+        assertEquals(0, state.triggeredEstablishmentCountForCurrentRoll())
+    }
+
+    @Test
+    fun triggeredEstablishmentCountIgnoresCardsWithoutCatalogEntry() {
+        val state = baseState(
+            diceResult = listOf(1),
+            playerCards = mapOf(
+                1 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 1))
+            ),
+            shopItems = listOf(
+                ShopItem(
+                    purchaseType = PurchaseType.ESTABLISHMENT,
+                    type = CardType.BAKERY.name,
+                    displayName = "Bakery",
+                    cost = 1,
+                    color = ShopItemColor.GREEN,
+                    establishmentType = "BREAD",
+                    activationNumbers = listOf(2, 3),
+                    effectText = "Get 1 coin from the bank on your turn.",
+                    imageKey = "card_bakery"
+                )
+            )
+        )
+
+        assertEquals(0, state.triggeredEstablishmentCountForCurrentRoll())
+    }
+
+    @Test
     fun activePlayerUsernameReturnsActivePlayerName() {
         val state = baseState(diceResult = listOf(1))
 
@@ -133,6 +182,7 @@ class GameScreenStateTriggeredEffectsTest {
             )
         ),
         playerCards: Map<Int, List<PlayerCardState>> = emptyMap(),
+        shopItems: List<ShopItem> = emptyList(),
     ): GameScreenState {
         return GameScreenState(
             gameId = 1,
@@ -144,7 +194,8 @@ class GameScreenStateTriggeredEffectsTest {
             myUserId = 1,
             purchaseState = PurchaseState.IDLE,
             gameStatus = GameStatus.IN_PROGRESS,
-            playerCards = playerCards
+            playerCards = playerCards,
+            shopItems = shopItems
         )
     }
 }

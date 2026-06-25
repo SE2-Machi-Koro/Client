@@ -6,6 +6,7 @@ import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.ShopItemColor
+import com.machikoro.client.domain.enums.triggersForResolvingEffects
 import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.shop.ShopItem
 
@@ -166,14 +167,3 @@ fun GameScreenState.triggeredEstablishmentCountForCurrentRoll(): Int {
 
 fun GameScreenState.hasTriggeredEstablishmentsForCurrentRoll(): Boolean =
     triggeredEstablishmentCountForCurrentRoll() > 0
-
-private fun ShopItemColor.triggersForResolvingEffects(
-    ownerPlayerId: Int,
-    activePlayerId: Int?,
-): Boolean = when (this) {
-    ShopItemColor.RED -> activePlayerId != null && ownerPlayerId != activePlayerId
-    ShopItemColor.BLUE -> true
-    ShopItemColor.GREEN -> ownerPlayerId == activePlayerId
-    ShopItemColor.PURPLE -> ownerPlayerId == activePlayerId
-    ShopItemColor.LANDMARK -> false
-}
