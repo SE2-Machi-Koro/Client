@@ -468,6 +468,7 @@ class GameScreenViewModel(
             else -> resolveEffectsDwellMillis
         }
     }
+
     fun selectPurchaseItem(itemType: String) {
         val current = mutableState.value
         val availableItems = current.shopItems.ifEmpty { ShopCatalog.defaultItems }

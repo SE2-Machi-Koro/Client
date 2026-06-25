@@ -806,7 +806,6 @@ private fun GameScreenResolveEffectsPreview() {
                 myUserId = 1,
                 activePlayerId = 1,
                 roundNumber = 4,
-               // canReroll = true,
                 playerLandmarks = previewLandmarks(),
                 marketplace = previewMarketplace(),
                 customDisplayText = "Resolving effects"

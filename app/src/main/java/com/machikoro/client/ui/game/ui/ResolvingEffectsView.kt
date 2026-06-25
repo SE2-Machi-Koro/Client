@@ -32,19 +32,20 @@ import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
-import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.ShopItemColor
-import com.machikoro.client.domain.enums.triggersForResolvingEffects
-import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.shop.ShopItem
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PurchaseState
+import com.machikoro.client.domain.model.state.triggeredEstablishmentsForCurrentRoll
 import com.machikoro.client.ui.game.ui.resolving_effects.CardsStack
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.TextBlueDark
+
+private const val CUP_ESTABLISHMENT_TYPE = "CUP"
+private const val BREAD_ESTABLISHMENT_TYPE = "BREAD"
 
 @Composable
 fun ResolvingEffectsView(
@@ -70,7 +71,7 @@ fun ResolvingEffectsView(
     )
 }
 
-fun GameScreenState.withResolvingEffectsPreviewCoins(): GameScreenState {
+internal fun GameScreenState.withResolvingEffectsPreviewCoins(): GameScreenState {
     if (gamePhase != GamePhase.RESOLVE_EFFECTS) return this
 
     val triggeredEffects = triggeredEffects()
@@ -673,58 +674,52 @@ private fun buildOutcomeItems(
         )
     }
 
+    val unresolvedPurpleOutcomes = effects
+        .filter {
+            it.color == ShopItemColor.PURPLE &&
+                it.cardType != CardType.STADIUM
+        }
+        .map { effect ->
+            PlayerOutcomeUi(
+                playerId = effect.playerId,
+                amount = 0,
+                isPositive = true,
+                cards = effect.stackedCards()
+            )
+        }
+
     return activeRedPayment +
             redReceiverOutcomes +
             stadiumGain +
             stadiumLosses +
-            bankIncomeOutcomes
+            bankIncomeOutcomes +
+            unresolvedPurpleOutcomes
 }
 
 /**
  * Best-effort local preview of establishments that should visually light up for
  * this roll. The server remains authoritative for real coin movement; this
  * preview mirrors Shopping Mall bonuses and caps theft at visible coin balances.
- * TV Station and Business Center stay hidden until the server exposes their
- * selected targets, so the panel does not invent coin transfers.
+ * TV Station and Business Center show only the triggered card art until the
+ * server exposes their selected targets, so the panel does not invent coin transfers.
  */
 private fun GameScreenState.triggeredEffects(): List<TriggeredEffectUi> {
-    val rolledTotal = diceResult?.sum() ?: return emptyList()
-    val activePlayerDatabaseId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
+    return triggeredEstablishmentsForCurrentRoll().map { triggered ->
+        val item = triggered.item
+        val ownedCard = triggered.ownedCard
 
-    val cardCatalog = shopItems
-        .ifEmpty { ShopCatalog.defaultItems }
-        .filter { it.purchaseType == PurchaseType.ESTABLISHMENT }
-        .mapNotNull { item ->
-            val cardType = runCatching { CardType.valueOf(item.type) }.getOrNull()
-            cardType?.let { it to item }
-        }
-        .toMap()
-
-    return players.flatMapIndexed { playerOrder, player ->
-        val playerId = player.id.toIntOrNull() ?: return@flatMapIndexed emptyList()
-
-        val ownedCards = playerCards[playerId].orEmpty()
-
-        ownedCards.mapNotNull { ownedCard ->
-            val item = cardCatalog[ownedCard.cardType] ?: return@mapNotNull null
-
-            if (ownedCard.quantity <= 0) return@mapNotNull null
-            if (rolledTotal !in item.activationNumbers) return@mapNotNull null
-            if (!item.color.triggersForResolvingEffects(playerId, activePlayerDatabaseId)) return@mapNotNull null
-
-            TriggeredEffectUi(
-                playerId = playerId,
-                playerName = player.displayName,
-                cardType = ownedCard.cardType,
-                cardName = item.displayName,
-                quantity = ownedCard.quantity,
-                effectText = item.effectText,
-                color = item.color,
-                resolveOrder = item.color.resolvePriority * 100 + playerOrder,
-                incomeAmount = ownedCard.cardType.coinEffectAmount(ownedCards) +
-                    shoppingMallBonus(playerId, item),
-            )
-        }
+        TriggeredEffectUi(
+            playerId = triggered.playerId,
+            playerName = triggered.playerName,
+            cardType = ownedCard.cardType,
+            cardName = item.displayName,
+            quantity = ownedCard.quantity,
+            effectText = item.effectText,
+            color = item.color,
+            resolveOrder = item.color.resolvePriority * 100 + triggered.playerOrder,
+            incomeAmount = ownedCard.cardType.coinEffectAmount(triggered.ownedCards) +
+                shoppingMallBonus(triggered.playerId, item),
+        )
     }.sortedWith(
         compareBy<TriggeredEffectUi> { it.resolveOrder }
             .thenBy { it.playerId }
@@ -736,7 +731,12 @@ private fun GameScreenState.shoppingMallBonus(
     playerId: Int,
     item: ShopItem,
 ): Int {
-    if (item.establishmentType != "CUP" && item.establishmentType != "BREAD") return 0
+    if (
+        item.establishmentType != CUP_ESTABLISHMENT_TYPE &&
+        item.establishmentType != BREAD_ESTABLISHMENT_TYPE
+    ) {
+        return 0
+    }
     val hasShoppingMall = playerLandmarks[playerId].orEmpty().any {
         it.landmarkType == LandmarkType.SHOPPING_MALL && it.isBuilt
     }

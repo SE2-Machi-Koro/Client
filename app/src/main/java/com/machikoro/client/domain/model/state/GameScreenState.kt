@@ -111,6 +111,15 @@ data class GameScreenState(
     }
 }
 
+data class TriggeredEstablishmentState(
+    val playerId: Int,
+    val playerName: String,
+    val playerOrder: Int,
+    val ownedCard: PlayerCardState,
+    val ownedCards: List<PlayerCardState>,
+    val item: ShopItem,
+)
+
 fun GameScreenState.remainingMarketplaceQuantityFor(item: ShopItem): Int? {
     if (item.purchaseType != PurchaseType.ESTABLISHMENT || marketplace.isEmpty()) return null
     val cardType = runCatching { CardType.valueOf(item.type) }.getOrNull() ?: return null
@@ -129,8 +138,8 @@ fun GameScreenState.isAlreadyOwnedPurpleEstablishment(item: ShopItem): Boolean {
     return playerCards[activePlayerId].orEmpty().any { it.cardType == cardType && it.quantity > 0 }
 }
 
-fun GameScreenState.triggeredEstablishmentCountForCurrentRoll(): Int {
-    val rolledTotal = diceResult?.sum() ?: return 0
+fun GameScreenState.triggeredEstablishmentsForCurrentRoll(): List<TriggeredEstablishmentState> {
+    val rolledTotal = diceResult?.sum() ?: return emptyList()
     val activePlayerDatabaseId = players
         .firstOrNull { it.isActivePlayer }
         ?.id
@@ -145,25 +154,35 @@ fun GameScreenState.triggeredEstablishmentCountForCurrentRoll(): Int {
         }
         .toMap()
 
-    return players.sumOf { player ->
-        val playerId = player.id.toIntOrNull() ?: return@sumOf 0
+    return players.flatMapIndexed { playerOrder, player ->
+        val playerId = player.id.toIntOrNull() ?: return@flatMapIndexed emptyList()
+        val ownedCards = playerCards[playerId].orEmpty()
 
-        playerCards[playerId].orEmpty().sumOf { ownedCard ->
-            val item = cardCatalog[ownedCard.cardType]
+        ownedCards.mapNotNull { ownedCard ->
+            val item = cardCatalog[ownedCard.cardType] ?: return@mapNotNull null
 
             if (
-                item != null &&
                 ownedCard.quantity > 0 &&
                 rolledTotal in item.activationNumbers &&
                 item.color.triggersForResolvingEffects(playerId, activePlayerDatabaseId)
             ) {
-                ownedCard.quantity
+                TriggeredEstablishmentState(
+                    playerId = playerId,
+                    playerName = player.displayName,
+                    playerOrder = playerOrder,
+                    ownedCard = ownedCard,
+                    ownedCards = ownedCards,
+                    item = item
+                )
             } else {
-                0
+                null
             }
         }
     }
 }
+
+fun GameScreenState.triggeredEstablishmentCountForCurrentRoll(): Int =
+    triggeredEstablishmentsForCurrentRoll().sumOf { it.ownedCard.quantity }
 
 fun GameScreenState.hasTriggeredEstablishmentsForCurrentRoll(): Boolean =
     triggeredEstablishmentCountForCurrentRoll() > 0
