@@ -1,6 +1,7 @@
 package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -253,13 +254,13 @@ private fun PurpleTvStationChoiceView(
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrgit statusangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            players.forEach { player ->
+            players.filterNot { it.isActivePlayer }.forEach { player ->
                 PlayerChoicePill(
                     name = player.displayName,
                     coins = player.coins,
-                    enabled = player.coins >= 5,
+                    enabled = player.coins > 0,
                     onClick = {
                         // TODO: Handle TV Station player selection when server action is available.
                     }
@@ -479,6 +480,10 @@ private fun PlayerChoicePill(
     Row(
         modifier = Modifier
             .width(155.dp)
+            .clickable(
+                enabled = enabled,
+                onClick = onClick
+            )
             .background(
                 color = if (enabled) Color.White else Color(0xFFD7D0CA),
                 shape = RoundedCornerShape(13.dp)
