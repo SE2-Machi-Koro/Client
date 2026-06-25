@@ -39,6 +39,8 @@ import com.machikoro.client.R
 import com.machikoro.client.domain.enums.GamePhase
 import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.ui.game.GameSound
+import com.machikoro.client.ui.game.SoundManager
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.shared.SecondaryActionButton
@@ -113,7 +115,8 @@ fun DiceCountSelector(
                 painter = painterResource(id = R.drawable.game_dice_perspective),
                 contentDescription = "Select $diceCount dice",
                 modifier = modifier
-                    .size(80.dp)
+                    .size(95.dp)
+                    .offset(y = 5.dp)
                     .alpha(if (isSelected) 1f else 0.5f)
             )
         }
@@ -125,21 +128,23 @@ fun DiceCountSelector(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource()},
                 role = Role.Button)
-                .wrapContentSize()
+                .wrapContentSize(),
+            horizontalArrangement = Arrangement.spacedBy((-30).dp) // makes dices closer to each other
+
         ) {
             Image(
-                painter = painterResource(id = R.drawable.game_dice_perspective),
+                painter = painterResource(id = R.drawable.game_dice_perspective_1),
                 contentDescription = "Select $diceCount dice",
                 modifier = modifier
-                    .size(80.dp)
+                    .size(95.dp) // dice size
                     .alpha(if (isSelected) 1f else 0.5f),
             )
             Image(
-                painter = painterResource(id = R.drawable.game_dice_perspective),
+                painter = painterResource(id = R.drawable.game_dice_perspective_2),
                 contentDescription = "Select $diceCount dice",
                 modifier = modifier
-                    .size(80.dp)
-                    .offset(y = (-35).dp)
+                    .size(95.dp)
+                    .offset(y = (-45).dp) // second dice is higher
                     .alpha(if (isSelected) 1f else 0.5f),
             )
         }
@@ -199,7 +204,7 @@ fun DiceResultDisplay(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     dice.forEach { value ->
                         Image(
@@ -303,7 +308,7 @@ fun DiceSection(
     ) {
         when {
             isAnimating -> {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     repeat(animationDiceCount) {
                         DiceAnimationDisplay(animating = true)
                     }
@@ -353,7 +358,18 @@ fun DiceSection(
                         )
                     }
                 }
+            } else if (
+                state.gamePhase == GamePhase.ROLL_DICE &&
+                state.diceResult == null
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.game_dice_perspective),
+                    contentDescription = "One dice",
+                    modifier = Modifier
+                        .size(100.dp)
+                )
             }
+
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -364,6 +380,7 @@ fun DiceSection(
                     val chosen = frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount
                     ActionButton(
                         onClick = {
+                            SoundManager.play(GameSound.DICE_ROLL)
                             frozenDiceCount = chosen
                             isAnimating = true
                             onRollDice(chosen)
@@ -382,6 +399,7 @@ fun DiceSection(
                     val rerollCount = frozenDiceCount ?: state.diceResult?.size ?: 1
                     ActionButton(
                         onClick = {
+                            SoundManager.play(GameSound.DICE_ROLL)
                             hasRerolled = true
                             frozenDiceCount = rerollCount
                             isAnimating = true

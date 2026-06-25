@@ -63,6 +63,7 @@ class DummyWebSocketClient : WebSocketClient {
 
     override val lobbyEntered: SharedFlow<Unit> = MutableSharedFlow()
     override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> = MutableSharedFlow(extraBufferCapacity = 1)
+    override val coinDeltas: SharedFlow<Int> = MutableSharedFlow(extraBufferCapacity = 1)
     override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
     override val chatMessages: SharedFlow<ChatMessageState> = MutableSharedFlow(extraBufferCapacity = 1)
 
@@ -167,6 +168,64 @@ class WebSocketClientTest {
             purchaseEvents
         )
         assertEquals(4, fixture.client.players.value.first { it.id == "22" }.coins)
+    }
+
+    @Test
+    fun effectsResolvedEmitsLocalPlayerCoinGain() = runTest {
+        // Local userId 101 maps to playerId 11 in the snapshot roster.
+        val fixture = okHttpClientFixture()
+        val deltas = mutableListOf<Int>()
+        fixture.client.coinDeltas.onEach { deltas += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        fixture.deliverMessage(effectsResolvedMessage("""{"11":3,"22":-3}"""))
+        runCurrent()
+
+        assertEquals(listOf(3), deltas)
+    }
+
+    @Test
+    fun effectsResolvedEmitsLocalPlayerCoinLoss() = runTest {
+        val fixture = okHttpClientFixture()
+        val deltas = mutableListOf<Int>()
+        fixture.client.coinDeltas.onEach { deltas += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        fixture.deliverMessage(effectsResolvedMessage("""{"11":-2}"""))
+        runCurrent()
+
+        assertEquals(listOf(-2), deltas)
+    }
+
+    @Test
+    fun effectsResolvedWithoutLocalDeltaEmitsNothing() = runTest {
+        val fixture = okHttpClientFixture()
+        val deltas = mutableListOf<Int>()
+        fixture.client.coinDeltas.onEach { deltas += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        // Only an opponent's balance changed — the local player hears nothing.
+        fixture.deliverMessage(effectsResolvedMessage("""{"22":5}"""))
+        runCurrent()
+
+        assertEquals(emptyList<Int>(), deltas)
+    }
+
+    @Test
+    fun accusationResultEmitsOutcomeWithAccuserPlayerId() = runTest {
+        val fixture = okHttpClientFixture()
+        val results = mutableListOf<com.machikoro.client.domain.model.state.AccusationResult>()
+        fixture.client.accusationResults.onEach { results += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        fixture.deliverMessage(accusationResultMessage())
+        runCurrent()
+
+        assertEquals(1, results.size)
+        val result = results.first()
+        assertEquals(true, result.caught)
+        assertEquals(11, result.accuserId)
+        assertEquals(2, result.penaltyCoins)
     }
 
     @Test
@@ -452,6 +511,39 @@ class WebSocketClientTest {
             }
         """.trimIndent()
     }
+
+    private fun effectsResolvedMessage(coinDeltas: String): String =
+        """
+            {
+              "type":"GAME_ACTION",
+              "sender":"server",
+              "gameId":77,
+              "payload":{
+                "event":"EFFECTS_RESOLVED",
+                "turnPhase":"BUY_OR_BUILD",
+                "activePlayerId":202,
+                "coinDeltas":$coinDeltas,
+                "state":${snapshot(status = "IN_PROGRESS", phase = "BUY_OR_BUILD")}
+              }
+            }
+        """.trimIndent()
+
+    private fun accusationResultMessage(): String =
+        """
+            {
+              "type":"ACCUSATION_RESULT",
+              "sender":"server",
+              "gameId":77,
+              "payload":{
+                "accuserPlayerId":11,
+                "accusedPlayerId":22,
+                "caught":true,
+                "penalizedPlayerId":22,
+                "penaltyCoins":2,
+                "state":${snapshot(status = "IN_PROGRESS", phase = "BUY_OR_BUILD")}
+              }
+            }
+        """.trimIndent()
 
     private fun rollDiceMessage(): String =
         """

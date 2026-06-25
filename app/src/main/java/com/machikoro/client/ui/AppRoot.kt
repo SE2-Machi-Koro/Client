@@ -253,9 +253,13 @@ fun AppRoot(
             }
 
             composable(AppRoute.Winner.route) {
+                val localPlayerIsWinner = gameScreenState.winnerId != null &&
+                    gameScreenState.players.firstOrNull { it.isCurrentPlayer }?.id ==
+                        gameScreenState.winnerId.toString()
                 WinnerScreen(
                     roundsNumber = gameScreenState.roundNumber ?: 0,
                     rankedPlayers = resolveRankedPlayers(gameScreenState),
+                    localPlayerIsWinner = localPlayerIsWinner,
                     onBackHome = onBackHome,
                     onViewLeaderboard = {
                         // Clear finished game state, then navigate to the global leaderboard

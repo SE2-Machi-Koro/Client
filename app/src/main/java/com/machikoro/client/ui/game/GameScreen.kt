@@ -181,6 +181,7 @@ fun GameScreen(
 
     LaunchedEffect(showOwnCards) {
         if (showOwnCards) {
+            SoundManager.play(GameSound.CARD_FLIP)
             showMarketplace = false
             delay(OWN_CARDS_VIEW_DELAY)
             showOwnCards = false
@@ -188,6 +189,7 @@ fun GameScreen(
     }
     LaunchedEffect(showMarketplace) {
         if (showMarketplace) {
+            SoundManager.play(GameSound.CARD_FLIP)
             showOwnCards = false
             delay(MARKETPLACE_VIEW_DELAY)
             showMarketplace = false
@@ -197,6 +199,11 @@ fun GameScreen(
         if (!isCardViewPossible) {
             showOwnCards = false
             showMarketplace = false
+        }
+    }
+    LaunchedEffect(state.purchaseState) {
+        if (state.purchaseState == PurchaseState.SUCCESS) {
+            SoundManager.play(GameSound.PURCHASE)
         }
     }
 
@@ -494,7 +501,13 @@ fun GameScreen(
                         ) {
                             turnFlowLabel?.let {
                                 ActionButton(
-                                    onClick = if (state.isBuyingPhase) onBuySelectedClick else onTurnFlowAction,
+                                    onClick = {
+                                        if (state.isBuyingPhase) {
+                                            onBuySelectedClick()
+                                        } else {
+                                            onTurnFlowAction()
+                                        }
+                                    },
                                     enabled = !state.isBuyingPhase || state.canConfirmSelectedPurchase(),
                                     modifier = Modifier
                                         .semantics {
