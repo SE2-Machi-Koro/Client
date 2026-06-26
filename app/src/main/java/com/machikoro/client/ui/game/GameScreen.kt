@@ -362,7 +362,7 @@ fun GameScreen(
                             .align(Alignment.Center)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)
                     ) {
-                        if(state.gamePhase != GamePhase.ROLL_DICE && state.gamePhase != GamePhase.RESOLVE_EFFECTS) {
+                        if (state.gamePhase != GamePhase.ROLL_DICE) {
                             state.diceResult?.let {
                                 DiceResultDisplay(dice = it,
                                     diceSize = 42.dp,
