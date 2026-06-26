@@ -157,11 +157,12 @@ fun GameScreen(
 
     val phaseTimerTime =
         when {
-            state.isBuyingPhase -> 30
+            state.isBuyingPhase && state.purchaseState != PurchaseState.SUCCESS  -> 30
             state.gamePhase == GamePhase.ROLL_DICE -> 20
             // Matches the actual auto-advance dwell so the countdown the player sees
             // is the real time until RESOLVE_EFFECTS ends, not a longer, unrelated number.
             state.gamePhase == GamePhase.RESOLVE_EFFECTS -> GameScreenViewModel.RESOLVE_EFFECTS_TIMER_SECONDS
+            state.purchaseState == PurchaseState.SUCCESS -> 5
             else -> 0
         }
 
@@ -467,8 +468,7 @@ fun GameScreen(
                             modifier = Modifier.offset(y = (-SIDE_CONTENT_OFFSET).dp))
                     }
 
-                    else if (state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
-                        if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
+                    else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.Center)
@@ -508,7 +508,7 @@ fun GameScreen(
                                     }
                                 }
                             }
-                        } else {
+                        } else if (state.gamePhase == GamePhase.ROLL_DICE){
                             DiceSection(
                                 state = state,
                                 onRollDice = onRollDice,
@@ -519,8 +519,7 @@ fun GameScreen(
                             )
                         }
                     }
-            }
-                            },
+                },
 // =====================================
 // RIGHT
 // =====================================
