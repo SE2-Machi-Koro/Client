@@ -6,6 +6,8 @@ import com.machikoro.client.domain.enums.GameStatus
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.PurchaseType
 import com.machikoro.client.domain.enums.ShopItemColor
+import com.machikoro.client.domain.enums.triggersForResolvingEffects
+import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.shop.ShopItem
 
 data class GameScreenState(
@@ -110,6 +112,15 @@ data class GameScreenState(
     }
 }
 
+data class TriggeredEstablishmentState(
+    val playerId: Int,
+    val playerName: String,
+    val playerOrder: Int,
+    val ownedCard: PlayerCardState,
+    val ownedCards: List<PlayerCardState>,
+    val item: ShopItem,
+)
+
 fun GameScreenState.remainingMarketplaceQuantityFor(item: ShopItem): Int? {
     if (item.purchaseType != PurchaseType.ESTABLISHMENT || marketplace.isEmpty()) return null
     val cardType = runCatching { CardType.valueOf(item.type) }.getOrNull() ?: return null
@@ -127,3 +138,52 @@ fun GameScreenState.isAlreadyOwnedPurpleEstablishment(item: ShopItem): Boolean {
     val cardType = runCatching { CardType.valueOf(item.type) }.getOrNull() ?: return false
     return playerCards[activePlayerId].orEmpty().any { it.cardType == cardType && it.quantity > 0 }
 }
+
+fun GameScreenState.triggeredEstablishmentsForCurrentRoll(): List<TriggeredEstablishmentState> {
+    val rolledTotal = diceResult?.sum() ?: return emptyList()
+    val activePlayerDatabaseId = players
+        .firstOrNull { it.isActivePlayer }
+        ?.id
+        ?.toIntOrNull()
+
+    val cardCatalog = shopItems
+        .ifEmpty { ShopCatalog.defaultItems }
+        .filter { it.purchaseType == PurchaseType.ESTABLISHMENT }
+        .mapNotNull { item ->
+            val cardType = runCatching { CardType.valueOf(item.type) }.getOrNull()
+            cardType?.let { it to item }
+        }
+        .toMap()
+
+    return players.flatMapIndexed { playerOrder, player ->
+        val playerId = player.id.toIntOrNull() ?: return@flatMapIndexed emptyList()
+        val ownedCards = playerCards[playerId].orEmpty()
+
+        ownedCards.mapNotNull { ownedCard ->
+            val item = cardCatalog[ownedCard.cardType] ?: return@mapNotNull null
+
+            if (
+                ownedCard.quantity > 0 &&
+                rolledTotal in item.activationNumbers &&
+                item.color.triggersForResolvingEffects(playerId, activePlayerDatabaseId)
+            ) {
+                TriggeredEstablishmentState(
+                    playerId = playerId,
+                    playerName = player.displayName,
+                    playerOrder = playerOrder,
+                    ownedCard = ownedCard,
+                    ownedCards = ownedCards,
+                    item = item
+                )
+            } else {
+                null
+            }
+        }
+    }
+}
+
+fun GameScreenState.triggeredEstablishmentCountForCurrentRoll(): Int =
+    triggeredEstablishmentsForCurrentRoll().sumOf { it.ownedCard.quantity }
+
+fun GameScreenState.hasTriggeredEstablishmentsForCurrentRoll(): Boolean =
+    triggeredEstablishmentCountForCurrentRoll() > 0

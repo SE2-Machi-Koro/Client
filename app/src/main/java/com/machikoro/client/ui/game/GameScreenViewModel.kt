@@ -28,6 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.machikoro.client.domain.model.state.AccusationResult
+import com.machikoro.client.domain.model.state.triggeredEstablishmentCountForCurrentRoll
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -301,7 +302,12 @@ class GameScreenViewModel(
                     resolveEffectsJob?.cancel()
                     if (shouldAutoResolve) {
                         resolveEffectsJob = viewModelScope.launch {
-                            delay(resolveEffectsDwellMillis)
+                            val dwellMillis = mutableState.value.resolveEffectsDwellMillis()
+
+                            if (dwellMillis > 0) {
+                                delay(dwellMillis)
+                            }
+
                             val now = mutableState.value
                             if (now.shouldAutoResolveEffects(mutableCanRerollThisTurn.value)) {
                                 now.gameId?.let { webSocketClient.resolveEffects(it) }
@@ -455,6 +461,18 @@ class GameScreenViewModel(
         isInResolveEffectsAsActivePlayer() &&
             !isRolling &&
             !(canReroll && canRerollThisTurn)
+
+    private fun GameScreenState.resolveEffectsDwellMillis(): Long {
+        val diceWasRolled = diceResult != null
+        val triggeredCount = triggeredEstablishmentCountForCurrentRoll()
+
+        return when {
+            diceWasRolled && triggeredCount == 0 -> 0L
+            triggeredCount == 1 -> 2_000L
+            triggeredCount <= 3 -> 4_000L
+            else -> resolveEffectsDwellMillis
+        }
+    }
 
     fun selectPurchaseItem(itemType: String) {
         val current = mutableState.value

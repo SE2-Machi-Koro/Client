@@ -632,7 +632,7 @@ private fun LandmarkPip(
 
 @Composable
 fun CoinBadge(
-    amount: Int,
+    amount: Int? = null,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.size(36.dp)) {
@@ -646,7 +646,7 @@ fun CoinBadge(
         )
 
         Text(
-            text = amount.toString(),
+            text = amount?.toString().orEmpty(),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.ExtraBold,
             color = Color(0xFF744300),

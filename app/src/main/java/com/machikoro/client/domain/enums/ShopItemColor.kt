@@ -13,3 +13,14 @@ enum class ShopItemColor {
     PURPLE,
     LANDMARK
 }
+
+fun ShopItemColor.triggersForResolvingEffects(
+    ownerPlayerId: Int,
+    activePlayerId: Int?,
+): Boolean = when (this) {
+    ShopItemColor.RED -> activePlayerId != null && ownerPlayerId != activePlayerId
+    ShopItemColor.BLUE -> true
+    ShopItemColor.GREEN -> ownerPlayerId == activePlayerId
+    ShopItemColor.PURPLE -> ownerPlayerId == activePlayerId
+    ShopItemColor.LANDMARK -> false
+}

@@ -1558,20 +1558,45 @@ class GameScreenViewModelTest {
 
     private fun FakeWebSocketClient.enterRadioTowerRerollDecision(
         activeUserId: Int = 42,
+        activePlayerDatabaseId: Int = 7,
         gameId: Int = 7,
     ) {
-        enterResolveEffects(activeUserId = activeUserId, gameId = gameId)
+        emitGameStatus(GameStatus.IN_PROGRESS)
+        emitActiveGameId(gameId)
+
         emitPlayers(
             listOf(
-                PlayerCoinState(id = "7", displayName = "alice", coins = 5, isActivePlayer = true),
+                PlayerCoinState(
+                    id = activePlayerDatabaseId.toString(),
+                    displayName = "alice",
+                    coins = 5,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true
+                ),
             )
         )
-        emitPlayerLandmarks(
-            mapOf(7 to listOf(PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = true)))
-        )
-        emitDiceResult(listOf(6, 6))
-    }
 
+        emitPlayerLandmarks(
+            mapOf(
+                activePlayerDatabaseId to listOf(
+                    PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = true)
+                )
+            )
+        )
+
+        emitDiceResult(listOf(6))
+
+        emitPlayerCards(
+            mapOf(
+                activePlayerDatabaseId to listOf(
+                    PlayerCardState(CardType.STADIUM, quantity = 1)
+                )
+            )
+        )
+
+        emitActivePlayerId(activeUserId)
+        emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+    }
     @Test
     fun performTurnFlowActionNoLongerResolvesEffectsManually() = runTest {
         val fakeClient = FakeWebSocketClient()
@@ -1601,14 +1626,27 @@ class GameScreenViewModelTest {
     }
 
     @Test
-    fun resolveEffectsDoesNotAutoSendBeforeDwellElapses() = runTest {
+    fun resolveEffectsAutoSendsImmediatelyWhenDiceRolledAndNoCardsTriggered() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        viewModel(fakeClient, userId = 42)
+
+        fakeClient.enterResolveEffects(activeUserId = 42)
+        fakeClient.emitDiceResult(listOf(6, 6))
+        runCurrent()
+
+        assertEquals(7, fakeClient.resolvedEffectsGameId)
+        assertEquals(1, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
+    fun resolveEffectsDoesNotAutoSendBeforeShortDwellElapses() = runTest {
         val dwell = GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS
         val fakeClient = FakeWebSocketClient()
         viewModel(fakeClient, userId = 42, resolveEffectsDwellMillis = dwell)
 
         fakeClient.enterResolveEffects(activeUserId = 42)
         runCurrent()
-        advanceTimeBy(dwell - 1)
+        advanceTimeBy(1_999L)
         runCurrent()
 
         assertEquals(0, fakeClient.resolveEffectsCallCount)
@@ -1630,6 +1668,88 @@ class GameScreenViewModelTest {
         runCurrent()
 
         assertEquals(0, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
+    fun resolveEffectsAutoSendsAfterShortDwellForSingleTriggeredCard() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "7",
+                    displayName = "alice",
+                    coins = 5,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true
+                )
+            )
+        )
+        fakeClient.emitDiceResult(listOf(1))
+        fakeClient.emitPlayerCards(
+            mapOf(
+                7 to listOf(
+                    PlayerCardState(CardType.WHEAT_FIELD, quantity = 1)
+                )
+            )
+        )
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+
+        runCurrent()
+        advanceTimeBy(1_999L)
+        runCurrent()
+
+        assertEquals(0, fakeClient.resolveEffectsCallCount)
+
+        advanceTimeBy(1L)
+        runCurrent()
+
+        assertEquals(1, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
+    fun resolveEffectsAutoSendsAfterMediumDwellForFewTriggeredCards() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitPlayers(
+            listOf(
+                PlayerCoinState(
+                    id = "7",
+                    displayName = "alice",
+                    coins = 5,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true
+                )
+            )
+        )
+        fakeClient.emitDiceResult(listOf(1))
+        fakeClient.emitPlayerCards(
+            mapOf(
+                7 to listOf(
+                    PlayerCardState(CardType.WHEAT_FIELD, quantity = 2)
+                )
+            )
+        )
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+
+        runCurrent()
+        advanceTimeBy(3_999L)
+        runCurrent()
+
+        assertEquals(0, fakeClient.resolveEffectsCallCount)
+
+        advanceTimeBy(1L)
+        runCurrent()
+
+        assertEquals(1, fakeClient.resolveEffectsCallCount)
     }
 
     @Test
