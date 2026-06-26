@@ -16,7 +16,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,6 +57,7 @@ import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.ui.cheat.ShakeDetector
 import com.machikoro.client.ui.game.ui.BigPlayerCardsDisplay
 import com.machikoro.client.ui.game.ui.BuyingPhaseShop
+import com.machikoro.client.ui.game.ui.ChatOverlay
 import com.machikoro.client.ui.game.ui.DiceResultDisplay
 import com.machikoro.client.ui.game.ui.DiceSection
 import com.machikoro.client.ui.game.ui.GamePhaseBanner
@@ -69,7 +76,11 @@ import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.shared.DecreasingLineTimer
 import com.machikoro.client.ui.shared.SecondaryActionButton
+import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.PrimaryBlueDark
+import com.machikoro.client.ui.theme.PrimaryOrange
+import com.machikoro.client.ui.theme.TextBlueDark
 import kotlinx.coroutines.delay
 
 // delays
@@ -91,6 +102,7 @@ fun GameScreen(
     onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     onEndGame: () -> Unit = {},
+    onSendChatMessage: (message: String) -> Unit = {},
     cheatRecommendation: CardType? = null,
     onShake: () -> Unit = {},
     onAccuse: (accusedPlayerId: Int) -> Unit = {},
@@ -164,6 +176,14 @@ fun GameScreen(
             && !state.isActivePlayer)
 
     val showRadioTowerReroll = state.canReroll && canReroll
+    var chatOpen by remember { mutableStateOf(false) }
+    var readCount by remember { mutableStateOf(0) }
+
+    LaunchedEffect(chatOpen, state.chatMessages.size) {
+        if (chatOpen) {
+            readCount = state.chatMessages.size
+        }
+    }
 
     LaunchedEffect(showOwnCards) {
         if (showOwnCards) {
@@ -590,6 +610,45 @@ fun GameScreen(
                 )
             }
         }
+        BadgedBox(
+            badge = {
+                if (readCount < state.chatMessages.size) {
+                    Badge(
+                        contentColor = PrimaryBlueDark,
+                        containerColor = PrimaryOrange
+                    ){
+                        Text((state.chatMessages.size-readCount).toString())
+                    }
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+        ) {
+            // Floating chat button
+            FloatingActionButton(
+                onClick = {
+                    chatOpen = !chatOpen
+                },
+                containerColor = ButtonBeigeLight
+            ) {
+                Icon(
+                    Icons.Default.Chat,
+                    contentDescription = "Chat",
+                    tint = TextBlueDark
+                )
+            }
+        }
+        // Chat overlay
+        ChatOverlay(
+            //used to compare the current player with the chat message sender to highlight own messages
+            //displayname == username
+            currentPlayer = state.players.firstOrNull { it.id.toIntOrNull() == state.myUserId }?.displayName ?: "",
+            open = chatOpen,
+            messages = state.chatMessages,
+            onSendMessageClick = onSendChatMessage,
+            onClose = { chatOpen = false }
+        )
     }
     InitializationLoadingOverlay(
         connectionStatus = state.connectionStatus,
@@ -656,7 +715,7 @@ private fun GameScreenRollDicePreview() {
                 purchaseState = PurchaseState.IDLE,
                 myUserId = 1,
                 activePlayerId = 1,
-            )
+            ),
         )
     }
 }

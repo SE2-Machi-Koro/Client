@@ -95,6 +95,7 @@ fun AppRoot(
     onPurgeClick: () -> Unit = {},
     leaderboardState: LeaderboardState = LeaderboardState.Loading,
     onLeaderboardRetry: () -> Unit = {},
+    onSendChatMessage: (message: String) -> Unit = {},
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
 ) {
     val navController = rememberNavController()
@@ -242,6 +243,7 @@ fun AppRoot(
                     onBuySelectedClick = onBuySelectedClick,
                     onLeaveGame = onLeaveGame,
                     onEndGame = onEndGame,
+                    onSendChatMessage = onSendChatMessage,
                     cheatRecommendation = cheatRecommendation,
                     onShake = onShake,
                     onAccuse = onAccuse,

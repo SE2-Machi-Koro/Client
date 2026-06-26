@@ -316,6 +316,11 @@ class GameScreenViewModel(
                     }
                 }
         }
+        viewModelScope.launch {
+            webSocketClient.chatMessages.collect { chat ->
+                mutableState.update { it.copy(chatMessages = it.chatMessages + chat) }
+            }
+        }
     }
 
     fun rollDice(diceCount: Int = 1) {
@@ -519,6 +524,14 @@ class GameScreenViewModel(
             cardType = item.type.takeIf { item.purchaseType == PurchaseType.ESTABLISHMENT },
             landmarkType = item.type.takeIf { item.purchaseType == PurchaseType.LANDMARK }
         )
+    }
+
+    fun sendChatMessage(message: String) {
+        val current = mutableState.value
+        val gameId = current.gameId ?: return
+        if (message.isBlank()) return
+        if (message.length > 300) return
+        webSocketClient.sendChatMessage(gameId, message.trim())
     }
 
     private fun GameScreenState.canSelectPurchaseItem(item: ShopItem): Boolean =
