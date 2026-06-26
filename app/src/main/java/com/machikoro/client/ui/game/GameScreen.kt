@@ -89,7 +89,7 @@ private val MARKETPLACE_VIEW_DELAY = 10000L
 
 
 // offsets
-private val SIDE_CONTENT_OFFSET = 35
+const val SIDE_CONTENT_OFFSET = 35
 
 @Composable
 fun GameScreen(
@@ -455,7 +455,6 @@ fun GameScreen(
                     }
 
                     else if (state.isBuyingPhase) {
-                        if(state.isActivePlayer) {
                             BuyingPhaseShop(
                                 state = state,
                                 items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
@@ -463,9 +462,6 @@ fun GameScreen(
                                 recommendedCardType = cheatRecommendation,
                                 modifier = Modifier.align(Alignment.Center)
                             )
-                        } else BasicText(
-                            state.activePlayerUsername + " is deciding what card to buy",
-                            modifier = Modifier.offset(y = (-SIDE_CONTENT_OFFSET).dp))
                     }
 
                     else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
@@ -565,7 +561,7 @@ fun GameScreen(
                                 )
                             }
 
-                            if (state.isBuyingPhase) {
+                            if (state.isBuyingPhase && state.purchaseState != PurchaseState.SUCCESS) {
                                 SecondaryActionButton(
                                     onClick = onTurnFlowAction,
                                     enabled = state.purchaseState != PurchaseState.PENDING,

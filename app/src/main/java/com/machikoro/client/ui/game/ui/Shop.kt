@@ -52,20 +52,15 @@ import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.CardPurpleBackground
 import com.machikoro.client.ui.theme.CardPurpleText
-import com.machikoro.client.ui.theme.PrimaryOrange
-import com.machikoro.client.ui.theme.TextBlueDark
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import com.machikoro.client.ui.game.SIDE_CONTENT_OFFSET
 import com.machikoro.client.ui.shared.AnimatedItem
 import com.machikoro.client.ui.shared.AnimationType
-
-private val SHOP_CARD_SHAPE = RoundedCornerShape(8.dp)
-val RecommendedHighlight = Color(0xFF00C853)
-val SelectedHighlight = Color(0xFFFFD700) // Gold color for selected card
 
 @Composable
 internal fun BuyingPhaseShop(
@@ -158,7 +153,7 @@ internal fun BuyingPhaseShop(
         } else {
             BasicText(
                 state.activePlayerUsername + " is deciding what card to buy",
-            )
+                modifier = Modifier.offset(y = (-SIDE_CONTENT_OFFSET).dp))
         }
     }
 }
