@@ -41,6 +41,7 @@ import kotlinx.coroutines.launch
 // Failsafe for issue #175: the server is expected to answer a roll with a
 // diceResult, but if that message is lost or delayed the UI must not animate forever.
 private const val DICE_ROLL_TIMEOUT_MS = 10_000L
+private const val PURCHASE_DISPLAY_DELAY = 5_000L
 
 class GameScreenViewModel(
     private val webSocketClient: WebSocketClient,
@@ -279,6 +280,7 @@ class GameScreenViewModel(
                     before.gamePhase == GamePhase.BUY_OR_BUILD &&
                     before.isActivePlayer
                 ) {
+                    delay(PURCHASE_DISPLAY_DELAY)
                     webSocketClient.endTurn(before.gameId)
                 }
             }
