@@ -59,6 +59,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import com.machikoro.client.ui.shared.AnimatedItem
+import com.machikoro.client.ui.shared.AnimationType
 
 private val SHOP_CARD_SHAPE = RoundedCornerShape(8.dp)
 val RecommendedHighlight = Color(0xFF00C853)
@@ -72,74 +75,90 @@ internal fun BuyingPhaseShop(
     modifier: Modifier = Modifier,
     recommendedCardType: CardType? = null
 ) {
-
-    val landmarks = remember(
-        items,
-        state.playerLandmarks,
-        state.players
-    ) {
-        items
-            .filter { it.purchaseType == PurchaseType.LANDMARK }
-            .filterNot { state.isKnownBuiltLandmark(it) }
-            .sortedBy { it.cost }
-    }
-
-    val establishments = remember(items) {
-        CardDefinitions.sortShopItemsByActivation(
-            items.filter { it.purchaseType == PurchaseType.ESTABLISHMENT }
-        )
-    }
-
-    CompositionLocalProvider(
-        LocalOverscrollFactory provides null
-    ) {
-        LazyColumn(
-            modifier = modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-
-            // LANDMARKS TITLE
-            item {
-                BasicText("Landmarks")
+    // displays purchased card after SUCCESS
+    if(state.purchaseState == PurchaseState.SUCCESS) {
+        state.purchaseFeedbackItemType?.let {
+            AnimatedItem(
+                delayMillis = 0,
+                animationType = AnimationType.Bounce
+            ) {
+                CardDisplay(drawableForPlayerCard(it))}
+        }
+    } else {
+        if(state.isActivePlayer) {
+            val landmarks = remember(
+                items,
+                state.playerLandmarks,
+                state.players
+            ) {
+                items
+                    .filter { it.purchaseType == PurchaseType.LANDMARK }
+                    .filterNot { state.isKnownBuiltLandmark(it) }
+                    .sortedBy { it.cost }
             }
 
-            // LANDMARKS ROW
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
+            val establishments = remember(items) {
+                CardDefinitions.sortShopItemsByActivation(
+                    items.filter { it.purchaseType == PurchaseType.ESTABLISHMENT }
+                )
+            }
+
+            CompositionLocalProvider(
+                LocalOverscrollFactory provides null
+            ) {
+                LazyColumn(
+                    modifier = modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    landmarks.forEach { item ->
-                        ShopImageTile(
-                            item = item,
-                            state = state,
-                            onPurchaseClick = onPurchaseClick,
-                            isRecommended = item.type == recommendedCardType?.name
-                        )
+
+                    // LANDMARKS TITLE
+                    item {
+                        BasicText("Landmarks")
+                    }
+
+                    // LANDMARKS ROW
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            landmarks.forEach { item ->
+                                ShopImageTile(
+                                    item = item,
+                                    state = state,
+                                    onPurchaseClick = onPurchaseClick,
+                                    isRecommended = item.type == recommendedCardType?.name
+                                )
+                            }
+                        }
+                    }
+
+                    // ESTABLISHMENTS TITLE
+                    item {
+                        BasicText("Establishments")
+                    }
+
+                    // GRID
+                    items(establishments.chunked(4)) { rowItems ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            rowItems.forEach { item ->
+                                ShopImageTile(
+                                    item = item,
+                                    state = state,
+                                    onPurchaseClick = onPurchaseClick,
+                                    isRecommended = item.type == recommendedCardType?.name
+                                )
+                            }
+                        }
                     }
                 }
             }
-
-            // ESTABLISHMENTS TITLE
-            item {
-                BasicText("Establishments")
-            }
-
-            // GRID
-            items(establishments.chunked(4)) { rowItems ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    rowItems.forEach { item ->
-                        ShopImageTile(
-                            item = item,
-                            state = state,
-                            onPurchaseClick = onPurchaseClick,
-                            isRecommended = item.type == recommendedCardType?.name
-                        )
-                    }
-                }
-            }
+        } else {
+            BasicText(
+                state.activePlayerUsername + " is deciding what card to buy",
+            )
         }
     }
 }
@@ -154,8 +173,6 @@ private fun ShopImageTile(
 ) {
     val canPurchase = state.canPurchaseItem(item)
     val isSelected = state.selectedPurchaseItemType == item.type
-    val isFeedbackItem = state.purchaseFeedbackItemType == item.type
-    val isSuccessFeedback = isFeedbackItem && state.purchaseState == PurchaseState.SUCCESS
     val remainingQuantity = state.remainingMarketplaceQuantityFor(item)
     val isAlreadyOwnedPurple = state.isAlreadyOwnedPurpleEstablishment(item)
     val isClickable = canPurchase || isSelected
@@ -200,7 +217,7 @@ private fun ShopImageTile(
             )
         }
 
-        if (isRecommended && !isSelected && !isSuccessFeedback) {
+        if (isRecommended && !isSelected) {
             Image(
                 painter = painterResource(R.drawable.card_frame_green),
                 contentDescription = null,
@@ -211,7 +228,7 @@ private fun ShopImageTile(
             )
         }
 
-        if (isSelected  || isSuccessFeedback) {
+        if (isSelected) {
             Image(
                 painter = painterResource(R.drawable.card_frame),
                 contentDescription = null,
@@ -291,11 +308,55 @@ private fun GameScreenState.isKnownBuiltLandmark(item: ShopItem): Boolean {
     }
 }
 
+private fun drawableForPlayerCard(cardType: String): Int =
+    when (cardType) {
+        CardType.WHEAT_FIELD.name -> R.drawable.card_wheat_field
+        CardType.RANCH.name -> R.drawable.card_ranch
+        CardType.FOREST.name -> R.drawable.card_forest
+        CardType.MINE.name -> R.drawable.card_mine
+        CardType.APPLE_ORCHARD.name -> R.drawable.card_apple_orchard
+        CardType.BAKERY.name -> R.drawable.card_bakery
+        CardType.CONVENIENCE_STORE.name -> R.drawable.card_convenience_store
+        CardType.CHEESE_FACTORY.name -> R.drawable.card_cheese_factory
+        CardType.FURNITURE_FACTORY.name -> R.drawable.card_furniture_factory
+        CardType.FRUIT_AND_VEGETABLE_MARKET.name ->
+            R.drawable.card_fruit_and_vegetable_market
+        CardType.CAFE.name -> R.drawable.card_cafe
+        CardType.FAMILY_RESTAURANT.name -> R.drawable.card_family_restaurant
+        CardType.STADIUM.name -> R.drawable.card_stadium
+        CardType.TV_STATION.name -> R.drawable.card_tv_station
+        CardType.BUSINESS_CENTER.name -> R.drawable.card_business_center
+        LandmarkType.TRAIN_STATION.name -> R.drawable.landmark_train_station
+        LandmarkType.SHOPPING_MALL.name -> R.drawable.landmark_shopping_mall
+        LandmarkType.AMUSEMENT_PARK.name -> R.drawable.landmark_amusement_park
+        LandmarkType.RADIO_TOWER.name -> R.drawable.landmark_radio_tower
+
+        else -> R.drawable.card_wheat_field
+    }
+
 @Composable
-private fun PurchaseState.toFeedbackColor(): Color = when (this) {
-    PurchaseState.ERROR -> MaterialTheme.colorScheme.error
-    PurchaseState.SUCCESS -> PrimaryOrange
-    else -> TextBlueDark
+private fun CardDisplay(
+    drawable: Int,
+    modifier: Modifier = Modifier,
+    width: Dp = 155.dp,
+    height: Dp = 175.dp,
+) {
+    Box(
+        modifier = modifier.wrapContentSize()
+    ) {
+
+        Image(
+            painter = painterResource(
+                drawable
+            ),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .width(width)
+                .height(height)
+                .semantics { }
+        )
+    }
 }
 
 @Preview(showBackground = true, widthDp = 915, heightDp = 430)
