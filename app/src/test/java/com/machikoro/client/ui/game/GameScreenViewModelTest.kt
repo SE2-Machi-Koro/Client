@@ -834,6 +834,31 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun purchaseSuccessEventShowsFeedbackForNonActivePlayer() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 7)
+
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        fakeClient.emitPurchaseEvent(
+            PurchaseEvent.Success(
+                purchaseType = PurchaseType.ESTABLISHMENT,
+                itemType = "BAKERY"
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(PurchaseState.SUCCESS, viewModel.state.value.purchaseState)
+        assertEquals("BAKERY", viewModel.state.value.purchaseFeedbackItemType)
+        assertEquals("Bakery bought", viewModel.state.value.purchaseMessage)
+        assertNull(fakeClient.endedTurnGameId)
+    }
+
+    @Test
     fun matchingPurchaseSuccessEventEndsTurn() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
