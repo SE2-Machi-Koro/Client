@@ -575,9 +575,10 @@ class GameScreenViewModel(
     private fun GameScreenState.applyPurchaseEvent(event: PurchaseEvent): GameScreenState =
         when (event) {
             is PurchaseEvent.Success -> {
-                // Only finish the local pending action when the server confirms the same target.
+                // The active buyer must still match its local pending action. Other players have
+                // no pending purchase, but should display the server's broadcast success feedback.
                 val matchesPending = pendingPurchaseItemType == event.itemType
-                if (!matchesPending) {
+                if (isActivePlayer && !matchesPending) {
                     this
                 } else {
                     copy(
