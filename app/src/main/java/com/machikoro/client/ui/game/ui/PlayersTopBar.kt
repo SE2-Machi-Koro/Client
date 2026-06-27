@@ -1,5 +1,6 @@
 package com.machikoro.client.ui.game.ui
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -44,7 +45,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -63,6 +67,7 @@ import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.toDisplayText
+import com.machikoro.client.ui.game.ui.coin_animation.CoinChangeHighlight
 import kotlinx.coroutines.delay
 
 private val SURFACE_COLOR = Color(0xFF8F7365)
@@ -76,6 +81,8 @@ fun PlayersTopBar(
     playerCards: Map<Int, List<PlayerCardState>>,
     onAccusePlayer: (playerId: String) -> Unit = {},
     canAccuse: Boolean = true,
+    coinHighlights: Map<Int, CoinChangeHighlight> = emptyMap(),
+    onCoinBadgePositioned: (playerId: Int, center: Offset) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     if (players.isEmpty()) return
@@ -110,7 +117,9 @@ fun PlayersTopBar(
                     player = player,
                     landmarks = playerLandmarks[playerSnapshotId].orEmpty(),
                     canInspect = !player.isCurrentPlayer,
-                    onInspect = { inspectedPlayerId = player.id }
+                    onInspect = { inspectedPlayerId = player.id },
+                    highlight = coinHighlights[playerSnapshotId] ?: CoinChangeHighlight.NONE,
+                    onCoinBadgePositioned = onCoinBadgePositioned,
                 )
             }
         }
@@ -144,6 +153,8 @@ private fun PlayerCoinBadge(
     landmarks: List<PlayerLandmarkState>,
     canInspect: Boolean,
     onInspect: () -> Unit,
+    highlight: CoinChangeHighlight,
+    onCoinBadgePositioned: (playerId: Int, center: Offset) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = when {
@@ -200,10 +211,21 @@ private fun PlayerCoinBadge(
         val opacity = if (player.isCurrentPlayer) 0f else 1f
         CoinBadge(
             amount = player.coins,
+            highlight = highlight,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .offset(x = 15.dp, y = 12.dp)
                 .alpha(opacity)
+                .onGloballyPositioned { coordinates ->
+                    if (!player.isCurrentPlayer) {
+                        player.snapshotId()?.let { playerId ->
+                            onCoinBadgePositioned(
+                                playerId,
+                                coordinates.boundsInRoot().center,
+                            )
+                        }
+                    }
+                }
         )
     }
 }
@@ -633,9 +655,23 @@ private fun LandmarkPip(
 @Composable
 fun CoinBadge(
     amount: Int? = null,
+    highlight: CoinChangeHighlight = CoinChangeHighlight.NONE,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier.size(36.dp)) {
+    val highlightColor by animateColorAsState(
+        targetValue = when (highlight) {
+            CoinChangeHighlight.NONE -> Color.Transparent
+            CoinChangeHighlight.GAIN -> Color(0xFF63C174)
+            CoinChangeHighlight.LOSS -> Color(0xFFD9435F)
+        },
+        label = "coin badge highlight",
+    )
+
+    Box(
+        modifier = modifier
+            .size(36.dp)
+            .border(3.dp, highlightColor, CircleShape)
+    ) {
         Image(
             painter = painterResource(R.drawable.coin),
             contentDescription = "Coin",
