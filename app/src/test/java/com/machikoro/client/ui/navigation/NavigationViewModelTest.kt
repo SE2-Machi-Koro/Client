@@ -257,6 +257,77 @@ class NavigationViewModelTest {
     }
 
     @Test
+    fun stateUpdateWhileOnLeaderboardDoesNotNavigateAway() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.onUserLoggedIn()
+        // Simulate the leaderboard overlay becoming the current destination.
+        viewModel.onDestinationChanged(AppRoute.Leaderboard.route)
+
+        // A background state update that would otherwise route to Home must not
+        // pull the user off the leaderboard (issue #373).
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial(),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = null,
+        )
+        advanceUntilIdle()
+
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun logoutWhileOnLeaderboardStillNavigatesToMain() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.onUserLoggedIn()
+        viewModel.onDestinationChanged(AppRoute.Leaderboard.route)
+
+        // A forced logout must always win over an overlay route.
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial(),
+            startScreenState = StartScreenState.placeholder(),
+            lobbyCode = null,
+        )
+        advanceUntilIdle()
+
+        assertEquals(NavigationEvent.NavigateTo(AppRoute.Main), events.single())
+    }
+
+    @Test
+    fun stateUpdateNavigatesNormallyWhenNotOnOverlay() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.onUserLoggedIn()
+        // Leave the leaderboard: current destination is now Home, not an overlay.
+        viewModel.onDestinationChanged(AppRoute.Leaderboard.route)
+        viewModel.onDestinationChanged(AppRoute.Home.route)
+
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial(),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = null,
+        )
+        advanceUntilIdle()
+
+        assertEquals(NavigationEvent.NavigateTo(AppRoute.Home), events.single())
+    }
+
+    @Test
+    fun onDestinationChangedTracksRouteAndClearsLastNavigation() = runTest {
+        val viewModel = NavigationViewModel()
+
+        viewModel.navigateTo(AppRoute.Home)
+        viewModel.onDestinationChanged(AppRoute.Home.route)
+
+        assertEquals(AppRoute.Home.route, viewModel.currentRoute)
+        assertEquals(null, viewModel.lastNavigation)
+    }
+
+    @Test
     fun onUserLoggedOutResetsLoginFlagAndLobbyVisibility() {
         val viewModel = NavigationViewModel()
 

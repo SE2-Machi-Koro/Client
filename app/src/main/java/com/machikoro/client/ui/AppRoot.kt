@@ -106,8 +106,8 @@ fun AppRoot(
     val showConnectionBanner = currentRoute != null && currentRoute != AppRoute.Main.route
 
     DisposableEffect(navController) {
-        val listener = NavController.OnDestinationChangedListener { _, _, _ ->
-            navigationViewModel.clearLastNavigation()
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            navigationViewModel.onDestinationChanged(destination.route)
         }
         navController.addOnDestinationChangedListener(listener)
         onDispose {
