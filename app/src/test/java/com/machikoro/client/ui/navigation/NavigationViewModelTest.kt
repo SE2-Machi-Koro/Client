@@ -393,6 +393,17 @@ class NavigationViewModelTest {
     }
 
     @Test
+    fun navigateToLeaderboardEmitsLeaderboardEvent() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.navigateTo(AppRoute.Leaderboard)
+        advanceUntilIdle()
+
+        assertEquals(NavigationEvent.NavigateTo(AppRoute.Leaderboard), events.single())
+    }
+
+    @Test
     fun leaveLobbyNavigatesToHome() = runTest {
         val viewModel = NavigationViewModel()
         val events = collectNavigationEvents(viewModel)
