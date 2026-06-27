@@ -22,9 +22,9 @@ class AppNavigator(
             route.destination(arguments),
             navOptions {
                 launchSingleTop = true
-                // Keep Main as the graph root while replacing transient screens
-                // such as Home, Lobby, Game, and Winner.
-                popUpTo(AppRoute.Main.route)
+                // Leaderboard is a secondary overlay — keep the back stack intact
+                // so the user can return to Home or Winner with the back button.
+                if (route != AppRoute.Leaderboard) popUpTo(AppRoute.Main.route)
             }
         )
     }
