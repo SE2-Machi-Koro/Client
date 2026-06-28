@@ -106,8 +106,8 @@ fun AppRoot(
     val showConnectionBanner = currentRoute != null && currentRoute != AppRoute.Main.route
 
     DisposableEffect(navController) {
-        val listener = NavController.OnDestinationChangedListener { _, _, _ ->
-            navigationViewModel.clearLastNavigation()
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            navigationViewModel.onDestinationChanged(destination.route)
         }
         navController.addOnDestinationChangedListener(listener)
         onDispose {
@@ -128,7 +128,11 @@ fun AppRoot(
         gameScreenState,
         startScreenState,
         lobbyCode,
-        navigationUiState.showLobbyScreen
+        navigationUiState.showLobbyScreen,
+        // Re-evaluate when the destination changes so that leaving an overlay
+        // route (e.g. Back from Leaderboard) recalculates the state-driven
+        // target and doesn't strand the user on a screen with stale data (#373).
+        currentRoute,
     ) {
         navigationViewModel.updateNavigationBasedOnState(
             gameScreenState = gameScreenState,
