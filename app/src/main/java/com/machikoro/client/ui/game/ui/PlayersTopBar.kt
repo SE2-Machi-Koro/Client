@@ -658,20 +658,16 @@ fun CoinBadge(
     highlight: CoinChangeHighlight = CoinChangeHighlight.NONE,
     modifier: Modifier = Modifier
 ) {
-    val highlightColor by animateColorAsState(
+    val amountColor by animateColorAsState(
         targetValue = when (highlight) {
-            CoinChangeHighlight.NONE -> Color.Transparent
-            CoinChangeHighlight.GAIN -> Color(0xFF63C174)
-            CoinChangeHighlight.LOSS -> Color(0xFFD9435F)
+            CoinChangeHighlight.NONE -> Color(0xFF744300)
+            CoinChangeHighlight.GAIN -> Color(0xFF238B45)
+            CoinChangeHighlight.LOSS -> Color(0xFFC5163D)
         },
-        label = "coin badge highlight",
+        label = "coin amount highlight",
     )
 
-    Box(
-        modifier = modifier
-            .size(36.dp)
-            .border(3.dp, highlightColor, CircleShape)
-    ) {
+    Box(modifier = modifier.size(36.dp)) {
         Image(
             painter = painterResource(R.drawable.coin),
             contentDescription = "Coin",
@@ -685,7 +681,7 @@ fun CoinBadge(
             text = amount?.toString().orEmpty(),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.ExtraBold,
-            color = Color(0xFF744300),
+            color = amountColor,
             fontSize = 18.sp,
             modifier = Modifier
                 .offset(y = (-4).dp)
