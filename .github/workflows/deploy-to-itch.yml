@@ -36,7 +36,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Deploy to itch.io via Butler
-        uses: manleydev/butler-publish-itchio-action@master
+        uses: manleydev/butler-publish-itchio-action@483157ebeeeb440e2fdc9f162f3fcfc27028c0ef
         env:
           BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
           CHANNEL: android
