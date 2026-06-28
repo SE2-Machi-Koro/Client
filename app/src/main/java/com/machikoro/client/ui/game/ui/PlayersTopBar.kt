@@ -558,8 +558,9 @@ private fun PlayerSelectorButton(
                 Color.White.copy(
                     alpha = if (selected) 1f else 0.65f
                 )
-            )
-            .clickable(onClick = onClick,
+            ).widthIn(max = 200.dp)
+
+        .clickable(onClick = onClick,
                 enabled = enabled)
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .semantics {
@@ -587,7 +588,9 @@ private fun PlayerSelectorButton(
                     color = Color(0xFF004E7E).copy(
                         alpha = if (selected) 1f else 0.65f
                     )
-                )
+                ),
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1
             )
         }
     }
