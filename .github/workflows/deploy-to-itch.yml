@@ -35,11 +35,13 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
+      - name: Install Butler
+        run: |
+          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          unzip butler.zip
+          chmod +x butler
+
       - name: Deploy to itch.io via Butler
-        uses: manleydev/butler-publish-itchio-action@483157ebeeeb440e2fdc9f162f3fcfc27028c0ef
+        run: ./butler push app/build/outputs/apk/release/ ${{ secrets.ITCH_USER }}/${{ secrets.ITCH_GAME }}:android
         env:
-          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_CREDENTIALS }}
-          CHANNEL: android
-          ITCH_GAME: ${{ secrets.ITCH_GAME }}
-          ITCH_USER: ${{ secrets.ITCH_USER }}
-          PACKAGE: app/build/outputs/apk/release/
+          BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
