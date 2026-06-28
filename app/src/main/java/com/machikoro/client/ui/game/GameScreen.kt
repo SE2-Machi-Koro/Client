@@ -472,7 +472,8 @@ fun GameScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                ResolvingEffectsView(state = state)
+                                ResolvingEffectsView(state = state,
+                                    modifier = Modifier.offset(y = -50.dp))
 
                                 if (
                                     showRadioTowerReroll &&
@@ -540,7 +541,8 @@ fun GameScreen(
                         val turnFlowLabel = state.turnFlowActionLabel()
                         if (
                             state.isActivePlayer &&
-                            state.gameStatus == GameStatus.IN_PROGRESS
+                            state.gameStatus == GameStatus.IN_PROGRESS &&
+                            state.purchaseState != PurchaseState.SUCCESS
                         ) {
                             turnFlowLabel?.let {
                                 ActionButton(
@@ -561,7 +563,7 @@ fun GameScreen(
                                 )
                             }
 
-                            if (state.isBuyingPhase && state.purchaseState != PurchaseState.SUCCESS) {
+                            if (state.isBuyingPhase) {
                                 SecondaryActionButton(
                                     onClick = onTurnFlowAction,
                                     enabled = state.purchaseState != PurchaseState.PENDING,

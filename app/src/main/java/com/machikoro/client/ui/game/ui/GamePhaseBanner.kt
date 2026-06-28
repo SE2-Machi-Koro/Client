@@ -68,7 +68,7 @@ fun PhaseField(
             .clip(RoundedCornerShape(24.dp))
             .background(
                 Color(0xCCC4D3DC).copy(
-                    alpha = if (isActive) 1f else 0.65f
+                    alpha = if (isActive) 0.8f else 0.65f
                 )
             )
             .padding(
