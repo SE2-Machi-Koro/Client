@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,6 +50,7 @@ import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.ShopCatalog
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.GameScreenState
+import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
@@ -66,7 +68,9 @@ import com.machikoro.client.ui.game.ui.MarketplaceSection
 import com.machikoro.client.ui.game.ui.PlayerCardsDisplay
 import com.machikoro.client.ui.game.ui.PlayerCoinField
 import com.machikoro.client.ui.game.ui.PlayersTopBar
+import com.machikoro.client.ui.game.ui.ResolvingEffectsView
 import com.machikoro.client.ui.game.ui.RoundIndicator
+import com.machikoro.client.ui.game.ui.withResolvingEffectsPreviewCoins
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.BasicText
@@ -85,7 +89,7 @@ private val MARKETPLACE_VIEW_DELAY = 10000L
 
 
 // offsets
-private val SIDE_CONTENT_OFFSET = 35
+const val SIDE_CONTENT_OFFSET = 35
 
 @Composable
 fun GameScreen(
@@ -117,6 +121,7 @@ fun GameScreen(
     // dialog opens this confirmation. Accusing wrongly costs a coin, so we
     // always confirm first.
     var accuseTargetId by remember { mutableStateOf<String?>(null) }
+    val coinDisplayState = remember(state) { state.withResolvingEffectsPreviewCoins() }
     val accuseTarget = accuseTargetId?.let { id -> state.players.firstOrNull { it.id == id } }
     if (accuseTarget != null) {
         AlertDialog(
@@ -152,11 +157,12 @@ fun GameScreen(
 
     val phaseTimerTime =
         when {
-            state.isBuyingPhase -> 30
+            state.isBuyingPhase && state.purchaseState != PurchaseState.SUCCESS  -> 30
             state.gamePhase == GamePhase.ROLL_DICE -> 20
             // Matches the actual auto-advance dwell so the countdown the player sees
             // is the real time until RESOLVE_EFFECTS ends, not a longer, unrelated number.
             state.gamePhase == GamePhase.RESOLVE_EFFECTS -> GameScreenViewModel.RESOLVE_EFFECTS_TIMER_SECONDS
+            state.purchaseState == PurchaseState.SUCCESS -> 5
             else -> 0
         }
 
@@ -170,6 +176,7 @@ fun GameScreen(
     val isCardViewPossible = ((state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.BUY_OR_BUILD )
             && !state.isActivePlayer)
 
+    val showRadioTowerReroll = state.canReroll && canReroll
     var chatOpen by remember { mutableStateOf(false) }
     var readCount by remember { mutableStateOf(0) }
 
@@ -305,7 +312,7 @@ fun GameScreen(
                         )
 
                         PlayersTopBar(
-                            players = state.players,
+                            players = coinDisplayState.players,
                             playerLandmarks =
                                 state.playerLandmarks,
                             playerCards = state.playerCards,
@@ -376,7 +383,7 @@ fun GameScreen(
                             .align(Alignment.Center)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)
                     ) {
-                        if(state.gamePhase != GamePhase.ROLL_DICE && state.gamePhase != GamePhase.RESOLVE_EFFECTS) {
+                        if (state.gamePhase != GamePhase.ROLL_DICE) {
                             state.diceResult?.let {
                                 DiceResultDisplay(dice = it,
                                     diceSize = 42.dp,
@@ -448,7 +455,6 @@ fun GameScreen(
                     }
 
                     else if (state.isBuyingPhase) {
-                        if(state.isActivePlayer) {
                             BuyingPhaseShop(
                                 state = state,
                                 items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
@@ -456,23 +462,60 @@ fun GameScreen(
                                 recommendedCardType = cheatRecommendation,
                                 modifier = Modifier.align(Alignment.Center)
                             )
-                        } else BasicText(
-                            state.activePlayerUsername + " is deciding what card to buy",
-                            modifier = Modifier.offset(y = (-SIDE_CONTENT_OFFSET).dp))
                     }
 
-                    else if (state.gamePhase == GamePhase.ROLL_DICE || state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
-                        DiceSection(
-                            state = state,
-                            onRollDice = onRollDice,
-                            onReroll = onReroll,
-                            onSkipReroll = onSkipReroll,
-                            canReroll = canReroll,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
+                    else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .offset(x = 5.dp, y = 50.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                ResolvingEffectsView(state = state)
+
+                                if (
+                                    showRadioTowerReroll &&
+                                    state.isActivePlayer &&
+                                    state.gameStatus == GameStatus.IN_PROGRESS
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        ActionButton(
+                                            onClick = { onReroll(state.diceResult?.size ?: 1) },
+                                            enabled = !state.isRolling,
+                                            label = "Reroll",
+                                            leftIcon = R.drawable.game_dice_perspective,
+                                            modifier = Modifier.semantics {
+                                                contentDescription = "Reroll dice"
+                                            }
+                                        )
+
+                                        SecondaryActionButton(
+                                            onClick = onSkipReroll,
+                                            enabled = !state.isRolling,
+                                            label = "Skip",
+                                            modifier = Modifier.semantics {
+                                                contentDescription = "Skip reroll"
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        } else if (state.gamePhase == GamePhase.ROLL_DICE){
+                            DiceSection(
+                                state = state,
+                                onRollDice = onRollDice,
+                                onReroll = onReroll,
+                                onSkipReroll = onSkipReroll,
+                                canReroll = canReroll,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
                     }
-                }
-            },
+                },
 // =====================================
 // RIGHT
 // =====================================
@@ -483,7 +526,7 @@ fun GameScreen(
                 ) {
 
                     PlayerCoinField(
-                        state = state,
+                        state = coinDisplayState,
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)
@@ -518,7 +561,7 @@ fun GameScreen(
                                 )
                             }
 
-                            if (state.isBuyingPhase) {
+                            if (state.isBuyingPhase && state.purchaseState != PurchaseState.SUCCESS) {
                                 SecondaryActionButton(
                                     onClick = onTurnFlowAction,
                                     enabled = state.purchaseState != PurchaseState.PENDING,
@@ -801,3 +844,205 @@ private fun previewMarketplace() = mapOf(
     CardType.CONVENIENCE_STORE to 4,
     CardType.FOREST to 6,
 )
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenResolveEffectsPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = previewPlayers(),
+                diceResult = listOf(3),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                roundNumber = 4,
+                playerLandmarks = previewLandmarks(),
+                marketplace = previewMarketplace(),
+                customDisplayText = "Resolving effects"
+            ),
+            canReroll = true
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenResolveEffectsRedCardsPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = listOf(
+                    PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
+                    PlayerCoinState("2", "Player2", 4),
+                    PlayerCoinState("3", "Player3", 5),
+                    PlayerCoinState("4", "Player4", 7),
+                ),
+                diceResult = listOf(4, 5),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                roundNumber = 10,
+                playerLandmarks = previewLandmarks(),
+                playerCards = mapOf(
+                    2 to listOf(
+                        PlayerCardState(CardType.FAMILY_RESTAURANT, quantity = 1)
+                    ),
+                    3 to listOf(
+                        PlayerCardState(CardType.FAMILY_RESTAURANT, quantity = 2)
+                    ),
+                    4 to listOf(
+                        PlayerCardState(CardType.FAMILY_RESTAURANT, quantity = 1)
+                    )
+                ),
+                marketplace = previewMarketplace(),
+                customDisplayText = "Round outcome"
+            ),
+            canReroll = false
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenResolveEffectsBlueCardsPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = listOf(
+                    PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
+                    PlayerCoinState("2", "Player2", 4),
+                    PlayerCoinState("3", "Player3", 5),
+                    PlayerCoinState("4", "Player4", 7),
+                ),
+                diceResult = listOf(1),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                roundNumber = 10,
+                playerLandmarks = previewLandmarks(),
+                playerCards = mapOf(
+                    1 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 1)),
+                    2 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 2)),
+                    3 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 1)),
+                    4 to listOf(PlayerCardState(CardType.WHEAT_FIELD, quantity = 1)),
+                ),
+                marketplace = previewMarketplace(),
+                customDisplayText = "Round outcome"
+            ),
+            canReroll = false
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenResolveEffectsGreenCardsPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = listOf(
+                    PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
+                    PlayerCoinState("2", "Player2", 4),
+                    PlayerCoinState("3", "Player3", 5),
+                    PlayerCoinState("4", "Player4", 7),
+                ),
+                diceResult = listOf(2),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                roundNumber = 10,
+                playerLandmarks = previewLandmarks(),
+                playerCards = mapOf(
+                    1 to listOf(
+                        PlayerCardState(CardType.BAKERY, quantity = 2)
+                    ),
+                    2 to listOf(
+                        PlayerCardState(CardType.BAKERY, quantity = 2)
+                    ),
+                    3 to listOf(
+                        PlayerCardState(CardType.BAKERY, quantity = 1)
+                    ),
+                ),
+                marketplace = previewMarketplace(),
+                customDisplayText = "Round outcome"
+            ),
+            canReroll = false
+        )
+    }
+}
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenResolveEffectsPurpleStadiumPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = listOf(
+                    PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
+                    PlayerCoinState("2", "Player2", 4),
+                    PlayerCoinState("3", "Player3", 5),
+                    PlayerCoinState("4", "Player4", 7),
+                ),
+                diceResult = listOf(6),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                roundNumber = 10,
+                playerLandmarks = previewLandmarks(),
+                playerCards = mapOf(
+                    1 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1))
+                ),
+                marketplace = previewMarketplace(),
+                customDisplayText = "Round outcome"
+            ),
+            canReroll = false
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenResolveEffectsPurpleTvStationPreview() {
+    ClientTheme {
+        GameScreen(
+            state = GameScreenState(
+                gameId = 1,
+                gamePhase = GamePhase.RESOLVE_EFFECTS,
+                connectionStatus = ConnectionStatus.CONNECTED,
+                players = listOf(
+                    PlayerCoinState("1", "You", 6, isCurrentPlayer = true, isActivePlayer = true),
+                    PlayerCoinState("2", "Player2", 4),
+                    PlayerCoinState("3", "Player3", 5),
+                    PlayerCoinState("4", "Player4", 7),
+                ),
+                diceResult = listOf(6),
+                purchaseState = PurchaseState.IDLE,
+                myUserId = 1,
+                activePlayerId = 1,
+                roundNumber = 10,
+                playerLandmarks = previewLandmarks(),
+                playerCards = mapOf(
+                    1 to listOf(PlayerCardState(CardType.TV_STATION, quantity = 1))
+                ),
+                marketplace = previewMarketplace(),
+                customDisplayText = "Choose player"
+            ),
+            canReroll = false
+        )
+    }
+}

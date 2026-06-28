@@ -1,21 +1,20 @@
 package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,16 +22,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,14 +55,18 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.machikoro.client.R
-import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.shop.CardDefinitions
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.toDisplayText
+import com.machikoro.client.ui.shared.ActionButton
+import com.machikoro.client.ui.shared.BasicText
+import com.machikoro.client.ui.shared.SecondaryActionButton
 import kotlinx.coroutines.delay
+import kotlin.collections.chunked
+import kotlin.collections.forEach
 
 private val SURFACE_COLOR = Color(0xFF8F7365)
 
@@ -157,14 +160,16 @@ private fun PlayerCoinBadge(
     val scale = if (player.isActivePlayer) 1.0f else 0.95f
     val fontSize = if (player.isActivePlayer) 18.sp else 16.sp
 
-    Box(modifier = modifier.scale(scale)) {
+    Box(
+        modifier = modifier.scale(scale)
+            .clickable(enabled = canInspect, onClick = onInspect)
+    ) {
         Surface(
             shape = RoundedCornerShape(10.dp),
             color = backgroundColor,
             shadowElevation = 3.dp,
             modifier = Modifier
                 .wrapContentSize()
-                .clickable(enabled = canInspect, onClick = onInspect)
                 .widthIn(max = 140.dp)
                 .semantics {
                     contentDescription = if (canInspect) {
@@ -228,13 +233,12 @@ private fun PlayerInventoryDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
-            color = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shape = RoundedCornerShape(8.dp),
+            color = Color(0xFF8F7365),
+            shape = RoundedCornerShape(16.dp),
             tonalElevation = 8.dp,
             modifier = Modifier
-                .fillMaxWidth(0.88f)
-                .widthIn(max = 840.dp)
+                .fillMaxWidth(0.80f)
+                .fillMaxHeight(0.95f)
                 .semantics {
                     contentDescription = "Player cards window for ${selectedPlayer.displayName}"
                 }
@@ -242,166 +246,115 @@ private fun PlayerInventoryDialog(
             Column(
                 modifier = Modifier
                     .padding(24.dp)
-                    .heightIn(max = 680.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                PlayerInventoryHeader(
-                    playerName = selectedPlayer.displayName,
-                    onDismiss = onDismiss,
-                    canAccuse = canAccuse,
-                    onAccuse = onAccuse
-                )
-
-                if (players.size > 1) {
-                    PlayerSelectorRow(
-                        players = players,
-                        selectedPlayer = selectedPlayer,
-                        onPlayerSelected = onPlayerSelected
-                    )
-                }
-
-                Row(
+                Box(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(20.dp),
-                    verticalAlignment = Alignment.Top
+                    contentAlignment = Alignment.Center
                 ) {
-                    PlayerInventoryLandmarks(
-                        playerName = selectedPlayer.displayName,
-                        landmarks = landmarks,
-                        modifier = Modifier.weight(1f)
+                    // One accusation per turn (issue #280) — disabled until the next
+                    // turn once the local player has used theirs.
+                    SecondaryActionButton(
+                        label = if (!canAccuse) "Accused this turn"
+                        else if (players.size == 1)
+                            "Accuse of \n cheating"
+                        else "Accuse of cheating",
+                        onClick = onAccuse,
+                        enabled = canAccuse,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Accuse of cheating"
+                        }
+                            .align(Alignment.CenterStart),
+                        fontSize = 20,
                     )
+                    if(players.size == 1) {
+                        PlayerSelectorRow(
+                            players = players,
+                            selectedPlayer = selectedPlayer,
+                            onPlayerSelected = onPlayerSelected,
+                            modifier = Modifier.align(Alignment.Center),
+                            )
+                    }
+                    ActionButton(
+                        label = "Close",
+                        onClick = onDismiss,
+                        modifier = Modifier.align(Alignment.CenterEnd),
+                        fontSize = 20
 
-                    PlayerInventoryCards(
-                        playerName = selectedPlayer.displayName,
-                        cards = cards,
-                        modifier = Modifier.weight(1f)
                     )
+                }
+                if(players.size > 1) {
+                PlayerSelectorRow(
+                    players = players,
+                    selectedPlayer = selectedPlayer,
+                    onPlayerSelected = onPlayerSelected,
+                )
+}
+                CompositionLocalProvider(
+                    LocalOverscrollFactory provides null
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // ESTABLISHMENTS TITLE
+                        item {
+                            BasicText("Landmarks")
+                        }
+                        // LANDMARKS ROW
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                landmarks.forEach { item ->
+                                    PlayerInventoryLandmarkCard(item.landmarkType, item.isBuilt)
+                                }
+                            }
+                        }
+                        // ESTABLISHMENTS TITLE
+                        item {
+                            BasicText("Establishments")
+                        }
+
+                        // GRID
+                        items(cards.visibleInDisplayOrder().chunked(4)) { rowItems ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                rowItems.forEach { item ->
+                                    PlayerInventoryCard(item)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-@Composable
-private fun PlayerInventoryHeader(
-    playerName: String,
-    onDismiss: () -> Unit,
-    canAccuse: Boolean = true,
-    onAccuse: () -> Unit = {}
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = playerName,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            // One accusation per turn (issue #280) — disabled until the next
-            // turn once the local player has used theirs.
-            TextButton(
-                onClick = onAccuse,
-                enabled = canAccuse,
-                modifier = Modifier.semantics {
-                    contentDescription = "Accuse $playerName of cheating"
-                }
-            ) {
-                Text(if (canAccuse) "Accuse of cheating" else "Accused this turn")
-            }
-
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
-        }
-    }
-}
 
 @Composable
 private fun PlayerSelectorRow(
     players: List<PlayerCoinState>,
     selectedPlayer: PlayerCoinState,
-    onPlayerSelected: (PlayerCoinState) -> Unit
+    onPlayerSelected: (PlayerCoinState) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         players.forEach { player ->
             PlayerSelectorButton(
                 player = player,
                 selected = player.id == selectedPlayer.id,
-                onClick = { onPlayerSelected(player) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlayerSelectorButton(
-    player: PlayerCoinState,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val background = if (selected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
-    val foreground = if (selected) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    Surface(
-        color = background,
-        contentColor = foreground,
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .semantics {
-                contentDescription = "Inspect ${player.displayName} in player cards window"
-            }
-    ) {
-        Text(
-            text = if (player.isCurrentPlayer) "You" else player.displayName,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-        )
-    }
-}
-
-@Composable
-private fun PlayerInventoryLandmarks(
-    playerName: String,
-    landmarks: List<PlayerLandmarkState>,
-    modifier: Modifier = Modifier
-) {
-    val landmarksByType = landmarks.associateBy { it.landmarkType }
-
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Text(
-            text = "Landmarks",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        TwoColumnGrid(items = LandmarkType.entries) { type ->
-            val built = landmarksByType[type]?.isBuilt == true
-            PlayerInventoryLandmarkCard(
-                playerName = playerName,
-                landmarkType = type,
-                built = built
+                onClick = { onPlayerSelected(player) },
+                enabled = (players.size > 1)
             )
         }
     }
@@ -409,7 +362,6 @@ private fun PlayerInventoryLandmarks(
 
 @Composable
 private fun PlayerInventoryLandmarkCard(
-    playerName: String,
     landmarkType: LandmarkType,
     built: Boolean
 ) {
@@ -421,62 +373,27 @@ private fun PlayerInventoryLandmarkCard(
         contentDescription = null,
         contentScale = ContentScale.Fit,
         modifier = Modifier
-            .width(150.dp)
-            .height(176.dp)
+            .width(170.dp)
+            .height(195.dp)
             .clip(RoundedCornerShape(8.dp))
             .semantics {
-                contentDescription = "$playerName landmark $landmarkName: $stateLabel"
+                contentDescription = "landmark $landmarkName: $stateLabel"
             }
     )
 }
 
 @Composable
-private fun PlayerInventoryCards(
-    playerName: String,
-    cards: List<PlayerCardState>,
-    modifier: Modifier = Modifier
-) {
-    val visibleCards = cards.visibleInDisplayOrder()
-
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Text(
-            text = "Establishments",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        if (visibleCards.isEmpty()) {
-            Text(
-                text = "No establishments",
-                style = MaterialTheme.typography.bodyMedium
-            )
-        } else {
-            TwoColumnGrid(items = visibleCards) { card ->
-                PlayerInventoryCard(
-                    playerName = playerName,
-                    card = card
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun PlayerInventoryCard(
-    playerName: String,
     card: PlayerCardState
 ) {
     val cardName = card.cardType.toDisplayText()
 
     Box(
         modifier = Modifier
-            .width(150.dp)
-            .height(176.dp)
+            .width(170.dp)
+            .height(195.dp)
             .semantics {
-                contentDescription = "$playerName owns $cardName, quantity ${card.quantity}"
+                contentDescription = "$cardName, quantity ${card.quantity}"
             }
     ) {
         Image(
@@ -525,38 +442,6 @@ private fun CardQuantityBadge(
     }
 }
 
-@Composable
-private fun <T> TwoColumnGrid(
-    items: List<T>,
-    modifier: Modifier = Modifier,
-    itemContent: @Composable (T) -> Unit
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items.chunked(2).forEach { rowItems ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                rowItems.forEach { item ->
-                    Box(
-                        modifier = Modifier.weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        itemContent(item)
-                    }
-                }
-
-                if (rowItems.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
 
 private fun List<PlayerCardState>.visibleInDisplayOrder(): List<PlayerCardState> {
     val cardsByType = filter { it.quantity > 0 }.associateBy { it.cardType }
@@ -632,7 +517,7 @@ private fun LandmarkPip(
 
 @Composable
 fun CoinBadge(
-    amount: Int,
+    amount: Int? = null,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.size(36.dp)) {
@@ -646,7 +531,7 @@ fun CoinBadge(
         )
 
         Text(
-            text = amount.toString(),
+            text = amount?.toString().orEmpty(),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.ExtraBold,
             color = Color(0xFF744300),
@@ -655,5 +540,58 @@ fun CoinBadge(
                 .offset(y = (-4).dp)
                 .align(Alignment.Center)
         )
+    }
+}
+
+@Composable
+private fun PlayerSelectorButton(
+    player: PlayerCoinState,
+    selected: Boolean,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    Box(
+        modifier = Modifier
+            .wrapContentWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(
+                Color.White.copy(
+                    alpha = if (selected) 1f else 0.65f
+                )
+            ).widthIn(max = 200.dp)
+
+        .clickable(onClick = onClick,
+                enabled = enabled)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .semantics {
+                contentDescription =
+                    "Inspect ${player.displayName} in player cards window"
+            },
+            contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Image(
+                painter = painterResource(R.drawable.login_user_icon),
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                contentScale = ContentScale.Fit
+            )
+
+            Text(
+                text = (if (selected) "Cards of " else "" ) + player.displayName,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color(0xFF004E7E).copy(
+                        alpha = if (selected) 1f else 0.65f
+                    )
+                ),
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1
+            )
+        }
     }
 }

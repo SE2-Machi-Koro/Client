@@ -106,8 +106,8 @@ fun AppRoot(
     val showConnectionBanner = currentRoute != null && currentRoute != AppRoute.Main.route
 
     DisposableEffect(navController) {
-        val listener = NavController.OnDestinationChangedListener { _, _, _ ->
-            navigationViewModel.clearLastNavigation()
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            navigationViewModel.onDestinationChanged(destination.route)
         }
         navController.addOnDestinationChangedListener(listener)
         onDispose {
@@ -128,7 +128,11 @@ fun AppRoot(
         gameScreenState,
         startScreenState,
         lobbyCode,
-        navigationUiState.showLobbyScreen
+        navigationUiState.showLobbyScreen,
+        // Re-evaluate when the destination changes so that leaving an overlay
+        // route (e.g. Back from Leaderboard) recalculates the state-driven
+        // target and doesn't strand the user on a screen with stale data (#373).
+        currentRoute,
     ) {
         navigationViewModel.updateNavigationBasedOnState(
             gameScreenState = gameScreenState,
@@ -179,11 +183,8 @@ fun AppRoot(
                     onResumeGameClick = onResumeGameClick,
                     onPurgeClick = onPurgeClick,
                     onLogoutClick = onLogoutSubmit,
-                    // Navigate to the global leaderboard keeping Home in the back stack
                     onRankingClick = {
-                        navController.navigate(AppRoute.Leaderboard.route) {
-                            launchSingleTop = true
-                        }
+                        navigationViewModel.navigateTo(AppRoute.Leaderboard)
                     },
                     modifier = modifier,
                 )
@@ -262,11 +263,9 @@ fun AppRoot(
                     localPlayerIsWinner = localPlayerIsWinner,
                     onBackHome = onBackHome,
                     onViewLeaderboard = {
-                        // Clear finished game state, then navigate to the global leaderboard
+                        // Clear finished game state before navigating to the global leaderboard
                         onClearGameState()
-                        navController.navigate(AppRoute.Leaderboard.route) {
-                            launchSingleTop = true
-                        }
+                        navigationViewModel.navigateTo(AppRoute.Leaderboard)
                     },
                 )
             }
