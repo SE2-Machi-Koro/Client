@@ -1696,9 +1696,9 @@ class GameScreenViewModelTest {
     }
 
     @Test
-    fun resolveEffectsAutoSendsAfterShortDwellForSingleTriggeredCard() = runTest {
+    fun resolveEffectsSendsWhenSingleCardAnimationFinishes() = runTest {
         val fakeClient = FakeWebSocketClient()
-        viewModel(fakeClient, userId = 42)
+        val viewModel = viewModel(fakeClient, userId = 42)
 
         fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitActiveGameId(7)
@@ -1730,16 +1730,16 @@ class GameScreenViewModelTest {
 
         assertEquals(0, fakeClient.resolveEffectsCallCount)
 
-        advanceTimeBy(1L)
+        viewModel.finishResolveEffectsAnimation()
         runCurrent()
 
         assertEquals(1, fakeClient.resolveEffectsCallCount)
     }
 
     @Test
-    fun resolveEffectsAutoSendsAfterMediumDwellForFewTriggeredCards() = runTest {
+    fun resolveEffectsSendsWhenMultipleCardAnimationsFinish() = runTest {
         val fakeClient = FakeWebSocketClient()
-        viewModel(fakeClient, userId = 42)
+        val viewModel = viewModel(fakeClient, userId = 42)
 
         fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
         fakeClient.emitActiveGameId(7)
@@ -1771,7 +1771,7 @@ class GameScreenViewModelTest {
 
         assertEquals(0, fakeClient.resolveEffectsCallCount)
 
-        advanceTimeBy(1L)
+        viewModel.finishResolveEffectsAnimation()
         runCurrent()
 
         assertEquals(1, fakeClient.resolveEffectsCallCount)

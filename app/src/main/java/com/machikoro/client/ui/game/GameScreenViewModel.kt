@@ -366,6 +366,17 @@ class GameScreenViewModel(
         webSocketClient.resolveEffects(gameId)
     }
 
+    fun finishResolveEffectsAnimation() {
+        val current = mutableState.value
+        val pendingJob = resolveEffectsJob ?: return
+        if (!pendingJob.isActive) return
+        if (!current.shouldAutoResolveEffects(mutableCanRerollThisTurn.value)) return
+
+        pendingJob.cancel()
+        resolveEffectsJob = null
+        current.gameId?.let { webSocketClient.resolveEffects(it) }
+    }
+
     private fun startRollTimeout(expectedPhase: GamePhase) {
         diceRollTimeoutJob?.cancel()
         val rollId = ++nextRollId
@@ -468,11 +479,10 @@ class GameScreenViewModel(
         val diceWasRolled = diceResult != null
         val triggeredCount = triggeredEstablishmentCountForCurrentRoll()
 
-        return when {
-            diceWasRolled && triggeredCount == 0 -> 0L
-            triggeredCount == 1 -> 2_000L
-            triggeredCount <= 3 -> 4_000L
-            else -> resolveEffectsDwellMillis
+        return if (diceWasRolled && triggeredCount == 0) {
+            0L
+        } else {
+            resolveEffectsDwellMillis
         }
     }
 
@@ -652,17 +662,10 @@ class GameScreenViewModel(
 
     companion object {
         /**
-         * #302: how long the client dwells on RESOLVE_EFFECTS before auto-sending
-         * resolveEffects — long enough to read the dice result and income, then
-         * advance. This is the same value the RESOLVE_EFFECTS phase timer counts
-         * down (see [RESOLVE_EFFECTS_TIMER_SECONDS]), so the visible countdown and
-         * the actual phase length stay in lockstep. Players without a Radio Tower
-         * have nothing to decide here, so it is kept short rather than the old 20s.
+         * Failsafe for RESOLVE_EFFECTS. Normally the UI calls
+         * [finishResolveEffectsAnimation] after its final coin animation.
          */
-        const val DEFAULT_RESOLVE_EFFECTS_DWELL_MS = 6_000L
-
-        /** RESOLVE_EFFECTS phase-timer length, in seconds, derived from the dwell. */
-        const val RESOLVE_EFFECTS_TIMER_SECONDS = (DEFAULT_RESOLVE_EFFECTS_DWELL_MS / 1000L).toInt()
+        const val DEFAULT_RESOLVE_EFFECTS_DWELL_MS = 20_000L
     }
 
     class Factory(
