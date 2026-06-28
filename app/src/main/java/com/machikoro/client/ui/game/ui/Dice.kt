@@ -332,9 +332,21 @@ fun DiceSection(
             else -> {}
         }
         if(!state.isActivePlayer && state.diceResult == null) {
-            BasicText(
-                state.activePlayerUsername + " is rolling dice",
-                modifier = Modifier.offset(y = (-35).dp))
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.offset(y = (-30).dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.game_dice_perspective),
+                    contentDescription = "One dice",
+                    modifier = Modifier
+                        .size(100.dp)
+                )
+                BasicText(
+                   state.activePlayerUsername + " is rolling dice",
+                )
+            }
+
         }
         if (state.isActivePlayer &&
             state.gameStatus == GameStatus.IN_PROGRESS &&
