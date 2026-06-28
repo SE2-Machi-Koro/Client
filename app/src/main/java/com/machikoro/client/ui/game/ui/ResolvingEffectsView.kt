@@ -3,20 +3,26 @@ package com.machikoro.client.ui.game.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +47,7 @@ import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.model.state.triggeredEstablishmentsForCurrentRoll
 import com.machikoro.client.ui.game.ui.resolving_effects.CardsStack
+import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.TextBlueDark
 
@@ -55,11 +62,9 @@ fun ResolvingEffectsView(
     val triggeredEffects = remember(state) { state.triggeredEffects() }
 
     if (triggeredEffects.isEmpty()) {
-        Text(
-            text = "No establishments triggered",
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
+        BasicText(
+            "No establishments triggered",
+            modifier = modifier.offset(y = -35.dp)
         )
         return
     }
@@ -125,7 +130,6 @@ private fun TriggeredEffectsBoard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
             .padding(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.Top
@@ -145,24 +149,30 @@ private fun TriggeredEffectsBoard(
 private fun PlayerOutcomeColumn(
     outcomes: List<PlayerOutcomeUi>,
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.width(155.dp)
+    CompositionLocalProvider(
+        LocalOverscrollFactory provides null
     ) {
-        if (outcomes.isEmpty()) {
-            Box(
-                modifier = Modifier.height(36.dp)
-            )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.width(155.dp)
+                .verticalScroll(rememberScrollState())
 
-            Box(
-                modifier = Modifier
-                    .width(155.dp)
-                    .height(175.dp)
-            )
-        } else {
-            outcomes.forEach { outcome ->
-                OutcomeStack(outcome)
+        ) {
+            if (outcomes.isEmpty()) {
+                Box(
+                    modifier = Modifier.height(36.dp)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .width(155.dp)
+                        .height(175.dp)
+                )
+            } else {
+                outcomes.forEach { outcome ->
+                    OutcomeStack(outcome)
+                }
             }
         }
     }
@@ -172,6 +182,7 @@ private fun PlayerOutcomeColumn(
 private fun OutcomeStack(
     outcome: PlayerOutcomeUi,
 ) {
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -545,15 +556,10 @@ private fun IncomeWithCoin(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Text(
-            text = if (isPositive) "+" else "-",
-            color = if (isPositive) Color(0xFF8BC56A) else Color(0xFFC5163D),
-            fontSize = 22.sp,
-            fontWeight = FontWeight.ExtraBold,
-            modifier = Modifier.offset(y = (-4).dp)
+        CoinForEffects(
+            amount = amount,
+            isPositive
         )
-
-        CoinBadge(amount = amount)
     }
 }
 
@@ -727,6 +733,34 @@ private fun GameScreenState.triggeredEffects(): List<TriggeredEffectUi> {
     )
 }
 
+@Composable
+private fun CoinForEffects(
+    amount: Int? = null,
+    isPositive: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.size(42.dp)) {
+        Image(
+            painter = painterResource(R.drawable.coin),
+            contentDescription = "Coin",
+            modifier = Modifier
+                .fillMaxSize()
+                .align(Alignment.Center),
+            contentScale = ContentScale.Fit
+        )
+        Text(
+            text = (if (isPositive) "+" else "-") +
+                    amount?.toString().orEmpty(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF744300),
+            fontSize = 20.sp,
+            modifier = Modifier
+                .offset(y = (-4).dp)
+                .align(Alignment.Center)
+        )
+    }
+}
 private fun GameScreenState.shoppingMallBonus(
     playerId: Int,
     item: ShopItem,

@@ -8,12 +8,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -30,8 +33,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +44,8 @@ import com.machikoro.client.domain.enums.CardType
 import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.White
 import com.machikoro.client.R
+import com.machikoro.client.domain.model.state.PlayerCoinState
+import com.machikoro.client.ui.theme.PrimaryOrange
 import kotlinx.serialization.builtins.NothingSerializer
 
 private val SHOP_CARD_SHAPE = RoundedCornerShape(8.dp)
@@ -55,6 +62,8 @@ fun MarketplaceSection(
     CompositionLocalProvider(
         LocalOverscrollFactory provides null
     ) {
+        Title("Marketplace")
+        Spacer(modifier = Modifier.height(4.dp))
         LazyVerticalGrid(
             columns = GridCells.Fixed(4),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -182,3 +191,37 @@ fun MarketplaceButton(
         }
     }
 }
+
+
+@Composable
+private fun Title(
+    text: String,
+) {
+    Box(
+        modifier = Modifier
+            .wrapContentWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(
+                Color(0xFFC4D3DC).copy(
+                    alpha = 0.8f
+                )
+            ).widthIn(max = 200.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .semantics {
+                contentDescription =
+                    text
+            },
+        contentAlignment = Alignment.Center
+    ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color(0xFF004E7E)
+                ),
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1
+            )
+        }
+    }
