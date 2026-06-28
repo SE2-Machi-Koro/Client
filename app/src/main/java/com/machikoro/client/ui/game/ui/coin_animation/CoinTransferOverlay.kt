@@ -23,8 +23,8 @@ import com.machikoro.client.ui.game.ui.CoinBadge
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
-private const val TransferDurationMillis = 700
-private const val TransferPauseMillis = 150L
+private const val TransferDurationMillis = 900
+private const val TransferPauseMillis = 200L
 
 @Composable
 fun CoinTransferOverlay(
@@ -88,6 +88,7 @@ fun CoinTransferOverlay(
             Box(modifier = Modifier.fillMaxSize()) {
                 CoinBadge(
                     amount = transfer.amount,
+                    highlight = CoinChangeHighlight.GAIN,
                     modifier = Modifier.offset {
                         IntOffset(
                             x = (position.x - coinRadiusPx).roundToInt(),
