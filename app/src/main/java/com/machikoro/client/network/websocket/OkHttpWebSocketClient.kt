@@ -233,8 +233,9 @@ class OkHttpWebSocketClient(
     override fun disconnect() {
         intentionalDisconnect = true
         cancelReconnect()
-        stopHeartbeat()
         val currentSocket = synchronized(this) {
+            heartbeatJob?.cancel()
+            heartbeatJob = null
             val socket = webSocket
             webSocket = null
             socket
@@ -1406,8 +1407,9 @@ class OkHttpWebSocketClient(
     }
 
     private fun clearSocket() {
-        stopHeartbeat()
         synchronized(this) {
+            heartbeatJob?.cancel()
+            heartbeatJob = null
             webSocket = null
             subscribedGameId = null
             stompSessionId = null
@@ -1457,32 +1459,42 @@ class OkHttpWebSocketClient(
      * first, so reconnects don't stack jobs. No-op when negotiation opts out.
      */
     private fun startHeartbeat(serverHeartBeatHeader: String?) {
-        stopHeartbeat()
         val sendIntervalMs = negotiatedSendIntervalMs(serverHeartBeatHeader)
         if (sendIntervalMs <= 0L) {
             Log.d(TAG, "STOMP heartbeats disabled by negotiation (server='$serverHeartBeatHeader')")
+            stopHeartbeat()
             return
         }
         Log.d(TAG, "Starting STOMP heartbeats every ${sendIntervalMs}ms")
-        heartbeatJob = reconnectScope.launch {
-            while (isActive) {
-                delay(sendIntervalMs)
-                val socket = synchronized(this@OkHttpWebSocketClient) { webSocket } ?: break
-                // A lone LF is a STOMP heartbeat. Emitting it on an otherwise idle
-                // socket keeps platform proxies (e.g. Railway's edge) from reaping
-                // the connection during a player's think-time — and satisfies the
-                // server, which now expects client heartbeats (server #426).
-                if (!socket.send(HEARTBEAT_FRAME)) {
-                    Log.w(TAG, "Heartbeat send failed; stopping heartbeats")
-                    break
+        synchronized(this) {
+            heartbeatJob?.cancel()
+            heartbeatJob = reconnectScope.launch {
+                while (isActive) {
+                    delay(sendIntervalMs)
+                    val socket = synchronized(this@OkHttpWebSocketClient) { webSocket } ?: break
+                    // A lone LF is a STOMP heartbeat. Emitting it on an otherwise idle
+                    // socket keeps platform proxies (e.g. Railway's edge) from reaping
+                    // the connection during a player's think-time — and satisfies the
+                    // server, which now expects client heartbeats (server #426).
+                    try {
+                        if (!socket.send(HEARTBEAT_FRAME)) {
+                            Log.w(TAG, "Heartbeat send failed; stopping heartbeats")
+                            break
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Heartbeat send threw; stopping heartbeats", e)
+                        break
+                    }
                 }
             }
         }
     }
 
     private fun stopHeartbeat() {
-        heartbeatJob?.cancel()
-        heartbeatJob = null
+        synchronized(this) {
+            heartbeatJob?.cancel()
+            heartbeatJob = null
+        }
     }
 
     /**
