@@ -10,6 +10,7 @@ import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopItem
+import com.machikoro.client.domain.model.state.ChatMessageState
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
@@ -2298,5 +2299,23 @@ class GameScreenViewModelTest {
             if (throwError) throw RuntimeException(errorMessage)
             return response
         }
+    }
+
+    @Test
+    fun chatMessagesAreClearedInAFreshGame() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        advanceUntilIdle()
+
+        fakeClient.emitChatMessage(ChatMessageState("Alice","Hello"))
+        advanceUntilIdle()
+        assertEquals(listOf("Hello"), viewModel.state.value.chatMessages.map { it.message })
+
+        fakeClient.emitActiveGameId(8)
+        advanceUntilIdle()
+
+        assertEquals(emptyList<String>(), viewModel.state.value.chatMessages.map { it.message })
     }
 }
