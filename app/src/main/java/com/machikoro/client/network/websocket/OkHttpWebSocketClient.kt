@@ -1070,18 +1070,23 @@ class OkHttpWebSocketClient(
         updateLobbyHostOwnership(resolveHostUserId(state, game))
 
         parseGameStatus(game.optString("status"))?.let { mutableGameStatus.value = it }
-        parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
+        val snapshotPhase = parseTurnPhase(game.optString("turnPhase"))
+        snapshotPhase?.let { mutableGamePhase.value = it }
         game.optIntOrNull("roundNumber")?.let { mutableRoundNumber.value = it }
-        // The snapshot persists only the dice total (lastDiceRoll), not the
-        // individual dice. Surface it as a single-element list so the last roll
-        // still shows on reconnect — but do NOT clobber a richer per-die result we
-        // already hold for the same roll (it sums to this total). Otherwise a
-        // routine snapshot collapses [x, y] into a single generic die mid-turn,
-        // which is the inconsistent "one vs two dice" display and also hides doubles.
-        game.optIntOrNull("lastDiceRoll")?.let { total ->
-            val current = mutableDiceResult.value
-            if (current == null || current.sum() != total) {
-                mutableDiceResult.value = listOf(total)
+        // In ROLL_DICE phase no dice have been rolled yet for this turn — lastDiceRoll
+        // is a stale total from the previous turn. Restoring it makes diceResult
+        // non-null, permanently hiding the Roll button (game stuck on reconnect).
+        // For all other phases, surface the total as a single-element list so the
+        // last roll still shows on reconnect — but never clobber a richer per-die
+        // result already held for the same roll (avoids [x,y] → [total] collapse).
+        if (snapshotPhase == GamePhase.ROLL_DICE) {
+            mutableDiceResult.value = null
+        } else {
+            game.optIntOrNull("lastDiceRoll")?.let { total ->
+                val current = mutableDiceResult.value
+                if (current == null || current.sum() != total) {
+                    mutableDiceResult.value = listOf(total)
+                }
             }
         }
 
