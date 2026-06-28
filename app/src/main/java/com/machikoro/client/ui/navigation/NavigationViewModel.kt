@@ -47,9 +47,22 @@ class NavigationViewModel(
     // which can cause unnecessary navigation attempts and UI churn.
     internal var lastNavigation: Pair<AppRoute, AppRoute.AppRouteArguments>? = null
 
+    // Route currently shown by the NavController. Kept in sync via
+    // onDestinationChanged so state-driven routing can tell when an overlay
+    // route (see overlayRoutes) is in front.
+    internal var currentRoute: String? = null
+        private set
+
     // True only after the user explicitly enters a lobby this session.
     // Prevents reconnect snapshots from auto-navigating to Game right after login.
     private var hasBeenInLobby = false
+
+    // Overlay routes are opened by an explicit user action (e.g. tapping
+    // "View Leaderboard") and layer on top of the state-driven flow. While one of
+    // these is the current destination, background state updates must not navigate
+    // away from it, otherwise a competing state-driven NavigateTo can bounce the
+    // user off the overlay (issue #373).
+    private val overlayRoutes = setOf(AppRoute.Leaderboard.route)
 
     fun showLobby() {
         hasBeenInLobby = true
@@ -142,6 +155,13 @@ class NavigationViewModel(
                 else -> AppRoute.Home
             }
 
+            // Don't let a background state update pull the user off an overlay
+            // route they explicitly opened (issue #373). A forced logout still
+            // wins because unauthenticated users must always return to Main.
+            if (currentRoute in overlayRoutes && targetRoute != AppRoute.Main) {
+                return@launch
+            }
+
             val routeArguments = AppRoute.AppRouteArguments(
                 lobbyCode = lobbyCode,
                 gameId = gameScreenState.gameId,
@@ -168,6 +188,17 @@ class NavigationViewModel(
      */
     fun clearLastNavigation() {
         lastNavigation = null
+    }
+
+    /**
+     * Records the NavController's current destination and clears the
+     * lastNavigation cache. Called whenever the NavController changes
+     * destination so state-driven routing knows which route is in front and can
+     * leave overlay routes (e.g. Leaderboard) untouched.
+     */
+    fun onDestinationChanged(route: String?) {
+        currentRoute = route
+        clearLastNavigation()
     }
 }
 

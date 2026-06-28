@@ -43,9 +43,30 @@ screen.
 | `Lobby` | Lobby screen before a game starts. | Optional `lobbyCode` |
 | `Game` | Active game screen. | Optional `gameId` |
 | `Winner` | Finished-game winner screen. | None |
+| `Leaderboard` | Global leaderboard, opened as an overlay from Home or Winner. | None |
 
 Argumented destinations are built through `AppRoute.destination(arguments)`.
 Callers should not assemble route strings manually.
+
+### Overlay routes
+
+`Leaderboard` is an **overlay route**: it is opened by an explicit user action
+(tapping "View Leaderboard") and layers on top of the state-driven flow rather
+than being derived from app state. While an overlay route is the current
+destination, `updateNavigationBasedOnState` will not navigate away from it, so a
+competing state-driven `NavigateTo` (for example a server snapshot computing
+`Home`) cannot bounce the user off it (issue
+[#373](https://github.com/SE2-Machi-Koro/Client/issues/373)). A forced logout is
+the only exception, because unauthenticated users must always return to `Main`.
+
+The current destination is tracked through
+`NavigationViewModel.onDestinationChanged(route)`, which `AppRoot` wires to the
+`NavController`'s `OnDestinationChangedListener`. The current route is also a key
+of the `updateNavigationBasedOnState` `LaunchedEffect`, so leaving an overlay
+(e.g. pressing Back from Leaderboard) re-evaluates the state-driven target. This
+matters because the Winner → Leaderboard flow clears the finished-game state: on
+Back the re-evaluation routes the user to `Home` rather than stranding them on a
+Winner screen with cleared data.
 
 ## Navigation Flow
 

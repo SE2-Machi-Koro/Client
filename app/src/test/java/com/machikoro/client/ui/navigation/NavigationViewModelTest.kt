@@ -257,6 +257,130 @@ class NavigationViewModelTest {
     }
 
     @Test
+    fun stateUpdateWhileOnLeaderboardDoesNotNavigateAway() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.onUserLoggedIn()
+        // Simulate the leaderboard overlay becoming the current destination.
+        viewModel.onDestinationChanged(AppRoute.Leaderboard.route)
+
+        // A background state update that would otherwise route to Home must not
+        // pull the user off the leaderboard (issue #373).
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial(),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = null,
+        )
+        advanceUntilIdle()
+
+        assertTrue(events.isEmpty())
+    }
+
+    @Test
+    fun logoutWhileOnLeaderboardStillNavigatesToMain() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.onUserLoggedIn()
+        viewModel.onDestinationChanged(AppRoute.Leaderboard.route)
+
+        // A forced logout must always win over an overlay route.
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial(),
+            startScreenState = StartScreenState.placeholder(),
+            lobbyCode = null,
+        )
+        advanceUntilIdle()
+
+        assertEquals(NavigationEvent.NavigateTo(AppRoute.Main), events.single())
+    }
+
+    @Test
+    fun stateUpdateNavigatesNormallyWhenNotOnOverlay() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.onUserLoggedIn()
+        // Leave the leaderboard: current destination is now Home, not an overlay.
+        viewModel.onDestinationChanged(AppRoute.Leaderboard.route)
+        viewModel.onDestinationChanged(AppRoute.Home.route)
+
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial(),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = null,
+        )
+        advanceUntilIdle()
+
+        assertEquals(NavigationEvent.NavigateTo(AppRoute.Home), events.single())
+    }
+
+    @Test
+    fun winnerToLeaderboardThenBackReevaluatesNavigationToHome() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.onUserLoggedIn()
+
+        // Finished game routes the user to the Winner screen.
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial().copy(
+                gameStatus = GameStatus.FINISHED,
+                gameId = 42,
+                winnerId = 11,
+            ),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = null,
+        )
+        advanceUntilIdle()
+        viewModel.onDestinationChanged(AppRoute.Winner.route)
+
+        // Tapping "View Leaderboard" clears the finished-game state and opens the
+        // leaderboard overlay; the resulting Home target is suppressed.
+        viewModel.onDestinationChanged(AppRoute.Leaderboard.route)
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial(),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = null,
+        )
+        advanceUntilIdle()
+
+        // Pressing Back returns to Winner. Navigation must re-evaluate (the route
+        // change re-runs updateNavigationBasedOnState) and route to Home instead
+        // of leaving the user on a Winner screen with cleared data (#373 review).
+        viewModel.onDestinationChanged(AppRoute.Winner.route)
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial(),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = null,
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(
+                NavigationEvent.NavigateTo(
+                    route = AppRoute.Winner,
+                    arguments = AppRoute.AppRouteArguments(gameId = 42),
+                ),
+                NavigationEvent.NavigateTo(AppRoute.Home),
+            ),
+            events,
+        )
+    }
+
+    @Test
+    fun onDestinationChangedTracksRouteAndClearsLastNavigation() = runTest {
+        val viewModel = NavigationViewModel()
+
+        viewModel.navigateTo(AppRoute.Home)
+        viewModel.onDestinationChanged(AppRoute.Home.route)
+
+        assertEquals(AppRoute.Home.route, viewModel.currentRoute)
+        assertEquals(null, viewModel.lastNavigation)
+    }
+
+    @Test
     fun onUserLoggedOutResetsLoginFlagAndLobbyVisibility() {
         val viewModel = NavigationViewModel()
 
