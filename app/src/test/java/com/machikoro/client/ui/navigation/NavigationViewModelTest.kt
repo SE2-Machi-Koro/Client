@@ -317,6 +317,59 @@ class NavigationViewModelTest {
     }
 
     @Test
+    fun winnerToLeaderboardThenBackReevaluatesNavigationToHome() = runTest {
+        val viewModel = NavigationViewModel()
+        val events = collectNavigationEvents(viewModel)
+
+        viewModel.onUserLoggedIn()
+
+        // Finished game routes the user to the Winner screen.
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial().copy(
+                gameStatus = GameStatus.FINISHED,
+                gameId = 42,
+                winnerId = 11,
+            ),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = null,
+        )
+        advanceUntilIdle()
+        viewModel.onDestinationChanged(AppRoute.Winner.route)
+
+        // Tapping "View Leaderboard" clears the finished-game state and opens the
+        // leaderboard overlay; the resulting Home target is suppressed.
+        viewModel.onDestinationChanged(AppRoute.Leaderboard.route)
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial(),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = null,
+        )
+        advanceUntilIdle()
+
+        // Pressing Back returns to Winner. Navigation must re-evaluate (the route
+        // change re-runs updateNavigationBasedOnState) and route to Home instead
+        // of leaving the user on a Winner screen with cleared data (#373 review).
+        viewModel.onDestinationChanged(AppRoute.Winner.route)
+        viewModel.updateNavigationBasedOnState(
+            gameScreenState = GameScreenState.initial(),
+            startScreenState = StartScreenState.placeholder().copy(loggedInAs = "alice"),
+            lobbyCode = null,
+        )
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(
+                NavigationEvent.NavigateTo(
+                    route = AppRoute.Winner,
+                    arguments = AppRoute.AppRouteArguments(gameId = 42),
+                ),
+                NavigationEvent.NavigateTo(AppRoute.Home),
+            ),
+            events,
+        )
+    }
+
+    @Test
     fun onDestinationChangedTracksRouteAndClearsLastNavigation() = runTest {
         val viewModel = NavigationViewModel()
 

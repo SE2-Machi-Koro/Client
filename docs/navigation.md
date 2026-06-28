@@ -61,7 +61,12 @@ the only exception, because unauthenticated users must always return to `Main`.
 
 The current destination is tracked through
 `NavigationViewModel.onDestinationChanged(route)`, which `AppRoot` wires to the
-`NavController`'s `OnDestinationChangedListener`.
+`NavController`'s `OnDestinationChangedListener`. The current route is also a key
+of the `updateNavigationBasedOnState` `LaunchedEffect`, so leaving an overlay
+(e.g. pressing Back from Leaderboard) re-evaluates the state-driven target. This
+matters because the Winner → Leaderboard flow clears the finished-game state: on
+Back the re-evaluation routes the user to `Home` rather than stranding them on a
+Winner screen with cleared data.
 
 ## Navigation Flow
 
