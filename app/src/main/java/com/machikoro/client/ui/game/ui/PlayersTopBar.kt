@@ -252,33 +252,46 @@ private fun PlayerInventoryDialog(
             ) {
                 Box(
                     modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
                     // One accusation per turn (issue #280) — disabled until the next
                     // turn once the local player has used theirs.
                     SecondaryActionButton(
-                        label = if (canAccuse) "Accuse of cheating" else "Accused this turn",
+                        label = if (!canAccuse) "Accused this turn"
+                        else if (players.size == 1)
+                            "Accuse of \n cheating"
+                        else "Accuse of cheating",
                         onClick = onAccuse,
                         enabled = canAccuse,
                         modifier = Modifier.semantics {
                             contentDescription = "Accuse of cheating"
                         }
-                            .align(Alignment.TopStart),
+                            .align(Alignment.CenterStart),
+                        fontSize = 20,
                     )
-
+                    if(players.size == 1) {
+                        PlayerSelectorRow(
+                            players = players,
+                            selectedPlayer = selectedPlayer,
+                            onPlayerSelected = onPlayerSelected,
+                            modifier = Modifier.align(Alignment.Center),
+                            )
+                    }
                     ActionButton(
                         label = "Close",
                         onClick = onDismiss,
-                        modifier = Modifier.align(Alignment.TopEnd)
+                        modifier = Modifier.align(Alignment.CenterEnd),
+                        fontSize = 20
 
                     )
                 }
-
+                if(players.size > 1) {
                 PlayerSelectorRow(
                     players = players,
                     selectedPlayer = selectedPlayer,
                     onPlayerSelected = onPlayerSelected,
                 )
-
+}
                 CompositionLocalProvider(
                     LocalOverscrollFactory provides null
                 ) {
@@ -340,49 +353,12 @@ private fun PlayerSelectorRow(
             PlayerSelectorButton(
                 player = player,
                 selected = player.id == selectedPlayer.id,
-                onClick = { onPlayerSelected(player) }
+                onClick = { onPlayerSelected(player) },
+                enabled = (players.size > 1)
             )
         }
     }
 }
-
-@Composable
-private fun PlayerSelectorButston(
-    player: PlayerCoinState,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val background = if (selected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
-    val foreground = if (selected) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    PhaseField(player.displayName, selected)
-    Surface(
-        color = background,
-        contentColor = foreground,
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .semantics {
-                contentDescription = "Inspect ${player.displayName} in player cards window"
-            }
-    ) {
-        Text(
-            text = if (player.isCurrentPlayer) "You" else player.displayName,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-        )
-    }
-}
-
 
 @Composable
 private fun PlayerInventoryLandmarkCard(
@@ -571,24 +547,26 @@ fun CoinBadge(
 private fun PlayerSelectorButton(
     player: PlayerCoinState,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    enabled: Boolean = true,
 ) {
     Box(
         modifier = Modifier
             .wrapContentWidth()
             .clip(RoundedCornerShape(24.dp))
             .background(
-                Color(0xCCC4D3DC).copy(
+                Color.White.copy(
                     alpha = if (selected) 1f else 0.65f
                 )
             )
-            .clickable(onClick = onClick)
+            .clickable(onClick = onClick,
+                enabled = enabled)
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .semantics {
                 contentDescription =
                     "Inspect ${player.displayName} in player cards window"
             },
-        contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
