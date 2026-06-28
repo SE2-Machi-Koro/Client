@@ -41,11 +41,13 @@ jobs:
             https://github.com/itchio/butler/releases/download/v15.27.0/butler-linux-amd64.zip
           echo "b78ca81ed566c2daa54d68b7e300dd32888168163212293909ce90f16e0ec75d  butler.zip" | sha256sum -c
           unzip butler.zip
-          chmod +x butler
+          # v15.27.0 extracts the binary into a linux-amd64/ subdirectory
+          chmod +x ./linux-amd64/butler
+          echo "$GITHUB_WORKSPACE/linux-amd64" >> "$GITHUB_PATH"
 
       - name: Deploy to itch.io via Butler
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
           ITCH_USER: ${{ secrets.ITCH_USER }}
           ITCH_GAME: ${{ secrets.ITCH_GAME }}
-        run: ./butler push app/build/outputs/apk/release/ "$ITCH_USER/$ITCH_GAME:android"
+        run: butler push app/build/outputs/apk/release/ "$ITCH_USER/$ITCH_GAME:android"
