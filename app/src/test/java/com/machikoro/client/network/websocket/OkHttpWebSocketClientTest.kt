@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import okhttp3.Protocol
@@ -59,6 +60,164 @@ class OkHttpWebSocketClientTest {
         assertTrue(factory.socket.sentMessages.first().contains("accept-version:1.2"))
         assertTrue(factory.socket.sentMessages.first().contains("host:10.0.2.2:8080"))
     }
+
+    @Test
+    fun connectFrameAdvertisesHeartbeat() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        // Must advertise non-zero heartbeats or the server (server #426) keeps
+        // them disabled and idle sockets are reaped mid-game.
+        assertTrue(factory.socket.sentMessages.first().contains("heart-beat:10000,10000"))
+    }
+
+    @Test
+    fun connectedNegotiatesAndEmitsHeartbeats() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = "10000,10000"))
+
+        advanceTimeBy(10_001)
+        runCurrent()
+
+        assertTrue(
+            "expected a lone-LF heartbeat frame to be sent",
+            factory.socket.sentMessages.any { it == "\n" },
+        )
+    }
+
+    @Test
+    fun heartbeatsStopAfterDisconnect() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = "10000,10000"))
+
+        client.disconnect()
+        val heartbeatsAfterDisconnect = factory.socket.sentMessages.count { it == "\n" }
+        advanceTimeBy(30_000)
+        runCurrent()
+
+        assertEquals(
+            "no heartbeats should be emitted after disconnect",
+            heartbeatsAfterDisconnect,
+            factory.socket.sentMessages.count { it == "\n" },
+        )
+    }
+
+    @Test
+    fun serverOptingOutDisablesHeartbeatEmission() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = "0,0"))
+
+        advanceTimeBy(30_000)
+        runCurrent()
+
+        assertFalse(factory.socket.sentMessages.any { it == "\n" })
+    }
+
+    @Test
+    fun missingHeartBeatHeaderDisablesHeartbeatEmission() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = null))
+
+        advanceTimeBy(30_000)
+        runCurrent()
+
+        assertFalse(factory.socket.sentMessages.any { it == "\n" })
+    }
+
+    @Test
+    fun heartbeatSendReturningFalseStopsHeartbeats() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = "10000,10000"))
+
+        // First heartbeat fires and succeeds.
+        advanceTimeBy(10_001)
+        runCurrent()
+        assertTrue("expected at least one heartbeat", factory.socket.sentMessages.any { it == "\n" })
+
+        // Next send returns false — the frame is still enqueued by FakeWebSocket before
+        // the return value is checked, so the count goes up by one and then the loop exits.
+        factory.socket.sendResult = false
+        advanceTimeBy(10_001)
+        runCurrent()
+        val countAfterFail = factory.socket.sentMessages.count { it == "\n" }
+
+        // No further heartbeats after the one that caused the failure.
+        advanceTimeBy(20_000)
+        runCurrent()
+        assertEquals(
+            "no additional heartbeats should be sent after send() returns false",
+            countAfterFail,
+            factory.socket.sentMessages.count { it == "\n" },
+        )
+    }
+
+    @Test
+    fun heartbeatSendThrowingStopsHeartbeats() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = "10000,10000"))
+
+        // First heartbeat fires and succeeds.
+        advanceTimeBy(10_001)
+        runCurrent()
+        assertTrue("expected at least one heartbeat", factory.socket.sentMessages.any { it == "\n" })
+
+        // Next send throws — the frame is still enqueued by FakeWebSocket before the
+        // throw, so the count goes up by one and then the loop exits via the catch block.
+        factory.socket.sendThrows = IllegalStateException("socket closed")
+        advanceTimeBy(10_001)
+        runCurrent()
+        val countAfterThrow = factory.socket.sentMessages.count { it == "\n" }
+
+        // No further heartbeats after the one that caused the exception.
+        advanceTimeBy(20_000)
+        runCurrent()
+        assertEquals(
+            "no additional heartbeats should be sent after send() throws",
+            countAfterThrow,
+            factory.socket.sentMessages.count { it == "\n" },
+        )
+    }
+
+    @Test
+    fun heartbeatsStopAfterSocketFailure() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = "10000,10000"))
+
+        factory.simulateFailure(java.io.IOException("network error"))
+        runCurrent()
+        val heartbeatsAtFailure = factory.socket.sentMessages.count { it == "\n" }
+        advanceTimeBy(30_000)
+        runCurrent()
+
+        assertEquals(
+            "no heartbeats should be emitted after socket failure",
+            heartbeatsAtFailure,
+            factory.socket.sentMessages.count { it == "\n" },
+        )
+    }
+
 
     @Test
     fun connectedFrameMovesStatusToConnectedAndTriggersSubscribeAndJoin() {
@@ -3056,8 +3215,14 @@ class OkHttpWebSocketClientTest {
     }
 
     /** A bare STOMP CONNECTED frame, correctly NUL-terminated by serialize(). */
-    private fun connectedFrame(): String =
-        StompFrame(command = "CONNECTED", headers = mapOf("version" to "1.2")).serialize()
+    private fun connectedFrame(heartBeat: String? = null): String =
+        StompFrame(
+            command = "CONNECTED",
+            headers = buildMap {
+                put("version", "1.2")
+                if (heartBeat != null) put("heart-beat", heartBeat)
+            },
+        ).serialize()
 
     /** A MESSAGE frame on the per-user game-sync queue carrying [body]. */
     private fun syncFrame(body: String): String =
@@ -3221,9 +3386,15 @@ class OkHttpWebSocketClientTest {
         lateinit var request: Request
         var closed = false
         val sentMessages = mutableListOf<String>()
+        var sendResult: Boolean = true
+        var sendThrows: Exception? = null
         override fun request(): Request = request
         override fun queueSize(): Long = 0L
-        override fun send(text: String): Boolean { sentMessages += text; return true }
+        override fun send(text: String): Boolean {
+            sentMessages += text
+            sendThrows?.let { throw it }
+            return sendResult
+        }
         override fun send(bytes: ByteString): Boolean = false
         override fun close(code: Int, reason: String?): Boolean { closed = true; return true }
         override fun cancel() { closed = true }

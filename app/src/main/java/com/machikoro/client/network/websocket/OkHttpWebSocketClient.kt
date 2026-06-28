@@ -27,6 +27,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -198,6 +199,11 @@ class OkHttpWebSocketClient(
     private var reconnectJob: Job? = null
     private var reconnectAttempt = 0
 
+    // Periodic STOMP heartbeat emitter, started on CONNECTED and cancelled when
+    // the socket goes away. Keeps an idle connection alive so platform proxies
+    // don't reap it mid-game (server #426).
+    private var heartbeatJob: Job? = null
+
     init {
         require(reconnectDelaysMs.isNotEmpty()) { "reconnectDelaysMs must not be empty" }
     }
@@ -228,6 +234,8 @@ class OkHttpWebSocketClient(
         intentionalDisconnect = true
         cancelReconnect()
         val currentSocket = synchronized(this) {
+            heartbeatJob?.cancel()
+            heartbeatJob = null
             val socket = webSocket
             webSocket = null
             socket
@@ -593,7 +601,7 @@ class OkHttpWebSocketClient(
                     headers = mapOf(
                         "accept-version" to WebSocketContract.stompVersion,
                         "host" to websocketHostHeader(),
-                        "heart-beat" to "0,0",
+                        "heart-beat" to "$CLIENT_HEARTBEAT_INTERVAL_MS,$CLIENT_HEARTBEAT_INTERVAL_MS",
                         AUTH_HEADER to "$BEARER_PREFIX$token",
                     )
                 ).serialize()
@@ -653,6 +661,7 @@ class OkHttpWebSocketClient(
 
                 // Signal ready only after all SUBSCRIBE frames are in the socket queue
                 mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+                startHeartbeat(frame.headers["heart-beat"])
                 sendJoinMessage()
             }
             "MESSAGE" -> {
@@ -1399,6 +1408,8 @@ class OkHttpWebSocketClient(
 
     private fun clearSocket() {
         synchronized(this) {
+            heartbeatJob?.cancel()
+            heartbeatJob = null
             webSocket = null
             subscribedGameId = null
             stompSessionId = null
@@ -1440,6 +1451,69 @@ class OkHttpWebSocketClient(
             reconnectJob = null
             reconnectAttempt = 0
         }
+    }
+
+    /**
+     * Starts the periodic heartbeat emitter using the interval negotiated with
+     * the server (see [negotiatedSendIntervalMs]). Cancels any previous emitter
+     * first, so reconnects don't stack jobs. No-op when negotiation opts out.
+     */
+    private fun startHeartbeat(serverHeartBeatHeader: String?) {
+        val sendIntervalMs = negotiatedSendIntervalMs(serverHeartBeatHeader)
+        if (sendIntervalMs <= 0L) {
+            Log.d(TAG, "STOMP heartbeats disabled by negotiation (server='$serverHeartBeatHeader')")
+            stopHeartbeat()
+            return
+        }
+        Log.d(TAG, "Starting STOMP heartbeats every ${sendIntervalMs}ms")
+        synchronized(this) {
+            heartbeatJob?.cancel()
+            heartbeatJob = reconnectScope.launch {
+                while (isActive) {
+                    delay(sendIntervalMs)
+                    val socket = synchronized(this@OkHttpWebSocketClient) { webSocket } ?: break
+                    // A lone LF is a STOMP heartbeat. Emitting it on an otherwise idle
+                    // socket keeps platform proxies (e.g. Railway's edge) from reaping
+                    // the connection during a player's think-time — and satisfies the
+                    // server, which now expects client heartbeats (server #426).
+                    try {
+                        if (!socket.send(HEARTBEAT_FRAME)) {
+                            Log.w(TAG, "Heartbeat send failed; stopping heartbeats")
+                            break
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Heartbeat send threw; stopping heartbeats", e)
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopHeartbeat() {
+        synchronized(this) {
+            heartbeatJob?.cancel()
+            heartbeatJob = null
+        }
+    }
+
+    /**
+     * Resolves the client→server heartbeat interval from the negotiated values
+     * per STOMP 1.2. We advertise [CLIENT_HEARTBEAT_INTERVAL_MS] in both
+     * directions, so the effective send interval is the larger of our value and
+     * the server's requested receive interval (the second field of its
+     * `heart-beat` header). Returns 0 when either side opts out.
+     */
+    private fun negotiatedSendIntervalMs(serverHeartBeatHeader: String?): Long {
+        val serverWantsToReceiveMs = serverHeartBeatHeader
+            ?.split(",")
+            ?.takeIf { it.size == 2 }
+            ?.get(1)
+            ?.trim()
+            ?.toLongOrNull()
+            ?: 0L
+        if (CLIENT_HEARTBEAT_INTERVAL_MS == 0L || serverWantsToReceiveMs == 0L) return 0L
+        return maxOf(CLIENT_HEARTBEAT_INTERVAL_MS, serverWantsToReceiveMs)
     }
 
     private fun isAuthRejection(body: String): Boolean =
@@ -1546,6 +1620,13 @@ class OkHttpWebSocketClient(
     companion object {
         private const val NORMAL_CLOSURE_STATUS = 1000
         private const val TAG = "OkHttpWebSocketClient"
+        // Heartbeat interval (ms) advertised in the STOMP CONNECT frame, in both
+        // directions. Kept in sync with the server's WebSocketConfig
+        // (HEARTBEAT_INTERVAL_MS, server #426) and well under the ~60s idle window
+        // after which platform proxies reap the connection.
+        private const val CLIENT_HEARTBEAT_INTERVAL_MS = 10_000L
+        // A bare line-feed is the STOMP heartbeat frame (no NUL terminator).
+        private const val HEARTBEAT_FRAME = "\n"
         // Exponential backoff for auto-reconnect; the final value repeats once
         // the list is exhausted. Long enough to ride out a backend container
         // restart without hammering the server.
