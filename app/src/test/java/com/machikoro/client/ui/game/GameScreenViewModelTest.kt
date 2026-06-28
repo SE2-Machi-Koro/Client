@@ -21,13 +21,10 @@ import com.machikoro.client.network.debug.EndGameRequest
 import com.machikoro.client.network.debug.FillLobbyRequest
 import com.machikoro.client.network.debug.ResetLobbyRequest
 import com.machikoro.client.network.websocket.FakeWebSocketClient
-import com.machikoro.client.network.websocket.OkHttpWebSocketClientTest.FakeWebSocketFactory
 import com.machikoro.client.ui.start.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -2303,6 +2300,7 @@ class GameScreenViewModelTest {
             return response
         }
     }
+
     @Test
     fun chatMessagesAreClearedInAFreshGame() = runTest {
         val fakeClient = FakeWebSocketClient()
