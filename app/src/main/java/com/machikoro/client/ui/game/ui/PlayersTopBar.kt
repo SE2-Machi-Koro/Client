@@ -238,7 +238,7 @@ private fun PlayerInventoryDialog(
             tonalElevation = 8.dp,
             modifier = Modifier
                 .fillMaxWidth(0.80f)
-                .fillMaxHeight(0.90f)
+                .fillMaxHeight(0.95f)
                 .semantics {
                     contentDescription = "Player cards window for ${selectedPlayer.displayName}"
                 }
@@ -247,7 +247,7 @@ private fun PlayerInventoryDialog(
                 modifier = Modifier
                     .padding(24.dp)
                     .fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
