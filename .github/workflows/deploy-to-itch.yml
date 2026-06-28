@@ -28,7 +28,9 @@ jobs:
         run: chmod +x gradlew
 
       - name: Decode Keystore
-        run: echo "${{ secrets.KEYSTORE_FILE }}" | base64 -d > keystore.jks
+        env:
+          KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }}
+        run: echo "$KEYSTORE_FILE" | base64 -d > keystore.jks
 
       - name: Build Release APK
         run: ./gradlew assembleRelease
@@ -40,11 +42,13 @@ jobs:
 
       - name: Install Butler
         run: |
-          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          curl --proto '=https' --tlsv1.2 -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
           unzip butler.zip
           chmod +x butler
 
       - name: Deploy to itch.io via Butler
-        run: ./butler push app/build/outputs/apk/release/ ${{ secrets.ITCH_USER }}/${{ secrets.ITCH_GAME }}:android
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
+          ITCH_USER: ${{ secrets.ITCH_USER }}
+          ITCH_GAME: ${{ secrets.ITCH_GAME }}
+        run: ./butler push app/build/outputs/apk/release/ "$ITCH_USER/$ITCH_GAME:android"
