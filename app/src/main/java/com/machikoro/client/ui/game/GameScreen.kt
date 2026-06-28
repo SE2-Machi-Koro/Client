@@ -105,6 +105,7 @@ fun GameScreen(
     onRollDice: (diceCount: Int) -> Unit = {},
     onReroll: (diceCount: Int) -> Unit = {},
     onSkipReroll: () -> Unit = {},
+    onResolveEffectsAnimationFinished: () -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     onEndGame: () -> Unit = {},
@@ -235,7 +236,7 @@ fun GameScreen(
             state.gamePhase == GamePhase.ROLL_DICE -> 20
             // Matches the actual auto-advance dwell so the countdown the player sees
             // is the real time until RESOLVE_EFFECTS ends, not a longer, unrelated number.
-            state.gamePhase == GamePhase.RESOLVE_EFFECTS -> GameScreenViewModel.RESOLVE_EFFECTS_TIMER_SECONDS
+            state.gamePhase == GamePhase.RESOLVE_EFFECTS -> 0
             state.purchaseState == PurchaseState.SUCCESS -> 5
             else -> 0
         }
@@ -456,12 +457,20 @@ fun GameScreen(
             leftContent = {
                 Box(modifier = Modifier
                     .fillMaxHeight()) {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .offset(y = SIDE_CONTENT_OFFSET.dp)
+                            .offset(y = SIDE_CONTENT_OFFSET.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         if (state.gamePhase != GamePhase.ROLL_DICE) {
+                            if (
+                                state.gamePhase == GamePhase.RESOLVE_EFFECTS &&
+                                !state.isActivePlayer
+                            ) {
+                                BasicText("${state.activePlayerUsername} rolled:")
+                            }
                             state.diceResult?.let {
                                 DiceResultDisplay(dice = it,
                                     diceSize = 42.dp,
@@ -546,7 +555,7 @@ fun GameScreen(
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.Center)
-                                    .offset(x = 5.dp, y = 50.dp),
+                                    .offset(x = 5.dp, y = 20.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
@@ -738,7 +747,10 @@ fun GameScreen(
                 playerPositions = playerCoinPositions,
                 modifier = Modifier.fillMaxSize(),
                 onTransferChanged = { activeCoinTransfer = it },
-                onFinished = { coinAnimationFinished = true },
+                onFinished = {
+                    coinAnimationFinished = true
+                    onResolveEffectsAnimationFinished()
+                },
             )
         }
     }

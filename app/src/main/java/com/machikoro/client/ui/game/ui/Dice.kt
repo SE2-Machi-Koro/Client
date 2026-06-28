@@ -54,7 +54,7 @@ private const val DICE_ANIMATION_INTERVAL_MS = 100L // faster change
 // the instant the server confirms the result (see the isRolling effect below), so this
 // is only the upper bound; non-active players already hold the result and reveal it
 // after the same short spin.
-private const val DICE_ANIMATION_DURATION_MS = 1500L
+private const val DICE_ANIMATION_DURATION_MS = 2500L
 private val DICE_SIZE = 64.dp
 private val DICE_FACES = listOf(
     R.drawable.game_dice_1,
@@ -295,12 +295,6 @@ fun DiceSection(
 
     // Stop animation for active player as soon as server confirms the result — avoids blocking
     // the result display behind the full fixed timer when server responds in <5 s.
-    LaunchedEffect(state.isRolling) {
-        if (!state.isRolling && state.isActivePlayer && isAnimating) {
-            isAnimating = false
-        }
-    }
-
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
