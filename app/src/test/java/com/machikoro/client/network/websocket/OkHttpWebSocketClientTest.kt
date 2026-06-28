@@ -3732,6 +3732,56 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun privateDomainErrorFrameEmitsDomainError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<ClientError.WebSocket>()
+        client.domainErrors.onEach { errors += it }.launchIn(backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        runCurrent()
+
+        // Bare WebSocketErrorDto delivered on /user/queue/errors (server #428):
+        // top-level code/message, no envelope `type`.
+        factory.simulateText(
+            gameActionFrame(
+                """{"code":"NOT_YOUR_TURN","message":"It is not your turn",""" +
+                    """"timestamp":1714000000000,"context":{}}"""
+            )
+        )
+        runCurrent()
+
+        assertEquals(1, errors.size)
+        assertEquals("NOT_YOUR_TURN", errors.first().serverCode)
+        assertEquals("It is not your turn", errors.first().userMessage)
+    }
+
+    @Test
+    fun invalidAccusationDoesNotEmitDomainError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<ClientError.WebSocket>()
+        client.domainErrors.onEach { errors += it }.launchIn(backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        runCurrent()
+
+        // INVALID_ACCUSATION has a dedicated flow (accusationErrors); it must not
+        // also surface on the generic domainErrors flow (no double-surfacing).
+        factory.simulateText(
+            gameActionFrame(
+                """{"code":"INVALID_ACCUSATION","message":"You can only accuse once per turn",""" +
+                    """"timestamp":1714000000000,"context":{}}"""
+            )
+        )
+        runCurrent()
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
     fun accusationResultAppliesTheEmbeddedStateSnapshot() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)

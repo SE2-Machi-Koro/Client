@@ -176,6 +176,7 @@ class FakeWebSocketClient : WebSocketClient {
         MutableSharedFlow(extraBufferCapacity = 1)
     override val coinDeltas: SharedFlow<Int> = MutableSharedFlow(extraBufferCapacity = 1)
     override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
+    override val domainErrors: SharedFlow<ClientError.WebSocket> = MutableSharedFlow(extraBufferCapacity = 1)
 
     var leaveLobbyGameId: Int? = null
         private set

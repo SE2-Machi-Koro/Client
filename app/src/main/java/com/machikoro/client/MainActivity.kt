@@ -227,6 +227,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Generic domain rejections on /user/queue/errors (e.g. NOT_YOUR_TURN,
+            // server #428): surface the server's message as a toast.
+            LaunchedEffect(Unit) {
+                gameScreenViewModel.domainErrors.collect { error ->
+                    Toast.makeText(context, error.userMessage, Toast.LENGTH_LONG).show()
+                }
+            }
+
             // Debug End-game (#191): surface End-game button failures as a snackbar.
             LaunchedEffect(Unit) {
                 gameScreenViewModel.debugEndGameErrors.collect { message ->
