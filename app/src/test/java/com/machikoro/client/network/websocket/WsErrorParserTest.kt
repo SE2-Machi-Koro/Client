@@ -57,6 +57,20 @@ class WsErrorParserTest {
     }
 
     @Test
+    fun parseReadsTopLevelCodeAndMessageFromWebSocketErrorDto() {
+        // Bare WebSocketErrorDto sent on /user/queue/errors (server #428): no
+        // envelope `type`, no nested payload — code/message are top-level.
+        val json = JSONObject(
+            """{"code":"NOT_YOUR_TURN","message":"It is not your turn","timestamp":1714000000000,"context":{}}"""
+        )
+
+        val error = WsErrorParser.parse(json)
+
+        assertEquals("NOT_YOUR_TURN", error.serverCode)
+        assertEquals("It is not your turn", error.userMessage)
+    }
+
+    @Test
     fun parseHandlesMissingPayload() {
         val json = JSONObject("""{"type":"ERROR","content":"Unexpected failure"}""")
 

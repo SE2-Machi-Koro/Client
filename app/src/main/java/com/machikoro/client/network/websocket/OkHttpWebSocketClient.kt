@@ -121,6 +121,9 @@ class OkHttpWebSocketClient(
     override val accusationErrors: SharedFlow<String>
         get() = mutableAccusationErrors.asSharedFlow()
 
+    override val domainErrors: SharedFlow<ClientError.WebSocket>
+        get() = mutableDomainErrors.asSharedFlow()
+
     override val chatMessages: SharedFlow<ChatMessageState>
         get() = mutableChatMessages.asSharedFlow()
 
@@ -173,6 +176,10 @@ class OkHttpWebSocketClient(
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     private val mutableAccusationErrors = MutableSharedFlow<String>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    private val mutableDomainErrors = MutableSharedFlow<ClientError.WebSocket>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
@@ -685,6 +692,7 @@ class OkHttpWebSocketClient(
                 handleCoinDeltas(json)
                 handleAccusationResult(json)
                 handleAccusationError(json)
+                handlePrivateError(json)
                 handleChatMessage(json)
                 parseGameAction(json).let { (phase, activePlayerId) ->
                     phase?.let { mutableGamePhase.value = it }
@@ -984,6 +992,21 @@ class OkHttpWebSocketClient(
         if (json.optString("code") != INVALID_ACCUSATION_CODE) return
         val message = json.optString("message").takeIf { it.isNotBlank() } ?: "Invalid accusation"
         mutableAccusationErrors.tryEmit(message)
+    }
+
+    /**
+     * Surfaces a generic private domain rejection delivered on /user/queue/errors
+     * (server #428), e.g. NOT_YOUR_TURN. These arrive as a bare WebSocketErrorDto
+     * with top-level `code`/`message` and no `type`, which distinguishes them from
+     * the WebSocketMessage envelopes used for broadcasts. Codes with a dedicated
+     * flow (INVALID_ACCUSATION -> accusationErrors) are left to their handlers to
+     * avoid double-surfacing.
+     */
+    private fun handlePrivateError(json: JSONObject) {
+        if (json.optString("type").isNotBlank()) return
+        val code = json.optString("code")
+        if (code.isBlank() || code == INVALID_ACCUSATION_CODE) return
+        mutableDomainErrors.tryEmit(WsErrorParser.parse(json))
     }
 
     private fun handleChatMessage(json: JSONObject) {

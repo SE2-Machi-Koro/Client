@@ -9,9 +9,13 @@ object WsErrorParser {
         val payload = json.optJSONObject("payload")
         val serverCode = payload?.optString("errorCode").orEmpty()
             .ifBlank { payload?.optString("code").orEmpty() }
+            // Top-level code: the WebSocketErrorDto sent to /user/queue/errors (server #428).
+            .ifBlank { json.optString("code") }
             .ifBlank { "UNKNOWN" }
         val userMessage = json.optString("content")
             .ifBlank { payload?.optString("message").orEmpty() }
+            // Top-level message: same WebSocketErrorDto shape (server #428).
+            .ifBlank { json.optString("message") }
             .ifBlank { ClientError.UNKNOWN_USER_MESSAGE }
         return ClientError.WebSocket(serverCode = serverCode, userMessage = userMessage)
     }
