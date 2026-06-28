@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalOverscrollFactory
-import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,7 +64,7 @@ fun ResolvingEffectsView(
     if (triggeredEffects.isEmpty()) {
         BasicText(
             "No establishments triggered",
-            modifier = Modifier.offset(y = (-80).dp)
+            modifier = modifier.offset(y = -35.dp)
         )
         return
     }
@@ -179,39 +178,39 @@ private fun PlayerOutcomeColumn(
     }
 }
 
-    @Composable
-    private fun OutcomeStack(
-        outcome: PlayerOutcomeUi,
+@Composable
+private fun OutcomeStack(
+    outcome: PlayerOutcomeUi,
+) {
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            if (outcome.amount != 0) {
-                IncomeWithCoin(
-                    amount = outcome.amount,
-                    isPositive = outcome.isPositive
-                )
-            } else {
-                Box(
-                    modifier = Modifier.height(36.dp)
-                )
-            }
-
-            if (outcome.cards.isNotEmpty()) {
-                CardsStack(
-                    cards = outcome.cards,
-                    modifier = Modifier.width(155.dp)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .width(155.dp)
-                        .height(175.dp)
-                )
-            }
+        if (outcome.amount != 0) {
+            IncomeWithCoin(
+                amount = outcome.amount,
+                isPositive = outcome.isPositive
+            )
+        } else {
+            Box(
+                modifier = Modifier.height(36.dp)
+            )
         }
+
+        if (outcome.cards.isNotEmpty()) {
+            CardsStack(
+                cards = outcome.cards,
+                modifier = Modifier.width(155.dp)
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .width(155.dp)
+                    .height(175.dp)
+            )
+        }
+    }
 }
 
 @Composable

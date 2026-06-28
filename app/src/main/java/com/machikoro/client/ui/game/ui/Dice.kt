@@ -55,7 +55,7 @@ private const val DICE_ANIMATION_INTERVAL_MS = 100L // faster change
 // is only the upper bound; non-active players already hold the result and reveal it
 // after the same short spin.
 private const val DICE_ANIMATION_DURATION_MS = 1500L
-private val DICE_SIZE = 64.dp
+private val DICE_SIZE = 58.dp
 private val DICE_FACES = listOf(
     R.drawable.game_dice_1,
     R.drawable.game_dice_2,
@@ -193,7 +193,7 @@ fun DiceResultDisplay(
 
                 Text(
                     text = "$sum",
-                    fontSize = 36.sp,
+                    fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
@@ -204,7 +204,7 @@ fun DiceResultDisplay(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     dice.forEach { value ->
                         Image(
