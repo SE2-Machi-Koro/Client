@@ -10,6 +10,7 @@ import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.enums.ShopItemColor
 import com.machikoro.client.domain.model.shop.PurchaseEvent
 import com.machikoro.client.domain.model.shop.ShopItem
+import com.machikoro.client.domain.model.state.ChatMessageState
 import com.machikoro.client.domain.model.state.ConnectionStatus
 import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
@@ -20,10 +21,13 @@ import com.machikoro.client.network.debug.EndGameRequest
 import com.machikoro.client.network.debug.FillLobbyRequest
 import com.machikoro.client.network.debug.ResetLobbyRequest
 import com.machikoro.client.network.websocket.FakeWebSocketClient
+import com.machikoro.client.network.websocket.OkHttpWebSocketClientTest.FakeWebSocketFactory
 import com.machikoro.client.ui.start.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -2153,5 +2157,22 @@ class GameScreenViewModelTest {
             if (throwError) throw RuntimeException(errorMessage)
             return response
         }
+    }
+    @Test
+    fun chatMessagesAreClearedInAFreshGame() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient)
+        fakeClient.emitActiveGameId(7)
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        advanceUntilIdle()
+
+        fakeClient.emitChatMessage(ChatMessageState("Alice","Hello"))
+        advanceUntilIdle()
+        assertEquals(listOf("Hello"), viewModel.state.value.chatMessages.map { it.message })
+
+        fakeClient.emitActiveGameId(8)
+        advanceUntilIdle()
+
+        assertEquals(emptyList<String>(), viewModel.state.value.chatMessages.map { it.message })
     }
 }

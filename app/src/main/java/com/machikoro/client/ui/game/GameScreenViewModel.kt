@@ -132,7 +132,7 @@ class GameScreenViewModel(
                     mutableCanRerollThisTurn.value = true
                 }
                 mutableState.update { current ->
-                    current.copy(gameId = gameId)
+                    current.copy(gameId = gameId, chatMessages = emptyList())
                 }
             }
         }
