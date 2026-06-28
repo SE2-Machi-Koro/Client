@@ -320,7 +320,7 @@ private fun PlayerInventoryDialog(
                         }
 
                         // GRID
-                        items(cards.chunked(4)) { rowItems ->
+                        items(cards.visibleInDisplayOrder().chunked(4)) { rowItems ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
