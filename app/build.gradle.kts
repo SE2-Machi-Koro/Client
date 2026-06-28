@@ -70,7 +70,7 @@ android {
             if (keystoreB64 != null && keystorePassword != null && keyAlias != null && keyPassword != null) {
                 val keystoreFile = layout.buildDirectory.file("tmp/signing/keystore.jks").get().asFile
                 keystoreFile.parentFile.mkdirs()
-                keystoreFile.writeBytes(Base64.getDecoder().decode(keystoreB64.trim()))
+                keystoreFile.writeBytes(Base64.getMimeDecoder().decode(keystoreB64))
                 storeFile = keystoreFile
                 storePassword = keystorePassword
                 this.keyAlias = keyAlias
