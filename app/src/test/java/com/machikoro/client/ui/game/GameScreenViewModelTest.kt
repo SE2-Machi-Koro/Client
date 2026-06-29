@@ -259,6 +259,51 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun rollDiceClampsToOneDieWhenActivePlayerHasNoTrainStation() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitPlayers(
+            listOf(PlayerCoinState(id = "42", displayName = "me", coins = 3, isActivePlayer = true))
+        )
+        fakeClient.emitPlayerLandmarks(
+            mapOf(42 to listOf(PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = false)))
+        )
+        advanceUntilIdle()
+
+        // Player asks (or a stale count asks) for two dice without a Train Station (#399).
+        viewModel.rollDice(diceCount = 2)
+
+        assertEquals(1, fakeClient.lastRolledDiceCount)
+        assertEquals(1, viewModel.state.value.requestedDiceCount)
+    }
+
+    @Test
+    fun rollDiceForwardsTwoDiceWhenActivePlayerHasTrainStation() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        fakeClient.emitPlayers(
+            listOf(PlayerCoinState(id = "42", displayName = "me", coins = 3, isActivePlayer = true))
+        )
+        fakeClient.emitPlayerLandmarks(
+            mapOf(42 to listOf(PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true)))
+        )
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 2)
+
+        assertEquals(2, fakeClient.lastRolledDiceCount)
+        assertEquals(2, viewModel.state.value.requestedDiceCount)
+    }
+
+    @Test
     fun rollDiceIsIgnoredWhenPhaseIsNotRollDice() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
