@@ -3849,6 +3849,27 @@ class OkHttpWebSocketClientTest {
         assertEquals("hey", received.first().message)
     }
     @Test
+    fun fallBackToTopLevelFieldsWhenPayloadIsEmpty() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
+        val received = mutableListOf<ChatMessageState>()
+        client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        // server sends message and sender at top-level
+        val chatJson = """{"type":"CHAT","gameId":"7","sender":"bob","content":"hey","payload":{}}"""
+        factory.simulateText(gameActionFrame(chatJson))
+        runCurrent()
+
+        assertEquals(1, received.size)
+        assertEquals("bob", received.first().sender)
+        assertEquals("hey", received.first().message)
+    }
+    @Test
     fun malformedOrBlankChatMessageDoesNotEmit() = runTest {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -3921,8 +3942,8 @@ class OkHttpWebSocketClientTest {
         factory.simulateText(
             gameActionFrame(
                 """{
-                "type":"CHAT",
-                "gameId":"99",
+                "type":"ACCUSATION_RESULT",
+                "gameId":"7",
                 "sender":"alice",
                 "content":"hello"
             }"""
