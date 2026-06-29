@@ -256,7 +256,9 @@ fun DiceSection(
     // Active player uses frozen/selected count; snapshot only stores total so diceResult.size is unreliable after reconnect.
     // Non-active player uses the count captured from the live ROLL_DICE message (before snapshot overwrites it).
     val animationDiceCount = if (state.isActivePlayer) {
-        frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount
+        // Without a Train Station the player can only roll one die, so never spin
+        // two even if a stale requested count lingers from an earlier turn (#399).
+        if (state.hasTrainStation) frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount else 1
     } else {
         localAnimationDiceCount
     }
@@ -383,7 +385,8 @@ fun DiceSection(
             ) {
                 // Roll button: only when server has no result yet and we are in ROLL_DICE
                 if (state.gamePhase == GamePhase.ROLL_DICE && state.diceResult == null) {
-                    val chosen = frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount
+                    val chosen =
+                        if (state.hasTrainStation) frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount else 1
                     ActionButton(
                         onClick = {
                             SoundManager.play(GameSound.DICE_ROLL)
