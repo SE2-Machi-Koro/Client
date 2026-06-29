@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -466,7 +466,7 @@ fun GameScreen(
                             if(state.purchaseState != PurchaseState.SUCCESS
                                 || state.purchaseState != PurchaseState.PENDING) {
                                 onTurnFlowAction()
-                            }
+                            } else if(state.purchaseState == PurchaseState.SUCCESS) delayShop = 0L
                         } else delayShop = 0L
                     }
                             BuyingPhaseShop(
