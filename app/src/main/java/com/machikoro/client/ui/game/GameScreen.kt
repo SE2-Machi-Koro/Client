@@ -187,12 +187,6 @@ fun GameScreen(
             }
         }
     }
-    val coinDisplayState =
-        if (coinTransfers.isNotEmpty() && !coinAnimationFinished) {
-            state
-        } else {
-            resolvingEffectsCoinState
-        }
 
     LaunchedEffect(animationKey) {
         coinAnimationFinished = coinTransfers.isEmpty()
@@ -389,7 +383,7 @@ fun GameScreen(
                         )
 
                         PlayersTopBar(
-                            players = coinDisplayState.players,
+                            players = state.players,
                             playerLandmarks =
                                 state.playerLandmarks,
                             playerCards = state.playerCards,
@@ -628,8 +622,8 @@ fun GameScreen(
                 ) {
 
                     PlayerCoinField(
-                        state = coinDisplayState,
-                        highlight = coinDisplayState.players
+                        state = state,
+                        highlight = state.players
                             .firstOrNull { it.isCurrentPlayer }
                             ?.id
                             ?.toIntOrNull()

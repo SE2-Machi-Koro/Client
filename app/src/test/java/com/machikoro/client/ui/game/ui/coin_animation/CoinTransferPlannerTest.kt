@@ -69,6 +69,37 @@ class CoinTransferPlannerTest {
     }
 
     @Test
+    fun createsBankTransferForUnmatchedLoss() {
+        val transfers = buildCoinTransfers(
+            previousCoins = mapOf(1 to 6, 2 to 3),
+            currentCoins = mapOf(1 to 2, 2 to 3),
+        )
+
+        assertEquals(
+            listOf(
+                CoinTransferUi(fromPlayerId = 1, toPlayerId = null, amount = 4),
+            ),
+            transfers,
+        )
+    }
+
+    @Test
+    fun combinesPlayerTransferAndBankLossRemainder() {
+        val transfers = buildCoinTransfers(
+            previousCoins = mapOf(1 to 8, 2 to 1),
+            currentCoins = mapOf(1 to 3, 2 to 4),
+        )
+
+        assertEquals(
+            listOf(
+                CoinTransferUi(fromPlayerId = 1, toPlayerId = 2, amount = 3),
+                CoinTransferUi(fromPlayerId = 1, toPlayerId = null, amount = 2),
+            ),
+            transfers,
+        )
+    }
+
+    @Test
     fun returnsNoTransfersWhenBalancesDidNotChange() {
         val balances = mapOf(1 to 4, 2 to 8)
 

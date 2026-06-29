@@ -53,5 +53,16 @@ fun buildCoinTransfers(
         }
     }
 
+    while (payerIndex < payers.size) {
+        val payer = payers[payerIndex++]
+        if (payer.amount > 0) {
+            transfers += CoinTransferUi(
+                fromPlayerId = payer.playerId,
+                toPlayerId = null,
+                amount = payer.amount,
+            )
+        }
+    }
+
     return transfers
 }

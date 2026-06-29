@@ -37,8 +37,8 @@ fun CoinTransferOverlay(
     val density = LocalDensity.current
     val coinRadiusPx = with(density) { 18.dp.toPx() }
     val positionsReady = transfers.all { transfer ->
-        transfer.toPlayerId?.let(playerPositions::containsKey) == true &&
-            (transfer.fromPlayerId == null || playerPositions.containsKey(transfer.fromPlayerId))
+        (transfer.fromPlayerId == null || playerPositions.containsKey(transfer.fromPlayerId)) &&
+            (transfer.toPlayerId == null || playerPositions.containsKey(transfer.toPlayerId))
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -82,13 +82,18 @@ fun CoinTransferOverlay(
                 ?: bankPosition
             val end = transfer.toPlayerId
                 ?.let(playerPositions::get)
-                ?: return@let
+                ?: bankPosition
             val position = lerp(start, end, progress.value)
+            val highlight = if (transfer.toPlayerId == null) {
+                CoinChangeHighlight.LOSS
+            } else {
+                CoinChangeHighlight.GAIN
+            }
 
             Box(modifier = Modifier.fillMaxSize()) {
                 CoinBadge(
                     amount = transfer.amount,
-                    highlight = CoinChangeHighlight.GAIN,
+                    highlight = highlight,
                     modifier = Modifier.offset {
                         IntOffset(
                             x = (position.x - coinRadiusPx).roundToInt(),
