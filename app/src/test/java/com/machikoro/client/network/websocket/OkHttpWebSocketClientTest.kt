@@ -3815,10 +3815,11 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
         runCurrent()
 
         // server sends chat under payload
-        val chatJson = """{"type":"CHAT","sender":"server","payload":{"sender":"alice","message":"hello"}}"""
+        val chatJson = """{"type":"CHAT", "sender":"server","payload":{"sender":"alice","message":"hello","gameId":"7"}}"""
         factory.simulateText(gameActionFrame(chatJson))
         runCurrent()
 
@@ -3833,12 +3834,13 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
         val received = mutableListOf<ChatMessageState>()
         client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
         runCurrent()
 
         // server sends message and sender at top-level
-        val chatJson = """{"type":"CHAT","sender":"bob","content":"hey"}"""
+        val chatJson = """{"type":"CHAT","gameId":"7","sender":"bob","content":"hey"}"""
         factory.simulateText(gameActionFrame(chatJson))
         runCurrent()
 
@@ -3853,6 +3855,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
         val received = mutableListOf<ChatMessageState>()
         client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
         runCurrent()
@@ -3863,12 +3866,12 @@ class OkHttpWebSocketClientTest {
         assertTrue(received.isEmpty())
 
         // valid JSON but no message
-        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"carol","payload":{}}"""))
+        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"carol","gameId":"7", "payload":{}}"""))
         runCurrent()
         assertTrue(received.isEmpty())
 
         // blank sender
-        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"","content":"hi"}"""))
+        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"","content":"hi", "gameId":"7"}"""))
         runCurrent()
         assertTrue(received.isEmpty())
     }
@@ -3901,7 +3904,85 @@ class OkHttpWebSocketClientTest {
 
         assertTrue(factory.socket.sentMessages.isEmpty())
     }
+    @Test
+    fun nonChatMessageDoesNotEmitChatMessage() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
 
+        val received = mutableListOf<ChatMessageState>()
+        client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
+        runCurrent()
+
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"CHAT",
+                "gameId":"99",
+                "sender":"alice",
+                "content":"hello"
+            }"""
+            )
+        )
+
+        runCurrent()
+
+        assertTrue(received.isEmpty())
+    }
+    @Test
+    fun chatMessageForDifferentGameIsIgnored() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        val received = mutableListOf<ChatMessageState>()
+        client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        // active game = 7
+        factory.simulateText(gameStartedFrame(gameId = 7))
+
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"CHAT",
+                "gameId":"99",
+                "sender":"alice",
+                "content":"hello"
+            }"""
+            )
+        )
+        runCurrent()
+
+        assertTrue(received.isEmpty())
+    }
+    @Test
+    fun chatFallsBackToUsernameWhenSenderMissing() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
+        val received = mutableListOf<ChatMessageState>()
+        client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        // server sends message and sender at top-level
+        val chatJson = """{"type":"CHAT","gameId":"7","username":"bob","content":"hey"}"""
+        factory.simulateText(gameActionFrame(chatJson))
+        runCurrent()
+
+        assertEquals(1, received.size)
+        assertEquals("bob", received.first().sender)
+        assertEquals("hey", received.first().message)
+    }
     private fun newClient(
         factory: FakeWebSocketFactory,
         sessionStateHolder: SessionStateHolder = FakeSessionStateHolder(DEFAULT_SESSION),
