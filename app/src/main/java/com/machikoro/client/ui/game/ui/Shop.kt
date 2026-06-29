@@ -5,7 +5,6 @@ import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
@@ -24,7 +23,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -53,6 +51,8 @@ import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.CardPurpleBackground
 import com.machikoro.client.ui.theme.CardPurpleText
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.ContentScale
@@ -77,7 +77,13 @@ internal fun BuyingPhaseShop(
                 delayMillis = 0,
                 animationType = AnimationType.Bounce
             ) {
-                CardDisplay(drawableForPlayerCard(it))}
+                PurchaseDisplay(
+                    modifier = Modifier.offset(y = -30.dp),
+                    drawable = drawableForPlayerCard(it),
+                    name = state.activePlayerUsername,
+                    isActive = state.isActivePlayer
+                )
+            }
         }
     } else {
         if(state.isActivePlayer) {
@@ -330,16 +336,24 @@ private fun drawableForPlayerCard(cardType: String): Int =
     }
 
 @Composable
-private fun CardDisplay(
+private fun PurchaseDisplay(
+    name: String,
+    isActive: Boolean,
     drawable: Int,
     modifier: Modifier = Modifier,
     width: Dp = 155.dp,
     height: Dp = 175.dp,
 ) {
-    Box(
-        modifier = modifier.wrapContentSize()
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-
+        BasicText(
+            label =
+                if(isActive) "You have purchased:"
+                else name + " has purchased:"
+        )
         Image(
             painter = painterResource(
                 drawable

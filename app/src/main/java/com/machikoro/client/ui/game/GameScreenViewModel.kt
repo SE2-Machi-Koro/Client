@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.machikoro.client.domain.model.state.AccusationResult
 import com.machikoro.client.domain.model.state.triggeredEstablishmentCountForCurrentRoll
+import com.machikoro.client.network.error.ClientError
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -74,6 +75,10 @@ class GameScreenViewModel(
     /** One-shot server-side accusation rejection (#280) for a toast — pass-through. */
     val accusationErrors: SharedFlow<String>
         get() = webSocketClient.accusationErrors
+
+    /** One-shot generic domain rejection (e.g. NOT_YOUR_TURN, server #428) for a toast — pass-through. */
+    val domainErrors: SharedFlow<ClientError.WebSocket>
+        get() = webSocketClient.domainErrors
 
     /**
      * True until the local player has accused someone this turn — mirrors the

@@ -75,6 +75,11 @@ interface WebSocketClient {
     // across a reconnect. Carries the server's message, for a toast.
     val accusationErrors: SharedFlow<String>
 
+    // One-shot generic domain rejections delivered on the private /user/queue/errors
+    // (server #428), e.g. NOT_YOUR_TURN. For a toast. Codes with a dedicated flow
+    // (accusations, lobby joins) are excluded and handled by those flows.
+    val domainErrors: SharedFlow<ClientError.WebSocket>
+
     // Fires when the server rejects the STOMP CONNECT for auth reasons (token
     // missing / invalid / server-side cleared). The UI layer is responsible for
     // calling SessionManager.signOut() and surfacing a "session expired"

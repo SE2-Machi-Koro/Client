@@ -92,6 +92,8 @@ import kotlinx.coroutines.delay
 // delays
 private val OWN_CARDS_VIEW_DELAY = 10000L
 private val MARKETPLACE_VIEW_DELAY = 10000L
+private val SHOP_VIEW_DELAY = 15000L
+
 
 
 // offsets
@@ -232,7 +234,7 @@ fun GameScreen(
 
     val phaseTimerTime =
         when {
-            state.isBuyingPhase && state.purchaseState != PurchaseState.SUCCESS  -> 30
+            state.isBuyingPhase && state.purchaseState != PurchaseState.SUCCESS  -> (SHOP_VIEW_DELAY / 1000).toInt()
             state.gamePhase == GamePhase.ROLL_DICE -> 20
             // Matches the actual auto-advance dwell so the countdown the player sees
             // is the real time until RESOLVE_EFFECTS ends, not a longer, unrelated number.
@@ -542,6 +544,18 @@ fun GameScreen(
                     }
 
                     else if (state.isBuyingPhase) {
+                        var delayShop = 0L
+
+                    LaunchedEffect(state.isBuyingPhase) {
+                        if(state.isBuyingPhase) {
+                            delayShop = 5000L
+                            delay(delayShop)
+                            if(state.purchaseState != PurchaseState.SUCCESS
+                                || state.purchaseState != PurchaseState.PENDING) {
+                                onTurnFlowAction()
+                            } else if(state.purchaseState == PurchaseState.SUCCESS) delayShop = 0L
+                        } else delayShop = 0L
+                    }
                             BuyingPhaseShop(
                                 state = state,
                                 items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
@@ -559,7 +573,8 @@ fun GameScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                ResolvingEffectsView(state = state)
+                                ResolvingEffectsView(state = state,
+                                    modifier = Modifier.offset(y = -50.dp))
 
                                 if (
                                     showRadioTowerReroll &&
@@ -636,7 +651,8 @@ fun GameScreen(
                         val turnFlowLabel = state.turnFlowActionLabel()
                         if (
                             state.isActivePlayer &&
-                            state.gameStatus == GameStatus.IN_PROGRESS
+                            state.gameStatus == GameStatus.IN_PROGRESS &&
+                            state.purchaseState != PurchaseState.SUCCESS
                         ) {
                             turnFlowLabel?.let {
                                 ActionButton(
@@ -657,7 +673,7 @@ fun GameScreen(
                                 )
                             }
 
-                            if (state.isBuyingPhase && state.purchaseState != PurchaseState.SUCCESS) {
+                            if (state.isBuyingPhase) {
                                 SecondaryActionButton(
                                     onClick = onTurnFlowAction,
                                     enabled = state.purchaseState != PurchaseState.PENDING,

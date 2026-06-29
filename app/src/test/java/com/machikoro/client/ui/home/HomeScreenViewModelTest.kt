@@ -312,6 +312,7 @@ class HomeScreenViewModelTest {
             MutableSharedFlow(extraBufferCapacity = 1)
         override val coinDeltas: SharedFlow<Int> = MutableSharedFlow(extraBufferCapacity = 1)
         override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
+        override val domainErrors: SharedFlow<ClientError.WebSocket> = MutableSharedFlow(extraBufferCapacity = 1)
         override fun connect() { connectCalled = true }
         override fun disconnect() { disconnectCalled = true }
         override fun rollDice(diceCount: Int) = Unit

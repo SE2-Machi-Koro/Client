@@ -23,8 +23,12 @@ project(":app") {
                 layout.buildDirectory.file("reports/jacoco/jacocoTestReport/jacocoTestReport.xml").get().asFile
             )
             property(
+                "sonar.androidLint.reportPaths",
+                layout.buildDirectory.file("reports/lint-results-debug.xml").get().asFile
+            )
+            property(
                 "sonar.exclusions",
-                "**/build/**,**/generated/**,**/ui/**,**/res/**,**/AndroidManifest.xml,**/*.xml"
+                "**/build/**,**/generated/**,**/ui/**,**/res/**,**/AndroidManifest.xml,**/*.xml,**/*.pdf"
             )
             property("sonar.test.exclusions", "**/build/**,**/androidTest/**")
             property(
@@ -45,5 +49,6 @@ sonar {
 }
 
 tasks.named("sonar") {
+    dependsOn(":app:lint")
     dependsOn(":app:jacocoTestReport")
 }

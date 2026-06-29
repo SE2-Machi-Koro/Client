@@ -54,8 +54,8 @@ private const val DICE_ANIMATION_INTERVAL_MS = 100L // faster change
 // the instant the server confirms the result (see the isRolling effect below), so this
 // is only the upper bound; non-active players already hold the result and reveal it
 // after the same short spin.
-private const val DICE_ANIMATION_DURATION_MS = 2500L
-private val DICE_SIZE = 64.dp
+private const val DICE_ANIMATION_DURATION_MS = 1500L
+private val DICE_SIZE = 58.dp
 private val DICE_FACES = listOf(
     R.drawable.game_dice_1,
     R.drawable.game_dice_2,
@@ -193,7 +193,7 @@ fun DiceResultDisplay(
 
                 Text(
                     text = "$sum",
-                    fontSize = 36.sp,
+                    fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
@@ -204,7 +204,7 @@ fun DiceResultDisplay(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     dice.forEach { value ->
                         Image(
@@ -326,9 +326,21 @@ fun DiceSection(
             else -> {}
         }
         if(!state.isActivePlayer && state.diceResult == null) {
-            BasicText(
-                state.activePlayerUsername + " is rolling dice",
-                modifier = Modifier.offset(y = (-35).dp))
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.offset(y = (-30).dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.game_dice_perspective),
+                    contentDescription = "One dice",
+                    modifier = Modifier
+                        .size(100.dp)
+                )
+                BasicText(
+                   state.activePlayerUsername + " is rolling dice",
+                )
+            }
+
         }
         if (state.isActivePlayer &&
             state.gameStatus == GameStatus.IN_PROGRESS &&

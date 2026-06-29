@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import okhttp3.Protocol
@@ -59,6 +60,164 @@ class OkHttpWebSocketClientTest {
         assertTrue(factory.socket.sentMessages.first().contains("accept-version:1.2"))
         assertTrue(factory.socket.sentMessages.first().contains("host:10.0.2.2:8080"))
     }
+
+    @Test
+    fun connectFrameAdvertisesHeartbeat() {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        // Must advertise non-zero heartbeats or the server (server #426) keeps
+        // them disabled and idle sockets are reaped mid-game.
+        assertTrue(factory.socket.sentMessages.first().contains("heart-beat:10000,10000"))
+    }
+
+    @Test
+    fun connectedNegotiatesAndEmitsHeartbeats() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = "10000,10000"))
+
+        advanceTimeBy(10_001)
+        runCurrent()
+
+        assertTrue(
+            "expected a lone-LF heartbeat frame to be sent",
+            factory.socket.sentMessages.any { it == "\n" },
+        )
+    }
+
+    @Test
+    fun heartbeatsStopAfterDisconnect() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = "10000,10000"))
+
+        client.disconnect()
+        val heartbeatsAfterDisconnect = factory.socket.sentMessages.count { it == "\n" }
+        advanceTimeBy(30_000)
+        runCurrent()
+
+        assertEquals(
+            "no heartbeats should be emitted after disconnect",
+            heartbeatsAfterDisconnect,
+            factory.socket.sentMessages.count { it == "\n" },
+        )
+    }
+
+    @Test
+    fun serverOptingOutDisablesHeartbeatEmission() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = "0,0"))
+
+        advanceTimeBy(30_000)
+        runCurrent()
+
+        assertFalse(factory.socket.sentMessages.any { it == "\n" })
+    }
+
+    @Test
+    fun missingHeartBeatHeaderDisablesHeartbeatEmission() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = null))
+
+        advanceTimeBy(30_000)
+        runCurrent()
+
+        assertFalse(factory.socket.sentMessages.any { it == "\n" })
+    }
+
+    @Test
+    fun heartbeatSendReturningFalseStopsHeartbeats() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = "10000,10000"))
+
+        // First heartbeat fires and succeeds.
+        advanceTimeBy(10_001)
+        runCurrent()
+        assertTrue("expected at least one heartbeat", factory.socket.sentMessages.any { it == "\n" })
+
+        // Next send returns false — the frame is still enqueued by FakeWebSocket before
+        // the return value is checked, so the count goes up by one and then the loop exits.
+        factory.socket.sendResult = false
+        advanceTimeBy(10_001)
+        runCurrent()
+        val countAfterFail = factory.socket.sentMessages.count { it == "\n" }
+
+        // No further heartbeats after the one that caused the failure.
+        advanceTimeBy(20_000)
+        runCurrent()
+        assertEquals(
+            "no additional heartbeats should be sent after send() returns false",
+            countAfterFail,
+            factory.socket.sentMessages.count { it == "\n" },
+        )
+    }
+
+    @Test
+    fun heartbeatSendThrowingStopsHeartbeats() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = "10000,10000"))
+
+        // First heartbeat fires and succeeds.
+        advanceTimeBy(10_001)
+        runCurrent()
+        assertTrue("expected at least one heartbeat", factory.socket.sentMessages.any { it == "\n" })
+
+        // Next send throws — the frame is still enqueued by FakeWebSocket before the
+        // throw, so the count goes up by one and then the loop exits via the catch block.
+        factory.socket.sendThrows = IllegalStateException("socket closed")
+        advanceTimeBy(10_001)
+        runCurrent()
+        val countAfterThrow = factory.socket.sentMessages.count { it == "\n" }
+
+        // No further heartbeats after the one that caused the exception.
+        advanceTimeBy(20_000)
+        runCurrent()
+        assertEquals(
+            "no additional heartbeats should be sent after send() throws",
+            countAfterThrow,
+            factory.socket.sentMessages.count { it == "\n" },
+        )
+    }
+
+    @Test
+    fun heartbeatsStopAfterSocketFailure() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory, reconnectScope = backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame(heartBeat = "10000,10000"))
+
+        factory.simulateFailure(java.io.IOException("network error"))
+        runCurrent()
+        val heartbeatsAtFailure = factory.socket.sentMessages.count { it == "\n" }
+        advanceTimeBy(30_000)
+        runCurrent()
+
+        assertEquals(
+            "no heartbeats should be emitted after socket failure",
+            heartbeatsAtFailure,
+            factory.socket.sentMessages.count { it == "\n" },
+        )
+    }
+
 
     @Test
     fun connectedFrameMovesStatusToConnectedAndTriggersSubscribeAndJoin() {
@@ -3056,8 +3215,14 @@ class OkHttpWebSocketClientTest {
     }
 
     /** A bare STOMP CONNECTED frame, correctly NUL-terminated by serialize(). */
-    private fun connectedFrame(): String =
-        StompFrame(command = "CONNECTED", headers = mapOf("version" to "1.2")).serialize()
+    private fun connectedFrame(heartBeat: String? = null): String =
+        StompFrame(
+            command = "CONNECTED",
+            headers = buildMap {
+                put("version", "1.2")
+                if (heartBeat != null) put("heart-beat", heartBeat)
+            },
+        ).serialize()
 
     /** A MESSAGE frame on the per-user game-sync queue carrying [body]. */
     private fun syncFrame(body: String): String =
@@ -3221,9 +3386,15 @@ class OkHttpWebSocketClientTest {
         lateinit var request: Request
         var closed = false
         val sentMessages = mutableListOf<String>()
+        var sendResult: Boolean = true
+        var sendThrows: Exception? = null
         override fun request(): Request = request
         override fun queueSize(): Long = 0L
-        override fun send(text: String): Boolean { sentMessages += text; return true }
+        override fun send(text: String): Boolean {
+            sentMessages += text
+            sendThrows?.let { throw it }
+            return sendResult
+        }
         override fun send(bytes: ByteString): Boolean = false
         override fun close(code: Int, reason: String?): Boolean { closed = true; return true }
         override fun cancel() { closed = true }
@@ -3561,6 +3732,56 @@ class OkHttpWebSocketClientTest {
     }
 
     @Test
+    fun privateDomainErrorFrameEmitsDomainError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<ClientError.WebSocket>()
+        client.domainErrors.onEach { errors += it }.launchIn(backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        runCurrent()
+
+        // Bare WebSocketErrorDto delivered on /user/queue/errors (server #428):
+        // top-level code/message, no envelope `type`.
+        factory.simulateText(
+            gameActionFrame(
+                """{"code":"NOT_YOUR_TURN","message":"It is not your turn",""" +
+                    """"timestamp":1714000000000,"context":{}}"""
+            )
+        )
+        runCurrent()
+
+        assertEquals(1, errors.size)
+        assertEquals("NOT_YOUR_TURN", errors.first().serverCode)
+        assertEquals("It is not your turn", errors.first().userMessage)
+    }
+
+    @Test
+    fun invalidAccusationDoesNotEmitDomainError() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        val errors = mutableListOf<ClientError.WebSocket>()
+        client.domainErrors.onEach { errors += it }.launchIn(backgroundScope)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        runCurrent()
+
+        // INVALID_ACCUSATION has a dedicated flow (accusationErrors); it must not
+        // also surface on the generic domainErrors flow (no double-surfacing).
+        factory.simulateText(
+            gameActionFrame(
+                """{"code":"INVALID_ACCUSATION","message":"You can only accuse once per turn",""" +
+                    """"timestamp":1714000000000,"context":{}}"""
+            )
+        )
+        runCurrent()
+
+        assertTrue(errors.isEmpty())
+    }
+
+    @Test
     fun accusationResultAppliesTheEmbeddedStateSnapshot() {
         val factory = FakeWebSocketFactory()
         val client = newClient(factory)
@@ -3594,10 +3815,11 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
         runCurrent()
 
         // server sends chat under payload
-        val chatJson = """{"type":"CHAT","sender":"server","payload":{"sender":"alice","message":"hello"}}"""
+        val chatJson = """{"type":"CHAT", "sender":"server","payload":{"sender":"alice","message":"hello","gameId":"7"}}"""
         factory.simulateText(gameActionFrame(chatJson))
         runCurrent()
 
@@ -3612,12 +3834,34 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
         val received = mutableListOf<ChatMessageState>()
         client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
         runCurrent()
 
         // server sends message and sender at top-level
-        val chatJson = """{"type":"CHAT","sender":"bob","content":"hey"}"""
+        val chatJson = """{"type":"CHAT","gameId":"7","sender":"bob","content":"hey"}"""
+        factory.simulateText(gameActionFrame(chatJson))
+        runCurrent()
+
+        assertEquals(1, received.size)
+        assertEquals("bob", received.first().sender)
+        assertEquals("hey", received.first().message)
+    }
+    @Test
+    fun fallBackToTopLevelFieldsWhenPayloadIsEmpty() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
+        val received = mutableListOf<ChatMessageState>()
+        client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        // server sends message and sender at top-level
+        val chatJson = """{"type":"CHAT","gameId":"7","sender":"bob","content":"hey","payload":{}}"""
         factory.simulateText(gameActionFrame(chatJson))
         runCurrent()
 
@@ -3632,6 +3876,7 @@ class OkHttpWebSocketClientTest {
         client.connect()
         factory.simulateOpen()
         factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
         val received = mutableListOf<ChatMessageState>()
         client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
         runCurrent()
@@ -3642,12 +3887,12 @@ class OkHttpWebSocketClientTest {
         assertTrue(received.isEmpty())
 
         // valid JSON but no message
-        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"carol","payload":{}}"""))
+        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"carol","gameId":"7", "payload":{}}"""))
         runCurrent()
         assertTrue(received.isEmpty())
 
         // blank sender
-        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"","content":"hi"}"""))
+        factory.simulateText(gameActionFrame("""{"type":"CHAT","sender":"","content":"hi", "gameId":"7"}"""))
         runCurrent()
         assertTrue(received.isEmpty())
     }
@@ -3680,7 +3925,85 @@ class OkHttpWebSocketClientTest {
 
         assertTrue(factory.socket.sentMessages.isEmpty())
     }
+    @Test
+    fun nonChatMessageDoesNotEmitChatMessage() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
 
+        val received = mutableListOf<ChatMessageState>()
+        client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
+        runCurrent()
+
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"ACCUSATION_RESULT",
+                "gameId":"7",
+                "sender":"alice",
+                "content":"hello"
+            }"""
+            )
+        )
+
+        runCurrent()
+
+        assertTrue(received.isEmpty())
+    }
+    @Test
+    fun chatMessageForDifferentGameIsIgnored() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+
+        val received = mutableListOf<ChatMessageState>()
+        client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
+
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+
+        // active game = 7
+        factory.simulateText(gameStartedFrame(gameId = 7))
+
+        factory.simulateText(
+            gameActionFrame(
+                """{
+                "type":"CHAT",
+                "gameId":"99",
+                "sender":"alice",
+                "content":"hello"
+            }"""
+            )
+        )
+        runCurrent()
+
+        assertTrue(received.isEmpty())
+    }
+    @Test
+    fun chatFallsBackToUsernameWhenSenderMissing() = runTest {
+        val factory = FakeWebSocketFactory()
+        val client = newClient(factory)
+        client.connect()
+        factory.simulateOpen()
+        factory.simulateText(connectedFrame())
+        factory.simulateText(gameStartedFrame(gameId = 7))
+        val received = mutableListOf<ChatMessageState>()
+        client.chatMessages.onEach { received += it }.launchIn(backgroundScope)
+        runCurrent()
+
+        // server sends message and sender at top-level
+        val chatJson = """{"type":"CHAT","gameId":"7","username":"bob","content":"hey"}"""
+        factory.simulateText(gameActionFrame(chatJson))
+        runCurrent()
+
+        assertEquals(1, received.size)
+        assertEquals("bob", received.first().sender)
+        assertEquals("hey", received.first().message)
+    }
     private fun newClient(
         factory: FakeWebSocketFactory,
         sessionStateHolder: SessionStateHolder = FakeSessionStateHolder(DEFAULT_SESSION),

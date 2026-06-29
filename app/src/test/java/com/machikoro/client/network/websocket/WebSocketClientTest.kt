@@ -30,6 +30,7 @@ import okio.ByteString
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -65,6 +66,7 @@ class DummyWebSocketClient : WebSocketClient {
     override val accusationResults: SharedFlow<com.machikoro.client.domain.model.state.AccusationResult> = MutableSharedFlow(extraBufferCapacity = 1)
     override val coinDeltas: SharedFlow<Int> = MutableSharedFlow(extraBufferCapacity = 1)
     override val accusationErrors: SharedFlow<String> = MutableSharedFlow(extraBufferCapacity = 1)
+    override val domainErrors: SharedFlow<ClientError.WebSocket> = MutableSharedFlow(extraBufferCapacity = 1)
     override val chatMessages: SharedFlow<ChatMessageState> = MutableSharedFlow(extraBufferCapacity = 1)
 
     override fun connect() {}
@@ -254,6 +256,35 @@ class WebSocketClientTest {
         fixture.deliverMessage(gameActionMessage())
 
         assertEquals(listOf(2, 6), fixture.client.diceResult.value)
+    }
+
+    @Test
+    fun rollDiceSnapshotClearsDiceResultSoRollButtonUnblocks() {
+        val fixture = okHttpClientFixture()
+
+        // Simulate a prior roll being in state (e.g. from the previous turn's snapshot).
+        fixture.deliverMessage(rollDiceMessage())
+        assertEquals(listOf(2, 6), fixture.client.diceResult.value)
+
+        // A GAME_STARTED (or any snapshot) with turnPhase=ROLL_DICE means a new turn has
+        // started and no dice have been rolled yet. lastDiceRoll is a stale previous-turn
+        // total — restoring it would hide the Roll button and freeze the game.
+        fixture.deliverMessage(gameStartedMessage())
+
+        assertNull(fixture.client.diceResult.value)
+        assertEquals(GamePhase.ROLL_DICE, fixture.client.gamePhase.value)
+    }
+
+    @Test
+    fun resolveEffectsSnapshotRestoresLastDiceRollWhenNoneHeld() {
+        val fixture = okHttpClientFixture()
+
+        // Reconnect during RESOLVE_EFFECTS: no per-die result in memory yet.
+        // The else branch must restore lastDiceRoll (8) as a single-element list.
+        fixture.deliverMessage(syncMessage(snapshot(phase = "RESOLVE_EFFECTS")))
+
+        assertEquals(listOf(8), fixture.client.diceResult.value)
+        assertEquals(GamePhase.RESOLVE_EFFECTS, fixture.client.gamePhase.value)
     }
 
     @Test

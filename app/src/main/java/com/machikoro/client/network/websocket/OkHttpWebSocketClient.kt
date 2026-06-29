@@ -27,6 +27,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -120,6 +121,9 @@ class OkHttpWebSocketClient(
     override val accusationErrors: SharedFlow<String>
         get() = mutableAccusationErrors.asSharedFlow()
 
+    override val domainErrors: SharedFlow<ClientError.WebSocket>
+        get() = mutableDomainErrors.asSharedFlow()
+
     override val chatMessages: SharedFlow<ChatMessageState>
         get() = mutableChatMessages.asSharedFlow()
 
@@ -175,6 +179,10 @@ class OkHttpWebSocketClient(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
+    private val mutableDomainErrors = MutableSharedFlow<ClientError.WebSocket>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     private val mutableChatMessages = MutableSharedFlow<ChatMessageState>(
         extraBufferCapacity = 64,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
@@ -197,6 +205,11 @@ class OkHttpWebSocketClient(
     private var intentionalDisconnect = false
     private var reconnectJob: Job? = null
     private var reconnectAttempt = 0
+
+    // Periodic STOMP heartbeat emitter, started on CONNECTED and cancelled when
+    // the socket goes away. Keeps an idle connection alive so platform proxies
+    // don't reap it mid-game (server #426).
+    private var heartbeatJob: Job? = null
 
     init {
         require(reconnectDelaysMs.isNotEmpty()) { "reconnectDelaysMs must not be empty" }
@@ -228,6 +241,8 @@ class OkHttpWebSocketClient(
         intentionalDisconnect = true
         cancelReconnect()
         val currentSocket = synchronized(this) {
+            heartbeatJob?.cancel()
+            heartbeatJob = null
             val socket = webSocket
             webSocket = null
             socket
@@ -593,7 +608,7 @@ class OkHttpWebSocketClient(
                     headers = mapOf(
                         "accept-version" to WebSocketContract.stompVersion,
                         "host" to websocketHostHeader(),
-                        "heart-beat" to "0,0",
+                        "heart-beat" to "$CLIENT_HEARTBEAT_INTERVAL_MS,$CLIENT_HEARTBEAT_INTERVAL_MS",
                         AUTH_HEADER to "$BEARER_PREFIX$token",
                     )
                 ).serialize()
@@ -653,6 +668,7 @@ class OkHttpWebSocketClient(
 
                 // Signal ready only after all SUBSCRIBE frames are in the socket queue
                 mutableConnectionStatus.value = ConnectionStatus.CONNECTED
+                startHeartbeat(frame.headers["heart-beat"])
                 sendJoinMessage()
             }
             "MESSAGE" -> {
@@ -676,6 +692,7 @@ class OkHttpWebSocketClient(
                 handleCoinDeltas(json)
                 handleAccusationResult(json)
                 handleAccusationError(json)
+                handlePrivateError(json)
                 handleChatMessage(json)
                 parseGameAction(json).let { (phase, activePlayerId) ->
                     phase?.let { mutableGamePhase.value = it }
@@ -977,13 +994,30 @@ class OkHttpWebSocketClient(
         mutableAccusationErrors.tryEmit(message)
     }
 
+    /**
+     * Surfaces a generic private domain rejection delivered on /user/queue/errors
+     * (server #428), e.g. NOT_YOUR_TURN. These arrive as a bare WebSocketErrorDto
+     * with top-level `code`/`message` and no `type`, which distinguishes them from
+     * the WebSocketMessage envelopes used for broadcasts. Codes with a dedicated
+     * flow (INVALID_ACCUSATION -> accusationErrors) are left to their handlers to
+     * avoid double-surfacing.
+     */
+    private fun handlePrivateError(json: JSONObject) {
+        if (json.optString("type").isNotBlank()) return
+        val code = json.optString("code")
+        if (code.isBlank() || code == INVALID_ACCUSATION_CODE) return
+        mutableDomainErrors.tryEmit(WsErrorParser.parse(json))
+    }
+
     private fun handleChatMessage(json: JSONObject) {
         if (json.optString("type") != "CHAT") return //ignore messages of other types
         // Flexible detection: the server might put message/sender in the top-level or under payload.
         val payload = json.optJSONObject("payload")
-        val msg = payload?.optString("message") ?: json.optString("content")
+        val gameId = payload?.optString("gameId").takeIf{ it?.isNotBlank() == true } ?: json.optString("gameId")
+        if (gameId != mutableActiveGameId.value.toString()) return //ignore messages for other games
+        val msg = payload?.optString("message").takeIf{ it?.isNotBlank() == true } ?: json.optString("content")
         if (msg.isBlank()) return
-        val sender = payload?.optString("sender") ?: json.optString("sender") ?: json.optString("username")
+        val sender = payload?.optString("sender").takeIf{ it?.isNotBlank() == true } ?: json.optString("sender").takeIf { it.isNotBlank() }  ?: json.optString("username")
         if (sender.isBlank()) return
 
         Log.d(TAG, "Received chat message from $sender: $msg")
@@ -1038,18 +1072,23 @@ class OkHttpWebSocketClient(
         updateLobbyHostOwnership(resolveHostUserId(state, game))
 
         parseGameStatus(game.optString("status"))?.let { mutableGameStatus.value = it }
-        parseTurnPhase(game.optString("turnPhase"))?.let { mutableGamePhase.value = it }
+        val snapshotPhase = parseTurnPhase(game.optString("turnPhase"))
+        snapshotPhase?.let { mutableGamePhase.value = it }
         game.optIntOrNull("roundNumber")?.let { mutableRoundNumber.value = it }
-        // The snapshot persists only the dice total (lastDiceRoll), not the
-        // individual dice. Surface it as a single-element list so the last roll
-        // still shows on reconnect — but do NOT clobber a richer per-die result we
-        // already hold for the same roll (it sums to this total). Otherwise a
-        // routine snapshot collapses [x, y] into a single generic die mid-turn,
-        // which is the inconsistent "one vs two dice" display and also hides doubles.
-        game.optIntOrNull("lastDiceRoll")?.let { total ->
-            val current = mutableDiceResult.value
-            if (current == null || current.sum() != total) {
-                mutableDiceResult.value = listOf(total)
+        // In ROLL_DICE phase no dice have been rolled yet for this turn — lastDiceRoll
+        // is a stale total from the previous turn. Restoring it makes diceResult
+        // non-null, permanently hiding the Roll button (game stuck on reconnect).
+        // For all other phases, surface the total as a single-element list so the
+        // last roll still shows on reconnect — but never clobber a richer per-die
+        // result already held for the same roll (avoids [x,y] → [total] collapse).
+        if (snapshotPhase == GamePhase.ROLL_DICE) {
+            mutableDiceResult.value = null
+        } else {
+            game.optIntOrNull("lastDiceRoll")?.let { total ->
+                val current = mutableDiceResult.value
+                if (current == null || current.sum() != total) {
+                    mutableDiceResult.value = listOf(total)
+                }
             }
         }
 
@@ -1399,6 +1438,8 @@ class OkHttpWebSocketClient(
 
     private fun clearSocket() {
         synchronized(this) {
+            heartbeatJob?.cancel()
+            heartbeatJob = null
             webSocket = null
             subscribedGameId = null
             stompSessionId = null
@@ -1440,6 +1481,69 @@ class OkHttpWebSocketClient(
             reconnectJob = null
             reconnectAttempt = 0
         }
+    }
+
+    /**
+     * Starts the periodic heartbeat emitter using the interval negotiated with
+     * the server (see [negotiatedSendIntervalMs]). Cancels any previous emitter
+     * first, so reconnects don't stack jobs. No-op when negotiation opts out.
+     */
+    private fun startHeartbeat(serverHeartBeatHeader: String?) {
+        val sendIntervalMs = negotiatedSendIntervalMs(serverHeartBeatHeader)
+        if (sendIntervalMs <= 0L) {
+            Log.d(TAG, "STOMP heartbeats disabled by negotiation (server='$serverHeartBeatHeader')")
+            stopHeartbeat()
+            return
+        }
+        Log.d(TAG, "Starting STOMP heartbeats every ${sendIntervalMs}ms")
+        synchronized(this) {
+            heartbeatJob?.cancel()
+            heartbeatJob = reconnectScope.launch {
+                while (isActive) {
+                    delay(sendIntervalMs)
+                    val socket = synchronized(this@OkHttpWebSocketClient) { webSocket } ?: break
+                    // A lone LF is a STOMP heartbeat. Emitting it on an otherwise idle
+                    // socket keeps platform proxies (e.g. Railway's edge) from reaping
+                    // the connection during a player's think-time — and satisfies the
+                    // server, which now expects client heartbeats (server #426).
+                    try {
+                        if (!socket.send(HEARTBEAT_FRAME)) {
+                            Log.w(TAG, "Heartbeat send failed; stopping heartbeats")
+                            break
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Heartbeat send threw; stopping heartbeats", e)
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopHeartbeat() {
+        synchronized(this) {
+            heartbeatJob?.cancel()
+            heartbeatJob = null
+        }
+    }
+
+    /**
+     * Resolves the client→server heartbeat interval from the negotiated values
+     * per STOMP 1.2. We advertise [CLIENT_HEARTBEAT_INTERVAL_MS] in both
+     * directions, so the effective send interval is the larger of our value and
+     * the server's requested receive interval (the second field of its
+     * `heart-beat` header). Returns 0 when either side opts out.
+     */
+    private fun negotiatedSendIntervalMs(serverHeartBeatHeader: String?): Long {
+        val serverWantsToReceiveMs = serverHeartBeatHeader
+            ?.split(",")
+            ?.takeIf { it.size == 2 }
+            ?.get(1)
+            ?.trim()
+            ?.toLongOrNull()
+            ?: 0L
+        if (CLIENT_HEARTBEAT_INTERVAL_MS == 0L || serverWantsToReceiveMs == 0L) return 0L
+        return maxOf(CLIENT_HEARTBEAT_INTERVAL_MS, serverWantsToReceiveMs)
     }
 
     private fun isAuthRejection(body: String): Boolean =
@@ -1546,6 +1650,13 @@ class OkHttpWebSocketClient(
     companion object {
         private const val NORMAL_CLOSURE_STATUS = 1000
         private const val TAG = "OkHttpWebSocketClient"
+        // Heartbeat interval (ms) advertised in the STOMP CONNECT frame, in both
+        // directions. Kept in sync with the server's WebSocketConfig
+        // (HEARTBEAT_INTERVAL_MS, server #426) and well under the ~60s idle window
+        // after which platform proxies reap the connection.
+        private const val CLIENT_HEARTBEAT_INTERVAL_MS = 10_000L
+        // A bare line-feed is the STOMP heartbeat frame (no NUL terminator).
+        private const val HEARTBEAT_FRAME = "\n"
         // Exponential backoff for auto-reconnect; the final value repeats once
         // the list is exhausted. Long enough to ride out a backend container
         // restart without hammering the server.
