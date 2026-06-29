@@ -276,6 +276,18 @@ class WebSocketClientTest {
     }
 
     @Test
+    fun resolveEffectsSnapshotRestoresLastDiceRollWhenNoneHeld() {
+        val fixture = okHttpClientFixture()
+
+        // Reconnect during RESOLVE_EFFECTS: no per-die result in memory yet.
+        // The else branch must restore lastDiceRoll (8) as a single-element list.
+        fixture.deliverMessage(syncMessage(snapshot(phase = "RESOLVE_EFFECTS")))
+
+        assertEquals(listOf(8), fixture.client.diceResult.value)
+        assertEquals(GamePhase.RESOLVE_EFFECTS, fixture.client.gamePhase.value)
+    }
+
+    @Test
     fun gameEndAppliesFinalSnapshot() {
         val fixture = okHttpClientFixture()
 
