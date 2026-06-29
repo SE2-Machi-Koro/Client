@@ -338,9 +338,13 @@ class GameScreenViewModel(
         // the dice animation stuck in the rolling state.
         if (mutableState.value.isRolling) return
 
-        mutableState.update { it.copy(isRolling = true, requestedDiceCount = diceCount) }
+        // A player without a built Train Station may only roll a single die. Clamp
+        // here so a stale requested count (e.g. carried over from an earlier two-dice
+        // roll) can never reach the server and trigger NO_TRAIN_STATION (#399).
+        val effectiveDiceCount = if (mutableState.value.hasTrainStation) diceCount else 1
+        mutableState.update { it.copy(isRolling = true, requestedDiceCount = effectiveDiceCount) }
         startRollTimeout(expectedPhase = GamePhase.ROLL_DICE)
-        webSocketClient.rollDice(diceCount)
+        webSocketClient.rollDice(effectiveDiceCount)
     }
 
     /**
