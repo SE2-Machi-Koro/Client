@@ -1013,9 +1013,11 @@ class OkHttpWebSocketClient(
         if (json.optString("type") != "CHAT") return //ignore messages of other types
         // Flexible detection: the server might put message/sender in the top-level or under payload.
         val payload = json.optJSONObject("payload")
+        val gameId = payload?.optString("gameId") ?: json.optString("gameId")
+        if (gameId != mutableActiveGameId.value.toString()) return //ignore messages for other games
         val msg = payload?.optString("message") ?: json.optString("content")
         if (msg.isBlank()) return
-        val sender = payload?.optString("sender") ?: json.optString("sender") ?: json.optString("username")
+        val sender = payload?.optString("sender") ?: json.optString("sender").takeIf { it.isNotBlank() }  ?: json.optString("username")
         if (sender.isBlank()) return
 
         Log.d(TAG, "Received chat message from $sender: $msg")
