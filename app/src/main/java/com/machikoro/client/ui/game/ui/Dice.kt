@@ -50,10 +50,7 @@ import kotlinx.coroutines.isActive
 private const val DICE_ANIMATION_INTERVAL_MS = 100L // faster change
 // One brief roll animation for everyone, so the reveal isn't held behind a long fixed
 // delay and active/non-active players stay in lockstep (matters during a Radio Tower
-// reroll where both spin off the same roll tick). The active player's spin also ends
-// the instant the server confirms the result (see the isRolling effect below), so this
-// is only the upper bound; non-active players already hold the result and reveal it
-// after the same short spin.
+// reroll where both spin off the same roll tick).
 private const val DICE_ANIMATION_DURATION_MS = 1500L
 private val DICE_SIZE = 58.dp
 private val DICE_FACES = listOf(
