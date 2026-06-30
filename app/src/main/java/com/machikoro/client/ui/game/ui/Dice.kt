@@ -259,6 +259,7 @@ fun DiceSection(
     } else {
         localAnimationDiceCount
     }
+    val showRollingAnimation = isAnimating || (state.isActivePlayer && state.isRolling)
 
     LaunchedEffect(state.diceResult) {
         if (state.diceResult == null) {
@@ -298,7 +299,7 @@ fun DiceSection(
         modifier = modifier.padding(bottom = 32.dp)
     ) {
         when {
-            isAnimating -> {
+            showRollingAnimation -> {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     repeat(animationDiceCount) {
                         DiceAnimationDisplay(animating = true)
@@ -341,7 +342,7 @@ fun DiceSection(
         }
         if (state.isActivePlayer &&
             state.gameStatus == GameStatus.IN_PROGRESS &&
-            !isAnimating
+            !showRollingAnimation
         ) {
             // Roll controls only appear during the actual rolling phase
             if (state.gamePhase == GamePhase.ROLL_DICE && state.hasTrainStation) {
@@ -384,12 +385,13 @@ fun DiceSection(
                         if (state.hasTrainStation) frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount else 1
                     ActionButton(
                         onClick = {
+                            if (state.isRolling) return@ActionButton
                             SoundManager.play(GameSound.DICE_ROLL)
                             frozenDiceCount = chosen
                             isAnimating = true
                             onRollDice(chosen)
                         },
-                        enabled = true,
+                        enabled = !state.isRolling,
                         label = "Roll " + (if (chosen > 1) "Two Dice" else "One Die"),
                         modifier = Modifier.semantics {
                             contentDescription = "Roll Dice"
@@ -403,13 +405,14 @@ fun DiceSection(
                     val rerollCount = frozenDiceCount ?: state.diceResult?.size ?: 1
                     ActionButton(
                         onClick = {
+                            if (state.isRolling) return@ActionButton
                             SoundManager.play(GameSound.DICE_ROLL)
                             hasRerolled = true
                             frozenDiceCount = rerollCount
                             isAnimating = true
                             onReroll(rerollCount)
                         },
-                        enabled = true,
+                        enabled = !state.isRolling,
                         label = "Roll Dice Again",
                         modifier = Modifier.semantics {
                             contentDescription = "Reroll Dice"
