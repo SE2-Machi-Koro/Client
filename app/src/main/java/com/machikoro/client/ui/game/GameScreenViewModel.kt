@@ -671,10 +671,12 @@ class GameScreenViewModel(
 
     companion object {
         /**
-         * Failsafe for RESOLVE_EFFECTS. Normally the UI calls
-         * [finishResolveEffectsAnimation] after its final coin animation.
+         * Failsafe for RESOLVE_EFFECTS. Normally the UI advances immediately
+         * when there is nothing to animate or calls [finishResolveEffectsAnimation]
+         * after the final coin animation. Keep this short so a missed overlay
+         * callback does not leave the active player staring at RESOLVE_EFFECTS.
          */
-        const val DEFAULT_RESOLVE_EFFECTS_DWELL_MS = 20_000L
+        const val DEFAULT_RESOLVE_EFFECTS_DWELL_MS = 6_000L
     }
 
     class Factory(

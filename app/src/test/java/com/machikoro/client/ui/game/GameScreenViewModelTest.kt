@@ -1710,14 +1710,14 @@ class GameScreenViewModelTest {
     }
 
     @Test
-    fun resolveEffectsDoesNotAutoSendBeforeShortDwellElapses() = runTest {
+    fun resolveEffectsDoesNotAutoSendBeforeFailsafeDwellElapses() = runTest {
         val dwell = GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS
         val fakeClient = FakeWebSocketClient()
         viewModel(fakeClient, userId = 42, resolveEffectsDwellMillis = dwell)
 
         fakeClient.enterResolveEffects(activeUserId = 42)
         runCurrent()
-        advanceTimeBy(1_999L)
+        advanceTimeBy(dwell - 1)
         runCurrent()
 
         assertEquals(0, fakeClient.resolveEffectsCallCount)
@@ -1742,7 +1742,7 @@ class GameScreenViewModelTest {
     }
 
     @Test
-    fun resolveEffectsSendsWhenSingleCardAnimationFinishes() = runTest {
+    fun resolveEffectsSendsWhenCoinAnimationFinishes() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
 
@@ -1771,48 +1771,7 @@ class GameScreenViewModelTest {
         fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
 
         runCurrent()
-        advanceTimeBy(1_999L)
-        runCurrent()
-
-        assertEquals(0, fakeClient.resolveEffectsCallCount)
-
-        viewModel.finishResolveEffectsAnimation()
-        runCurrent()
-
-        assertEquals(1, fakeClient.resolveEffectsCallCount)
-    }
-
-    @Test
-    fun resolveEffectsSendsWhenMultipleCardAnimationsFinish() = runTest {
-        val fakeClient = FakeWebSocketClient()
-        val viewModel = viewModel(fakeClient, userId = 42)
-
-        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
-        fakeClient.emitActiveGameId(7)
-        fakeClient.emitPlayers(
-            listOf(
-                PlayerCoinState(
-                    id = "7",
-                    displayName = "alice",
-                    coins = 5,
-                    isCurrentPlayer = true,
-                    isActivePlayer = true
-                )
-            )
-        )
-        fakeClient.emitDiceResult(listOf(1))
-        fakeClient.emitPlayerCards(
-            mapOf(
-                7 to listOf(
-                    PlayerCardState(CardType.WHEAT_FIELD, quantity = 2)
-                )
-            )
-        )
-        fakeClient.emitActivePlayerId(42)
-        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
-
-        runCurrent()
-        advanceTimeBy(3_999L)
+        advanceTimeBy(GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS - 1)
         runCurrent()
 
         assertEquals(0, fakeClient.resolveEffectsCallCount)
