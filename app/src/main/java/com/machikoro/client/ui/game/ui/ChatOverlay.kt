@@ -140,7 +140,7 @@ fun ChatOverlay(
                         items(messages.reversed()) { msg ->
                             Text(
                                 text = "${msg.sender}: ${msg.message}",
-                                color = if(msg.sender == currentPlayer) PrimaryOrange else PrimaryBeigeLight,
+                                color = TextBlueDark,
                                 modifier = Modifier.padding(vertical = 4.dp)
                             )
                         }

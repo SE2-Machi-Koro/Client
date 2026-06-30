@@ -19,7 +19,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
-import com.machikoro.client.ui.theme.Black
 import com.machikoro.client.ui.theme.ButtonBorderBlue
 import com.machikoro.client.ui.theme.PrimaryBlueDark
 import com.machikoro.client.ui.theme.TextBlueDark
