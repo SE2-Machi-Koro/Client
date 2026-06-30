@@ -741,7 +741,7 @@ fun GameScreen(
                 containerColor = ButtonBeigeLight
             ) {
                 Icon(
-                    Icons.AutoMirrored.Filled.Chat,
+                    Icons.Default.Chat,
                     contentDescription = "Chat",
                     tint = TextBlueDark
                 )
