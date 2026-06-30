@@ -730,19 +730,24 @@ fun GameScreen(
                 .padding(16.dp),
         ) {
             // Floating chat button
-            FloatingActionButton(
-                onClick = {
-                    chatOpen = !chatOpen
-                },
-                containerColor = ButtonBeigeLight
-            ) {
-                Icon(
-                    Icons.Default.Chat,
-                    contentDescription = "Chat",
-                    tint = TextBlueDark
-                )
+            // available all time except when active player is buying
+            if(!(state.isBuyingPhase && state.isActivePlayer)) {
+                FloatingActionButton(
+                    onClick = {
+                        chatOpen = !chatOpen
+                    },
+                    containerColor =  Color(0xCCC4D3DC).copy(alpha = 0.8f)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Chat,
+                        contentDescription = "Chat",
+                        tint = TextBlueDark,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
             }
-        }
+            }
+
         // Chat overlay
         ChatOverlay(
             //used to compare the current player with the chat message sender to highlight own messages
