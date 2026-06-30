@@ -1798,6 +1798,48 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun rerollAutoResolvesEffectsWhenServerReturnsDifferentDice() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        fakeClient.enterRadioTowerRerollDecision() // emits diceResult listOf(6)
+        advanceUntilIdle()
+        assertEquals(0, fakeClient.resolveEffectsCallCount)
+
+        viewModel.rerollDice(diceCount = 1)
+        runCurrent()
+        // Server broadcasts DICE_REROLLED with a different total.
+        fakeClient.emitDiceResult(listOf(3))
+        advanceUntilIdle()
+
+        assertEquals(1, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
+    fun rerollAutoResolvesEffectsWhenServerReturnsSameDice() = runTest {
+        // #405: a Radio Tower reroll that lands the same total as the previous roll
+        // does not change diceResult, so isRolling must still be cleared off the
+        // dice-roll tick — otherwise the active player is stuck in RESOLVE_EFFECTS
+        // (auto-resolve never fires) until the roll timeout.
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+        fakeClient.enterRadioTowerRerollDecision() // emits diceResult listOf(6)
+        advanceUntilIdle()
+        assertEquals(0, fakeClient.resolveEffectsCallCount)
+
+        viewModel.rerollDice(diceCount = 1)
+        runCurrent()
+        // Server broadcasts DICE_REROLLED with the same total: diceResult unchanged,
+        // only the tick bumps.
+        fakeClient.emitDiceResult(listOf(6))
+        runCurrent()
+        advanceTimeBy(GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS + 1)
+        runCurrent()
+
+        assertFalse(viewModel.state.value.isRolling)
+        assertEquals(1, fakeClient.resolveEffectsCallCount)
+    }
+
+    @Test
     fun resolveEffectsDoesNotAutoSendForNonActivePlayer() = runTest {
         val fakeClient = FakeWebSocketClient()
         viewModel(fakeClient, userId = 1)
