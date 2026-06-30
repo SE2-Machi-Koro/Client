@@ -64,7 +64,11 @@ During `RESOLVE_EFFECTS`, the active player may additionally send
 `/app/game.rerollDice` (#326) when they have built a `RADIO_TOWER` and a roll
 already exists this turn. The client gates this to the active player with a
 Radio Tower and limits it to once per turn (renewed on turn rotation); the
-server stays authoritative for the once-per-turn rule and the result.
+server stays authoritative for the once-per-turn rule and the result. The
+`DICE_REROLLED` broadcast is treated as a roll completion even when it lands the
+same total as the previous roll (#405), so the client always leaves the rolling
+state and auto-advances `RESOLVE_EFFECTS` rather than waiting on the roll
+timeout.
 
 ## Handled Message Types
 

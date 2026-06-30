@@ -199,8 +199,17 @@ class GameScreenViewModel(
             // #346: drives the non-active player's roll/reroll animation. Bumped
             // only on a real DICE_ROLLED/DICE_REROLLED frame, so a same-turn reroll
             // animates while the snapshot collapse ([x, y] -> [total]) does not.
+            //
+            // #405: the tick also ends the local "rolling" state. A Radio Tower
+            // reroll that lands the same total as the previous roll does not change
+            // diceResult, so the diceResult collector above never fires and never
+            // clears isRolling — leaving the active player stuck in RESOLVE_EFFECTS
+            // (auto-resolve gates on !isRolling) until the roll timeout. Clearing it
+            // here, off the always-bumped tick, treats every DICE_REROLLED frame as a
+            // roll completion regardless of whether the numbers changed.
             webSocketClient.diceRollTick.collect { tick ->
-                mutableState.update { it.copy(diceRollTick = tick) }
+                cancelPendingRollTimeout()
+                mutableState.update { it.copy(diceRollTick = tick, isRolling = false) }
             }
         }
         viewModelScope.launch {
