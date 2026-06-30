@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
@@ -82,7 +83,6 @@ import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.shared.DecreasingLineTimer
 import com.machikoro.client.ui.shared.SecondaryActionButton
-import com.machikoro.client.ui.theme.ButtonBeigeLight
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.PrimaryBlueDark
 import com.machikoro.client.ui.theme.PrimaryOrange
