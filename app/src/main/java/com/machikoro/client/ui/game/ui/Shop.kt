@@ -72,17 +72,32 @@ internal fun BuyingPhaseShop(
 ) {
     // displays purchased card after SUCCESS
     if(state.purchaseState == PurchaseState.SUCCESS) {
-        state.purchaseFeedbackItemType?.let {
-            AnimatedItem(
-                delayMillis = 0,
-                animationType = AnimationType.Bounce
-            ) {
-                PurchaseDisplay(
-                    modifier = Modifier.offset(y = -30.dp),
-                    drawable = drawableForPlayerCard(it),
-                    name = state.activePlayerUsername,
-                    isActive = state.isActivePlayer
-                )
+        val purchasedLandmark = state.purchaseFeedbackItemType?.let { itemType ->
+            runCatching { LandmarkType.valueOf(itemType) }.getOrNull()
+        }
+
+        if (
+            state.purchaseFeedbackType == PurchaseType.LANDMARK &&
+            purchasedLandmark != null
+        ) {
+            LandmarkPurchaseReveal(
+                state = state,
+                purchasedLandmark = purchasedLandmark,
+                modifier = Modifier.offset(y = (-30).dp)
+            )
+        } else {
+            state.purchaseFeedbackItemType?.let {
+                AnimatedItem(
+                    delayMillis = 0,
+                    animationType = AnimationType.Bounce
+                ) {
+                    PurchaseDisplay(
+                        modifier = Modifier.offset(y = -30.dp),
+                        drawable = drawableForPlayerCard(it),
+                        name = state.activePlayerUsername,
+                        isActive = state.isActivePlayer
+                    )
+                }
             }
         }
     } else {

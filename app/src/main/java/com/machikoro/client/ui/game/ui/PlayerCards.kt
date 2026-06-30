@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,6 +43,8 @@ import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.R
 import com.machikoro.client.ui.shared.BasicText
+import com.machikoro.client.ui.shared.AnimatedItem
+import com.machikoro.client.ui.shared.AnimationType
 import com.machikoro.client.ui.theme.TextBlueDark
 
 
@@ -169,6 +172,86 @@ private fun LandmarkDisplay(
         height = height,
         modifier = modifier
     )
+}
+
+internal data class LandmarkPurchaseRevealUi(
+    val landmarks: List<PlayerLandmarkState>,
+    val title: String,
+    val message: String,
+)
+
+internal fun GameScreenState.landmarkPurchaseRevealUi(
+    purchasedLandmark: LandmarkType,
+): LandmarkPurchaseRevealUi {
+    val activePlayer = players.firstOrNull { it.isActivePlayer }
+    val activePlayerId = activePlayer?.id?.toIntOrNull()
+    val landmarksByType = playerLandmarks[activePlayerId]
+        .orEmpty()
+        .associateBy { it.landmarkType }
+
+    val landmarks = LandmarkType.entries.map { landmarkType ->
+        val landmark = landmarksByType[landmarkType]
+            ?: PlayerLandmarkState(landmarkType = landmarkType, isBuilt = false)
+
+        if (landmarkType == purchasedLandmark) {
+            landmark.copy(isBuilt = true)
+        } else {
+            landmark
+        }
+    }
+    val allLandmarksBuilt = landmarks.all { it.isBuilt }
+    val playerName = activePlayer?.displayName ?: "Player"
+
+    return LandmarkPurchaseRevealUi(
+        landmarks = landmarks,
+        title = if (isActivePlayer) "Your landmarks" else "$playerName's landmarks",
+        message = when {
+            allLandmarksBuilt && isActivePlayer -> "You won!"
+            allLandmarksBuilt -> "$playerName wins!"
+            isActivePlayer -> "You are closer to winning!"
+            else -> "$playerName is closer to winning!"
+        }
+    )
+}
+
+@Composable
+internal fun LandmarkPurchaseReveal(
+    state: GameScreenState,
+    purchasedLandmark: LandmarkType,
+    modifier: Modifier = Modifier,
+) {
+    val reveal = state.landmarkPurchaseRevealUi(purchasedLandmark)
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        BasicText(reveal.title)
+        BasicText(reveal.message)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            reveal.landmarks.forEach { landmark ->
+                if (landmark.landmarkType == purchasedLandmark) {
+                    AnimatedItem(
+                        delayMillis = 250,
+                        animationType = AnimationType.Bounce
+                    ) {
+                        LandmarkDisplay(
+                            item = landmark,
+                            width = 155.dp,
+                            height = 175.dp
+                        )
+                    }
+                } else {
+                    LandmarkDisplay(
+                        item = landmark,
+                        width = 155.dp,
+                        height = 175.dp
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -344,5 +427,34 @@ private fun PlayerCardsDisplayPreview() {
                 )
             )
         )
+    )
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun LandmarkPurchaseRevealPreview() {
+    LandmarkPurchaseReveal(
+        state = GameScreenState.initial().copy(
+            myUserId = 42,
+            activePlayerId = 42,
+            players = listOf(
+                com.machikoro.client.domain.model.state.PlayerCoinState(
+                    id = "1",
+                    displayName = "Player 1",
+                    coins = 4,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true
+                )
+            ),
+            playerLandmarks = mapOf(
+                1 to listOf(
+                    PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
+                    PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = false),
+                    PlayerLandmarkState(LandmarkType.AMUSEMENT_PARK, isBuilt = false),
+                    PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = false)
+                )
+            )
+        ),
+        purchasedLandmark = LandmarkType.SHOPPING_MALL
     )
 }
