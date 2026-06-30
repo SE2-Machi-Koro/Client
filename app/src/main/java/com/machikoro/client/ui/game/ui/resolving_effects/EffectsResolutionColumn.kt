@@ -35,7 +35,7 @@ fun EffectsResolutionColumn(
         LocalOverscrollFactory provides null
     ) {
         LazyColumn(
-            modifier = Modifier.width(145.dp),
+            modifier = Modifier.width(140.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {

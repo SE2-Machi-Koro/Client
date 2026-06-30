@@ -27,9 +27,9 @@ fun CardsStack(
     modifier: Modifier = Modifier
 ) {
     val overlap = 36.dp
-    val cardHeight = 175.dp
-    val cardWidth = 155.dp
-    val shadowWidth = cardWidth * 0.88f
+    val cardHeight = 165.dp
+    val cardWidth = 140.dp
+    val shadowWidth = cardWidth
 
     Box(
         modifier = modifier.height(
@@ -56,8 +56,8 @@ fun CardsStack(
                                 )
                             ),
                             shape = RoundedCornerShape(
-                                topStart = 10.dp,
-                                topEnd = 10.dp
+                                topStart = 8.dp,
+                                topEnd = 8.dp
                             )
                         )
                 )
@@ -79,8 +79,8 @@ fun CardsStack(
 fun CardDisplay(
     cardType: CardType,
     modifier: Modifier = Modifier,
-    width: Dp = 155.dp,
-    height: Dp = 175.dp,
+    width: Dp = 140.dp,
+    height: Dp = 165.dp,
 ) {
     Box(
         modifier = modifier.wrapContentSize()
