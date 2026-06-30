@@ -385,13 +385,11 @@ fun DiceSection(
                         if (state.hasTrainStation) frozenDiceCount ?: selectedDiceCount ?: state.requestedDiceCount else 1
                     ActionButton(
                         onClick = {
-                            if (state.isRolling) return@ActionButton
                             SoundManager.play(GameSound.DICE_ROLL)
                             frozenDiceCount = chosen
                             isAnimating = true
                             onRollDice(chosen)
                         },
-                        enabled = !state.isRolling,
                         label = "Roll " + (if (chosen > 1) "Two Dice" else "One Die"),
                         modifier = Modifier.semantics {
                             contentDescription = "Roll Dice"
@@ -405,14 +403,12 @@ fun DiceSection(
                     val rerollCount = frozenDiceCount ?: state.diceResult?.size ?: 1
                     ActionButton(
                         onClick = {
-                            if (state.isRolling) return@ActionButton
                             SoundManager.play(GameSound.DICE_ROLL)
                             hasRerolled = true
                             frozenDiceCount = rerollCount
                             isAnimating = true
                             onReroll(rerollCount)
                         },
-                        enabled = !state.isRolling,
                         label = "Roll Dice Again",
                         modifier = Modifier.semantics {
                             contentDescription = "Reroll Dice"
