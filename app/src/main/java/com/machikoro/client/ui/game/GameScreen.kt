@@ -29,12 +29,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -71,6 +73,10 @@ import com.machikoro.client.ui.game.ui.PlayersTopBar
 import com.machikoro.client.ui.game.ui.ResolvingEffectsView
 import com.machikoro.client.ui.game.ui.RoundIndicator
 import com.machikoro.client.ui.game.ui.withResolvingEffectsPreviewCoins
+import com.machikoro.client.ui.game.ui.coin_animation.CoinChangeHighlight
+import com.machikoro.client.ui.game.ui.coin_animation.CoinTransferOverlay
+import com.machikoro.client.ui.game.ui.coin_animation.CoinTransferUi
+import com.machikoro.client.ui.game.ui.coin_animation.buildCoinTransfers
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.BasicText
@@ -101,6 +107,7 @@ fun GameScreen(
     onRollDice: (diceCount: Int) -> Unit = {},
     onReroll: (diceCount: Int) -> Unit = {},
     onSkipReroll: () -> Unit = {},
+    onResolveEffectsAnimationFinished: () -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     onEndGame: () -> Unit = {},
@@ -123,7 +130,72 @@ fun GameScreen(
     // dialog opens this confirmation. Accusing wrongly costs a coin, so we
     // always confirm first.
     var accuseTargetId by remember { mutableStateOf<String?>(null) }
-    val coinDisplayState = remember(state) { state.withResolvingEffectsPreviewCoins() }
+    val resolvingEffectsCoinState = remember(state) {
+        state.withResolvingEffectsPreviewCoins()
+    }
+    val currentCoins = remember(state.players) {
+        state.players.mapNotNull { player ->
+            player.id.toIntOrNull()?.let { it to player.coins }
+        }.toMap()
+    }
+    val resolvedCoins = remember(resolvingEffectsCoinState.players) {
+        resolvingEffectsCoinState.players.mapNotNull { player ->
+            player.id.toIntOrNull()?.let { it to player.coins }
+        }.toMap()
+    }
+    val coinTransfers = remember(state.gamePhase, currentCoins, resolvedCoins) {
+        if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
+            buildCoinTransfers(
+                previousCoins = currentCoins,
+                currentCoins = resolvedCoins,
+            )
+        } else {
+            emptyList()
+        }
+    }
+    val animationKey = remember(
+        state.gameId,
+        state.roundNumber,
+        state.activePlayerId,
+        state.diceResult,
+        coinTransfers,
+    ) {
+        listOf(
+            state.gameId,
+            state.roundNumber,
+            state.activePlayerId,
+            state.diceResult,
+            coinTransfers,
+        )
+    }
+    var coinAnimationFinished by remember(animationKey) {
+        mutableStateOf(coinTransfers.isEmpty())
+    }
+    var activeCoinTransfer by remember(animationKey) {
+        mutableStateOf<CoinTransferUi?>(null)
+    }
+    val playerCoinPositions = remember {
+        mutableStateMapOf<Int, Offset>()
+    }
+    val coinHighlights = remember(activeCoinTransfer) {
+        buildMap {
+            activeCoinTransfer?.fromPlayerId?.let {
+                put(it, CoinChangeHighlight.LOSS)
+            }
+            activeCoinTransfer?.toPlayerId?.let {
+                put(it, CoinChangeHighlight.GAIN)
+            }
+        }
+    }
+
+    LaunchedEffect(animationKey) {
+        coinAnimationFinished = coinTransfers.isEmpty()
+        activeCoinTransfer = null
+        if (state.gamePhase == GamePhase.RESOLVE_EFFECTS && coinTransfers.isEmpty()) {
+            onResolveEffectsAnimationFinished()
+        }
+    }
+
     val accuseTarget = accuseTargetId?.let { id -> state.players.firstOrNull { it.id == id } }
     if (accuseTarget != null) {
         AlertDialog(
@@ -163,7 +235,7 @@ fun GameScreen(
             state.gamePhase == GamePhase.ROLL_DICE -> 20
             // Matches the actual auto-advance dwell so the countdown the player sees
             // is the real time until RESOLVE_EFFECTS ends, not a longer, unrelated number.
-            state.gamePhase == GamePhase.RESOLVE_EFFECTS -> GameScreenViewModel.RESOLVE_EFFECTS_TIMER_SECONDS
+            state.gamePhase == GamePhase.RESOLVE_EFFECTS -> 0
             state.purchaseState == PurchaseState.SUCCESS -> 5
             else -> 0
         }
@@ -314,12 +386,16 @@ fun GameScreen(
                         )
 
                         PlayersTopBar(
-                            players = coinDisplayState.players,
+                            players = state.players,
                             playerLandmarks =
                                 state.playerLandmarks,
                             playerCards = state.playerCards,
                             onAccusePlayer = { accuseTargetId = it },
                             canAccuse = canAccuse,
+                            coinHighlights = coinHighlights,
+                            onCoinBadgePositioned = { playerId, center ->
+                                playerCoinPositions[playerId] = center
+                            },
                             modifier = Modifier.align(
                                 Alignment.Center
                             ),
@@ -380,12 +456,20 @@ fun GameScreen(
             leftContent = {
                 Box(modifier = Modifier
                     .fillMaxHeight()) {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .offset(y = SIDE_CONTENT_OFFSET.dp)
+                            .offset(y = SIDE_CONTENT_OFFSET.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         if (state.gamePhase != GamePhase.ROLL_DICE) {
+                            if (
+                                state.gamePhase == GamePhase.RESOLVE_EFFECTS &&
+                                !state.isActivePlayer
+                            ) {
+                                BasicText("${state.activePlayerUsername} rolled:")
+                            }
                             state.diceResult?.let {
                                 DiceResultDisplay(dice = it,
                                     diceSize = 42.dp,
@@ -482,7 +566,7 @@ fun GameScreen(
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.Center)
-                                    .offset(x = 5.dp, y = 50.dp),
+                                    .offset(x = 5.dp, y = 20.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
@@ -541,7 +625,16 @@ fun GameScreen(
                 ) {
 
                     PlayerCoinField(
-                        state = coinDisplayState,
+                        state = state,
+                        highlight = state.players
+                            .firstOrNull { it.isCurrentPlayer }
+                            ?.id
+                            ?.toIntOrNull()
+                            ?.let { coinHighlights[it] }
+                            ?: CoinChangeHighlight.NONE,
+                        onCoinPositioned = { playerId, center ->
+                            playerCoinPositions[playerId] = center
+                        },
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)
@@ -660,6 +753,19 @@ fun GameScreen(
             onSendMessageClick = onSendChatMessage,
             onClose = { chatOpen = false }
         )
+
+        if (state.gamePhase == GamePhase.RESOLVE_EFFECTS && !coinAnimationFinished) {
+            CoinTransferOverlay(
+                transfers = coinTransfers,
+                playerPositions = playerCoinPositions,
+                modifier = Modifier.fillMaxSize(),
+                onTransferChanged = { activeCoinTransfer = it },
+                onFinished = {
+                    coinAnimationFinished = true
+                    onResolveEffectsAnimationFinished()
+                },
+            )
+        }
     }
     InitializationLoadingOverlay(
         connectionStatus = state.connectionStatus,

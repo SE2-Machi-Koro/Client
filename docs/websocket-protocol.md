@@ -81,6 +81,13 @@ server stays authoritative for the once-per-turn rule and the result.
 | `SYNC` | Restores a full reconnect snapshot from `/user/queue/game-sync`. |
 | `ERROR` | Emits lobby or purchase errors; auth failures sign the user out. |
 
+For resolving-effects animation, the client currently uses authoritative
+snapshots plus a best-effort local preview. `GAME_ACTION` with
+`payload.event == "EFFECTS_RESOLVED"` may include `payload.coinDeltas`, which
+the client currently uses for local-player coin sound effects. The server
+contract needed for fully authoritative resolving-effects animation is
+documented in `docs/resolving-effects-server-contract.md`.
+
 ## Reconnect
 
 Unexpected WebSocket close/failure schedules automatic reconnect with backoff.

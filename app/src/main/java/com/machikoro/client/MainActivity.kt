@@ -290,6 +290,8 @@ class MainActivity : ComponentActivity() {
                         onRollDice = gameScreenViewModel::rollDice,
                         onReroll = gameScreenViewModel::rerollDice,
                         onSkipReroll = gameScreenViewModel::skipReroll,
+                        onResolveEffectsAnimationFinished =
+                            gameScreenViewModel::finishResolveEffectsAnimation,
                         cheatRecommendation = cheatRecommendation,
                         onShake = gameScreenViewModel::onShake,
                         onAccuse = { gameScreenViewModel.accuse(it) },
