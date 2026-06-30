@@ -541,17 +541,21 @@ fun GameScreen(
                     }
 
                     else if (state.isBuyingPhase) {
-                        var delayShop = 0L
 
-                    LaunchedEffect(state.isBuyingPhase) {
-                        if(state.isBuyingPhase) {
-                            delayShop = 5000L
-                            delay(delayShop)
-                            if(state.purchaseState != PurchaseState.SUCCESS
-                                || state.purchaseState != PurchaseState.PENDING) {
-                                onTurnFlowAction()
-                            } else if(state.purchaseState == PurchaseState.SUCCESS) delayShop = 0L
-                        } else delayShop = 0L
+                    LaunchedEffect(state.isBuyingPhase, state.purchaseState) {
+                        if (!state.isBuyingPhase) return@LaunchedEffect
+
+                        if (state.purchaseState == PurchaseState.SUCCESS ||
+                            state.purchaseState == PurchaseState.PENDING
+                        ) return@LaunchedEffect
+
+                        delay(SHOP_VIEW_DELAY)
+
+                        if (state.purchaseState != PurchaseState.SUCCESS &&
+                            state.purchaseState != PurchaseState.PENDING
+                        ) {
+                            onTurnFlowAction()
+                        }
                     }
                             BuyingPhaseShop(
                                 state = state,
