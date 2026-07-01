@@ -455,7 +455,8 @@ fun GameScreen(
             // =====================================
             leftContent = {
                 Box(modifier = Modifier
-                    .fillMaxHeight()) {
+                    .fillMaxHeight()
+                    .width(90.dp)) {
                     Column(
                         modifier = Modifier
                             .align(Alignment.Center)
@@ -464,12 +465,6 @@ fun GameScreen(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         if (state.gamePhase != GamePhase.ROLL_DICE) {
-                            if (
-                                state.gamePhase == GamePhase.RESOLVE_EFFECTS &&
-                                !state.isActivePlayer
-                            ) {
-                                BasicText("${state.activePlayerUsername} rolled:")
-                            }
                             state.diceResult?.let {
                                 DiceResultDisplay(dice = it,
                                     diceSize = 42.dp,
@@ -497,7 +492,7 @@ fun GameScreen(
             // =====================================
             centerContent = {
 
-            Box(modifier = Modifier.align(Alignment.Center)) {
+            Box(modifier = Modifier.fillMaxSize().align(Alignment.Center)) {
                 if(
                     showOwnCards
                     && isCardViewPossible
@@ -571,7 +566,10 @@ fun GameScreen(
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 ResolvingEffectsView(state = state,
-                                    modifier = Modifier.offset(y = -50.dp))
+                                    modifier = Modifier.offset(y = (-50).dp,
+                                        x = (10).dp
+                                    )
+                                )
 
                                 if (
                                     showRadioTowerReroll &&
@@ -621,7 +619,7 @@ fun GameScreen(
             rightContent = {
                 Box(modifier = Modifier
                     .fillMaxHeight()
-                    .width(140.dp)
+                    .width(120.dp)
                 ) {
 
                     PlayerCoinField(
@@ -780,7 +778,7 @@ fun GameScreen(
 
 
 private fun GameScreenState.turnFlowActionLabel(): String? = when (gamePhase) {
-    GamePhase.BUY_OR_BUILD -> "Buy card"
+    GamePhase.BUY_OR_BUILD -> "Buy"
     // RESOLVE_EFFECTS auto-advances now (#302) — no manual "Resolve effects" button.
     GamePhase.NONE,
     GamePhase.ROLL_DICE,
