@@ -1,12 +1,13 @@
 package com.machikoro.client.config
 
-import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class AppConfigTest {
     @Test
     fun exposesConfiguredDefaultUrls() {
-        assertEquals("https://machi-koro.up.railway.app", AppConfig.backendBaseUrl)
-        assertEquals("wss://machi-koro.up.railway.app/ws", AppConfig.websocketUrl)
+        // Backend is chosen via backend.properties — verify config is wired, not a specific URL.
+        assertFalse("backendBaseUrl must not be empty", AppConfig.backendBaseUrl.isBlank())
+        assertFalse("websocketUrl must not be empty", AppConfig.websocketUrl.isBlank())
     }
 }

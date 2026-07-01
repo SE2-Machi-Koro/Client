@@ -43,7 +43,7 @@ import kotlinx.coroutines.launch
 // diceResult, but if that message is lost or delayed the UI must not animate forever.
 private const val DICE_ROLL_TIMEOUT_MS = 10_000L
 // ponytail: 1.5s is enough to show the card; 5s felt like the game froze
-private const val PURCHASE_DISPLAY_DELAY = 1_500L
+private const val PURCHASE_DISPLAY_DELAY = 5_000L
 
 class GameScreenViewModel(
     private val webSocketClient: WebSocketClient,
