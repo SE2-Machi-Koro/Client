@@ -33,13 +33,22 @@ val localProperties = Properties().apply {
         ?.use(::load)
 }
 
+// Edit backend.properties at the project root to switch between railway/render/uni
+val backendProperties = Properties().apply {
+    rootProject.file("backend.properties")
+        .takeIf { it.isFile }
+        ?.inputStream()
+        ?.use(::load)
+}
+
 fun buildProperty(name: String, defaultValue: String) =
     providers.gradleProperty(name)
         .orElse(providers.provider { localProperties.getProperty(name) })
+        .orElse(providers.provider { backendProperties.getProperty(name) })
         .orElse(defaultValue)
 
-val backendBaseUrl = buildProperty("backendBaseUrl", "https://machi-koro.up.railway.app")
-val websocketUrl = buildProperty("websocketUrl", "wss://machi-koro.up.railway.app/ws")
+val backendBaseUrl = buildProperty("backendBaseUrl", "")
+val websocketUrl = buildProperty("websocketUrl", "")
 
 android {
     namespace = "com.machikoro.client"
