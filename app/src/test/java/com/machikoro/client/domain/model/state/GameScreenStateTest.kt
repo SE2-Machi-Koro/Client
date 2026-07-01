@@ -25,6 +25,7 @@ class GameScreenStateTest {
         assertEquals(null, state.selectedPurchaseItemType)
         assertEquals(null, state.pendingPurchaseItemType)
         assertEquals(null, state.purchaseFeedbackItemType)
+        assertEquals(null, state.purchaseFeedbackType)
         assertEquals(null, state.purchaseMessage)
         assertEquals(false, state.isBuyingPhase)
     }

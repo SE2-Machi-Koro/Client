@@ -32,6 +32,8 @@ data class GameScreenState(
     val pendingPurchaseItemType: String? = null,
     // Keeps button feedback tied to the specific item that was bought or failed.
     val purchaseFeedbackItemType: String? = null,
+    // Distinguishes landmark reveals from regular establishment purchase feedback.
+    val purchaseFeedbackType: PurchaseType? = null,
     // Short feedback text shown in the shop for pending, success, or retryable errors.
     val purchaseMessage: String? = null,
     val isRolling: Boolean = false,
@@ -99,6 +101,7 @@ data class GameScreenState(
             selectedPurchaseItemType = null,
             pendingPurchaseItemType = null,
             purchaseFeedbackItemType = null,
+            purchaseFeedbackType = null,
             purchaseMessage = null,
             isRolling = false,
             requestedDiceCount = 1,
