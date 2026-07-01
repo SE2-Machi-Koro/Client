@@ -8,6 +8,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -33,21 +34,27 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
 import com.machikoro.client.domain.model.state.ChatMessageState
 import com.machikoro.client.ui.theme.Black
 import com.machikoro.client.ui.theme.CardBlueBackground
 import com.machikoro.client.ui.theme.PrimaryBeigeLight
+import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.ShadowDarkMedium
+import com.machikoro.client.ui.theme.TextBlueDark
 import com.machikoro.client.ui.theme.TextWhite
+import com.machikoro.client.ui.theme.White
 
 @Composable
 fun ChatOverlay(
     currentPlayer: String,
     open: Boolean,
-    onClose: () -> Unit,
+    onClose: (() -> Unit)? = null,
     messages: List<ChatMessageState>,
-    onSendMessageClick: (String) -> Unit
+    onSendMessageClick: ((String) -> Unit)? = null
 ) {
 
     AnimatedVisibility(
@@ -68,7 +75,7 @@ fun ChatOverlay(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() }
                     ) {
-                        onClose()
+                        onClose?.invoke()
                     }
             )
             Card(
@@ -80,7 +87,7 @@ fun ChatOverlay(
 
                 // Semi transparent background
                 colors = CardDefaults.cardColors(
-                    containerColor = Black.copy(alpha = 0.65f)
+                    containerColor = Color(0xCCC4D3DC).copy(alpha = 0.8f)
                 )
             ) {
 
@@ -90,30 +97,33 @@ fun ChatOverlay(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(ShadowDarkMedium)
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .background(Color(0xCCC4D3DC).copy(alpha = 0.8f))
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = "Chat",
-                            color = PrimaryBeigeLight,
-                            fontWeight = FontWeight.Bold
+                            color = TextBlueDark,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 24.sp,
                         )
 
                         Spacer(modifier = Modifier.weight(1f))
 
-                        IconButton(
-                            onClick = onClose,
-                            colors = IconButtonDefaults.iconButtonColors(
-                                contentColor = TextWhite
-                            ),
+                        onClose?.let {
+                            IconButton(
+                                onClick = it,
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    contentColor = TextWhite
+                                ),
 
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close chat",
-                                tint = PrimaryBeigeLight
-                            )
+                                ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close chat",
+                                    tint = TextBlueDark
+                                )
+                            }
                         }
                     }
 
@@ -130,7 +140,7 @@ fun ChatOverlay(
                         items(messages.reversed()) { msg ->
                             Text(
                                 text = "${msg.sender}: ${msg.message}",
-                                color = if(msg.sender == currentPlayer) CardBlueBackground else PrimaryBeigeLight,
+                                color = TextBlueDark,
                                 modifier = Modifier.padding(vertical = 4.dp)
                             )
                         }
@@ -138,11 +148,24 @@ fun ChatOverlay(
 
                     ChatInput(
                         onSend = { text ->
-                            onSendMessageClick(text)
+                            onSendMessageClick?.invoke(text)
                         }
                     )
                 }
             }
         }
     }
+}
+
+
+@Preview
+@Composable
+fun prev() {
+    ChatOverlay(
+        currentPlayer = "Me",
+        open = true,
+        messages = emptyList<ChatMessageState>(),
+        onClose = null,
+        onSendMessageClick = null,
+    )
 }
