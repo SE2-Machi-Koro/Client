@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -182,6 +183,12 @@ internal data class LandmarkPurchaseRevealUi(
     val message: String,
 )
 
+internal fun landmarkRevealCardWidth(
+    availableWidth: Dp,
+    spacing: Dp = 8.dp,
+): Dp = ((availableWidth - spacing * 3) / 4)
+    .coerceIn(1.dp, 155.dp)
+
 internal fun GameScreenState.landmarkPurchaseRevealUi(
     purchasedLandmark: LandmarkType,
 ): LandmarkPurchaseRevealUi {
@@ -226,32 +233,41 @@ internal fun LandmarkPurchaseReveal(
     val reveal = state.landmarkPurchaseRevealUi(purchasedLandmark)
 
     Column(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            reveal.landmarks.forEach { landmark ->
-                if (
-                    landmark.landmarkType == purchasedLandmark &&
-                    animatePurchasedLandmark
-                ) {
-                    AnimatedItem(
-                        delayMillis = 250,
-                        animationType = AnimationType.Bounce
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            val spacing = 8.dp
+            val cardWidth = landmarkRevealCardWidth(maxWidth, spacing)
+            val cardHeight = cardWidth * (175f / 155f)
+
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                reveal.landmarks.forEach { landmark ->
+                    if (
+                        landmark.landmarkType == purchasedLandmark &&
+                        animatePurchasedLandmark
                     ) {
+                        AnimatedItem(
+                            delayMillis = 250,
+                            animationType = AnimationType.Bounce
+                        ) {
+                            LandmarkDisplay(
+                                item = landmark,
+                                width = cardWidth,
+                                height = cardHeight
+                            )
+                        }
+                    } else {
                         LandmarkDisplay(
                             item = landmark,
-                            width = 155.dp,
-                            height = 175.dp
+                            width = cardWidth,
+                            height = cardHeight
                         )
                     }
-                } else {
-                    LandmarkDisplay(
-                        item = landmark,
-                        width = 155.dp,
-                        height = 175.dp
-                    )
                 }
             }
         }

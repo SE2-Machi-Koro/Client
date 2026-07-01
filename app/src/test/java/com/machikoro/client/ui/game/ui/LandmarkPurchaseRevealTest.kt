@@ -1,5 +1,6 @@
 package com.machikoro.client.ui.game.ui
 
+import androidx.compose.ui.unit.dp
 import com.machikoro.client.domain.enums.LandmarkType
 import com.machikoro.client.domain.model.state.GameScreenState
 import com.machikoro.client.domain.model.state.PlayerCoinState
@@ -9,6 +10,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LandmarkPurchaseRevealTest {
+    @Test
+    fun landmarkCardsUseNormalSizeWhenEnoughWidthIsAvailable() {
+        assertEquals(155.dp, landmarkRevealCardWidth(700.dp))
+    }
+
+    @Test
+    fun landmarkCardsShrinkEquallyToFitNarrowLayouts() {
+        assertEquals(119.dp, landmarkRevealCardWidth(500.dp))
+    }
+
     @Test
     fun activePlayerRevealShowsAllLandmarksAndBuildsPurchasedLandmark() {
         val state = state(

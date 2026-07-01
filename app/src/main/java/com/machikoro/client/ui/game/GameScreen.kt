@@ -541,25 +541,30 @@ fun GameScreen(
                     }
 
                     else if (state.isBuyingPhase) {
-                        var delayShop = 0L
+                        LaunchedEffect(
+                            state.isBuyingPhase,
+                            state.isActivePlayer,
+                            state.purchaseState
+                        ) {
+                            val canAutoSkip =
+                                state.isBuyingPhase &&
+                                    state.isActivePlayer &&
+                                    state.purchaseState != PurchaseState.PENDING &&
+                                    state.purchaseState != PurchaseState.SUCCESS
 
-                    LaunchedEffect(state.isBuyingPhase) {
-                        if(state.isBuyingPhase) {
-                            delayShop = 5000L
-                            delay(delayShop)
-                            if(state.purchaseState != PurchaseState.SUCCESS
-                                || state.purchaseState != PurchaseState.PENDING) {
+                            if (canAutoSkip) {
+                                delay(SHOP_VIEW_DELAY)
                                 onTurnFlowAction()
-                            } else if(state.purchaseState == PurchaseState.SUCCESS) delayShop = 0L
-                        } else delayShop = 0L
-                    }
-                            BuyingPhaseShop(
-                                state = state,
-                                items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
-                                onPurchaseClick = onPurchaseClick,
-                                recommendedCardType = cheatRecommendation,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
+                            }
+                        }
+
+                        BuyingPhaseShop(
+                            state = state,
+                            items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
+                            onPurchaseClick = onPurchaseClick,
+                            recommendedCardType = cheatRecommendation,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
                     }
 
                     else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
