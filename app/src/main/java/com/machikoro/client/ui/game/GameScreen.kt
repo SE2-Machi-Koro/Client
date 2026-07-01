@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -536,17 +537,16 @@ fun GameScreen(
                     }
 
                     else if (state.isBuyingPhase) {
-                        var delayShop = 0L
+                        // Track live purchase state so the coroutine reads it after the delay
+                        val currentPurchaseState by rememberUpdatedState(state.purchaseState)
 
                     LaunchedEffect(state.isBuyingPhase) {
-                        if(state.isBuyingPhase) {
-                            delayShop = 5000L
-                            delay(delayShop)
-                            if(state.purchaseState != PurchaseState.SUCCESS
-                                || state.purchaseState != PurchaseState.PENDING) {
-                                onTurnFlowAction()
-                            } else if(state.purchaseState == PurchaseState.SUCCESS) delayShop = 0L
-                        } else delayShop = 0L
+                        // Fallback: auto-end turn after the visible countdown expires
+                        delay(SHOP_VIEW_DELAY)
+                        if (currentPurchaseState != PurchaseState.SUCCESS
+                            && currentPurchaseState != PurchaseState.PENDING) {
+                            onTurnFlowAction()
+                        }
                     }
                             BuyingPhaseShop(
                                 state = state,
