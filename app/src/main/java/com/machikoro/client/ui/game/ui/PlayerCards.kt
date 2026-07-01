@@ -249,6 +249,8 @@ internal fun LandmarkPurchaseReveal(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        BasicText("${reveal.title} - ${reveal.message}")
+
         BoxWithConstraints(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
@@ -283,7 +285,6 @@ internal fun LandmarkPurchaseReveal(
                 }
             }
         }
-        BasicText("${reveal.title} - ${reveal.message}")
     }
 }
 
