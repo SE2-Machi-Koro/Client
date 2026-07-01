@@ -53,6 +53,36 @@ class LandmarkPurchaseRevealTest {
     }
 
     @Test
+    fun activePlayerWithOneLandmarkLeftGetsEncouragement() {
+        val state = state(
+            myUserId = 42,
+            landmarks = listOf(
+                PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
+                PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = true)
+            )
+        )
+
+        val reveal = state.landmarkPurchaseRevealUi(LandmarkType.AMUSEMENT_PARK)
+
+        assertEquals("Only 1 landmark left - keep going!", reveal.message)
+    }
+
+    @Test
+    fun passivePlayerSeesWhenActivePlayerHasAlmostFinished() {
+        val state = state(
+            myUserId = 7,
+            landmarks = listOf(
+                PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
+                PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = true)
+            )
+        )
+
+        val reveal = state.landmarkPurchaseRevealUi(LandmarkType.AMUSEMENT_PARK)
+
+        assertEquals("Player 1 has almost finished!", reveal.message)
+    }
+
+    @Test
     fun finalLandmarkShowsCompletionMessage() {
         val state = state(
             myUserId = 42,

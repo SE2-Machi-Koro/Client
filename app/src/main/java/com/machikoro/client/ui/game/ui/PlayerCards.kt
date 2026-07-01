@@ -221,6 +221,7 @@ internal fun GameScreenState.landmarkPurchaseRevealUi(
         }
     }
     val allLandmarksBuilt = landmarks.all { it.isBuilt }
+    val remainingLandmarks = landmarks.count { !it.isBuilt }
     val playerName = activePlayer?.displayName ?: "Player"
 
     return LandmarkPurchaseRevealUi(
@@ -229,6 +230,10 @@ internal fun GameScreenState.landmarkPurchaseRevealUi(
         message = when {
             allLandmarksBuilt && isActivePlayer -> "You won!"
             allLandmarksBuilt -> "$playerName wins!"
+            remainingLandmarks == 1 && isActivePlayer ->
+                "Only 1 landmark left - keep going!"
+            remainingLandmarks == 1 ->
+                "$playerName has almost finished!"
             isActivePlayer -> "You are closer to winning!"
             else -> "$playerName is closer to winning!"
         }
@@ -249,7 +254,7 @@ internal fun LandmarkPurchaseReveal(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        BasicText("${reveal.title} - ${reveal.message}")
+        BasicText("${reveal.title}: ${reveal.message}")
 
         BoxWithConstraints(
             modifier = Modifier.fillMaxWidth(),

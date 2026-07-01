@@ -500,6 +500,29 @@ private fun GameScreenLandmarkPurchaseSuccessPreview() {
 
 @Preview(showBackground = true, widthDp = 915, heightDp = 430)
 @Composable
+private fun GameScreenLandmarkAlmostWonPreview() {
+    ClientTheme {
+        GameScreen(
+            state = previewBuyingPhaseState().copy(
+                gamePhase = GamePhase.BUY_OR_BUILD,
+                purchaseState = PurchaseState.SUCCESS,
+                purchaseFeedbackItemType = LandmarkType.AMUSEMENT_PARK.name,
+                purchaseFeedbackType = PurchaseType.LANDMARK,
+                playerLandmarks = mapOf(
+                    1 to listOf(
+                        PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
+                        PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = true),
+                        PlayerLandmarkState(LandmarkType.AMUSEMENT_PARK, isBuilt = false),
+                        PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = false),
+                    )
+                )
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
 private fun GameScreenNotActivePlayerPreview() {
     ClientTheme {
         GameScreen(
