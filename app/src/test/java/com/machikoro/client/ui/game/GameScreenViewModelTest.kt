@@ -1026,7 +1026,7 @@ class GameScreenViewModelTest {
     }
 
     @Test
-    fun isRollingIsClearedWhenGamePhaseChangesAwayFromRollDice() = runTest {
+    fun isRollingIsClearedWhenGamePhaseSkipsToUnexpectedPhase() = runTest {
         val fakeClient = FakeWebSocketClient()
         val viewModel = viewModel(fakeClient, userId = 42)
 
@@ -1038,10 +1038,32 @@ class GameScreenViewModelTest {
         viewModel.rollDice(diceCount = 1)
         assertTrue(viewModel.state.value.isRolling)
 
-        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+        // BUY_OR_BUILD with no diceResult is unexpected — cancel the roll immediately (#175)
+        fakeClient.emitGamePhase(GamePhase.BUY_OR_BUILD)
         advanceUntilIdle()
 
         assertFalse(viewModel.state.value.isRolling)
+    }
+
+    @Test
+    fun isRollingIsKeptWhenGamePhaseChangesToResolveEffectsBeforeDiceResult() = runTest {
+        val fakeClient = FakeWebSocketClient()
+        val viewModel = viewModel(fakeClient, userId = 42)
+
+        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
+        fakeClient.emitGamePhase(GamePhase.ROLL_DICE)
+        fakeClient.emitActivePlayerId(42)
+        advanceUntilIdle()
+
+        viewModel.rollDice(diceCount = 1)
+        assertTrue(viewModel.state.value.isRolling)
+
+        // Phase arrives before diceResult — normal flow, animation must keep playing
+        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
+        advanceTimeBy(100L) // well before the timeout, diceResult not yet received
+        runCurrent()
+
+        assertTrue(viewModel.state.value.isRolling)
     }
 
     @Test
@@ -1833,9 +1855,8 @@ class GameScreenViewModelTest {
         // Server broadcasts DICE_REROLLED with the same total: diceResult unchanged,
         // only the tick bumps.
         fakeClient.emitDiceResult(listOf(6))
-        runCurrent()
-        advanceTimeBy(GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS + 1)
-        runCurrent()
+        // Must advance past animation delay + dwell (tick cancels the roll timeout so this settles)
+        advanceUntilIdle()
 
         assertFalse(viewModel.state.value.isRolling)
         assertEquals(1, fakeClient.resolveEffectsCallCount)
