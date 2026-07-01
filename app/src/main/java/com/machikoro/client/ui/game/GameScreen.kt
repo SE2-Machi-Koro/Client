@@ -580,7 +580,7 @@ fun GameScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
-                                        .offset(y = (-80).dp)
+                                        .offset(y = (-20).dp)
                                 ) {
                                     ActionButton(
                                         onClick = { onReroll(state.diceResult?.size ?: 1) },
