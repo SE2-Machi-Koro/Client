@@ -83,7 +83,7 @@ internal fun BuyingPhaseShop(
             LandmarkPurchaseReveal(
                 state = state,
                 purchasedLandmark = purchasedLandmark,
-                modifier = Modifier.offset(y = (-30).dp)
+                modifier = Modifier.offset(y = 21.dp)
             )
         } else {
             state.purchaseFeedbackItemType?.let {
@@ -469,6 +469,21 @@ private fun GameScreenPurchaseSuccessPreview() {
                 gamePhase = GamePhase.BUY_OR_BUILD,
                 purchaseState = PurchaseState.SUCCESS,
                 purchaseFeedbackItemType = CardType.BAKERY.name
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenLandmarkPurchaseSuccessPreview() {
+    ClientTheme {
+        GameScreen(
+            state = previewBuyingPhaseState().copy(
+                gamePhase = GamePhase.BUY_OR_BUILD,
+                purchaseState = PurchaseState.SUCCESS,
+                purchaseFeedbackItemType = LandmarkType.SHOPPING_MALL.name,
+                purchaseFeedbackType = PurchaseType.LANDMARK
             )
         )
     }

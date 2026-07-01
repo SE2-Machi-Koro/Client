@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -170,6 +171,7 @@ private fun LandmarkDisplay(
         drawableResId = drawableForPlayerLandmark(item),
         width = width,
         height = height,
+        contentScale = ContentScale.FillBounds,
         modifier = modifier
     )
 }
@@ -219,6 +221,7 @@ internal fun LandmarkPurchaseReveal(
     state: GameScreenState,
     purchasedLandmark: LandmarkType,
     modifier: Modifier = Modifier,
+    animatePurchasedLandmark: Boolean = !LocalInspectionMode.current,
 ) {
     val reveal = state.landmarkPurchaseRevealUi(purchasedLandmark)
 
@@ -227,11 +230,12 @@ internal fun LandmarkPurchaseReveal(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        BasicText(reveal.title)
-        BasicText(reveal.message)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             reveal.landmarks.forEach { landmark ->
-                if (landmark.landmarkType == purchasedLandmark) {
+                if (
+                    landmark.landmarkType == purchasedLandmark &&
+                    animatePurchasedLandmark
+                ) {
                     AnimatedItem(
                         delayMillis = 250,
                         animationType = AnimationType.Bounce
@@ -251,6 +255,7 @@ internal fun LandmarkPurchaseReveal(
                 }
             }
         }
+        BasicText("${reveal.title} - ${reveal.message}")
     }
 }
 
@@ -288,11 +293,12 @@ internal fun CardArtImage(
     height: Dp,
     modifier: Modifier = Modifier,
     alpha: Float = 1f,
+    contentScale: ContentScale = ContentScale.Fit,
 ) {
     Image(
         painter = painterResource(id = drawableResId),
         contentDescription = null,
-        contentScale = ContentScale.Fit,
+        contentScale = contentScale,
         modifier = modifier
             .width(width)
             .height(height)
@@ -455,6 +461,7 @@ private fun LandmarkPurchaseRevealPreview() {
                 )
             )
         ),
-        purchasedLandmark = LandmarkType.SHOPPING_MALL
+        purchasedLandmark = LandmarkType.SHOPPING_MALL,
+        animatePurchasedLandmark = true
     )
 }
