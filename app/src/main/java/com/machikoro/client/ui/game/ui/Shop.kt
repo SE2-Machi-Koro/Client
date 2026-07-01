@@ -350,7 +350,6 @@ private fun drawableForPlayerCard(cardType: String): Int =
         CardType.FAMILY_RESTAURANT.name -> R.drawable.card_family_restaurant
         CardType.STADIUM.name -> R.drawable.card_stadium
         CardType.TV_STATION.name -> R.drawable.card_tv_station
-        CardType.BUSINESS_CENTER.name -> R.drawable.card_business_center
         LandmarkType.TRAIN_STATION.name -> R.drawable.landmark_train_station
         LandmarkType.SHOPPING_MALL.name -> R.drawable.landmark_shopping_mall
         LandmarkType.AMUSEMENT_PARK.name -> R.drawable.landmark_amusement_park

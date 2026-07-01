@@ -1,10 +1,8 @@
 package com.machikoro.client.ui.game.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalOverscrollFactory
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -49,7 +46,6 @@ import com.machikoro.client.domain.model.state.triggeredEstablishmentsForCurrent
 import com.machikoro.client.ui.game.ui.resolving_effects.CardsStack
 import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.ui.theme.TextBlueDark
 
 private const val CUP_ESTABLISHMENT_TYPE = "CUP"
 private const val BREAD_ESTABLISHMENT_TYPE = "BREAD"
@@ -214,340 +210,6 @@ private fun OutcomeStack(
 }
 
 @Composable
-private fun PurpleCardsQueueView(
-    purpleCards: List<CardType>,
-    activeCard: CardType,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        purpleCards.forEach { card ->
-            FramedEffectCard(
-                cardType = card,
-                isSelected = card == activeCard
-            )
-        }
-    }
-}
-
-@Composable
-private fun FramedEffectCard(
-    cardType: CardType,
-    isSelected: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .width(140.dp)
-            .height(165.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        CardsStack(
-            cards = listOf(cardType),
-            modifier = Modifier.width(140.dp)
-        )
-
-        if (isSelected) {
-            Image(
-                painter = painterResource(R.drawable.card_frame),
-                contentDescription = null,
-                contentScale = ContentScale.FillBounds,
-                modifier = Modifier
-                    .matchParentSize()
-                    .padding(
-                        start = 6.dp,
-                        end = 6.dp,
-                        bottom = 9.dp
-                    )
-            )
-        }
-    }
-}
-
-// TODO: Wire TV Station and Business Center interaction states once the server exposes
-// selectable purple-card effects. For now these composables are preview scaffolding.
-@Composable
-private fun PurpleTvStationChoiceView(
-    players: List<PlayerCoinState>,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "Choose player",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-
-            PurpleCardsQueueView(
-                purpleCards = listOf(CardType.TV_STATION),
-                activeCard = CardType.TV_STATION
-            )
-        }
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            players.filterNot { it.isActivePlayer }.forEach { player ->
-                PlayerChoicePill(
-                    name = player.displayName,
-                    coins = player.coins,
-                    enabled = player.coins > 0,
-                    onClick = {
-                        // TODO: Handle TV Station player selection when server action is available.
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PurpleTvStationOutcomeView(
-    players: List<PlayerCoinState>,
-    activePlayerId: Int,
-    payingPlayerId: Int,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.Top
-    ) {
-        players.forEach { player ->
-            val playerId = player.id.toIntOrNull()
-
-            PlayerOutcomeColumn(
-                outcomes = when (playerId) {
-                    activePlayerId -> listOf(
-                        PlayerOutcomeUi(
-                            playerId = activePlayerId,
-                            amount = 5,
-                            isPositive = true,
-                            cards = listOf(CardType.TV_STATION)
-                        )
-                    )
-
-                    payingPlayerId -> listOf(
-                        PlayerOutcomeUi(
-                            playerId = payingPlayerId,
-                            amount = 5,
-                            isPositive = false,
-                            cards = emptyList()
-                        )
-                    )
-
-                    else -> emptyList()
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun BusinessCenterChooseOwnCardView(
-    ownCards: List<CardType>,
-    selectedCard: CardType?,
-    opponentName: String,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "You",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-
-            PurpleCardsQueueView(
-                purpleCards = listOf(CardType.BUSINESS_CENTER),
-                activeCard = CardType.BUSINESS_CENTER
-            )
-        }
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "Choose one of your cards to swap with $opponentName",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                ownCards.forEach { card ->
-                    FramedEffectCard(
-                        cardType = card,
-                        isSelected = card == selectedCard
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BusinessCenterChooseOpponentCardView(
-    opponentName: String,
-    ownSelectedCard: CardType,
-    opponentCards: List<CardType>,
-    opponentSelectedCard: CardType?,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "Your card",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            CardsStack(
-                cards = listOf(ownSelectedCard),
-                modifier = Modifier.width(155.dp)
-            )
-        }
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "$opponentName's cards",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                opponentCards.forEach { card ->
-                    FramedEffectCard(
-                        cardType = card,
-                        isSelected = card == opponentSelectedCard
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BusinessCenterOutcomeView(
-    ownReceivedCard: CardType,
-    opponentReceivedCard: CardType,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(40.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.Top
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "You received",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            CardsStack(
-                cards = listOf(ownReceivedCard),
-                modifier = Modifier.width(155.dp)
-            )
-        }
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "Opponent received",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            CardsStack(
-                cards = listOf(opponentReceivedCard),
-                modifier = Modifier.width(155.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlayerChoicePill(
-    name: String,
-    coins: Int,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .width(155.dp)
-            .clickable(
-                enabled = enabled,
-                onClick = onClick
-            )
-            .background(
-                color = if (enabled) Color.White else Color(0xFFD7D0CA),
-                shape = RoundedCornerShape(13.dp)
-            )
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = name,
-            color = if (enabled) TextBlueDark else Color(0xFF7A6F69),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        CoinBadge(amount = coins, modifier = Modifier.offset(y = 4.dp))
-    }
-}
-
-@Composable
 private fun IncomeWithCoin(
     amount: Int,
     isPositive: Boolean,
@@ -680,34 +342,34 @@ private fun buildOutcomeItems(
         )
     }
 
-    val unresolvedPurpleOutcomes = effects
-        .filter {
-            it.color == ShopItemColor.PURPLE &&
-                it.cardType != CardType.STADIUM
-        }
-        .map { effect ->
-            PlayerOutcomeUi(
-                playerId = effect.playerId,
-                amount = 0,
-                isPositive = true,
-                cards = effect.stackedCards()
-            )
-        }
+    // TV Station steals 5 coins from a random opponent; pick the richest as a local preview guess
+    val tvStationEffects = effects.filter { it.cardType == CardType.TV_STATION }
+    val tvStationSteal = tvStationEffects.sumOf { it.incomeAmount * it.quantity }
+    val tvStationTarget = if (tvStationSteal > 0) opponents.maxByOrNull { it.coins } else null
+    val tvStationLoss = tvStationTarget?.let { opponent ->
+        val opponentId = opponent.id.toIntOrNull() ?: return@let null
+        val paid = minOf(tvStationSteal, opponent.coins)
+        if (paid <= 0) return@let null
+        PlayerOutcomeUi(playerId = opponentId, amount = paid, isPositive = false, cards = emptyList(), fromPlayerName = activePlayerName)
+    }
+    val tvStationGain = tvStationLoss?.let { loss ->
+        PlayerOutcomeUi(playerId = activePlayerId, amount = loss.amount, isPositive = true, cards = tvStationEffects.stackedCards())
+    }
 
     return activeRedPayment +
             redReceiverOutcomes +
             stadiumGain +
             stadiumLosses +
             bankIncomeOutcomes +
-            unresolvedPurpleOutcomes
+            listOfNotNull(tvStationGain) +
+            listOfNotNull(tvStationLoss)
 }
 
 /**
  * Best-effort local preview of establishments that should visually light up for
  * this roll. The server remains authoritative for real coin movement; this
  * preview mirrors Shopping Mall bonuses and caps theft at visible coin balances.
- * TV Station and Business Center show only the triggered card art until the
- * server exposes their selected targets, so the panel does not invent coin transfers.
+ * TV Station picks the richest opponent as a local preview guess; the server result is authoritative.
  */
 private fun GameScreenState.triggeredEffects(): List<TriggeredEffectUi> {
     return triggeredEstablishmentsForCurrentRoll().map { triggered ->
@@ -805,7 +467,6 @@ private fun CardType.coinEffectAmount(ownedCards: List<PlayerCardState>): Int = 
     CardType.FAMILY_RESTAURANT -> 2
     CardType.STADIUM -> 2
     CardType.TV_STATION -> 5
-    CardType.BUSINESS_CENTER -> 0
 }
 
 private fun TriggeredEffectUi.stackedCards(): List<CardType> =
@@ -1026,121 +687,6 @@ private fun ResolvingEffectsPurpleStadiumOutcomePreview() {
                         1 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1))
                     )
                 )
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleTvStationChoicePreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            PurpleTvStationChoiceView(
-                players = previewPlayersForResolvingEffects(
-                    myUserId = 1,
-                    activePlayerId = 1
-                ).filter { it.id != "1" }
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleTvStationChoiceWithDisabledPlayerPreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            PurpleTvStationChoiceView(
-                players = listOf(
-                    PlayerCoinState(id = "2", displayName = "Player2", coins = 4),
-                    PlayerCoinState(id = "3", displayName = "Player3", coins = 7),
-                    PlayerCoinState(id = "4", displayName = "Player4", coins = 0),
-                )
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleTvStationOutcomePreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            PurpleTvStationOutcomeView(
-                players = previewPlayersForResolvingEffects(
-                    myUserId = 1,
-                    activePlayerId = 1
-                ),
-                activePlayerId = 1,
-                payingPlayerId = 3
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleBusinessCenterChooseOwnCardPreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            BusinessCenterChooseOwnCardView(
-                ownCards = listOf(
-                    CardType.WHEAT_FIELD,
-                    CardType.BAKERY,
-                    CardType.FOREST,
-                ),
-                selectedCard = CardType.BAKERY,
-                opponentName = "Player3"
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleBusinessCenterChooseOpponentCardPreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            BusinessCenterChooseOpponentCardView(
-                opponentName = "Player3",
-                ownSelectedCard = CardType.BAKERY,
-                opponentCards = listOf(
-                    CardType.RANCH,
-                    CardType.CAFE,
-                    CardType.CONVENIENCE_STORE,
-                ),
-                opponentSelectedCard = CardType.RANCH
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleBusinessCenterOutcomePreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            BusinessCenterOutcomeView(
-                ownReceivedCard = CardType.RANCH,
-                opponentReceivedCard = CardType.BAKERY
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleMultipleCardsQueuePreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            PurpleCardsQueueView(
-                purpleCards = listOf(
-                    CardType.STADIUM,
-                    CardType.TV_STATION,
-                    CardType.BUSINESS_CENTER
-                ),
-                activeCard = CardType.TV_STATION
             )
         }
     }

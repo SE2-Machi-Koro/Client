@@ -410,7 +410,6 @@ fun drawableForPlayerCard(playerCardState: PlayerCardState): Int =
         CardType.FAMILY_RESTAURANT -> R.drawable.card_family_restaurant
         CardType.STADIUM -> R.drawable.card_stadium
         CardType.TV_STATION -> R.drawable.card_tv_station
-        CardType.BUSINESS_CENTER -> R.drawable.card_business_center
     }
 
 @Preview(showBackground = true, widthDp = 915, heightDp = 430)

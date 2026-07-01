@@ -58,7 +58,6 @@ private fun EffectsResolutionColumnPreview() {
             CardType.FRUIT_AND_VEGETABLE_MARKET,
             CardType.MINE,
             CardType.CAFE,
-            CardType.BUSINESS_CENTER,
             CardType.APPLE_ORCHARD,
             CardType.CAFE
         )
