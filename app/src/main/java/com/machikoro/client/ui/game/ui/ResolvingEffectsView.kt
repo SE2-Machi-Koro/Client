@@ -3,7 +3,6 @@ package com.machikoro.client.ui.game.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,8 +25,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -48,6 +48,7 @@ import com.machikoro.client.domain.model.state.PurchaseState
 import com.machikoro.client.domain.model.state.triggeredEstablishmentsForCurrentRoll
 import com.machikoro.client.ui.game.ui.resolving_effects.CardsStack
 import com.machikoro.client.ui.shared.BasicText
+import com.machikoro.client.ui.shared.SmallBasicText
 import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.TextBlueDark
 
@@ -58,6 +59,7 @@ private const val BREAD_ESTABLISHMENT_TYPE = "BREAD"
 fun ResolvingEffectsView(
     state: GameScreenState,
     modifier: Modifier = Modifier,
+    onEffectCardPositioned: (playerId: Int, center: Offset) -> Unit = { _, _ -> },
 ) {
     val triggeredEffects = remember(state) { state.triggeredEffects() }
 
@@ -72,6 +74,7 @@ fun ResolvingEffectsView(
     TriggeredEffectsBoard(
         effects = triggeredEffects,
         players = state.players,
+        onEffectCardPositioned = onEffectCardPositioned,
         modifier = modifier
     )
 }
@@ -112,6 +115,7 @@ internal fun GameScreenState.withResolvingEffectsPreviewCoins(): GameScreenState
 private fun TriggeredEffectsBoard(
     effects: List<TriggeredEffectUi>,
     players: List<PlayerCoinState>,
+    onEffectCardPositioned: (playerId: Int, center: Offset) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val activePlayerId = players.firstOrNull { it.isActivePlayer }?.id?.toIntOrNull()
@@ -130,6 +134,7 @@ private fun TriggeredEffectsBoard(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
             .offset(x = (-6).dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.Top
@@ -138,9 +143,12 @@ private fun TriggeredEffectsBoard(
             val playerId = player.id.toIntOrNull()
             val playerItems = outcomeItems.filter { it.playerId == playerId }
 
-            PlayerOutcomeColumn(
-                outcomes = playerItems
-            )
+            if (playerItems.isNotEmpty()) {
+                PlayerOutcomeColumn(
+                    outcomes = playerItems,
+                    onEffectCardPositioned = onEffectCardPositioned
+                )
+            }
         }
     }
 }
@@ -148,32 +156,18 @@ private fun TriggeredEffectsBoard(
 @Composable
 private fun PlayerOutcomeColumn(
     outcomes: List<PlayerOutcomeUi>,
+    onEffectCardPositioned: (playerId: Int, center: Offset) -> Unit = { _, _ -> },
 ) {
-    CompositionLocalProvider(
-        LocalOverscrollFactory provides null
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.width(140.dp)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.width(140.dp)
-                .verticalScroll(rememberScrollState())
-
-        ) {
-            if (outcomes.isEmpty()) {
-                Box(
-                    modifier = Modifier.height(36.dp)
-                )
-
-                Box(
-                    modifier = Modifier
-                        .width(140.dp)
-                        .height(165.dp)
-                )
-            } else {
-                outcomes.forEach { outcome ->
-                    OutcomeStack(outcome)
-                }
-            }
+        outcomes.forEach { outcome ->
+            OutcomeStack(
+                outcome = outcome,
+                onEffectCardPositioned = onEffectCardPositioned
+            )
         }
     }
 }
@@ -181,6 +175,7 @@ private fun PlayerOutcomeColumn(
 @Composable
 private fun OutcomeStack(
     outcome: PlayerOutcomeUi,
+    onEffectCardPositioned: (playerId: Int, center: Offset) -> Unit,
 ) {
 
     Column(
@@ -192,22 +187,21 @@ private fun OutcomeStack(
                 amount = outcome.amount,
                 isPositive = outcome.isPositive
             )
-        } else {
-            Box(
-                modifier = Modifier.height(36.dp)
-            )
+        }
+
+        outcome.fromPlayerName?.let { playerName ->
+            SmallBasicText(
+                if (outcome.isPositive) "from $playerName" else "to $playerName"
+                )
         }
 
         if (outcome.cards.isNotEmpty()) {
             CardsStack(
                 cards = outcome.cards,
-                modifier = Modifier.width(140.dp)
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .width(140.dp)
-                    .height(165.dp)
+                modifier = Modifier.width(140.dp),
+                onPositioned = { center ->
+                    onEffectCardPositioned(outcome.playerId, center)
+                }
             )
         }
     }
@@ -642,10 +636,12 @@ private fun buildOutcomeItems(
 
     var remainingActivePlayerCoins = activePlayer?.coins?.coerceAtLeast(0) ?: 0
 
+    val paidRedReceiverNames = mutableListOf<String>()
     val redReceiverOutcomes = redEffects.mapNotNull { effect ->
         val paidAmount = minOf(effect.totalIncome, remainingActivePlayerCoins)
         remainingActivePlayerCoins -= paidAmount
         if (paidAmount <= 0) return@mapNotNull null
+        paidRedReceiverNames += effect.playerName
 
         PlayerOutcomeUi(
             playerId = effect.playerId,
@@ -664,7 +660,8 @@ private fun buildOutcomeItems(
                 playerId = activePlayerId,
                 amount = redTotalPaidByActivePlayer,
                 isPositive = false,
-                cards = emptyList()
+                cards = emptyList(),
+                fromPlayerName = paidRedReceiverNames.distinct().joinToString()
             )
         )
     } else {

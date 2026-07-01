@@ -25,19 +25,24 @@ import kotlin.math.roundToInt
 
 private const val TransferDurationMillis = 900
 private const val TransferPauseMillis = 200L
+private const val CardStackLeadInMillis = 900L
 
 @Composable
 fun CoinTransferOverlay(
     transfers: List<CoinTransferUi>,
     playerPositions: Map<Int, Offset>,
+    effectCardPositions: Map<Int, Offset>,
     modifier: Modifier = Modifier,
-    onTransferChanged: (CoinTransferUi?) -> Unit = {},
     onFinished: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     val coinRadiusPx = with(density) { 18.dp.toPx() }
     val positionsReady = transfers.all { transfer ->
-        (transfer.fromPlayerId == null || playerPositions.containsKey(transfer.fromPlayerId)) &&
+        (
+            transfer.fromPlayerId?.let(playerPositions::containsKey)
+                ?: transfer.toPlayerId?.let(effectCardPositions::containsKey)
+                ?: true
+            ) &&
             (transfer.toPlayerId == null || playerPositions.containsKey(transfer.toPlayerId))
     }
 
@@ -51,15 +56,14 @@ fun CoinTransferOverlay(
         LaunchedEffect(transfers, positionsReady) {
             if (transfers.isEmpty()) {
                 activeTransfer = null
-                onTransferChanged(null)
                 onFinished()
                 return@LaunchedEffect
             }
             if (!positionsReady) return@LaunchedEffect
 
+            delay(CardStackLeadInMillis)
             transfers.forEach { transfer ->
                 activeTransfer = transfer
-                onTransferChanged(transfer)
                 progress.snapTo(0f)
                 progress.animateTo(
                     targetValue = 1f,
@@ -72,13 +76,13 @@ fun CoinTransferOverlay(
             }
 
             activeTransfer = null
-            onTransferChanged(null)
             onFinished()
         }
 
         activeTransfer?.let { transfer ->
             val start = transfer.fromPlayerId
                 ?.let(playerPositions::get)
+                ?: transfer.toPlayerId?.let(effectCardPositions::get)
                 ?: bankPosition
             val end = transfer.toPlayerId
                 ?.let(playerPositions::get)

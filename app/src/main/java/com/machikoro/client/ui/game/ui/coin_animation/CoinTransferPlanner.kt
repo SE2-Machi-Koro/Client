@@ -66,3 +66,21 @@ fun buildCoinTransfers(
 
     return transfers
 }
+
+fun buildPersistentCoinHighlights(
+    previousCoins: Map<Int, Int>,
+    resolvedCoins: Map<Int, Int>,
+): Map<Int, CoinChangeHighlight> = buildMap {
+    (previousCoins.keys + resolvedCoins.keys).forEach { playerId ->
+        val previous = previousCoins.getOrDefault(playerId, 0)
+        val resolved = resolvedCoins.getOrDefault(playerId, 0)
+        val highlight = when {
+            resolved > previous -> CoinChangeHighlight.GAIN
+            resolved < previous -> CoinChangeHighlight.LOSS
+            else -> null
+        }
+        if (highlight != null) {
+            put(playerId, highlight)
+        }
+    }
+}

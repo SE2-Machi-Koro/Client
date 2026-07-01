@@ -1730,6 +1730,18 @@ class GameScreenViewModelTest {
     }
 
     @Test
+    fun resolveEffectsTimerMatchesVisibleSixSecondDwell() {
+        assertEquals(
+            6,
+            GameScreenViewModel.RESOLVE_EFFECTS_TIMER_SECONDS
+        )
+        assertEquals(
+            GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS,
+            GameScreenViewModel.RESOLVE_EFFECTS_TIMER_SECONDS * 1_000L
+        )
+    }
+
+    @Test
     fun resolveEffectsDoesNotAutoSendWhileRadioTowerDecisionIsPending() = runTest {
         val dwell = GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS
         val fakeClient = FakeWebSocketClient()
@@ -1741,47 +1753,6 @@ class GameScreenViewModelTest {
         runCurrent()
 
         assertEquals(0, fakeClient.resolveEffectsCallCount)
-    }
-
-    @Test
-    fun resolveEffectsSendsWhenCoinAnimationFinishes() = runTest {
-        val fakeClient = FakeWebSocketClient()
-        val viewModel = viewModel(fakeClient, userId = 42)
-
-        fakeClient.emitGameStatus(GameStatus.IN_PROGRESS)
-        fakeClient.emitActiveGameId(7)
-        fakeClient.emitPlayers(
-            listOf(
-                PlayerCoinState(
-                    id = "7",
-                    displayName = "alice",
-                    coins = 5,
-                    isCurrentPlayer = true,
-                    isActivePlayer = true
-                )
-            )
-        )
-        fakeClient.emitDiceResult(listOf(1))
-        fakeClient.emitPlayerCards(
-            mapOf(
-                7 to listOf(
-                    PlayerCardState(CardType.WHEAT_FIELD, quantity = 1)
-                )
-            )
-        )
-        fakeClient.emitActivePlayerId(42)
-        fakeClient.emitGamePhase(GamePhase.RESOLVE_EFFECTS)
-
-        runCurrent()
-        advanceTimeBy(GameScreenViewModel.DEFAULT_RESOLVE_EFFECTS_DWELL_MS - 1)
-        runCurrent()
-
-        assertEquals(0, fakeClient.resolveEffectsCallCount)
-
-        viewModel.finishResolveEffectsAnimation()
-        runCurrent()
-
-        assertEquals(1, fakeClient.resolveEffectsCallCount)
     }
 
     @Test

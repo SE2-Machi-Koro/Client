@@ -48,6 +48,23 @@ fun BasicText(label: String, modifier: Modifier = Modifier) = (
             modifier = modifier
         )
     )
+
+@Composable
+fun SmallBasicText(
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.bodyMedium,
+        color = Color.White,
+        fontWeight = FontWeight.Bold,
+        fontSize = 16.sp,
+        textAlign = TextAlign.Center,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier
+    )
+}
 /**
  * Displays a styled header text with an outline effect.
  *

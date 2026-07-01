@@ -384,17 +384,6 @@ class GameScreenViewModel(
         webSocketClient.resolveEffects(gameId)
     }
 
-    fun finishResolveEffectsAnimation() {
-        val current = mutableState.value
-        val pendingJob = resolveEffectsJob ?: return
-        if (!pendingJob.isActive) return
-        if (!current.shouldAutoResolveEffects(mutableCanRerollThisTurn.value)) return
-
-        pendingJob.cancel()
-        resolveEffectsJob = null
-        current.gameId?.let { webSocketClient.resolveEffects(it) }
-    }
-
     private fun startRollTimeout(expectedPhase: GamePhase) {
         diceRollTimeoutJob?.cancel()
         val rollId = ++nextRollId
@@ -684,12 +673,12 @@ class GameScreenViewModel(
 
     companion object {
         /**
-         * Failsafe for RESOLVE_EFFECTS. Normally the UI advances immediately
-         * when there is nothing to animate or calls [finishResolveEffectsAnimation]
-         * after the final coin animation. Keep this short so a missed overlay
-         * callback does not leave the active player staring at RESOLVE_EFFECTS.
+         * Visible RESOLVE_EFFECTS duration. Card and coin animations are bounded
+         * to finish before this dwell ends, so BUY_OR_BUILD cannot interrupt them.
          */
         const val DEFAULT_RESOLVE_EFFECTS_DWELL_MS = 6_000L
+        const val RESOLVE_EFFECTS_TIMER_SECONDS =
+            (DEFAULT_RESOLVE_EFFECTS_DWELL_MS / 1_000L).toInt()
     }
 
     class Factory(

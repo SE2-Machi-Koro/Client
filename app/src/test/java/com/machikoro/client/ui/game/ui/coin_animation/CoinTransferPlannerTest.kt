@@ -4,6 +4,32 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class CoinTransferPlannerTest {
+    @Test
+    fun persistentHighlightsIncludeAllGainsAndLosses() {
+        assertEquals(
+            mapOf(
+                1 to CoinChangeHighlight.LOSS,
+                2 to CoinChangeHighlight.GAIN,
+                4 to CoinChangeHighlight.GAIN,
+            ),
+            buildPersistentCoinHighlights(
+                previousCoins = mapOf(1 to 5, 2 to 2, 3 to 4, 4 to 0),
+                resolvedCoins = mapOf(1 to 2, 2 to 4, 3 to 4, 4 to 1),
+            )
+        )
+    }
+
+    @Test
+    fun persistentHighlightsIgnoreUnchangedBalances() {
+        assertEquals(
+            emptyMap<Int, CoinChangeHighlight>(),
+            buildPersistentCoinHighlights(
+                previousCoins = mapOf(1 to 5),
+                resolvedCoins = mapOf(1 to 5),
+            )
+        )
+    }
+
 
     @Test
     fun pairsOnePayerWithMultipleReceivers() {

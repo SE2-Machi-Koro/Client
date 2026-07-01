@@ -57,6 +57,7 @@ import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerCoinState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.domain.model.state.PurchaseState
+import com.machikoro.client.domain.model.state.hasTriggeredEstablishmentsForCurrentRoll
 import com.machikoro.client.ui.cheat.ShakeDetector
 import com.machikoro.client.ui.game.ui.BigPlayerCardsDisplay
 import com.machikoro.client.ui.game.ui.BuyingPhaseShop
@@ -76,8 +77,8 @@ import com.machikoro.client.ui.game.ui.RoundIndicator
 import com.machikoro.client.ui.game.ui.withResolvingEffectsPreviewCoins
 import com.machikoro.client.ui.game.ui.coin_animation.CoinChangeHighlight
 import com.machikoro.client.ui.game.ui.coin_animation.CoinTransferOverlay
-import com.machikoro.client.ui.game.ui.coin_animation.CoinTransferUi
 import com.machikoro.client.ui.game.ui.coin_animation.buildCoinTransfers
+import com.machikoro.client.ui.game.ui.coin_animation.buildPersistentCoinHighlights
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
 import com.machikoro.client.ui.shared.BasicText
@@ -107,7 +108,6 @@ fun GameScreen(
     onRollDice: (diceCount: Int) -> Unit = {},
     onReroll: (diceCount: Int) -> Unit = {},
     onSkipReroll: () -> Unit = {},
-    onResolveEffectsAnimationFinished: () -> Unit = {},
     onTurnFlowAction: () -> Unit = {},
     onLeaveGame: () -> Unit = {},
     onEndGame: () -> Unit = {},
@@ -153,47 +153,60 @@ fun GameScreen(
             emptyList()
         }
     }
-    val animationKey = remember(
+    val resolutionKey = remember(
         state.gameId,
         state.roundNumber,
         state.activePlayerId,
         state.diceResult,
-        coinTransfers,
+        state.diceRollTick,
     ) {
         listOf(
             state.gameId,
             state.roundNumber,
             state.activePlayerId,
             state.diceResult,
+            state.diceRollTick,
+        )
+    }
+    val animationKey = remember(
+        resolutionKey,
+        coinTransfers,
+    ) {
+        listOf(
+            resolutionKey,
             coinTransfers,
         )
     }
     var coinAnimationFinished by remember(animationKey) {
         mutableStateOf(coinTransfers.isEmpty())
     }
-    var activeCoinTransfer by remember(animationKey) {
-        mutableStateOf<CoinTransferUi?>(null)
-    }
     val playerCoinPositions = remember {
         mutableStateMapOf<Int, Offset>()
     }
-    val coinHighlights = remember(activeCoinTransfer) {
-        buildMap {
-            activeCoinTransfer?.fromPlayerId?.let {
-                put(it, CoinChangeHighlight.LOSS)
-            }
-            activeCoinTransfer?.toPlayerId?.let {
-                put(it, CoinChangeHighlight.GAIN)
-            }
+    val effectCardPositions = remember(animationKey) {
+        mutableStateMapOf<Int, Offset>()
+    }
+    val coinHighlights = remember(resolutionKey) {
+        mutableStateMapOf<Int, CoinChangeHighlight>()
+    }
+
+    LaunchedEffect(
+        resolutionKey,
+        state.gamePhase,
+        currentCoins,
+        resolvedCoins,
+    ) {
+        if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
+            coinHighlights.putAll(
+                buildPersistentCoinHighlights(currentCoins, resolvedCoins)
+            )
+        } else {
+            coinHighlights.clear()
         }
     }
 
     LaunchedEffect(animationKey) {
         coinAnimationFinished = coinTransfers.isEmpty()
-        activeCoinTransfer = null
-        if (state.gamePhase == GamePhase.RESOLVE_EFFECTS && coinTransfers.isEmpty()) {
-            onResolveEffectsAnimationFinished()
-        }
     }
 
     val accuseTarget = accuseTargetId?.let { id -> state.players.firstOrNull { it.id == id } }
@@ -235,7 +248,9 @@ fun GameScreen(
             state.gamePhase == GamePhase.ROLL_DICE -> 20
             // Matches the actual auto-advance dwell so the countdown the player sees
             // is the real time until RESOLVE_EFFECTS ends, not a longer, unrelated number.
-            state.gamePhase == GamePhase.RESOLVE_EFFECTS -> 0
+            state.gamePhase == GamePhase.RESOLVE_EFFECTS &&
+                state.hasTriggeredEstablishmentsForCurrentRoll() ->
+                GameScreenViewModel.RESOLVE_EFFECTS_TIMER_SECONDS
             state.purchaseState == PurchaseState.SUCCESS -> 5
             else -> 0
         }
@@ -570,10 +585,14 @@ fun GameScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                ResolvingEffectsView(state = state,
+                                ResolvingEffectsView(
+                                    state = state,
                                     modifier = Modifier.offset(y = (-50).dp,
                                         x = (10).dp
-                                    )
+                                    ),
+                                    onEffectCardPositioned = { playerId, center ->
+                                        effectCardPositions[playerId] = center
+                                    }
                                 )
 
                                 if (
@@ -766,11 +785,10 @@ fun GameScreen(
             CoinTransferOverlay(
                 transfers = coinTransfers,
                 playerPositions = playerCoinPositions,
+                effectCardPositions = effectCardPositions,
                 modifier = Modifier.fillMaxSize(),
-                onTransferChanged = { activeCoinTransfer = it },
                 onFinished = {
                     coinAnimationFinished = true
-                    onResolveEffectsAnimationFinished()
                 },
             )
         }

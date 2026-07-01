@@ -1,14 +1,10 @@
 package com.machikoro.client.ui.game.ui.resolving_effects
 
-import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -31,18 +27,10 @@ fun EffectsResolutionColumn(
     CoinBadge(earnedCoins, modifier = Modifier.size(36.dp))
 
 
-    CompositionLocalProvider(
-        LocalOverscrollFactory provides null
-    ) {
-        LazyColumn(
-            modifier = Modifier.width(140.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            item {
-                CardsStack(cards)
-            }
-        }
-    }
+        CardsStack(
+            cards = cards,
+            modifier = Modifier.width(140.dp)
+        )
     }
 }
 
