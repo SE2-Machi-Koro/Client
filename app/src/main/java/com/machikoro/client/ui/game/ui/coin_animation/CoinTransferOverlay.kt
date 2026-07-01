@@ -25,7 +25,7 @@ import kotlin.math.roundToInt
 
 private const val TransferDurationMillis = 900
 private const val TransferPauseMillis = 200L
-private const val CardStackLeadInMillis = 900L
+private const val CardStackLeadInMillis = 1_200L
 
 @Composable
 fun CoinTransferOverlay(

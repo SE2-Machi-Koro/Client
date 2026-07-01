@@ -587,7 +587,7 @@ fun GameScreen(
                             ) {
                                 ResolvingEffectsView(
                                     state = state,
-                                    modifier = Modifier.offset(y = (-50).dp,
+                                    modifier = Modifier.offset(y = (-30).dp,
                                         x = (10).dp
                                     ),
                                     onEffectCardPositioned = { playerId, center ->

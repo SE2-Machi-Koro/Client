@@ -33,6 +33,7 @@ fun CardsStack(
     cards: List<CardType>,
     modifier: Modifier = Modifier,
     animateCards: Boolean = !LocalInspectionMode.current,
+    initialDelayMillis: Int = 0,
     onPositioned: (Offset) -> Unit = {},
 ) {
     val overlap = 36.dp
@@ -91,7 +92,7 @@ fun CardsStack(
 
             if (animateCards) {
                 AnimatedItem(
-                    delayMillis = index * 120,
+                    delayMillis = initialDelayMillis + index * 120,
                     animationType = AnimationType.Bounce,
                     content = cardContent
                 )
