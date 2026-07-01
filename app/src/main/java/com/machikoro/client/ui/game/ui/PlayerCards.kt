@@ -7,6 +7,8 @@ import androidx.compose.foundation.border
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,6 +32,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +47,8 @@ import com.machikoro.client.domain.model.state.PlayerCardState
 import com.machikoro.client.domain.model.state.PlayerLandmarkState
 import com.machikoro.client.R
 import com.machikoro.client.ui.shared.BasicText
+import com.machikoro.client.ui.shared.AnimatedItem
+import com.machikoro.client.ui.shared.AnimationType
 import com.machikoro.client.ui.theme.TextBlueDark
 
 
@@ -179,8 +184,113 @@ private fun LandmarkDisplay(
         drawableResId = drawableForPlayerLandmark(item),
         width = width,
         height = height,
+        contentScale = ContentScale.FillBounds,
         modifier = modifier
     )
+}
+
+internal data class LandmarkPurchaseRevealUi(
+    val landmarks: List<PlayerLandmarkState>,
+    val title: String,
+    val message: String,
+)
+
+internal fun landmarkRevealCardWidth(
+    availableWidth: Dp,
+    spacing: Dp = 8.dp,
+): Dp = ((availableWidth - spacing * 3) / 4)
+    .coerceIn(1.dp, 155.dp)
+
+internal fun GameScreenState.landmarkPurchaseRevealUi(
+    purchasedLandmark: LandmarkType,
+): LandmarkPurchaseRevealUi {
+    val activePlayer = players.firstOrNull { it.isActivePlayer }
+    val activePlayerId = activePlayer?.id?.toIntOrNull()
+    val landmarksByType = playerLandmarks[activePlayerId]
+        .orEmpty()
+        .associateBy { it.landmarkType }
+
+    val landmarks = LandmarkType.entries.map { landmarkType ->
+        val landmark = landmarksByType[landmarkType]
+            ?: PlayerLandmarkState(landmarkType = landmarkType, isBuilt = false)
+
+        if (landmarkType == purchasedLandmark) {
+            landmark.copy(isBuilt = true)
+        } else {
+            landmark
+        }
+    }
+    val allLandmarksBuilt = landmarks.all { it.isBuilt }
+    val remainingLandmarks = landmarks.count { !it.isBuilt }
+    val playerName = activePlayer?.displayName ?: "Player"
+
+    return LandmarkPurchaseRevealUi(
+        landmarks = landmarks,
+        title = if (isActivePlayer) "Your landmarks" else "$playerName's landmarks",
+        message = when {
+            allLandmarksBuilt && isActivePlayer -> "You won!"
+            allLandmarksBuilt -> "$playerName wins!"
+            remainingLandmarks == 1 && isActivePlayer ->
+                "Only 1 landmark left - keep going!"
+            remainingLandmarks == 1 ->
+                "$playerName has almost finished!"
+            isActivePlayer -> "You are closer to winning!"
+            else -> "$playerName is closer to winning!"
+        }
+    )
+}
+
+@Composable
+internal fun LandmarkPurchaseReveal(
+    state: GameScreenState,
+    purchasedLandmark: LandmarkType,
+    modifier: Modifier = Modifier,
+    animatePurchasedLandmark: Boolean = !LocalInspectionMode.current,
+) {
+    val reveal = state.landmarkPurchaseRevealUi(purchasedLandmark)
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        BasicText("${reveal.title}: ${reveal.message}")
+
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            val spacing = 8.dp
+            val cardWidth = landmarkRevealCardWidth(maxWidth, spacing)
+            val cardHeight = cardWidth * (175f / 155f)
+
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                reveal.landmarks.forEach { landmark ->
+                    if (
+                        landmark.landmarkType == purchasedLandmark &&
+                        animatePurchasedLandmark
+                    ) {
+                        AnimatedItem(
+                            delayMillis = 250,
+                            animationType = AnimationType.Bounce
+                        ) {
+                            LandmarkDisplay(
+                                item = landmark,
+                                width = cardWidth,
+                                height = cardHeight
+                            )
+                        }
+                    } else {
+                        LandmarkDisplay(
+                            item = landmark,
+                            width = cardWidth,
+                            height = cardHeight
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -217,11 +327,12 @@ internal fun CardArtImage(
     height: Dp,
     modifier: Modifier = Modifier,
     alpha: Float = 1f,
+    contentScale: ContentScale = ContentScale.Fit,
 ) {
     Image(
         painter = painterResource(id = drawableResId),
         contentDescription = null,
-        contentScale = ContentScale.Fit,
+        contentScale = contentScale,
         modifier = modifier
             .width(width)
             .height(height)
@@ -356,5 +467,35 @@ private fun PlayerCardsDisplayPreview() {
                 )
             )
         )
+    )
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun LandmarkPurchaseRevealPreview() {
+    LandmarkPurchaseReveal(
+        state = GameScreenState.initial().copy(
+            myUserId = 42,
+            activePlayerId = 42,
+            players = listOf(
+                com.machikoro.client.domain.model.state.PlayerCoinState(
+                    id = "1",
+                    displayName = "Player 1",
+                    coins = 4,
+                    isCurrentPlayer = true,
+                    isActivePlayer = true
+                )
+            ),
+            playerLandmarks = mapOf(
+                1 to listOf(
+                    PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
+                    PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = false),
+                    PlayerLandmarkState(LandmarkType.AMUSEMENT_PARK, isBuilt = false),
+                    PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = false)
+                )
+            )
+        ),
+        purchasedLandmark = LandmarkType.SHOPPING_MALL,
+        animatePurchasedLandmark = true
     )
 }

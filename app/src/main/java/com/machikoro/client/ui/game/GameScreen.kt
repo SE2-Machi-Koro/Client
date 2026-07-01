@@ -33,7 +33,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -537,24 +536,30 @@ fun GameScreen(
                     }
 
                     else if (state.isBuyingPhase) {
-                        // Track live purchase state so the coroutine reads it after the delay
-                        val currentPurchaseState by rememberUpdatedState(state.purchaseState)
+                        LaunchedEffect(
+                            state.isBuyingPhase,
+                            state.isActivePlayer,
+                            state.purchaseState
+                        ) {
+                            val canAutoSkip =
+                                state.isBuyingPhase &&
+                                    state.isActivePlayer &&
+                                    state.purchaseState != PurchaseState.PENDING &&
+                                    state.purchaseState != PurchaseState.SUCCESS
 
-                    LaunchedEffect(state.isBuyingPhase) {
-                        // Fallback: auto-end turn after the visible countdown expires
-                        delay(SHOP_VIEW_DELAY)
-                        if (currentPurchaseState != PurchaseState.SUCCESS
-                            && currentPurchaseState != PurchaseState.PENDING) {
-                            onTurnFlowAction()
+                            if (canAutoSkip) {
+                                delay(SHOP_VIEW_DELAY)
+                                onTurnFlowAction()
+                            }
                         }
-                    }
-                            BuyingPhaseShop(
-                                state = state,
-                                items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
-                                onPurchaseClick = onPurchaseClick,
-                                recommendedCardType = cheatRecommendation,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
+
+                        BuyingPhaseShop(
+                            state = state,
+                            items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
+                            onPurchaseClick = onPurchaseClick,
+                            recommendedCardType = cheatRecommendation,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
                     }
 
                     else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {

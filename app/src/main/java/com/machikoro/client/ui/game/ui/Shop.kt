@@ -72,17 +72,32 @@ internal fun BuyingPhaseShop(
 ) {
     // displays purchased card after SUCCESS
     if(state.purchaseState == PurchaseState.SUCCESS) {
-        state.purchaseFeedbackItemType?.let {
-            AnimatedItem(
-                delayMillis = 0,
-                animationType = AnimationType.Bounce
-            ) {
-                PurchaseDisplay(
-                    modifier = modifier.offset(y = (0).dp),
-                    drawable = drawableForPlayerCard(it),
-                    name = state.activePlayerUsername,
-                    isActive = state.isActivePlayer
-                )
+        val purchasedLandmark = state.purchaseFeedbackItemType?.let { itemType ->
+            runCatching { LandmarkType.valueOf(itemType) }.getOrNull()
+        }
+
+        if (
+            state.purchaseFeedbackType == PurchaseType.LANDMARK &&
+            purchasedLandmark != null
+        ) {
+            LandmarkPurchaseReveal(
+                state = state,
+                purchasedLandmark = purchasedLandmark,
+                modifier = Modifier.offset(y = 21.dp)
+            )
+        } else {
+            state.purchaseFeedbackItemType?.let {
+                AnimatedItem(
+                    delayMillis = 0,
+                    animationType = AnimationType.Bounce
+                ) {
+                    PurchaseDisplay(
+                        modifier = modifier.offset(y = 0.dp),
+                        drawable = drawableForPlayerCard(it),
+                        name = state.activePlayerUsername,
+                        isActive = state.isActivePlayer
+                    )
+                }
             }
         }
     } else {
@@ -463,6 +478,44 @@ private fun GameScreenPurchaseSuccessPreview() {
                 gamePhase = GamePhase.BUY_OR_BUILD,
                 purchaseState = PurchaseState.SUCCESS,
                 purchaseFeedbackItemType = CardType.BAKERY.name
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenLandmarkPurchaseSuccessPreview() {
+    ClientTheme {
+        GameScreen(
+            state = previewBuyingPhaseState().copy(
+                gamePhase = GamePhase.BUY_OR_BUILD,
+                purchaseState = PurchaseState.SUCCESS,
+                purchaseFeedbackItemType = LandmarkType.SHOPPING_MALL.name,
+                purchaseFeedbackType = PurchaseType.LANDMARK
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 915, heightDp = 430)
+@Composable
+private fun GameScreenLandmarkAlmostWonPreview() {
+    ClientTheme {
+        GameScreen(
+            state = previewBuyingPhaseState().copy(
+                gamePhase = GamePhase.BUY_OR_BUILD,
+                purchaseState = PurchaseState.SUCCESS,
+                purchaseFeedbackItemType = LandmarkType.AMUSEMENT_PARK.name,
+                purchaseFeedbackType = PurchaseType.LANDMARK,
+                playerLandmarks = mapOf(
+                    1 to listOf(
+                        PlayerLandmarkState(LandmarkType.TRAIN_STATION, isBuilt = true),
+                        PlayerLandmarkState(LandmarkType.SHOPPING_MALL, isBuilt = true),
+                        PlayerLandmarkState(LandmarkType.AMUSEMENT_PARK, isBuilt = false),
+                        PlayerLandmarkState(LandmarkType.RADIO_TOWER, isBuilt = false),
+                    )
+                )
             )
         )
     }

@@ -517,6 +517,7 @@ class GameScreenViewModel(
             state.copy(
                 selectedPurchaseItemType = item.type,
                 purchaseFeedbackItemType = null,
+                purchaseFeedbackType = null,
                 purchaseMessage = null
             )
         }
@@ -546,6 +547,7 @@ class GameScreenViewModel(
                 selectedPurchaseItemType = item.type,
                 pendingPurchaseItemType = item.type,
                 purchaseFeedbackItemType = item.type,
+                purchaseFeedbackType = item.purchaseType,
                 purchaseMessage = "Buying ${item.displayName}..."
             )
         }
@@ -615,6 +617,7 @@ class GameScreenViewModel(
                         selectedPurchaseItemType = null,
                         pendingPurchaseItemType = null,
                         purchaseFeedbackItemType = event.itemType,
+                        purchaseFeedbackType = event.purchaseType,
                         purchaseMessage = "${event.itemType.toDisplayName()} bought"
                     )
                 }
@@ -643,6 +646,7 @@ class GameScreenViewModel(
                 pendingPurchaseItemType = null,
                 selectedPurchaseItemType = null,
                 purchaseFeedbackItemType = null,
+                purchaseFeedbackType = null,
                 purchaseMessage = null
             )
         }

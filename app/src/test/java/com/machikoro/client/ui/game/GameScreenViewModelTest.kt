@@ -876,6 +876,7 @@ class GameScreenViewModelTest {
         assertNull(viewModel.state.value.selectedPurchaseItemType)
         assertNull(viewModel.state.value.pendingPurchaseItemType)
         assertEquals("BAKERY", viewModel.state.value.purchaseFeedbackItemType)
+        assertEquals(PurchaseType.ESTABLISHMENT, viewModel.state.value.purchaseFeedbackType)
         assertEquals("Bakery bought", viewModel.state.value.purchaseMessage)
     }
 
@@ -900,6 +901,7 @@ class GameScreenViewModelTest {
 
         assertEquals(PurchaseState.SUCCESS, viewModel.state.value.purchaseState)
         assertEquals("BAKERY", viewModel.state.value.purchaseFeedbackItemType)
+        assertEquals(PurchaseType.ESTABLISHMENT, viewModel.state.value.purchaseFeedbackType)
         assertEquals("Bakery bought", viewModel.state.value.purchaseMessage)
         assertNull(fakeClient.endedTurnGameId)
     }
