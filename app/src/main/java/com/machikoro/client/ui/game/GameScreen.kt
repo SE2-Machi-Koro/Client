@@ -30,6 +30,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,6 +90,7 @@ import com.machikoro.client.ui.theme.ClientTheme
 import com.machikoro.client.ui.theme.PrimaryBlueDark
 import com.machikoro.client.ui.theme.PrimaryOrange
 import com.machikoro.client.ui.theme.TextBlueDark
+import kotlinx.coroutines.NonCancellable.key
 import kotlinx.coroutines.delay
 
 // delays
@@ -125,6 +129,8 @@ fun GameScreen(
         enabled = state.gameStatus == GameStatus.IN_PROGRESS,
         onShake = onShake,
     )
+
+    var phaseTimerKey by remember { mutableIntStateOf(0) }
 
     // Cheating accusation (#280): the Accuse action in the player-inspection
     // dialog opens this confirmation. Accusing wrongly costs a coin, so we
@@ -233,8 +239,6 @@ fun GameScreen(
         when {
             state.isBuyingPhase && state.purchaseState != PurchaseState.SUCCESS  -> (SHOP_VIEW_DELAY / 1000).toInt()
             state.gamePhase == GamePhase.ROLL_DICE -> 20
-            // Matches the actual auto-advance dwell so the countdown the player sees
-            // is the real time until RESOLVE_EFFECTS ends, not a longer, unrelated number.
             state.gamePhase == GamePhase.RESOLVE_EFFECTS -> 0
             state.purchaseState == PurchaseState.SUCCESS -> 5
             else -> 0
@@ -542,29 +546,34 @@ fun GameScreen(
 
                     else if (state.isBuyingPhase) {
 
-                    LaunchedEffect(state.isBuyingPhase, state.purchaseState) {
+                    LaunchedEffect(state.isBuyingPhase, phaseTimerKey) {
                         if (!state.isBuyingPhase) return@LaunchedEffect
 
-                        if (state.purchaseState == PurchaseState.SUCCESS ||
+                        if (
+                            state.purchaseState == PurchaseState.SUCCESS ||
                             state.purchaseState == PurchaseState.PENDING
                         ) return@LaunchedEffect
 
                         delay(SHOP_VIEW_DELAY)
 
-                        if (state.purchaseState != PurchaseState.SUCCESS &&
+                        if (
+                            state.isBuyingPhase &&
+                            state.isActivePlayer &&
+                            state.purchaseState != PurchaseState.SUCCESS &&
                             state.purchaseState != PurchaseState.PENDING
                         ) {
                             onTurnFlowAction()
                         }
                     }
-                            BuyingPhaseShop(
-                                state = state,
-                                items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
-                                onPurchaseClick = onPurchaseClick,
-                                recommendedCardType = cheatRecommendation,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
-                    }
+
+                    BuyingPhaseShop(
+                        state = state,
+                        items = state.shopItems.ifEmpty { ShopCatalog.defaultItems },
+                        onPurchaseClick = onPurchaseClick,
+                        recommendedCardType = cheatRecommendation,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
 
                     else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
                             Column(
