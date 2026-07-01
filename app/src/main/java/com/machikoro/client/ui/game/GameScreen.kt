@@ -566,7 +566,7 @@ fun GameScreen(
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.Center)
-                                    .offset(x = 5.dp, y = 20.dp),
+                                    .offset(x = 5.dp, y = (-40).dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
@@ -583,7 +583,8 @@ fun GameScreen(
                                 ) {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.offset(y = (-50).dp)
                                     ) {
                                         ActionButton(
                                             onClick = { onReroll(state.diceResult?.size ?: 1) },
