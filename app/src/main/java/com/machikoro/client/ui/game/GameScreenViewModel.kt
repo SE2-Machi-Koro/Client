@@ -42,6 +42,8 @@ import kotlinx.coroutines.launch
 // Failsafe for issue #175: the server is expected to answer a roll with a
 // diceResult, but if that message is lost or delayed the UI must not animate forever.
 private const val DICE_ROLL_TIMEOUT_MS = 10_000L
+// Must match DICE_ANIMATION_DURATION_MS in Dice.kt — gates shouldAutoResolveEffects
+private const val DICE_ANIMATION_DURATION_MS = 2_000L
 // ponytail: 1.5s is enough to show the card; 5s felt like the game froze
 private const val PURCHASE_DISPLAY_DELAY = 5_000L
 
@@ -168,10 +170,13 @@ class GameScreenViewModel(
                         .let { updated ->
                             // Issue #175: if the server advances the phase without a
                             // diceResult event, stop only the roll tied to the old phase.
+                            // Skip when diceResult is already set — the diceResult collector
+                            // owns the isRolling → false transition after the animation delay.
                             if (
                                 state.isRolling &&
                                 pendingRollPhase != null &&
-                                gamePhase != pendingRollPhase
+                                gamePhase != pendingRollPhase &&
+                                state.diceResult == null
                             ) {
                                 shouldCancelPendingRoll = true
                                 updated.copy(isRolling = false)
@@ -193,7 +198,11 @@ class GameScreenViewModel(
         viewModelScope.launch {
             webSocketClient.diceResult.collect { diceResult ->
                 cancelPendingRollTimeout()
-                mutableState.update { it.copy(diceResult = diceResult, isRolling = false) }
+                // Store result immediately, but keep isRolling true so the dice animation
+                // plays before shouldAutoResolveEffects fires
+                mutableState.update { it.copy(diceResult = diceResult) }
+                delay(DICE_ANIMATION_DURATION_MS)
+                mutableState.update { it.copy(isRolling = false) }
             }
         }
         viewModelScope.launch {
@@ -210,7 +219,10 @@ class GameScreenViewModel(
             // roll completion regardless of whether the numbers changed.
             webSocketClient.diceRollTick.collect { tick ->
                 cancelPendingRollTimeout()
-                mutableState.update { it.copy(diceRollTick = tick, isRolling = false) }
+                // Same delay as diceResult so reroll-same-total case also animates fully
+                mutableState.update { it.copy(diceRollTick = tick) }
+                delay(DICE_ANIMATION_DURATION_MS)
+                mutableState.update { it.copy(isRolling = false) }
             }
         }
         viewModelScope.launch {
