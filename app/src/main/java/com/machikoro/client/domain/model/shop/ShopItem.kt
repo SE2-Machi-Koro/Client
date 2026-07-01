@@ -196,18 +196,8 @@ object CardDefinitions {
             color = ShopItemColor.PURPLE,
             establishmentType = "MAJOR",
             activationNumbers = listOf(6),
-            effectText = "Take 5 coins from one opponent on your turn.",
+            effectText = "Take 5 coins from a random opponent on your turn.",
             imageKey = "card_tv_station"
-        ),
-        CardDefinition(
-            cardType = CardType.BUSINESS_CENTER,
-            displayName = "Business Center",
-            cost = 8,
-            color = ShopItemColor.PURPLE,
-            establishmentType = "MAJOR",
-            activationNumbers = listOf(6),
-            effectText = "Exchange one non-major establishment with an opponent.",
-            imageKey = "card_business_center"
         ),
     )
 

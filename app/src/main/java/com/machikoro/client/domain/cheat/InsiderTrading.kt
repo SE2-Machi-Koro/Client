@@ -20,7 +20,6 @@ import kotlin.math.sqrt
  *    pay on opponents' rolls and red cards pay on opponents' rolls, so it leans
  *    toward green / your-turn cards.
  *  - Train Station built ⇒ always two dice (doesn't model choosing one die).
- *  - Business Center (a card swap) is left unvalued.
  *  - Landmarks are not recommended in v1 (only marketplace establishments).
  */
 
@@ -66,7 +65,6 @@ private val establishmentEconomics: Map<CardType, Economics> = mapOf(
     ),
     CardType.STADIUM to Economics(Payout.PerOpponent(2)),
     CardType.TV_STATION to Economics(Payout.Fixed(5)),
-    CardType.BUSINESS_CENTER to Economics(Payout.Fixed(0)),
 )
 
 private val oneDieDistribution: Map<Int, Double> = (1..6).associateWith { 1.0 / 6.0 }
