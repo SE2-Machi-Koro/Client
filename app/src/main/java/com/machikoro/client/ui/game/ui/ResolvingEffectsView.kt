@@ -130,8 +130,8 @@ private fun TriggeredEffectsBoard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
+            .offset(x = (-6).dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.Top
     ) {
         players.forEach { player ->
@@ -155,7 +155,7 @@ private fun PlayerOutcomeColumn(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.width(155.dp)
+            modifier = Modifier.width(140.dp)
                 .verticalScroll(rememberScrollState())
 
         ) {
@@ -166,8 +166,8 @@ private fun PlayerOutcomeColumn(
 
                 Box(
                     modifier = Modifier
-                        .width(155.dp)
-                        .height(175.dp)
+                        .width(140.dp)
+                        .height(165.dp)
                 )
             } else {
                 outcomes.forEach { outcome ->
@@ -201,13 +201,13 @@ private fun OutcomeStack(
         if (outcome.cards.isNotEmpty()) {
             CardsStack(
                 cards = outcome.cards,
-                modifier = Modifier.width(155.dp)
+                modifier = Modifier.width(140.dp)
             )
         } else {
             Box(
                 modifier = Modifier
-                    .width(155.dp)
-                    .height(175.dp)
+                    .width(140.dp)
+                    .height(165.dp)
             )
         }
     }
@@ -241,13 +241,13 @@ private fun FramedEffectCard(
 ) {
     Box(
         modifier = modifier
-            .width(155.dp)
-            .height(175.dp),
+            .width(140.dp)
+            .height(165.dp),
         contentAlignment = Alignment.Center
     ) {
         CardsStack(
             cards = listOf(cardType),
-            modifier = Modifier.width(155.dp)
+            modifier = Modifier.width(140.dp)
         )
 
         if (isSelected) {

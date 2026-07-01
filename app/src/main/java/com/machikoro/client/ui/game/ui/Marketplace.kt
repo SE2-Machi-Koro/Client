@@ -179,14 +179,14 @@ fun MarketplaceButton(
                 painter = painterResource(id = R.drawable.markerplace_icon),
                 contentDescription = "",
                 modifier = Modifier.size(85.dp)
-                    .offset(x = 4.dp)
+                    .offset(y = 8.dp)
             )
 
             Text(
                 text = "Marketplace",
                 style = MaterialTheme.typography.bodyMedium,
                 color = White,
-                fontSize = 18.sp,
+                fontSize = 16.sp,
             )
         }
     }
@@ -221,7 +221,7 @@ private fun Title(
                     color = Color(0xFF004E7E)
                 ),
                 overflow = TextOverflow.Ellipsis,
-                maxLines = 1
+                maxLines = 1,
             )
         }
     }

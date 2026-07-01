@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -90,47 +92,47 @@ internal fun PlayerCardsDisplay(
         }
     }
 }
-
 @Composable
 fun BigPlayerCardsDisplay(
     state: GameScreenState,
     modifier: Modifier = Modifier,
 ) {
-    val currentPlayerId =
-        state.players
-            .firstOrNull { it.isCurrentPlayer }
-            ?.id
-            ?.toIntOrNull()
+    val currentPlayerId = state.players
+        .firstOrNull { it.isCurrentPlayer }
+        ?.id
+        ?.toIntOrNull()
 
-    val landmarks =
-        state.playerLandmarks[currentPlayerId]
-            .orEmpty()
-
-    val establishments =
-        state.playerCards[currentPlayerId]
-            .orEmpty()
+    val landmarks = state.playerLandmarks[currentPlayerId].orEmpty()
+    val establishments = state.playerCards[currentPlayerId].orEmpty()
 
     CompositionLocalProvider(
         LocalOverscrollFactory provides null
     ) {
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
-            // LANDMARKS TITLE
             item {
-                BasicText("Landmarks")
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    BasicText("Landmarks")
+                }
             }
 
-            // LANDMARKS ROW
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    ) {
-                    landmarks.forEach {
-                        LandmarkDisplay(it,
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(4),
+                    modifier = Modifier.height(183.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    userScrollEnabled = false
+                ) {
+                    items(landmarks) { landmark ->
+                        LandmarkDisplay(
+                            item = landmark,
                             width = 155.dp,
                             height = 175.dp
                         )
@@ -138,21 +140,31 @@ fun BigPlayerCardsDisplay(
                 }
             }
 
-            // ESTABLISHMENTS TITLE
             item {
-                BasicText("Establishments")
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    BasicText("Establishments")
+                }
             }
 
-            // GRID
-            items(establishments.chunked(4)) { rowItems ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    ) {
-                    rowItems.forEach {
-                        CardDisplay(it,
-                        width = 155.dp,
-                        height = 175.dp,
-                        showCounter = true
+            item {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(4),
+                    modifier = Modifier.height(
+                        (((establishments.size + 3) / 4) * 183).dp
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    userScrollEnabled = false
+                ) {
+                    items(establishments) { card ->
+                        CardDisplay(
+                            item = card,
+                            width = 155.dp,
+                            height = 175.dp,
+                            showCounter = true
                         )
                     }
                 }

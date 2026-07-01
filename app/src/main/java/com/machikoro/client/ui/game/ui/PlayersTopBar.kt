@@ -181,7 +181,7 @@ private fun PlayerCoinBadge(
             shadowElevation = 3.dp,
             modifier = Modifier
                 .wrapContentSize()
-                .widthIn(max = 140.dp)
+                .width(140.dp)
                 .semantics {
                     contentDescription = if (canInspect) {
                         "Inspect ${player.displayName}"

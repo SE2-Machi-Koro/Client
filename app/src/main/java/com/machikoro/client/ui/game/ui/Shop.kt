@@ -92,7 +92,7 @@ internal fun BuyingPhaseShop(
                     animationType = AnimationType.Bounce
                 ) {
                     PurchaseDisplay(
-                        modifier = Modifier.offset(y = -30.dp),
+                        modifier = modifier.offset(y = 0.dp),
                         drawable = drawableForPlayerCard(it),
                         name = state.activePlayerUsername,
                         isActive = state.isActivePlayer
@@ -125,39 +125,48 @@ internal fun BuyingPhaseShop(
                 LazyColumn(
                     modifier = modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
 
-                    // LANDMARKS TITLE
                     item {
-                        BasicText("Landmarks")
-                    }
-
-                    // LANDMARKS ROW
-                    item {
-                        Row(
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            landmarks.forEach { item ->
-                                ShopImageTile(
-                                    item = item,
-                                    state = state,
-                                    onPurchaseClick = onPurchaseClick,
-                                    isRecommended = item.type == recommendedCardType?.name
-                                )
+
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                BasicText("Landmarks")
+                            }
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                landmarks.forEach { item ->
+                                    ShopImageTile(
+                                        item = item,
+                                        state = state,
+                                        onPurchaseClick = onPurchaseClick,
+                                        isRecommended = item.type == recommendedCardType?.name
+                                    )
+                                }
                             }
                         }
                     }
 
-                    // ESTABLISHMENTS TITLE
                     item {
-                        BasicText("Establishments")
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                            ) {
+                            BasicText("Establishments")
+                        }
                     }
 
-                    // GRID
                     items(establishments.chunked(4)) { rowItems ->
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             rowItems.forEach { item ->
                                 ShopImageTile(
@@ -174,7 +183,7 @@ internal fun BuyingPhaseShop(
         } else {
             BasicText(
                 state.activePlayerUsername + " is deciding what card to buy",
-                modifier = Modifier.offset(y = (-SIDE_CONTENT_OFFSET).dp))
+                modifier = modifier.offset(y = (-SIDE_CONTENT_OFFSET).dp))
         }
     }
 }
@@ -360,7 +369,7 @@ private fun PurchaseDisplay(
     height: Dp = 175.dp,
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
