@@ -43,8 +43,7 @@ import kotlinx.coroutines.launch
 // diceResult, but if that message is lost or delayed the UI must not animate forever.
 private const val DICE_ROLL_TIMEOUT_MS = 10_000L
 // Must match DICE_ANIMATION_DURATION_MS in Dice.kt — gates shouldAutoResolveEffects
-private const val DICE_ANIMATION_DURATION_MS = 2_000L
-// ponytail: 1.5s is enough to show the card; 5s felt like the game froze
+private const val DICE_ANIMATION_DURATION_MS = 1_500L
 private const val PURCHASE_DISPLAY_DELAY = 5_000L
 
 class GameScreenViewModel(
@@ -172,11 +171,16 @@ class GameScreenViewModel(
                             // diceResult event, stop only the roll tied to the old phase.
                             // Skip when diceResult is already set — the diceResult collector
                             // owns the isRolling → false transition after the animation delay.
+                            // Also skip ROLL_DICE → RESOLVE_EFFECTS: that's the normal flow;
+                            // diceResult arrives momentarily and owns the animation lifecycle.
+                            val isNormalRollTransition = pendingRollPhase == GamePhase.ROLL_DICE &&
+                                gamePhase == GamePhase.RESOLVE_EFFECTS
                             if (
                                 state.isRolling &&
                                 pendingRollPhase != null &&
                                 gamePhase != pendingRollPhase &&
-                                state.diceResult == null
+                                state.diceResult == null &&
+                                !isNormalRollTransition
                             ) {
                                 shouldCancelPendingRoll = true
                                 updated.copy(isRolling = false)

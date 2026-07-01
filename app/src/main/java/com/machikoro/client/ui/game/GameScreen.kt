@@ -562,6 +562,18 @@ fun GameScreen(
                         )
                     }
 
+                    // Keep dice visible while the roll animation is still playing
+                    else if (state.gamePhase == GamePhase.ROLL_DICE || state.isRolling) {
+                        DiceSection(
+                            state = state,
+                            onRollDice = onRollDice,
+                            onReroll = onReroll,
+                            onSkipReroll = onSkipReroll,
+                            canReroll = canReroll,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+
                     else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
                             ResolvingEffectsView(
                                 state = state,
@@ -602,15 +614,6 @@ fun GameScreen(
                                     )
                                 }
                             }
-                        } else if (state.gamePhase == GamePhase.ROLL_DICE){
-                            DiceSection(
-                                state = state,
-                                onRollDice = onRollDice,
-                                onReroll = onReroll,
-                                onSkipReroll = onSkipReroll,
-                                canReroll = canReroll,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
                         }
                     }
                 },

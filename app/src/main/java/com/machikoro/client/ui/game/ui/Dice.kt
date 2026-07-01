@@ -51,7 +51,7 @@ private const val DICE_ANIMATION_INTERVAL_MS = 100L // faster change
 // One brief roll animation for everyone, so the reveal isn't held behind a long fixed
 // delay and active/non-active players stay in lockstep (matters during a Radio Tower
 // reroll where both spin off the same roll tick).
-private const val DICE_ANIMATION_DURATION_MS = 2000L
+private const val DICE_ANIMATION_DURATION_MS = 1500L
 private val DICE_SIZE = 58.dp
 private val DICE_FACES = listOf(
     R.drawable.game_dice_1,
