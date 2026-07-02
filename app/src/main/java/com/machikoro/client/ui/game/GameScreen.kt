@@ -476,7 +476,10 @@ fun GameScreen(
                             .align(Alignment.Center)
                             .offset(y = SIDE_CONTENT_OFFSET.dp)
                     ) {
-                        if (state.gamePhase != GamePhase.ROLL_DICE) {
+                        if (
+                            state.gamePhase != GamePhase.ROLL_DICE &&
+                            !showRadioTowerReroll
+                        ) {
                             state.diceResult?.let {
                                 DiceResultDisplay(dice = it,
                                     diceSize = 42.dp,
@@ -574,8 +577,13 @@ fun GameScreen(
                         )
                     }
 
-                    // Keep dice visible while the roll animation is still playing
-                    else if (state.gamePhase == GamePhase.ROLL_DICE || state.isRolling) {
+                    // A pending Radio Tower choice belongs to the dice-result step,
+                    // even though the server phase is already RESOLVE_EFFECTS (#354).
+                    else if (
+                        state.gamePhase == GamePhase.ROLL_DICE ||
+                        state.isRolling ||
+                        showRadioTowerReroll
+                    ) {
                         DiceSection(
                             state = state,
                             onRollDice = onRollDice,
@@ -596,40 +604,8 @@ fun GameScreen(
                                 effectCardPositions[playerId] = center
                             }
                         )
-
-                        if (
-                            showRadioTowerReroll &&
-                            state.isActivePlayer &&
-                            state.gameStatus == GameStatus.IN_PROGRESS
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .offset(y = (-20).dp)
-                            ) {
-                                ActionButton(
-                                    onClick = { onReroll(state.diceResult?.size ?: 1) },
-                                    enabled = !state.isRolling,
-                                    label = "Reroll",
-                                    leftIcon = R.drawable.game_dice_perspective,
-                                    modifier = Modifier.semantics {
-                                        contentDescription = "Reroll dice"
-                                    }
-                                )
-
-                                SecondaryActionButton(
-                                    onClick = onSkipReroll,
-                                    enabled = !state.isRolling,
-                                    label = "Skip",
-                                    modifier = Modifier.semantics {
-                                        contentDescription = "Skip reroll"
-                                    }
-                                }
-                            }
-                        }
                     }
+                }
                 },
 // =====================================
 // RIGHT

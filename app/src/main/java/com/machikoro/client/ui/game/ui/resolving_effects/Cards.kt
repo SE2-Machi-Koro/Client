@@ -176,9 +176,6 @@ fun drawableForPlayerCard(
 
         CardType.TV_STATION ->
             R.drawable.card_tv_station
-
-        CardType.BUSINESS_CENTER ->
-            R.drawable.card_business_center
     }
 
 @Preview(showBackground = true, widthDp = 180, heightDp = 360)
