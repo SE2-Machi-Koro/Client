@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,6 +50,7 @@ import com.machikoro.client.domain.model.state.triggeredEstablishmentsForCurrent
 import com.machikoro.client.ui.game.ui.resolving_effects.CardsStack
 import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.theme.ClientTheme
+import com.machikoro.client.ui.theme.TextBlueDark
 
 private const val CUP_ESTABLISHMENT_TYPE = "CUP"
 private const val BREAD_ESTABLISHMENT_TYPE = "BREAD"
@@ -436,10 +435,10 @@ private fun BusinessCenterChooseOwnCardView(
                 fontWeight = FontWeight.ExtraBold
             )
 
-            PurpleCardsQueueView(
+            /*PurpleCardsQueueView(
                 purpleCards = listOf(CardType.BUSINESS_CENTER),
                 activeCard = CardType.BUSINESS_CENTER
-            )
+            )*/
         }
 
         Column(
@@ -747,10 +746,22 @@ private fun buildOutcomeItems(
         val opponentId = opponent.id.toIntOrNull() ?: return@let null
         val paid = minOf(tvStationSteal, opponent.coins)
         if (paid <= 0) return@let null
-        PlayerOutcomeUi(playerId = opponentId, amount = paid, isPositive = false, cards = emptyList(), fromPlayerName = activePlayerName)
+        PlayerOutcomeUi(
+            playerId = opponentId,
+            amount = paid,
+            isPositive = false,
+            cards = emptyList(),
+            playerName = opponent.displayName
+        )
     }
     val tvStationGain = tvStationLoss?.let { loss ->
-        PlayerOutcomeUi(playerId = activePlayerId, amount = loss.amount, isPositive = true, cards = tvStationEffects.stackedCards())
+        PlayerOutcomeUi(
+            playerId = activePlayerId,
+            amount = loss.amount,
+            isPositive = true,
+            cards = tvStationEffects.stackedCards(),
+            playerName = activePlayerName
+        )
     }
 
     return activeRedPayments +
