@@ -73,14 +73,13 @@ import com.machikoro.client.ui.game.ui.PlayerCoinField
 import com.machikoro.client.ui.game.ui.PlayersTopBar
 import com.machikoro.client.ui.game.ui.ResolvingEffectsView
 import com.machikoro.client.ui.game.ui.RoundIndicator
-import com.machikoro.client.ui.game.ui.withResolvingEffectsPreviewCoins
 import com.machikoro.client.ui.game.ui.coin_animation.CoinChangeHighlight
 import com.machikoro.client.ui.game.ui.coin_animation.CoinTransferOverlay
 import com.machikoro.client.ui.game.ui.coin_animation.CoinTransferUi
 import com.machikoro.client.ui.game.ui.coin_animation.buildCoinTransfers
+import com.machikoro.client.ui.game.ui.withResolvingEffectsPreviewCoins
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
-import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.shared.DecreasingLineTimer
 import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ClientTheme
@@ -93,7 +92,6 @@ import kotlinx.coroutines.delay
 private val OWN_CARDS_VIEW_DELAY = 10000L
 private val MARKETPLACE_VIEW_DELAY = 10000L
 private val SHOP_VIEW_DELAY = 15000L
-
 
 
 // offsets
@@ -458,9 +456,7 @@ fun GameScreen(
                     Column(
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .offset(y = SIDE_CONTENT_OFFSET.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                            .offset(y = SIDE_CONTENT_OFFSET.dp)
                     ) {
                         if (state.gamePhase != GamePhase.ROLL_DICE) {
                             state.diceResult?.let {

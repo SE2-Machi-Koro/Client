@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +51,7 @@ import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.shared.AnimatedItem
 import com.machikoro.client.ui.shared.AnimationType
 import com.machikoro.client.ui.theme.TextBlueDark
+import kotlin.collections.forEach
 
 
 private val SHOP_CARD_SHAPE = RoundedCornerShape(8.dp)
@@ -149,19 +151,13 @@ fun BigPlayerCardsDisplay(
                 }
             }
 
-            item {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
-                    modifier = Modifier.height(
-                        (((establishments.size + 3) / 4) * 183).dp
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    userScrollEnabled = false
+            items(establishments.chunked(4)) { rowItems ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(establishments) { card ->
+                    rowItems.forEach { item ->
                         CardDisplay(
-                            item = card,
+                            item = item,
                             width = 155.dp,
                             height = 175.dp,
                             showCounter = true
@@ -302,15 +298,23 @@ private fun CardDisplay(
     showCounter: Boolean = false
 ) {
     Box(
-        modifier = modifier.wrapContentSize()
+        modifier = modifier.wrapContentSize(),
+        contentAlignment = Alignment.Center
     ) {
+        Box(
+            modifier = Modifier
+                .width(width)
+                .height(height),
+            contentAlignment = Alignment.Center
+        ) {
+            CardArtImage(
+                drawableResId = drawableForPlayerCard(item),
+                width = width,
+                height = height
+            )
+        }
 
-        CardArtImage(
-            drawableResId = drawableForPlayerCard(item),
-            width = width,
-            height = height
-        )
-        if(showCounter) {
+        if (showCounter) {
             CardQuantityIndicator(
                 quantity = item.quantity,
                 isVisible = item.quantity > 1,
