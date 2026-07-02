@@ -60,7 +60,7 @@ fun ResolvingEffectsView(
     if (triggeredEffects.isEmpty()) {
         BasicText(
             "No establishments triggered",
-            modifier = modifier.offset(y = -35.dp)
+            modifier = modifier
         )
         return
     }

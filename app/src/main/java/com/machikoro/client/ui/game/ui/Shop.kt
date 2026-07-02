@@ -83,7 +83,6 @@ internal fun BuyingPhaseShop(
             LandmarkPurchaseReveal(
                 state = state,
                 purchasedLandmark = purchasedLandmark,
-                modifier = Modifier.offset(y = 21.dp)
             )
         } else {
             state.purchaseFeedbackItemType?.let {
