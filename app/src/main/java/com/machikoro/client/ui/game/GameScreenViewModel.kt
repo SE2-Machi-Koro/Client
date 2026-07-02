@@ -28,7 +28,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.machikoro.client.domain.model.state.AccusationResult
-import com.machikoro.client.domain.model.state.triggeredEstablishmentCountForCurrentRoll
 import com.machikoro.client.network.error.ClientError
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +41,8 @@ import kotlinx.coroutines.launch
 // Failsafe for issue #175: the server is expected to answer a roll with a
 // diceResult, but if that message is lost or delayed the UI must not animate forever.
 private const val DICE_ROLL_TIMEOUT_MS = 10_000L
+// Must match DICE_ANIMATION_DURATION_MS in Dice.kt — gates shouldAutoResolveEffects
+private const val DICE_ANIMATION_DURATION_MS = 1_500L
 private const val PURCHASE_DISPLAY_DELAY = 5_000L
 
 class GameScreenViewModel(
@@ -167,10 +168,18 @@ class GameScreenViewModel(
                         .let { updated ->
                             // Issue #175: if the server advances the phase without a
                             // diceResult event, stop only the roll tied to the old phase.
+                            // Skip when diceResult is already set — the diceResult collector
+                            // owns the isRolling → false transition after the animation delay.
+                            // Also skip ROLL_DICE → RESOLVE_EFFECTS: that's the normal flow;
+                            // diceResult arrives momentarily and owns the animation lifecycle.
+                            val isNormalRollTransition = pendingRollPhase == GamePhase.ROLL_DICE &&
+                                gamePhase == GamePhase.RESOLVE_EFFECTS
                             if (
                                 state.isRolling &&
                                 pendingRollPhase != null &&
-                                gamePhase != pendingRollPhase
+                                gamePhase != pendingRollPhase &&
+                                state.diceResult == null &&
+                                !isNormalRollTransition
                             ) {
                                 shouldCancelPendingRoll = true
                                 updated.copy(isRolling = false)
@@ -192,7 +201,14 @@ class GameScreenViewModel(
         viewModelScope.launch {
             webSocketClient.diceResult.collect { diceResult ->
                 cancelPendingRollTimeout()
-                mutableState.update { it.copy(diceResult = diceResult, isRolling = false) }
+                mutableState.update { it.copy(diceResult = diceResult) }
+                // Active player already animated for 1500ms before the WS was sent;
+                // non-active players need the dwell so DiceSection stays visible while
+                // their animation plays.
+                if (!mutableState.value.isActivePlayer) {
+                    delay(DICE_ANIMATION_DURATION_MS)
+                }
+                mutableState.update { it.copy(isRolling = false) }
             }
         }
         viewModelScope.launch {
@@ -209,7 +225,13 @@ class GameScreenViewModel(
             // roll completion regardless of whether the numbers changed.
             webSocketClient.diceRollTick.collect { tick ->
                 cancelPendingRollTimeout()
-                mutableState.update { it.copy(diceRollTick = tick, isRolling = false) }
+                mutableState.update { it.copy(diceRollTick = tick) }
+                // Active player animated before sending; non-active players need the
+                // dwell so DiceSection stays visible during their animation (#405).
+                if (!mutableState.value.isActivePlayer) {
+                    delay(DICE_ANIMATION_DURATION_MS)
+                }
+                mutableState.update { it.copy(isRolling = false) }
             }
         }
         viewModelScope.launch {
@@ -353,7 +375,12 @@ class GameScreenViewModel(
         val effectiveDiceCount = if (mutableState.value.hasTrainStation) diceCount else 1
         mutableState.update { it.copy(isRolling = true, requestedDiceCount = effectiveDiceCount) }
         startRollTimeout(expectedPhase = GamePhase.ROLL_DICE)
-        webSocketClient.rollDice(effectiveDiceCount)
+        // Delay the broadcast so the 1.5s animation plays before the server
+        // tells all players the result.
+        viewModelScope.launch {
+            delay(DICE_ANIMATION_DURATION_MS)
+            webSocketClient.rollDice(effectiveDiceCount)
+        }
     }
 
     /**
@@ -369,7 +396,11 @@ class GameScreenViewModel(
         mutableCanRerollThisTurn.value = false
         mutableState.update { it.copy(isRolling = true) }
         startRollTimeout(expectedPhase = GamePhase.RESOLVE_EFFECTS)
-        webSocketClient.rerollDice(diceCount)
+        // Same pre-send delay as rollDice: animation first, broadcast after.
+        viewModelScope.launch {
+            delay(DICE_ANIMATION_DURATION_MS)
+            webSocketClient.rerollDice(diceCount)
+        }
     }
 
     fun skipReroll() {
@@ -383,6 +414,10 @@ class GameScreenViewModel(
         resolveEffectsJob?.cancel()
         webSocketClient.resolveEffects(gameId)
     }
+
+    // The timer in the init block is the sole authority for advancing the phase;
+    // kept so callers compile without changes.
+    fun finishResolveEffectsAnimation() = Unit
 
     private fun startRollTimeout(expectedPhase: GamePhase) {
         diceRollTimeoutJob?.cancel()
@@ -482,16 +517,7 @@ class GameScreenViewModel(
             !isRolling &&
             !(canReroll && canRerollThisTurn)
 
-    private fun GameScreenState.resolveEffectsDwellMillis(): Long {
-        val diceWasRolled = diceResult != null
-        val triggeredCount = triggeredEstablishmentCountForCurrentRoll()
-
-        return if (diceWasRolled && triggeredCount == 0) {
-            0L
-        } else {
-            resolveEffectsDwellMillis
-        }
-    }
+    private fun GameScreenState.resolveEffectsDwellMillis(): Long = resolveEffectsDwellMillis
 
     fun selectPurchaseItem(itemType: String) {
         val current = mutableState.value

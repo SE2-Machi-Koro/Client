@@ -29,7 +29,6 @@ internal object ShopImageResolver {
         "card_family_restaurant" -> R.drawable.card_family_restaurant
         "card_stadium" -> R.drawable.card_stadium
         "card_tv_station" -> R.drawable.card_tv_station
-        "card_business_center" -> R.drawable.card_business_center
         "landmark_train_station" -> R.drawable.landmark_train_station
         "landmark_train_station_locked" -> R.drawable.landmark_train_station_locked
         "landmark_shopping_mall" -> R.drawable.landmark_shopping_mall

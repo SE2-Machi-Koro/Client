@@ -74,14 +74,13 @@ import com.machikoro.client.ui.game.ui.PlayerCoinField
 import com.machikoro.client.ui.game.ui.PlayersTopBar
 import com.machikoro.client.ui.game.ui.ResolvingEffectsView
 import com.machikoro.client.ui.game.ui.RoundIndicator
-import com.machikoro.client.ui.game.ui.withResolvingEffectsPreviewCoins
 import com.machikoro.client.ui.game.ui.coin_animation.CoinChangeHighlight
 import com.machikoro.client.ui.game.ui.coin_animation.CoinTransferOverlay
 import com.machikoro.client.ui.game.ui.coin_animation.buildCoinTransfers
 import com.machikoro.client.ui.game.ui.coin_animation.buildPersistentCoinHighlights
+import com.machikoro.client.ui.game.ui.withResolvingEffectsPreviewCoins
 import com.machikoro.client.ui.shared.ActionButton
 import com.machikoro.client.ui.shared.Background
-import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.shared.DecreasingLineTimer
 import com.machikoro.client.ui.shared.SecondaryActionButton
 import com.machikoro.client.ui.theme.ClientTheme
@@ -94,7 +93,6 @@ import kotlinx.coroutines.delay
 private val OWN_CARDS_VIEW_DELAY = 10000L
 private val MARKETPLACE_VIEW_DELAY = 10000L
 private val SHOP_VIEW_DELAY = 15000L
-
 
 
 // offsets
@@ -207,6 +205,7 @@ fun GameScreen(
 
     LaunchedEffect(animationKey) {
         coinAnimationFinished = coinTransfers.isEmpty()
+        // Timer in the ViewModel drives phase advance; no early exit here.
     }
 
     val accuseTarget = accuseTargetId?.let { id -> state.players.firstOrNull { it.id == id } }
@@ -475,9 +474,7 @@ fun GameScreen(
                     Column(
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .offset(y = SIDE_CONTENT_OFFSET.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                            .offset(y = SIDE_CONTENT_OFFSET.dp)
                     ) {
                         if (state.gamePhase != GamePhase.ROLL_DICE) {
                             state.diceResult?.let {
@@ -577,63 +574,60 @@ fun GameScreen(
                         )
                     }
 
+                    // Keep dice visible while the roll animation is still playing
+                    else if (state.gamePhase == GamePhase.ROLL_DICE || state.isRolling) {
+                        DiceSection(
+                            state = state,
+                            onRollDice = onRollDice,
+                            onReroll = onReroll,
+                            onSkipReroll = onSkipReroll,
+                            canReroll = canReroll,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+
                     else if (state.gamePhase == GamePhase.RESOLVE_EFFECTS) {
-                            Column(
+                        ResolvingEffectsView(
+                            state = state,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .offset(x = 10.dp, y = (-30).dp),
+                            onEffectCardPositioned = { playerId, center ->
+                                effectCardPositions[playerId] = center
+                            }
+                        )
+
+                        if (
+                            showRadioTowerReroll &&
+                            state.isActivePlayer &&
+                            state.gameStatus == GameStatus.IN_PROGRESS
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
-                                    .align(Alignment.Center)
-                                    .offset(x = 5.dp, y = 20.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    .align(Alignment.BottomCenter)
+                                    .offset(y = (-20).dp)
                             ) {
-                                ResolvingEffectsView(
-                                    state = state,
-                                    modifier = Modifier.offset(y = (-30).dp,
-                                        x = (10).dp
-                                    ),
-                                    onEffectCardPositioned = { playerId, center ->
-                                        effectCardPositions[playerId] = center
+                                ActionButton(
+                                    onClick = { onReroll(state.diceResult?.size ?: 1) },
+                                    enabled = !state.isRolling,
+                                    label = "Reroll",
+                                    leftIcon = R.drawable.game_dice_perspective,
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "Reroll dice"
                                     }
                                 )
 
-                                if (
-                                    showRadioTowerReroll &&
-                                    state.isActivePlayer &&
-                                    state.gameStatus == GameStatus.IN_PROGRESS
-                                ) {
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        ActionButton(
-                                            onClick = { onReroll(state.diceResult?.size ?: 1) },
-                                            enabled = !state.isRolling,
-                                            label = "Reroll",
-                                            leftIcon = R.drawable.game_dice_perspective,
-                                            modifier = Modifier.semantics {
-                                                contentDescription = "Reroll dice"
-                                            }
-                                        )
-
-                                        SecondaryActionButton(
-                                            onClick = onSkipReroll,
-                                            enabled = !state.isRolling,
-                                            label = "Skip",
-                                            modifier = Modifier.semantics {
-                                                contentDescription = "Skip reroll"
-                                            }
-                                        )
+                                SecondaryActionButton(
+                                    onClick = onSkipReroll,
+                                    enabled = !state.isRolling,
+                                    label = "Skip",
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "Skip reroll"
                                     }
                                 }
                             }
-                        } else if (state.gamePhase == GamePhase.ROLL_DICE){
-                            DiceSection(
-                                state = state,
-                                onRollDice = onRollDice,
-                                onReroll = onReroll,
-                                onSkipReroll = onSkipReroll,
-                                canReroll = canReroll,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
                         }
                     }
                 },

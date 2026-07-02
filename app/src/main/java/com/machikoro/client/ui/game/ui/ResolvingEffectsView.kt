@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,7 +52,6 @@ import com.machikoro.client.domain.model.state.triggeredEstablishmentsForCurrent
 import com.machikoro.client.ui.game.ui.resolving_effects.CardsStack
 import com.machikoro.client.ui.shared.BasicText
 import com.machikoro.client.ui.theme.ClientTheme
-import com.machikoro.client.ui.theme.TextBlueDark
 
 private const val CUP_ESTABLISHMENT_TYPE = "CUP"
 private const val BREAD_ESTABLISHMENT_TYPE = "BREAD"
@@ -738,34 +739,34 @@ private fun buildOutcomeItems(
         )
     }
 
-    val unresolvedPurpleOutcomes = effects
-        .filter {
-            it.color == ShopItemColor.PURPLE &&
-                it.cardType != CardType.STADIUM
-        }
-        .map { effect ->
-            PlayerOutcomeUi(
-                playerId = effect.playerId,
-                amount = 0,
-                isPositive = true,
-                cards = effect.stackedCards()
-            )
-        }
+    // TV Station steals 5 coins from a random opponent; pick the richest as a local preview guess
+    val tvStationEffects = effects.filter { it.cardType == CardType.TV_STATION }
+    val tvStationSteal = tvStationEffects.sumOf { it.incomeAmount * it.quantity }
+    val tvStationTarget = if (tvStationSteal > 0) opponents.maxByOrNull { it.coins } else null
+    val tvStationLoss = tvStationTarget?.let { opponent ->
+        val opponentId = opponent.id.toIntOrNull() ?: return@let null
+        val paid = minOf(tvStationSteal, opponent.coins)
+        if (paid <= 0) return@let null
+        PlayerOutcomeUi(playerId = opponentId, amount = paid, isPositive = false, cards = emptyList(), fromPlayerName = activePlayerName)
+    }
+    val tvStationGain = tvStationLoss?.let { loss ->
+        PlayerOutcomeUi(playerId = activePlayerId, amount = loss.amount, isPositive = true, cards = tvStationEffects.stackedCards())
+    }
 
     return activeRedPayments +
             redReceiverOutcomes +
             stadiumGain +
             stadiumLosses +
             bankIncomeOutcomes +
-            unresolvedPurpleOutcomes
+            listOfNotNull(tvStationGain) +
+            listOfNotNull(tvStationLoss)
 }
 
 /**
  * Best-effort local preview of establishments that should visually light up for
  * this roll. The server remains authoritative for real coin movement; this
  * preview mirrors Shopping Mall bonuses and caps theft at visible coin balances.
- * TV Station and Business Center show only the triggered card art until the
- * server exposes their selected targets, so the panel does not invent coin transfers.
+ * TV Station picks the richest opponent as a local preview guess; the server result is authoritative.
  */
 private fun GameScreenState.triggeredEffects(): List<TriggeredEffectUi> {
     return triggeredEstablishmentsForCurrentRoll().map { triggered ->
@@ -863,7 +864,6 @@ private fun CardType.coinEffectAmount(ownedCards: List<PlayerCardState>): Int = 
     CardType.FAMILY_RESTAURANT -> 2
     CardType.STADIUM -> 2
     CardType.TV_STATION -> 5
-    CardType.BUSINESS_CENTER -> 0
 }
 
 private fun TriggeredEffectUi.stackedCards(): List<CardType> =
@@ -1084,121 +1084,6 @@ private fun ResolvingEffectsPurpleStadiumOutcomePreview() {
                         1 to listOf(PlayerCardState(CardType.STADIUM, quantity = 1))
                     )
                 )
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleTvStationChoicePreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            PurpleTvStationChoiceView(
-                players = previewPlayersForResolvingEffects(
-                    myUserId = 1,
-                    activePlayerId = 1
-                ).filter { it.id != "1" }
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleTvStationChoiceWithDisabledPlayerPreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            PurpleTvStationChoiceView(
-                players = listOf(
-                    PlayerCoinState(id = "2", displayName = "Player2", coins = 4),
-                    PlayerCoinState(id = "3", displayName = "Player3", coins = 7),
-                    PlayerCoinState(id = "4", displayName = "Player4", coins = 0),
-                )
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleTvStationOutcomePreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            PurpleTvStationOutcomeView(
-                players = previewPlayersForResolvingEffects(
-                    myUserId = 1,
-                    activePlayerId = 1
-                ),
-                activePlayerId = 1,
-                payingPlayerId = 3
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleBusinessCenterChooseOwnCardPreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            BusinessCenterChooseOwnCardView(
-                ownCards = listOf(
-                    CardType.WHEAT_FIELD,
-                    CardType.BAKERY,
-                    CardType.FOREST,
-                ),
-                selectedCard = CardType.BAKERY,
-                opponentName = "Player3"
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleBusinessCenterChooseOpponentCardPreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            BusinessCenterChooseOpponentCardView(
-                opponentName = "Player3",
-                ownSelectedCard = CardType.BAKERY,
-                opponentCards = listOf(
-                    CardType.RANCH,
-                    CardType.CAFE,
-                    CardType.CONVENIENCE_STORE,
-                ),
-                opponentSelectedCard = CardType.RANCH
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleBusinessCenterOutcomePreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            BusinessCenterOutcomeView(
-                ownReceivedCard = CardType.RANCH,
-                opponentReceivedCard = CardType.BAKERY
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 915, heightDp = 430)
-@Composable
-private fun ResolvingEffectsPurpleMultipleCardsQueuePreview() {
-    ClientTheme {
-        ResolvingEffectsPreviewContainer {
-            PurpleCardsQueueView(
-                purpleCards = listOf(
-                    CardType.STADIUM,
-                    CardType.TV_STATION,
-                    CardType.BUSINESS_CENTER
-                ),
-                activeCard = CardType.TV_STATION
             )
         }
     }
