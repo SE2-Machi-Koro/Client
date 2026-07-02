@@ -28,7 +28,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.machikoro.client.domain.model.state.AccusationResult
-import com.machikoro.client.domain.model.state.triggeredEstablishmentCountForCurrentRoll
 import com.machikoro.client.network.error.ClientError
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -202,10 +201,13 @@ class GameScreenViewModel(
         viewModelScope.launch {
             webSocketClient.diceResult.collect { diceResult ->
                 cancelPendingRollTimeout()
-                // Store result immediately, but keep isRolling true so the dice animation
-                // plays before shouldAutoResolveEffects fires
                 mutableState.update { it.copy(diceResult = diceResult) }
-                delay(DICE_ANIMATION_DURATION_MS)
+                // Active player already animated for 1500ms before the WS was sent;
+                // non-active players need the dwell so DiceSection stays visible while
+                // their animation plays.
+                if (!mutableState.value.isActivePlayer) {
+                    delay(DICE_ANIMATION_DURATION_MS)
+                }
                 mutableState.update { it.copy(isRolling = false) }
             }
         }
@@ -223,9 +225,12 @@ class GameScreenViewModel(
             // roll completion regardless of whether the numbers changed.
             webSocketClient.diceRollTick.collect { tick ->
                 cancelPendingRollTimeout()
-                // Same delay as diceResult so reroll-same-total case also animates fully
                 mutableState.update { it.copy(diceRollTick = tick) }
-                delay(DICE_ANIMATION_DURATION_MS)
+                // Active player animated before sending; non-active players need the
+                // dwell so DiceSection stays visible during their animation (#405).
+                if (!mutableState.value.isActivePlayer) {
+                    delay(DICE_ANIMATION_DURATION_MS)
+                }
                 mutableState.update { it.copy(isRolling = false) }
             }
         }
@@ -370,7 +375,12 @@ class GameScreenViewModel(
         val effectiveDiceCount = if (mutableState.value.hasTrainStation) diceCount else 1
         mutableState.update { it.copy(isRolling = true, requestedDiceCount = effectiveDiceCount) }
         startRollTimeout(expectedPhase = GamePhase.ROLL_DICE)
-        webSocketClient.rollDice(effectiveDiceCount)
+        // Delay the broadcast so the 1.5s animation plays before the server
+        // tells all players the result.
+        viewModelScope.launch {
+            delay(DICE_ANIMATION_DURATION_MS)
+            webSocketClient.rollDice(effectiveDiceCount)
+        }
     }
 
     /**
@@ -386,7 +396,11 @@ class GameScreenViewModel(
         mutableCanRerollThisTurn.value = false
         mutableState.update { it.copy(isRolling = true) }
         startRollTimeout(expectedPhase = GamePhase.RESOLVE_EFFECTS)
-        webSocketClient.rerollDice(diceCount)
+        // Same pre-send delay as rollDice: animation first, broadcast after.
+        viewModelScope.launch {
+            delay(DICE_ANIMATION_DURATION_MS)
+            webSocketClient.rerollDice(diceCount)
+        }
     }
 
     fun skipReroll() {
@@ -401,16 +415,9 @@ class GameScreenViewModel(
         webSocketClient.resolveEffects(gameId)
     }
 
-    fun finishResolveEffectsAnimation() {
-        val current = mutableState.value
-        val pendingJob = resolveEffectsJob ?: return
-        if (!pendingJob.isActive) return
-        if (!current.shouldAutoResolveEffects(mutableCanRerollThisTurn.value)) return
-
-        pendingJob.cancel()
-        resolveEffectsJob = null
-        current.gameId?.let { webSocketClient.resolveEffects(it) }
-    }
+    // ponytail: no-op — 5s timer in the init block is now the sole authority;
+    // kept so callers compile without changes.
+    fun finishResolveEffectsAnimation() = Unit
 
     private fun startRollTimeout(expectedPhase: GamePhase) {
         diceRollTimeoutJob?.cancel()
@@ -510,16 +517,7 @@ class GameScreenViewModel(
             !isRolling &&
             !(canReroll && canRerollThisTurn)
 
-    private fun GameScreenState.resolveEffectsDwellMillis(): Long {
-        val diceWasRolled = diceResult != null
-        val triggeredCount = triggeredEstablishmentCountForCurrentRoll()
-
-        return if (diceWasRolled && triggeredCount == 0) {
-            0L
-        } else {
-            resolveEffectsDwellMillis
-        }
-    }
+    private fun GameScreenState.resolveEffectsDwellMillis(): Long = resolveEffectsDwellMillis
 
     fun selectPurchaseItem(itemType: String) {
         val current = mutableState.value
@@ -706,7 +704,7 @@ class GameScreenViewModel(
          * after the final coin animation. Keep this short so a missed overlay
          * callback does not leave the active player staring at RESOLVE_EFFECTS.
          */
-        const val DEFAULT_RESOLVE_EFFECTS_DWELL_MS = 6_000L
+        const val DEFAULT_RESOLVE_EFFECTS_DWELL_MS = 5_000L
     }
 
     class Factory(

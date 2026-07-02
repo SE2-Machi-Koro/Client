@@ -191,9 +191,7 @@ fun GameScreen(
     LaunchedEffect(animationKey) {
         coinAnimationFinished = coinTransfers.isEmpty()
         activeCoinTransfer = null
-        if (state.gamePhase == GamePhase.RESOLVE_EFFECTS && coinTransfers.isEmpty()) {
-            onResolveEffectsAnimationFinished()
-        }
+        // Timer in the ViewModel drives phase advance; no early exit here.
     }
 
     val accuseTarget = accuseTargetId?.let { id -> state.players.firstOrNull { it.id == id } }

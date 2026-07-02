@@ -254,6 +254,8 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         viewModel.rollDice(diceCount = 1)
+        advanceTimeBy(1500L) // Animation plays before WS is sent
+        runCurrent()
 
         assertEquals(1, fakeClient.lastRolledDiceCount)
     }
@@ -276,6 +278,8 @@ class GameScreenViewModelTest {
 
         // Player asks (or a stale count asks) for two dice without a Train Station (#399).
         viewModel.rollDice(diceCount = 2)
+        advanceTimeBy(1500L)
+        runCurrent()
 
         assertEquals(1, fakeClient.lastRolledDiceCount)
         assertEquals(1, viewModel.state.value.requestedDiceCount)
@@ -298,6 +302,8 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         viewModel.rollDice(diceCount = 2)
+        advanceTimeBy(1500L)
+        runCurrent()
 
         assertEquals(2, fakeClient.lastRolledDiceCount)
         assertEquals(2, viewModel.state.value.requestedDiceCount)
@@ -341,6 +347,8 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         viewModel.rerollDice(diceCount = 2)
+        advanceTimeBy(1500L)
+        runCurrent()
 
         assertEquals(2, fakeClient.lastRerolledDiceCount)
     }
@@ -390,7 +398,9 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         viewModel.rerollDice(diceCount = 1)
-        viewModel.rerollDice(diceCount = 1)
+        viewModel.rerollDice(diceCount = 1) // Blocked: canRerollThisTurn already false
+        advanceTimeBy(1500L)
+        runCurrent()
 
         assertEquals(1, fakeClient.rerollCallCount)
         assertFalse(viewModel.canRerollThisTurn.value)
@@ -408,7 +418,9 @@ class GameScreenViewModelTest {
         runCurrent()
         fakeClient.emitActivePlayerId(42)
         runCurrent()
-        viewModel.rerollDice(diceCount = 1)
+        viewModel.rerollDice(diceCount = 1) // Blocked: isRolling still true
+        advanceTimeBy(1500L) // First reroll WS fires; second was already ignored
+        runCurrent()
 
         assertEquals(1, fakeClient.rerollCallCount)
     }
@@ -448,6 +460,8 @@ class GameScreenViewModelTest {
         assertTrue(viewModel.canRerollThisTurn.value)
 
         viewModel.rerollDice(diceCount = 1)
+        advanceTimeBy(1500L)
+        runCurrent()
 
         assertEquals(2, fakeClient.rerollCallCount)
     }
@@ -1077,7 +1091,9 @@ class GameScreenViewModelTest {
         advanceUntilIdle()
 
         viewModel.rollDice(diceCount = 1)
-        viewModel.rollDice(diceCount = 2)
+        viewModel.rollDice(diceCount = 2) // Blocked: isRolling already true
+        advanceTimeBy(1500L)
+        runCurrent()
 
         assertEquals(1, fakeClient.lastRolledDiceCount)
     }
@@ -1721,13 +1737,14 @@ class GameScreenViewModelTest {
     }
 
     @Test
-    fun resolveEffectsAutoSendsImmediatelyWhenDiceRolledAndNoCardsTriggered() = runTest {
+    fun resolveEffectsAutoSendsAfterDwellWhenDiceRolledAndNoCardsTriggered() = runTest {
+        // Previously resolved immediately with no triggered cards; now always waits the dwell.
         val fakeClient = FakeWebSocketClient()
         viewModel(fakeClient, userId = 42)
 
         fakeClient.enterResolveEffects(activeUserId = 42)
         fakeClient.emitDiceResult(listOf(6, 6))
-        runCurrent()
+        advanceUntilIdle()
 
         assertEquals(7, fakeClient.resolvedEffectsGameId)
         assertEquals(1, fakeClient.resolveEffectsCallCount)
@@ -1800,7 +1817,8 @@ class GameScreenViewModelTest {
 
         assertEquals(0, fakeClient.resolveEffectsCallCount)
 
-        viewModel.finishResolveEffectsAnimation()
+        // finishResolveEffectsAnimation is now a no-op; the timer is authoritative.
+        advanceTimeBy(1)
         runCurrent()
 
         assertEquals(1, fakeClient.resolveEffectsCallCount)
